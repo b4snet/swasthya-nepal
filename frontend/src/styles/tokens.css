@@ -1,0 +1,94 @@
+/* ============================================================================
+   Swasthya design tokens — source of truth: DESIGN_SYSTEM.md §8–§12.
+   Mobile-first: base values ARE the phone experience.
+   ========================================================================== */
+
+:root {
+  /* Neutrals (cool, not cream) — §10 */
+  --paper: #ffffff;
+  --mist: #f3f6f7;
+  --line: #d9e0e4;
+  --slate-500: #64748b;
+  --ink: #1b2a38;
+  --ink-soft: #3d4c5c;
+
+  /* Brand & action — teal §10 */
+  --teal-600: #0d9488;
+  --teal-700: #0f766e;
+  --teal-800: #115e59;
+  --teal-900: #134e4a;
+  --on-teal: #ffffff;
+
+  /* Semantic (closed set) — §11 */
+  --semantic-success: #1f7a3d;
+  --semantic-info: #175cd3;
+  --semantic-warning: #b45309;
+  --semantic-danger: #b42318;
+  --semantic-neutral: #475569;
+
+  /* Surface tints (10–15 % of base) — §11 */
+  --tint-success: #e9f6ee;
+  --tint-info: #e9f0fd;
+  --tint-warning: #fcf1e3;
+  --tint-danger: #fef3f2;
+  --tint-neutral: #eef0f4;
+
+  /* Type — §8 */
+  --font-body: 'Public Sans', 'Noto Sans Devanagari', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Manrope', 'Noto Sans Devanagari', var(--font-body);
+  --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
+
+  --fs-display: 34px;
+  --lh-display: 40px;
+  --fs-title: 26px;
+  --lh-title: 32px;
+  --fs-h2: 22px;
+  --lh-h2: 28px;
+  --fs-h3: 19px;
+  --lh-h3: 26px;
+  --fs-body: 16px;
+  --lh-body: 24px;
+  --fs-label: 14px;
+  --lh-label: 20px;
+  --fs-caption: 12px;
+  --lh-caption: 16px;
+  --fs-data: 16px;
+  --lh-data: 24px;
+
+  /* Spacing — §9 (4 px base) */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+
+  /* Elevation */
+  --shadow-sm: 0 1px 2px rgba(27, 42, 56, 0.06);
+  --shadow-md: 0 4px 12px rgba(27, 42, 56, 0.1);
+  --shadow-lg: 0 12px 32px rgba(27, 42, 56, 0.16);
+
+  /* Motion — reduced-motion respected (§ motion) */
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --dur-fast: 120ms;
+  --dur-med: 200ms;
+
+  /* Layout */
+  --sidebar-w: 240px;
+  --sidebar-w-collapsed: 64px;
+  --header-h: 56px;
+  --bottomnav-h: 60px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* Focus */
+  --focus-ring: 0 0 0 3px rgba(15, 118, 110, 0.35);
+}

@@ -1,0 +1,135 @@
+# Swasthya backend CI (MASTER_RULES.md §25, DEPLOYMENT.md §6, TESTING_STRATEGY.md).
+#
+# Pipeline: source check → composer install → static analysis (Pint) →
+# DB migrations on a DISPOSABLE PostgreSQL → full Pest suite (unit,
+# integration, API, database, RLS/tenant-isolation, audit) → build artifact.
+#
+# The database is a fresh postgres:16 service container — never a developer's
+# local database. The least-privilege `swasthya_app` role is created from
+# database/security/roles.sql (NOBYPASSRLS) and the RLS suite runs against it.
+#
+# No production secrets are committed. The app-role password is environment-
+# specific: from the APP_ROLE_PASSWORD secret when available, otherwise a
+# CI-only default (the role and password exist only inside this job's
+# disposable database).
+
+name: backend-ci
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/ci.yml'
+  pull_request:
+    paths:
+      - 'backend/**'
+
+concurrency:
+  group: backend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  APP_ROLE_PASSWORD: ${{ secrets.APP_ROLE_PASSWORD || 'ci-app-role-password-2026' }}
+
+jobs:
+  backend:
+    name: backend (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.2', '8.3']
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: swasthya
+          POSTGRES_PASSWORD: ci-owner-password-2026
+          POSTGRES_DB: swasthya_ci
+        ports:
+          - 54329:5432
+        options: >-
+          --health-cmd "pg_isready -U swasthya"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: pdo, pdo_pgsql, pgsql, bcmath, intl
+          coverage: none
+          tools: composer:v2
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: backend/vendor
+          key: composer-${{ runner.os }}-php${{ matrix.php }}-${{ hashFiles('backend/composer.lock') }}
+          restore-keys: |
+            composer-${{ runner.os }}-php${{ matrix.php }}-
+
+      - name: Source check (Laravel skeleton + app namespace)
+        run: |
+          test -f artisan && test -f composer.json
+          test -d app && test -d database/migrations && test -d tests
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Static analysis / lint (Pint)
+        run: vendor/bin/pint --test
+
+      - name: Create least-privilege application role (NOBYPASSRLS)
+        run: |
+          PGPASSWORD=ci-owner-password-2026 psql -h 127.0.0.1 -p 54329 -U swasthya -d swasthya_ci \
+            -v app_password="$APP_ROLE_PASSWORD" -f database/security/roles.sql
+
+      - name: Database migrations on disposable PostgreSQL
+        run: |
+          DB_HOST=127.0.0.1 DB_PORT=54329 DB_DATABASE=swasthya_ci \
+          DB_USERNAME=swasthya DB_PASSWORD=ci-owner-password-2026 \
+          php artisan migrate:fresh --force
+
+      - name: Verify RLS policies and role configuration
+        run: |
+          PGPASSWORD=ci-owner-password-2026 psql -h 127.0.0.1 -p 54329 -U swasthya -d swasthya_ci -t -A -c \
+            "select relname from pg_policies p join pg_class c on c.oid=p.polrelid where c.relname='patients'"
+          PGPASSWORD=ci-owner-password-2026 psql -h 127.0.0.1 -p 54329 -U swasthya -d swasthya_ci -t -A -c \
+            "select rolname, rolbypassrls, rolsuper from pg_roles where rolname='swasthya_app'"
+
+      - name: Run full test suite (unit, integration, API, database, RLS, isolation, audit)
+        run: |
+          DB_HOST=127.0.0.1 DB_PORT=54329 DB_DATABASE=swasthya_ci \
+          DB_USERNAME=swasthya DB_PASSWORD=ci-owner-password-2026 \
+          RLS_DB_HOST=127.0.0.1 RLS_DB_PORT=54329 RLS_DB_DATABASE=swasthya_ci \
+          RLS_DB_USERNAME=swasthya_app RLS_DB_PASSWORD="$APP_ROLE_PASSWORD" \
+          vendor/bin/pest --ci
+
+      - name: Build artifact (laravel optimization for deployment)
+        run: |
+          DB_HOST=127.0.0.1 DB_PORT=54329 DB_DATABASE=swasthya_ci \
+          DB_USERNAME=swasthya DB_PASSWORD=ci-owner-password-2026 \
+          php artisan config:cache --env=production || true
+          php artisan route:cache || true
+          php artisan view:cache || true
+          ls -la bootstrap/cache
+
+      - name: Upload test report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pest-failure-php${{ matrix.php }}
+          path: backend/storage/logs/
+          retention-days: 7

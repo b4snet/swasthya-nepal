@@ -1,0 +1,243 @@
+/* ============================================================================
+   Page-specific patterns (all mobile-first).
+   ========================================================================== */
+
+.page--narrow {
+  max-width: 720px;
+}
+
+.searchbar {
+  max-width: 560px;
+  width: 100%;
+}
+
+.capitalize {
+  text-transform: capitalize;
+}
+
+/* Key/value list */
+.kv {
+  display: grid;
+  gap: var(--sp-2);
+  margin: 0;
+}
+
+.kv > div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding-bottom: var(--sp-2);
+  border-bottom: 1px solid var(--line);
+}
+
+.kv dt {
+  color: var(--slate-500);
+  font-size: var(--fs-label);
+  font-weight: 600;
+}
+
+.kv dd {
+  margin: 0;
+  text-align: right;
+}
+
+/* Timeline */
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.timeline__item {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  gap: var(--sp-2);
+  align-items: baseline;
+  padding: var(--sp-2) 0;
+  border-bottom: 1px solid var(--line);
+  font-size: var(--fs-label);
+}
+
+.timeline__time {
+  color: var(--slate-500);
+  white-space: nowrap;
+}
+
+.timeline__type {
+  color: var(--teal-800);
+}
+
+.timeline__summary {
+  color: var(--ink-soft);
+  text-align: right;
+}
+
+/* Queue (mobile-first cards, table-like at lg) */
+.queue-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.queue-card {
+  display: flex;
+  gap: var(--sp-3);
+  align-items: center;
+}
+
+.queue-card__token {
+  font-size: var(--fs-title);
+  font-weight: 500;
+  color: var(--teal-800);
+  min-width: 56px;
+  text-align: center;
+}
+
+.queue-card__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.queue-card__actions {
+  display: flex;
+  gap: var(--sp-2);
+  flex-direction: column;
+}
+
+@media (min-width: 768px) {
+  .queue-card__actions {
+    flex-direction: row;
+  }
+}
+
+.checkin-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.checkin-list__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-3) 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.checkin-list__item:last-child {
+  border-bottom: none;
+}
+
+.queue-mini {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.queue-mini__item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.queue-mini__item:last-child {
+  border-bottom: none;
+}
+
+.queue-mini__token {
+  color: var(--teal-800);
+  font-weight: 600;
+  min-width: 40px;
+}
+
+.queue-mini__name {
+  flex: 1;
+}
+
+/* Booking */
+.slots {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-2);
+}
+
+@media (min-width: 480px) {
+  .slots {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.slot {
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--paper);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.slot--selected {
+  background: var(--teal-700);
+  color: var(--on-teal);
+  border-color: var(--teal-700);
+}
+
+.pick {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  background: var(--mist);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: var(--sp-2) var(--sp-3);
+}
+
+.pick-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.pick-list__item {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  width: 100%;
+  padding: var(--sp-3);
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.pick-list__item:hover {
+  background: var(--mist);
+}
+
+/* Checkbox row */
+.check {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-body);
+  min-height: 44px;
+}

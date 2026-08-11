@@ -1,0 +1,26 @@
+# Swasthya — root .gitignore
+# MASTER_RULES.md §29 (secrets) and §28 (environments): local credentials and
+# tooling are NEVER committed. This file guards the repository root; the
+# Laravel scaffold in backend/ carries its own .gitignore (vendor, .env, etc.).
+
+# Project-local portable toolchain (PHP, Composer, PostgreSQL binaries, the
+# dev database cluster, and its local password file) — development tooling,
+# not source. Reproduce via the run doc / DEVELOPMENT_LOG, never from git.
+/.toolchain/
+
+# Agent workspace (thread state, previews) — tooling, not project code.
+/.freebuff/
+
+# Local environment files anywhere in the tree (defense in depth; the
+# backend/.gitignore already ignores backend/.env).
+.env
+.env.*
+!.env.example
+!.env.staging.example
+!.env.testing.example
+
+# Editor / OS noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

@@ -1,0 +1,321 @@
+/* ============================================================================
+   Component styles (DESIGN_SYSTEM.md §13–§22). Mobile-first.
+   ========================================================================== */
+
+/* Buttons — §14 */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  min-height: 44px; /* touch target — §touch */
+  padding: 0 var(--sp-4);
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  font-size: var(--fs-body);
+  font-weight: 600;
+  line-height: var(--lh-body);
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn--primary {
+  background: var(--teal-700);
+  color: var(--on-teal);
+}
+
+.btn--primary:hover:not(:disabled) {
+  background: var(--teal-800);
+}
+
+.btn--secondary {
+  background: var(--paper);
+  color: var(--teal-800);
+  border-color: var(--line);
+}
+
+.btn--secondary:hover:not(:disabled) {
+  border-color: var(--teal-600);
+  background: var(--mist);
+}
+
+.btn--ghost {
+  background: none;
+  color: var(--teal-800);
+}
+
+.btn--ghost:hover:not(:disabled) {
+  background: var(--mist);
+}
+
+.btn--danger {
+  background: var(--semantic-danger);
+  color: #fff;
+}
+
+.btn--danger-outline {
+  background: var(--paper);
+  color: var(--semantic-danger);
+  border-color: var(--semantic-danger);
+}
+
+.btn--full {
+  width: 100%;
+}
+
+.btn__spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Fields — §15–§16, §22 */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.field__label {
+  font-size: var(--fs-label);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.field__required {
+  color: var(--semantic-danger);
+}
+
+.input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: var(--fs-body);
+  font-family: inherit;
+  transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--teal-700);
+  box-shadow: var(--focus-ring);
+}
+
+.input--error {
+  border-color: var(--semantic-danger);
+}
+
+.input--area {
+  min-height: 96px;
+  padding: var(--sp-3);
+  resize: vertical;
+  line-height: var(--lh-body);
+}
+
+.field__hint {
+  font-size: var(--fs-caption);
+  color: var(--slate-500);
+  margin: 0;
+}
+
+.field__error {
+  font-size: var(--fs-label);
+  color: var(--semantic-danger);
+  margin: 0;
+}
+
+/* States — §23–§26 */
+.state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  text-align: center;
+  padding: var(--sp-8) var(--sp-4);
+  color: var(--ink-soft);
+}
+
+.spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid var(--line);
+  border-top-color: var(--teal-700);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.state--empty {
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--mist);
+}
+
+.state--error {
+  border: 1px solid var(--tint-danger);
+  background: var(--tint-danger);
+  border-radius: var(--radius-lg);
+  color: var(--semantic-danger);
+}
+
+.caption {
+  font-size: var(--fs-caption);
+  color: var(--slate-500);
+}
+
+/* Alerts */
+.alert {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--radius-md);
+  font-size: var(--fs-body);
+}
+
+.alert--info {
+  background: var(--tint-info);
+  color: var(--semantic-info);
+}
+
+.alert--success {
+  background: var(--tint-success);
+  color: var(--semantic-success);
+}
+
+.alert--warning {
+  background: var(--tint-warning);
+  color: var(--semantic-warning);
+}
+
+.alert--danger {
+  background: var(--tint-danger);
+  color: var(--semantic-danger);
+}
+
+/* Dialog — §19 (mobile: bottom sheet) */
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(27, 42, 56, 0.5);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+}
+
+.dialog {
+  background: var(--paper);
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  padding: var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+@media (min-width: 768px) {
+  .dialog-backdrop {
+    align-items: center;
+    padding: var(--sp-6);
+  }
+
+  .dialog {
+    border-radius: var(--radius-lg);
+    max-width: 560px;
+    max-height: 85vh;
+  }
+}
+
+.dialog__title {
+  font-size: var(--fs-h2);
+  margin: 0;
+}
+
+.dialog__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sp-2);
+}
+
+/* Breadcrumbs */
+.breadcrumbs ol {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  padding: 0;
+  margin: 0;
+  font-size: var(--fs-label);
+}
+
+.breadcrumbs li {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.breadcrumbs li + li::before {
+  content: '/';
+  color: var(--slate-500);
+}
+
+.breadcrumbs li[aria-current='page'] {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: var(--sp-1);
+  border-bottom: 1px solid var(--line);
+  overflow-x: auto;
+}
+
+.tabs__tab {
+  min-height: 44px;
+  padding: 0 var(--sp-4);
+  border: none;
+  background: none;
+  font-size: var(--fs-label);
+  font-weight: 600;
+  color: var(--slate-500);
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tabs__tab--active {
+  color: var(--teal-800);
+  border-bottom-color: var(--teal-700);
+}
+
+.status__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}

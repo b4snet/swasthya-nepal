@@ -1,0 +1,33 @@
+.login {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-6) var(--sp-4);
+  background: var(--mist);
+}
+
+.login__card {
+  width: 100%;
+  max-width: 400px;
+  padding: var(--sp-6);
+}
+
+.login__brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-1);
+  margin-bottom: var(--sp-6);
+  text-align: center;
+}
+
+.login__mark {
+  font-size: 34px;
+  color: var(--teal-700);
+  line-height: 1;
+}
+
+.login__brand p {
+  font-size: var(--fs-label);
+}
