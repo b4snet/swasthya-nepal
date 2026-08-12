@@ -240,12 +240,31 @@ jobs:
         working-directory: frontend
         env:
           SWASTHYA_E2E_BASE_URL: http://127.0.0.1:5175
-        run: npx playwright test --config=playwright.ci.config.ts
+        run: |
+          mkdir -p test-results
+          npx playwright test --config=playwright.ci.config.ts 2>&1 | tee test-results/e2e-output.txt
+
+      - name: Surface E2E failure output as annotations
+        if: failure()
+        working-directory: frontend
+        run: |
+          echo "::group::E2E failure output"
+          sed -n '1,150p' test-results/e2e-output.txt || true
+          echo "::endgroup::"
+          # Emit the notable failure lines as ::error:: annotations so they
+          # are visible in the checks API / Actions summary, not only inside
+          # the raw (auth-gated) step logs.
+          grep -aE "Error|error:|failed|Timeout|timed out|✘|toHaveCount|toBeVisible|webServer" \
+            test-results/e2e-output.txt 2>/dev/null | head -40 | while IFS= read -r line; do
+            echo "::error::E2E: $line"
+          done || true
 
       - name: Upload E2E artifacts on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-failure
-          path: frontend/test-results/
+          path: |
+            frontend/test-results/
+            frontend/playwright-report/
           retention-days: 7
