@@ -20,10 +20,12 @@ on:
     branches: [main, develop]
     paths:
       - 'backend/**'
+      - 'frontend/**'
       - '.github/workflows/ci.yml'
   pull_request:
     paths:
       - 'backend/**'
+      - 'frontend/**'
 
 concurrency:
   group: backend-ci-${{ github.ref }}
