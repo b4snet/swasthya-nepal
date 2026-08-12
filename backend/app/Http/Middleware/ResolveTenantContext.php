@@ -17,7 +17,6 @@ use Closure;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Laravel\Sanctum\PersonalAccessToken;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -103,15 +102,6 @@ final class ResolveTenantContext
                 : $this->tenantContext($request, $user, $assignments);
 
             TenantContext::setCurrent($context);
-
-            // TEMPORARY DEBUG — remove before finishing.
-            Log::info('ctx-debug', [
-                'path' => $request->path(),
-                'tenant' => DatabaseTenantContext::current('tenant_id'),
-                'facility' => DatabaseTenantContext::current('facility_id'),
-                'user' => DatabaseTenantContext::current('user_id'),
-                'platform' => DatabaseTenantContext::current('is_platform'),
-            ]);
 
             $response = $next($request);
 

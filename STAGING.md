@@ -5,11 +5,13 @@
 > **local staging mirror** is provisioned and verified on this machine
 > (dedicated `swasthya_staging` DB, least-privilege `swasthya_app_staging`
 > role, `APP_ENV=staging`, both fixture tenants — see
-> `STAGING_DEPLOYMENT_REPORT.md`). The staging **provider is now Render**;
-> the provisionable blueprint is `render.yaml` (Postgres 16 + Docker API
-> service + static SPA) with the exact user actions in `RENDER_STAGING.md`.
-> **No Render environment is deployed yet** — provisioning awaits the billing
-> decision (paid Postgres for PITR) and the user's Render OAuth/secret entry.
+> `STAGING_DEPLOYMENT_REPORT.md`). The application **provider is Render**
+> (Docker API service + static SPA per `render.yaml`); the **database
+> provider is Supabase managed PostgreSQL 16** (project
+> `bgfqwsivvhqmuwullkye`, shared pooler session mode — see
+> `SUPABASE_STAGING.md`). Render runs no database. **No environment is
+> deployed yet** — provisioning awaits the billing decision (paid Supabase
+> for backups/PITR) and the user's Render OAuth + secret entry.
 
 ## 1. Purpose
 
@@ -42,12 +44,21 @@ APP_URL=https://staging.<domain>
 APP_KEY=<random 32-byte base64, from the secrets store>
 
 DB_CONNECTION=pgsql
-DB_HOST=<staging-db-host>
+# Supabase shared pooler, SESSION mode (IPv4, TLS). Transaction mode (6543)
+# is NOT supported — no prepared statements / no per-connection SET.
+DB_HOST=<aws-<region>.pooler.supabase.com>
 DB_PORT=5432
-DB_DATABASE=swasthya_staging
-DB_USERNAME=swasthya_app        # runtime role — never the migration owner
+DB_DATABASE=postgres            # Supabase's single database
+DB_USERNAME=swasthya_app.<project-ref>   # runtime role — never the migration owner
 DB_PASSWORD=<secret>
-DB_SSLMODE=require
+DB_SSLMODE=require              # Supabase requires TLS
+
+# Supabase bootstrap (owner) — predeploy only, never used by the runtime app.
+BOOTSTRAP_DB_HOST=<aws-<region>.pooler.supabase.com>
+BOOTSTRAP_DB_PORT=5432
+BOOTSTRAP_DB_DATABASE=postgres
+BOOTSTRAP_DB_USERNAME=postgres.<project-ref>
+BOOTSTRAP_DB_PASSWORD=<dashboard database password>
 
 LOG_CHANNEL=stack                # structured JSON in production channels
 LOG_LEVEL=info

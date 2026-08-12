@@ -5,42 +5,50 @@
 > staging environment. **Nothing here claims a deployed environment** — the
 > `render.yaml` blueprint in this repository is the source of truth for the
 > target architecture; it has not been provisioned yet.
+>
+> **Provider decision (2026-08-12):** the PostgreSQL database is **Supabase
+> managed PostgreSQL 16** (project `bgfqwsivvhqmuwullkye`), connected through
+> the shared pooler in **session mode** — Render runs **no database service**.
+> The full Supabase contract is in `SUPABASE_STAGING.md`.
 
 ---
 
-## 1. Verified Render platform facts (from Render docs, 2026-08-12)
+## 1. Provider facts
 
-| Requirement (STAGING.md §2–§9) | Render capability | Verdict |
+**Database — Supabase managed PostgreSQL 16** (project `bgfqwsivvhqmuwullkye`).
+Capabilities (backups/PITR on paid plans, TLS, IPv4 session pooler, custom
+role support) are verified in `SUPABASE_STAGING.md` §1–§2 against Supabase's
+documentation. The database lives in Supabase, never on Render.
+
+**Render (app services) facts (Render docs, 2026-08-12):**
+
+| Requirement | Render capability | Verdict |
 |---|---|---|
-| PostgreSQL 16 | Major versions **13–18** selectable per new instance | ✅ 16 supported |
-| Backups / recovery | **Paid instances only**: PITR (Hobby workspace: past 3 days; Pro+: past 7 days) + on-demand logical exports. **Free instance type: no backups, no PITR, no exports** | ✅ with paid plan; ⚠️ **billing decision required** |
-| Encryption at rest | AES-256 for primary, replicas, and **backups** | ✅ |
-| TLS in transit | Render-managed TLS on external connections; TLS 1.2+ and specific cipher suites required | ✅ |
-| Networking | Internal (private, same-region) URL + external URL; IP allowlist (CIDR) restricts external access; can disable external access entirely (internal still works) | ✅ |
-| Connection limits | 100 (RAM < 8 GB) … 500 (RAM ≥ 32 GB) | ✅ staging scale is fine |
-| Role management | Provisioned user is NOT superuser (some ops need Render support) but **can `CREATE DATABASE`**; the `swasthya_app` least-privilege bootstrap (roles.sql → migrate → grants.sql) is designed to **fail closed** if `CREATE ROLE` is ever denied | ✅ fail-closed design |
-| Slow-query visibility | Queries > 2 s logged (`duration:` lines) | ✅ |
 | HTTPS | Automatic TLS on `*.onrender.com` | ✅ (no custom domain needed for initial verification) |
+| Web service (Docker) | `runtime: docker` for the Laravel API; preDeployCommand aborts deploy on any failure | ✅ |
+| Static site | `runtime: static` for the React SPA with build-time `VITE_API_BASE_URL` | ✅ |
+| Egress IPv4 | Instance egress is IPv4 — compatible with Supabase's IPv4-only shared pooler | ✅ |
 
-**Billing boundary (cannot be decided here):** PITR/logical exports require a
-**paid Render Postgres plan** (and the workspace plan determines the recovery
-window). `render.yaml` uses `plan: starter` as a placeholder — the user must
-confirm the plan and the payment method in the Render Dashboard before
-provisioning. This is an explicit billing decision, not something the
-repository can make.
+**Billing boundary (cannot be decided here):** Supabase **paid** plan is
+required for automatic backups + PITR (free projects have none). The user must
+confirm the Supabase plan and payment method in the Supabase Dashboard. This
+is an explicit billing decision, not something the repository can make.
 
 ---
 
 ## 2. Target architecture (what render.yaml defines)
 
 ```
+Supabase managed PostgreSQL 16 (bgfqwsivvhqmuwullkye)
+  └─ shared pooler, SESSION mode (aws-<region>.pooler.supabase.com:5432, IPv4, TLS)
+
 GitHub (b4snet/swasthya-nepal)
-  └─ render.yaml → Render Blueprint (env: staging)
-       ├─ Postgres 16 (swasthya-db) — paid plan, region singapore
+  └─ render.yaml → Render Blueprint (env: staging)   [NO database service on Render]
        ├─ swasthya-api  — Docker web service (backend/Dockerfile)
        │    ├─ preDeployCommand: SWASTHYA_RUN_BOOTSTRAP=1 docker-entrypoint
-       │    │    (owner) roles.sql → migrate --force → grants.sql  [fails deploy on error]
-       │    ├─ runtime: connects as swasthya_app (NOBYPASSRLS), never owner
+       │    │    (owner: postgres via pooler) roles.sql → migrate --force → grants.sql
+       │    │    [fails deploy on error]
+       │    ├─ runtime: connects as swasthya_app (NOBYPASSRLS) via session pooler, never owner
        │    └─ health: /api/v1/health/ready  (liveness implied; readiness gates traffic)
        └─ swasthya-frontend — static site (frontend/), VITE_API_BASE_URL → API URL
 ```
@@ -61,8 +69,8 @@ failure aborts the deploy before the new version serves traffic.**
 
 | Credential | Used by | Render source |
 |---|---|---|
-| `BOOTSTRAP_DB_*` (owner) | predeploy bootstrap only | `fromDatabase` (owner user/password) |
-| `DB_USERNAME=swasthya_app`, `DB_PASSWORD` (generated) | running application | `DB_PASSWORD: generateValue`; role created with same value |
+| `BOOTSTRAP_DB_*` (owner: `postgres.<ref>` via pooler) | predeploy bootstrap only | `sync: false` — entered at creation (Supabase dashboard DB password) |
+| `DB_USERNAME=swasthya_app.<ref>`, `DB_PASSWORD` | running application | `sync: false` — ONE secret; roles.sql creates `swasthya_app` with the exact same value |
 | `APP_KEY` | Laravel encryption | `generateValue` |
 | `APP_URL`, `SWASTHYA_CORS_ALLOWED_ORIGINS`, `VITE_API_BASE_URL` | config | `sync: false` — entered in Dashboard at creation |
 
@@ -89,25 +97,29 @@ one `DB_PASSWORD` used for both (entrypoint passes it to `roles.sql`).
 
 ### 3.2 Render (staging)
 
-1. **Confirm billing:** a paid Render plan (Postgres PITR requires it) and a
-   payment method on the workspace. This is a business decision — the repo
-   cannot or should not decide it.
-2. **Link GitHub:** Render → New + → Blueprint → connect
+1. **Confirm Supabase billing:** a **paid** Supabase plan (automatic backups
+   + PITR require it) and payment method on the Supabase account. This is a
+   business decision — the repo cannot or should not decide it.
+2. **From the Supabase Dashboard** copy the **session-pooler** connection
+   string (Dashboard → Connect) for both `postgres` and (after bootstrap)
+   `swasthya_app`; split them into the env values in `SUPABASE_STAGING.md` §3.
+3. **Link GitHub:** Render → New + → Blueprint → connect
    `b4snet/swasthya-nepal`. Render needs OAuth access to the repo.
-3. **Enter the `sync: false` secrets** at creation time (they are prompted by
+4. **Enter the `sync: false` secrets** at creation time (they are prompted by
    the Blueprint flow — never in git):
+   - `DB_HOST`, `DB_USERNAME=swasthya_app.<ref>`, `DB_PASSWORD` (runtime)
+   - `BOOTSTRAP_DB_HOST`, `BOOTSTRAP_DB_USERNAME=postgres.<ref>`,
+     `BOOTSTRAP_DB_PASSWORD` (owner)
    - `APP_URL` → `https://swasthya-api.onrender.com` (or whatever URL Render
      generates)
    - `SWASTHYA_CORS_ALLOWED_ORIGINS` → `https://swasthya-frontend.onrender.com`
    - `VITE_API_BASE_URL` → `https://swasthya-api.onrender.com`
-4. **Confirm region** (singapore is assumed — nearest Render region to Nepal;
-   immutable after creation) and the **Postgres plan** (paid).
-5. **Create.** The blueprint provisions Postgres, runs the bootstrap
-   (roles/migrate/grants), then starts the API and builds the frontend.
-6. **Tighten the DB allowlist** after creation: replace `0.0.0.0/0` with the
-   app's egress / internal-only access (`render.yaml` documents this as a
-   temporary staging allowlist; SECURITY.md §14 requires the DB not be
-   publicly reachable).
+5. **Confirm region** (singapore is assumed — nearest Render region to Nepal;
+   immutable after creation).
+6. **Create.** The blueprint runs the bootstrap against Supabase
+   (roles/migrate/grants, fail-closed), then starts the API and builds the
+   frontend. There is no Render-managed database and no allowlist to tighten
+   (the pooler is reached over TLS with credentials only).
 
 ### 3.3 What I cannot do (and will not fake)
 
@@ -126,7 +138,8 @@ one `DB_PASSWORD` used for both (entrypoint passes it to `roles.sql`).
 4. Tenant A vs Tenant B at the API **and** SQL/RLS level.
 5. Mobile E2E + accessibility (Playwright against the staging URL).
 6. Staging backup → restore into a disposable DB → verify schema, RLS,
-   roles, grants, audit (Render PITR + logical exports).
+   roles, grants, audit (Supabase daily backups + PITR; logical export and
+   restore procedure in `SUPABASE_STAGING.md` §6).
 7. Performance micro-benchmarks + slow-query review.
 
 None of these are claimed yet. They become real only when the Render

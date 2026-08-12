@@ -119,6 +119,16 @@ return new class extends Migration
         $this->assertAppRoleExists();
         $this->grantApplicationPrivileges();
 
+        // Enforce the documented RLS matrix (DATABASE.md §1.5) on ANY host.
+        // Managed platforms (e.g. Supabase's "Enable RLS on new tables"
+        // setting) enable RLS by default on every public table, which would
+        // leave the identity/root/framework tables RLS-on with zero policies
+        // and silently block the application role (login reads users,
+        // Sanctum reads personal_access_tokens, queue/cache read framework
+        // tables). Explicitly disable RLS outside the scoped set, then enable
+        // exactly the scoped tables below.
+        $this->disableRlsOutsideScopedSet();
+
         foreach (self::TENANT_ONLY_TABLES as $table) {
             $this->createPolicies($table, $this->tenantClause());
         }
@@ -151,7 +161,7 @@ return new class extends Migration
             self::TENANT_ONLY_TABLES,
             self::TENANT_FACILITY_TABLES,
             self::TENANT_FACILITY_BRANCH_TABLES,
-            ['audit_events', 'role_assignments', 'support_sessions'],
+            ['facilities', 'audit_events', 'role_assignments', 'support_sessions'],
         );
 
         foreach ($tables as $table) {
@@ -180,7 +190,13 @@ return new class extends Migration
     private function grantApplicationPrivileges(): void
     {
         $database = $this->quote(DB::connection()->getDatabaseName());
-        $owner = $this->quote((string) DB::connection()->getConfig('username'));
+        // The authoritative server-side role. On managed poolers (e.g.
+        // Supabase's `<role>.<project-ref>` aliases) the configured username
+        // is a routing alias, NOT a role that exists server-side, so
+        // ALTER DEFAULT PRIVILEGES FOR ROLE would fail with
+        // "role ... does not exist". current_user is the real identity of
+        // the migration session and works on every host.
+        $owner = $this->quote((string) DB::selectOne('select current_user as role')->role);
 
         DB::statement("grant connect on database {$database} to swasthya_app");
         DB::statement('grant usage on schema public to swasthya_app');
@@ -360,6 +376,29 @@ return new class extends Migration
     private function dropPolicy(string $table, string $operation): void
     {
         DB::statement("drop policy if exists p_rls_{$table}_{$operation} on {$table}");
+    }
+
+    /**
+     * Force the documented matrix on hosts whose platform default enables
+     * RLS on every new table: RLS stays ON only on the scoped tenant-owned
+     * tables; every other public table is explicitly DISABLED (idempotent).
+     */
+    private function disableRlsOutsideScopedSet(): void
+    {
+        $scoped = array_fill_keys(array_merge(
+            self::TENANT_ONLY_TABLES,
+            self::TENANT_FACILITY_TABLES,
+            self::TENANT_FACILITY_BRANCH_TABLES,
+            ['facilities', 'audit_events', 'role_assignments', 'support_sessions'],
+        ), true);
+
+        $tables = DB::select('select tablename from pg_tables where schemaname = ?', ['public']);
+
+        foreach ($tables as $table) {
+            if (! isset($scoped[$table->tablename])) {
+                DB::statement("alter table public.{$this->quote($table->tablename)} disable row level security");
+            }
+        }
     }
 
     private function tenantClause(): string

@@ -2,43 +2,38 @@
 # Swasthya — Render Blueprint (staging)
 # ============================================================================
 # Provisioned via "New + > Blueprint" pointing at this repository, branch
-# `main`, environment `staging`. Renders the three documented staging
-# services (STAGING.md §2–§9): managed PostgreSQL 16, the Laravel API as a
-# Docker web service, and the React/Vite SPA as a static site.
+# `main`, environment `staging`. Renders the documented staging services
+# (STAGING.md §2–§9): the Laravel API as a Docker web service and the
+# React/Vite SPA as a static site.
+#
+# DATABASE PROVIDER: Supabase managed PostgreSQL 16 (project
+# bgfqwsivvhqmuwullkye). Render runs NO PostgreSQL — the app connects to
+# Supabase through the SHARED POOLER in SESSION mode (port 5432; IPv4, TLS
+# required). Transaction mode (6543) is deliberately NOT used: it does not
+# support prepared statements and does not persist per-connection SET
+# (Laravel's search_path/timezone), which would break Eloquent.
 #
 # Security invariants (STAGING.md §6, SECURITY.md §13–14):
-#   * NO secrets in this file or anywhere in git — APP_KEY and the app-role
-#     DB password are `generateValue` (generated once by Render, kept in
-#     Render's env), and any var marked `sync: false` is entered in the
-#     Dashboard at creation time only.
+#   * NO secrets in this file or anywhere in git. Every database credential
+#     and key below is `sync: false` — entered once in the Render Dashboard
+#     at creation time, never committed. APP_KEY is `generateValue` (generated
+#     once by Render, kept in Render's env).
 #   * The running API connects as the least-privilege `swasthya_app` role
 #     (NOBYPASSRLS). The predeploy bootstrap (roles.sql -> migrate --force ->
-#     grants.sql) runs as the DB owner and ABORTS the deploy on any failure
-#     (MASTER_RULES.md §30, STAGING.md §6: never migrate:fresh/reset/DROP).
+#     grants.sql) runs as the Supabase `postgres` owner and ABORTS the deploy
+#     on any failure (MASTER_RULES.md §30, STAGING.md §6: never
+#     migrate:fresh/reset/DROP).
 #   * Render terminates TLS at its edge; onrender.com URLs are HTTPS by
 #     default (SECURITY.md §11).
 #
-# Billing decision required (NOT made here): PITR + logical exports exist
-# ONLY on paid Render Postgres (Free has no backups — DISASTER_RECOVERY.md
-# §5, SECURITY.md §29 REQUIRE backups). The `plan` values below are paid;
-# adjust them in the Dashboard if the workspace plan differs.
+# The full runbook — exact env values, first-time initialization, and the
+# optional manual Supabase SQL — is in SUPABASE_STAGING.md.
 # ============================================================================
 
 projects:
   - name: swasthya-staging
     environments:
       - name: staging
-        databases:
-          - name: swasthya-db
-            plan: starter           # paid — required for PITR/backups (billing decision)
-            postgresMajorVersion: 16
-            databaseName: swasthya
-            user: swasthya
-            region: singapore       # closest Render region to Nepal; immutable after create
-            ipAllowList:
-              - source: 0.0.0.0/0   # tightened below (private network / allowlist) after creation
-                description: temporary staging allowlist — replace with internal-only access
-
         services:
           # ---- Laravel API (Docker web service) ----
           - type: web
@@ -73,48 +68,38 @@ projects:
                 value: info
 
               # --- Runtime database connection: least-privilege swasthya_app ---
+              # Supabase shared pooler — SESSION mode (port 5432), IPv4, TLS.
+              # Entered at creation from the Dashboard's session-pooler
+              # connection string; the pooler username is <role>.<project-ref>.
               - key: DB_CONNECTION
                 value: pgsql
               - key: DB_HOST
-                fromDatabase:
-                  name: swasthya-db
-                  property: host
+                sync: false         # aws-<region>.pooler.supabase.com (session pooler)
               - key: DB_PORT
-                fromDatabase:
-                  name: swasthya-db
-                  property: port
+                value: "5432"       # session mode — NEVER 6543 (transaction mode)
               - key: DB_DATABASE
-                fromDatabase:
-                  name: swasthya-db
-                  property: database
+                value: postgres      # Supabase's single database
               - key: DB_USERNAME
-                value: swasthya_app   # runtime role — NEVER the owner (SECURITY.md §14)
+                sync: false         # swasthya_app.<project-ref> — runtime role, never the owner
               - key: DB_PASSWORD
-                generateValue: true   # ONE generated secret: roles.sql creates swasthya_app with it AND the runtime app connects with it (single source of truth)
+                sync: false         # the swasthya_app password (created by roles.sql with this exact value)
               - key: DB_SSLMODE
-                value: require        # TLS to PostgreSQL (Render supports TLS on internal/external URLs)
+                value: require      # Supabase requires TLS
 
               # --- Predeploy bootstrap (owner credentials; NOT used by the runtime app) ---
+              # Supabase `postgres` role via the same session pooler. The
+              # dashboard database password — a secret, entered at creation.
               - key: BOOTSTRAP_DB_HOST
-                fromDatabase:
-                  name: swasthya-db
-                  property: host
+                sync: false         # same pooler host as DB_HOST
               - key: BOOTSTRAP_DB_PORT
-                fromDatabase:
-                  name: swasthya-db
-                  property: port
+                value: "5432"
               - key: BOOTSTRAP_DB_DATABASE
-                fromDatabase:
-                  name: swasthya-db
-                  property: database
+                value: postgres
               - key: BOOTSTRAP_DB_USERNAME
-                fromDatabase:
-                  name: swasthya-db
-                  property: user
+                sync: false         # postgres.<project-ref>
               - key: BOOTSTRAP_DB_PASSWORD
-                fromDatabase:
-                  name: swasthya-db
-                  property: password
+                sync: false         # Supabase dashboard database password (owner)
+
               # --- CORS (SECURITY.md §24): the SPA origin(s) only ---
               - key: SWASTHYA_CORS_ALLOWED_ORIGINS
                 sync: false         # enter https://<frontend-name>.onrender.com at creation
