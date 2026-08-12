@@ -6,13 +6,14 @@ import { useFetch } from '../hooks/useFetch';
 import { Alert, Button, Card, EmptyState, ErrorState, Input, Select, Spinner, Textarea } from '../components/ui';
 import { ApiError } from '../api/client';
 import { money } from '../components/ui';
+import { BILLING_ROLES } from '../auth/roles';
 
 export function EncounterPage() {
   const { id } = useParams<{ id: string }>();
   const { selectedFacilityId, organizationId, hasRole } = useTenant();
   const fac = selectedFacilityId;
   const navigate = useNavigate();
-  const canBill = hasRole('hospital_admin', 'accountant', 'billing_clerk');
+  const canBill = hasRole(...BILLING_ROLES);
 
   const encounter = useFetch(() => encountersApi.show(id!, fac), [id, fac]);
   const notes = useFetch(() => encountersApi.notes(id!, fac), [id, fac]);

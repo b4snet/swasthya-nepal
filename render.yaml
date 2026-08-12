@@ -58,8 +58,6 @@ projects:
                 generateValue: true
               - key: APP_URL
                 sync: false         # enter the service URL (https://<name>.onrender.com) at creation
-              - key: APP_TIMEZONE
-                value: Asia/Kathmandu
 
               # --- Logging (structured JSON; OBSERVABILITY.md) ---
               - key: LOG_CHANNEL

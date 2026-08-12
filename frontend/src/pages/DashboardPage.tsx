@@ -3,6 +3,7 @@ import { useTenant } from '../context/TenantContext';
 import { appointmentsApi } from '../api/endpoints';
 import { useFetch } from '../hooks/useFetch';
 import { AppointmentStatus, Card, EmptyState, ErrorState, Spinner, Stat, formatDateTime } from '../components/ui';
+import { BILLING_ROLES } from '../auth/roles';
 
 function today(): string {
   return new Date().toISOString().slice(0, 10);
@@ -55,7 +56,7 @@ export function DashboardPage() {
         )}
       </Card>
 
-      {hasRole('hospital_admin', 'accountant', 'billing_clerk') && <OutstandingCard facilityId={fac} />}
+      {hasRole(...BILLING_ROLES) && <OutstandingCard facilityId={fac} />}
 
       <Card title="Today's appointments" action={<Link to="/appointments">View all →</Link>}>
         {appointments.length === 0 ? (

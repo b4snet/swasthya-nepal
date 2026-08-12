@@ -2,12 +2,13 @@ import { useTenant } from '../context/TenantContext';
 import { auditApi } from '../api/endpoints';
 import { useFetch } from '../hooks/useFetch';
 import { Card, EmptyState, ErrorState, Spinner } from '../components/ui';
+import { AUDIT_ROLES } from '../auth/roles';
 
 export function AuditPage() {
   const { selectedFacilityId, hasRole } = useTenant();
   const fac = selectedFacilityId;
 
-  if (!hasRole('hospital_admin', 'org_admin', 'platform_admin')) {
+  if (!hasRole(...AUDIT_ROLES)) {
     return (
       <div className="page">
         <EmptyState title="Not authorized" body="You do not have permission to view the audit trail." />

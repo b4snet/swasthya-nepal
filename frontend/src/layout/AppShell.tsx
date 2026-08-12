@@ -2,16 +2,19 @@ import { useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { useTenant } from '../context/TenantContext';
+import { AUDIT_ROLES, BILLING_ROLES, QUEUE_ROLES } from '../auth/roles';
 import { Button } from '../components/ui';
 import './shell.css';
 
+// Nav gating is a UX control: every code below exists in the seeded RBAC
+// catalog (frontend/src/auth/roles.ts) and the backend remains authoritative.
 const NAV = [
   { to: '/', label: 'Dashboard', icon: '⌂', roles: [] },
   { to: '/patients', label: 'Patients', icon: '◉', roles: [] },
   { to: '/appointments', label: 'Appointments', icon: '◷', roles: [] },
-  { to: '/queue', label: 'Queue', icon: '≣', roles: ['hospital_admin', 'doctor', 'nurse', 'receptionist'] },
-  { to: '/billing', label: 'Billing', icon: '₨', roles: ['hospital_admin', 'accountant', 'billing_clerk'] },
-  { to: '/audit', label: 'Audit', icon: '☰', roles: ['hospital_admin', 'org_admin', 'platform_admin'] },
+  { to: '/queue', label: 'Queue', icon: '≣', roles: [...QUEUE_ROLES] },
+  { to: '/billing', label: 'Billing', icon: '₨', roles: [...BILLING_ROLES] },
+  { to: '/audit', label: 'Audit', icon: '☰', roles: [...AUDIT_ROLES] },
 ];
 
 function allowed(roles: string[], hasRole: (r: string) => boolean) {

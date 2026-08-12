@@ -5,12 +5,13 @@ import { billingApi } from '../api/endpoints';
 import { useFetch } from '../hooks/useFetch';
 import { Alert, Button, Card, ErrorState, FinancialStatus, Select, Spinner, money } from '../components/ui';
 import { ApiError } from '../api/client';
+import { BILLING_ROLES } from '../auth/roles';
 
 export function BillingPage() {
   const { invoiceId } = useParams<{ invoiceId?: string }>();
   const { selectedFacilityId, hasRole } = useTenant();
   const fac = selectedFacilityId;
-  const canPay = hasRole('hospital_admin', 'accountant', 'billing_clerk');
+  const canPay = hasRole(...BILLING_ROLES);
 
   if (invoiceId) {
     return <InvoicePanel invoiceId={invoiceId} fac={fac} canPay={canPay} />;
