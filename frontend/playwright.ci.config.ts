@@ -46,6 +46,11 @@ export default defineConfig({
       env: {
         PATH: process.env.PATH ?? '',
         APP_ENV: 'ci',
+        // The disposable Postgres service container is exposed on 54329; the
+        // pgsql config defaults to 5432, so host/port must be explicit (the
+        // CI job has no .env for Laravel to read).
+        DB_HOST: '127.0.0.1',
+        DB_PORT: '54329',
         DB_DATABASE: 'swasthya_ci',
         DB_USERNAME: 'swasthya_app',
         DB_PASSWORD: process.env.CI_APP_ROLE_PASSWORD ?? 'ci-app-role-password-2026',

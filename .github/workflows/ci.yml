@@ -216,7 +216,8 @@ jobs:
           PGPASSWORD=ci-owner-password-2026 psql -h 127.0.0.1 -p 54329 -U swasthya -d swasthya_ci \
             -v dbname=swasthya_ci -f backend/database/security/grants.sql
           cd backend
-          APP_ENV=ci DB_DATABASE=swasthya_ci DB_USERNAME=swasthya DB_PASSWORD=ci-owner-password-2026 \
+          APP_ENV=ci DB_HOST=127.0.0.1 DB_PORT=54329 DB_DATABASE=swasthya_ci \
+          DB_USERNAME=swasthya DB_PASSWORD=ci-owner-password-2026 \
           php artisan db:seed --class=StagingFixtureSeeder --force
 
       - name: Frontend static checks

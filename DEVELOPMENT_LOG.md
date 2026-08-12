@@ -980,6 +980,20 @@ Every entry uses the following 13 fields, in order. Fields that do not apply are
 
 **Next steps:** push the verify-step fix → confirm both backend matrix jobs green on the real runner → frontend job (build + E2E + a11y on disposable Postgres) → then the Render boundary items per `RENDER_STAGING.md`.
 
+### 2026-08-12 (follow-up) — Frontend CI job: missing DB_HOST/DB_PORT in seed + E2E backend env
+
+**Task:** with the backend matrix green, the frontend job failed at step 11 ("Grant application privileges + seed staging fixture"). Reproduce, fix, push.
+
+**Root cause:** the seed step set `APP_ENV`/`DB_DATABASE`/`DB_USERNAME`/`DB_PASSWORD` but **not `DB_HOST`/`DB_PORT`**. The runner has no `.env`, so Laravel's pgsql config falls back to defaults `127.0.0.1:5432` — but the disposable Postgres service container is exposed on **54329** → `Connection refused`. The migrate step in the same job set both vars (which is why it passed); the seed step and the Playwright webServer env both omitted them. Reproduced exactly by removing the local `.env` and running the seed against a fresh disposable DB: `SQLSTATE[08006] ... port 5432 failed`. With `DB_HOST`/`DB_PORT` added, the seeder passes with no `.env` (no APP_KEY required on this path — verified by booting `artisan serve` as `swasthya_app` with the CI env: health 200, login 200 with tokens, authorized appointments 200 through real tenant/facility context + RLS).
+
+**Fix:** add `DB_HOST=127.0.0.1 DB_PORT=54329` to (a) the frontend job's `db:seed` step in `.github/workflows/ci.yml` and (b) the Laravel webServer env in `frontend/playwright.ci.config.ts`. All remaining artisan invocations in the workflow already set both.
+
+**Files changed:** `.github/workflows/ci.yml`, `frontend/playwright.ci.config.ts`, `DEVELOPMENT_LOG.md` (this entry).
+
+**Tests:** faithful local simulation of the CI env (no `.env`): seed exit 0 with host/port set; `artisan serve` as `swasthya_app` → `/health/ready` 200, login 200, appointments 200. No secrets in the diff.
+
+**Next steps:** push → frontend job (static checks, build, Playwright E2E desktop+mobile+a11y) should now reach the E2E step → confirm green → then the Render boundary items per `RENDER_STAGING.md`.
+
 ---
 
 *This log opens with the truth: a greenfield folder, seventeen design documents, and no code. Every entry from here on records what is actually done — and this document will be the permanent witness to whether Swasthya is built the way it was designed.*
