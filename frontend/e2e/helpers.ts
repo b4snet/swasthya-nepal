@@ -5,7 +5,11 @@ export const ADMIN_EMAIL = 'smoke.hadmin@two.test';
 export const DOCTOR_EMAIL = 'smoke.doctor@two.test';
 export const PASSWORD = 'SmokePass-2026!';
 
-export const API_BASE = 'http://localhost:5173/api/v1';
+// Env-driven so the same suite can run against the dev backend (default,
+// port 5173) or the staging backend through its own Vite proxy (set
+// SWASTHYA_E2E_BASE_URL, see playwright.staging.config.ts).
+export const E2E_BASE_URL = process.env.SWASTHYA_E2E_BASE_URL ?? 'http://localhost:5173';
+export const API_BASE = `${E2E_BASE_URL}/api/v1`;
 
 /**
  * E2E setup hygiene against the REAL backend: a previous (possibly failed)

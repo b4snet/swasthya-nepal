@@ -8,7 +8,7 @@
   --paper: #ffffff;
   --mist: #f3f6f7;
   --line: #d9e0e4;
-  --slate-500: #64748b;
+  --slate-500: #627188; /* AA-safe muted text on both --paper and --mist (4.96 / 4.56:1) */
   --ink: #1b2a38;
   --ink-soft: #3d4c5c;
 

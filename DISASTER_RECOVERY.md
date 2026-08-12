@@ -181,6 +181,38 @@ DR events are incidents and follow the incident framework (`SECURITY.md` §31) w
 
 ---
 
+## 12a. First Real Restore Drill — Staging (2026-08-12, recorded)
+
+A **real** backup/restore drill was executed against the staging database
+(`swasthya_staging`, local mirror — never production data). Full evidence
+and the exact steps are in `STAGING_DEPLOYMENT_REPORT.md` §10–§11; the
+measured facts belong here:
+
+- **Backup:** `pg_dump -Fc` (custom format, schema + data + RLS policies +
+  functions + triggers). Start 02:40:51 UTC, complete 02:40:52 UTC
+  (~1 s), size **304,440 bytes**. Verified: 50 table-data sections,
+  144 RLS `POLICY` entries present, `ROLE` entries absent (expected —
+  roles/grants are cluster-level and NOT carried by `pg_dump`).
+- **Restore:** into a disposable `swasthya_staging_restore` database,
+  `pg_restore --no-owner --no-privileges`, exit 0, ~1 s.
+- **Post-restore verification (all passed):** 50 tables, 47 migrations,
+  144 policies, 37 RLS-enabled tables, both tenants present (smoke-group +
+  apex-care), 6 users, 2 medications, 123 audit events restored intact.
+- **RLS on restored data:** as `swasthya_app_staging` — tenant A context →
+  9 patients visible; foreign/no context → 0. Isolation held on the
+  restored copy.
+- **Roles/grants fixup:** `pg_dump` does not carry cluster-level roles or
+  table grants. The app-role grants were re-applied on the restored DB
+  (the `database/security/grants.sql` pattern, idempotent) before the RLS
+  probe — this is the documented post-restore step every recovery must run
+  (`grants.sql` header).
+- **RPO/RTO:** the local drill measured restore wall-time ~1 s for a 300 KB
+  dump, but **no RPO/RTO is claimed from a local drill** — real targets
+  depend on WAL archiving cadence and the actual staging host (§1 targets
+  remain targets).
+
+---
+
 ## 13. Disaster Recovery Drills
 
 | Drill | Cadence | What it proves | Evidence recorded |

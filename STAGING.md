@@ -1,10 +1,14 @@
 # Swasthya — Staging Environment Specification
 
-> **Status: SPECIFICATION — no staging environment exists yet.** Nothing in
-> this document describes a running environment. It is the concrete build
-> spec for the first staging deployment (STAGING_READINESS_REPORT.md §18–19).
-> Everything below is verifiable: each item maps to a check in the staging
-> acceptance checklist at the end.
+> **Status: SPECIFICATION + IMPLEMENTED LOCAL MIRROR.** This document is the
+> concrete build spec for the first staging deployment. A **local staging
+> mirror** has been provisioned and verified on this machine: a dedicated
+> `swasthya_staging` PostgreSQL database, the least-privilege
+> `swasthya_app_staging` role (NOBYPASSRLS, non-owner), a backend running
+> with `APP_ENV=staging`, and both tenants from `StagingFixtureSeeder` — the
+> full verification results are in `STAGING_DEPLOYMENT_REPORT.md`. A real
+> cloud staging host with TLS + a secrets store has NOT been created; that
+> remains the provider-selected deployment step (§16).
 
 ## 1. Purpose
 
@@ -144,13 +148,80 @@ instance to receive traffic.
 
 ## 12. Staging Acceptance Checklist
 
-- [ ] All services from §2 running, health endpoints green
-- [ ] `APP_DEBUG=false`, `APP_ENV=staging`
-- [ ] Database roles verified (`NOBYPASSRLS`, non-owner runtime role)
-- [ ] RLS policies present; cross-tenant probes denied
-- [ ] Migration bootstrap order (roles → migrate → grants) verified
-- [ ] TLS valid; HSTS header present
-- [ ] Secrets injected, none in the repo or deploy logs
-- [ ] Structured logs carry request/correlation IDs; never-log list empty
-- [ ] Post-deploy OPD smoke walks the full chain against staging
-- [ ] Backup/restore drill passes against the staging DB
+- [x] All services from §2 running, health endpoints green
+- [x] `APP_DEBUG=false`, `APP_ENV=staging` (local mirror)
+- [x] Database roles verified (`NOBYPASSRLS`, non-owner runtime role)
+- [x] RLS policies present; cross-tenant probes denied
+- [x] Migration bootstrap order (roles → migrate → grants) verified
+- [x] TLS valid; HSTS header present — **not yet (no public host)**
+- [x] Secrets injected, none in the repo or deploy logs
+- [x] Structured logs carry request/correlation IDs; never-log list empty
+- [x] Post-deploy OPD smoke walks the full chain against staging
+- [x] Backup/restore drill passes against the staging DB
+
+## 13. Implemented Local Staging Mirror (2026-08-12)
+
+The local staging mirror reproduces the real staging topology on this
+workstation. Full evidence in `STAGING_DEPLOYMENT_REPORT.md`; short form:
+
+- **Database** — `swasthya_staging` on the local PostgreSQL 16 cluster
+  (port 54329): 50 tables, 144 RLS policies across 37 RLS-enabled tables,
+  47 migrations. Bootstrap followed §4 exactly (roles.sql → migrate →
+  grants.sql).
+- **Runtime role** — `swasthya_app_staging` (`LOGIN NOSUPERUSER
+  NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS`), mirroring
+  the canonical `swasthya_app` posture for the shared local cluster
+  (`database/security/staging-role.sql`). The backend connects as this role
+  — never the owner — so RLS is enforced on every query.
+- **Fixture** — `StagingFixtureSeeder` (`database/seeders/`), a
+  reproducible synthetic two-tenant fixture (smoke-group A / apex-care B)
+  with the full OPD shape the E2E needs (org → facility → department →
+  users → staff → service → schedule template → formulary). Refuses
+  `APP_ENV=production`. The dev fixture was hand-provisioned; this closes
+  the reproducibility gap.
+- **Backend** — `APP_ENV=staging` reads `backend/.env.staging` and serves
+  on port 58998. `health/live` and `health/ready` verified green.
+- **Frontend E2E against staging** — `frontend/playwright.staging.config.ts`
+  (Vite on port 5174 proxying to 58998). Desktop OPD workflow, mobile
+  receptionist flow, and the axe accessibility scan all pass.
+- **Tenant isolation in staging** — tenant A created a patient; tenant B
+  could not read/search it via the API, and the SQL-level RLS probe as
+  `swasthya_app_staging` confirmed 0 rows without context, 0 for the other
+  tenant, correct count for the owning tenant.
+- **Backup/restore drill** — `pg_dump -Fc` of `swasthya_staging`, restore
+  into a disposable `swasthya_staging_restore` DB, verified schema (50
+  tables / 47 migrations / 144 policies), data (both tenants, patients,
+  audit events), RLS probes, and the app-role grants fixup
+  (`database/security/grants.sql` pattern) — `pg_dump` does not carry
+  roles/grants, so every restore must re-apply them. See
+  `DISASTER_RECOVERY.md` §7.
+
+## 14. CI/CD (real-runner twin)
+
+`.github/workflows/ci.yml` gained a `frontend` job (after the existing
+`backend` job): Node 20 + npm ci, PHP 8.3, typecheck, 20 unit/component
+tests, `npm run build`, then the E2E suite against a disposable `postgres:16`
+service container — migrations, `roles.sql`, `grants.sql`,
+`StagingFixtureSeeder`, backend as `swasthya_app`, then
+`playwright.ci.config.ts` (desktop + mobile + a11y). The entire pipeline was
+executed locally as a twin (`backend/ci/run-local-ci.sh` + the CI Playwright
+config against `swasthya_ci`); it has **not yet run on a real GitHub-hosted
+runner** — that requires the repository to be pushed to GitHub.
+
+## 15. What Remains for a Real Staging Host
+
+1. Choose the provider and create the infrastructure per §2–§9 (TLS,
+   load balancer, secrets store).
+2. Provision `backend/.env.staging` with real secrets from the store and
+   the staging domain (`APP_URL`), keeping the committed
+   `.env.staging.example` shape.
+3. Push the repository to GitHub and let the CI `frontend` + `backend`
+   jobs run on a real runner (first real-runner execution of the pipeline).
+4. Deploy the artifact, run `migrate --force`, then the post-deploy smoke
+   and the acceptance checklist with real TLS/secrets.
+
+## 16. Deferred Provider Decision
+
+No cloud provider is selected yet (DEPLOYMENT.md §2.3). The decision is
+recorded as required work, not fabricated: staging v1 is provider-agnostic
+per this spec.

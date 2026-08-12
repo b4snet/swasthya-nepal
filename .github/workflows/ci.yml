@@ -133,3 +133,101 @@ jobs:
           name: pest-failure-php${{ matrix.php }}
           path: backend/storage/logs/
           retention-days: 7
+
+  frontend:
+    name: frontend (React SPA)
+    runs-on: ubuntu-latest
+    needs: backend
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: swasthya
+          POSTGRES_PASSWORD: ci-owner-password-2026
+          POSTGRES_DB: swasthya_ci
+        ports:
+          - 54329:5432
+        options: >-
+          --health-cmd "pg_isready -U swasthya"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+
+    env:
+      CI_APP_ROLE_PASSWORD: ${{ secrets.APP_ROLE_PASSWORD || 'ci-app-role-password-2026' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo, pdo_pgsql, pgsql, bcmath, intl
+          coverage: none
+          tools: composer:v2
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Create least-privilege application role (NOBYPASSRLS)
+        run: |
+          PGPASSWORD=ci-owner-password-2026 psql -h 127.0.0.1 -p 54329 -U swasthya -d swasthya_ci \
+            -v app_password="$CI_APP_ROLE_PASSWORD" -f backend/database/security/roles.sql
+
+      - name: Migrate disposable PostgreSQL
+        run: |
+          cd backend
+          DB_HOST=127.0.0.1 DB_PORT=54329 DB_DATABASE=swasthya_ci \
+          DB_USERNAME=swasthya DB_PASSWORD=ci-owner-password-2026 \
+          php artisan migrate:fresh --force
+
+      - name: Grant application privileges + seed staging fixture
+        run: |
+          PGPASSWORD=ci-owner-password-2026 psql -h 127.0.0.1 -p 54329 -U swasthya -d swasthya_ci \
+            -v dbname=swasthya_ci -f backend/database/security/grants.sql
+          cd backend
+          APP_ENV=ci DB_DATABASE=swasthya_ci DB_USERNAME=swasthya DB_PASSWORD=ci-owner-password-2026 \
+          php artisan db:seed --class=StagingFixtureSeeder --force
+
+      - name: Frontend static checks
+        working-directory: frontend
+        run: |
+          npm run typecheck
+          npm test
+
+      - name: Frontend production build
+        working-directory: frontend
+        run: npm run build
+
+      - name: Install Playwright browsers
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E (desktop + mobile OPD workflow + accessibility) on disposable PostgreSQL
+        working-directory: frontend
+        env:
+          SWASTHYA_E2E_BASE_URL: http://127.0.0.1:5175
+        run: npx playwright test --config=playwright.ci.config.ts
+
+      - name: Upload E2E artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-failure
+          path: frontend/test-results/
+          retention-days: 7

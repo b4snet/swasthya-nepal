@@ -853,6 +853,93 @@ Every entry uses the following 13 fields, in order. Fields that do not apply are
 
 **Known issues / remaining risks:** (1) no CI provider and no git repo — the GitHub Actions workflow exists but has never run on a real runner; (2) no staging environment — `STAGING.md` remains a spec; (3) the mobile E2E covers the receptionist flow only — the doctor workspace at mobile viewport is not yet E2E-covered (the desktop spec exercises it); (4) MFA, secrets store, compliance assessment remain open per previous entries.
 
+### 2026-08-12 — Staging status verification pass + verdict correction
+
+**Task:** re-verify exactly how far the staging milestone progressed, applying the strict rule that localhost is never staging, and correct the documentation to match.
+
+**Decision:** classify every staging requirement against the real `STAGING.md` environment standard (host, domain, TLS, managed PostgreSQL, secrets store, real-runner CI), not against the local mirror. Reclassify the staging verdict from READY FOR STAGING to **NOT READY FOR STAGING**.
+
+**Reason:** the earlier `STAGING_DEPLOYMENT_REPORT.md` draft verdict treated the local staging mirror as satisfying the staging requirement. The local mirror proves the procedures work; it is not a deployment. The evidence gathered: git repo with 2 commits and **0 remotes** (CI has never run on a real runner); no `deployment/` or `docker/` directory, no application Dockerfile; no domain/TLS/secrets store/monitoring anywhere; `APP_URL=http://127.0.0.1:58998` is a loopback; the CI frontend job is still uncommitted in the working tree.
+
+**Files changed:** `STAGING_STATUS_REPORT.md` (new — full VERIFIED/PARTIAL/MISSING/FAILED/N-A classification with evidence, 26 sections, verdict NOT READY FOR STAGING), `STAGING_DEPLOYMENT_REPORT.md` (verdict corrected, draft retained for the record), `DEVELOPMENT_LOG.md`.
+
+**Tests:** none run in this pass (inspection/classification only); all prior evidence (241 backend / 1,748 assertions; 4 E2E+a11y tests green; backup/restore drill) remains valid as *local* evidence.
+
+**Known issues / remaining risks:** uncommitted milestone work (20 files); no remote repository; no provider decision. These are now documented as the exact missing requirements and blockers in `STAGING_STATUS_REPORT.md` §23–§24.
+
+**Next steps:** commit the working-tree changes, push to GitHub, run CI on a real runner, then create the real staging host per STAGING.md §2–§9 before re-issuing the status report.
+
+### 2026-08-12 — Staging deployment & production engineering: git, staging mirror, CI/CD, backup/restore drill
+
+**Task:** turn the READY-FOR-STAGING application into a real deployable staging system — repository foundation, a provisioned staging environment, a real-runner CI pipeline, backup/restore drill, observability/performance/accessibility verification. No new business modules.
+
+**Decision:** (1) initialize Git with a clean, secret-free baseline commit; (2) provision a **local staging mirror** (dedicated `swasthya_staging` DB + least-privilege `swasthya_app_staging` role) because no cloud provider is selected yet — the environment is real and verifiable, and STAGING.md remains the provider-agnostic build spec; (3) extend CI with a `frontend` job that runs the full E2E on a disposable PostgreSQL; (4) run a real backup/restore drill against staging.
+
+**Reason:** STAGING.md §2–§9 and DEPLOYMENT.md §8 require a production-mirror staging env and a CI pipeline that fails on any security/tenancy failure; MASTER_RULES.md §21–§25 (git, code review, releases) and §2 (no secrets in source).
+
+**What was built / verified:**
+- **Git foundation:** `.gitignore` hardened (`backend/.env*` kept out except `.env.example`; `frontend/.gitignore` added; tsbuildinfo untracked); baseline commit `fd7d77f` + `82f6b51` with **no secrets, no vendor/node_modules/dist/logs** — staged-content pattern scan confirmed.
+- **Staging environment (local mirror):** `backend/.env.staging` (+ committed `.env.staging.example`), `swasthya_staging` DB (50 tables, 144 RLS policies, 37 RLS-enabled tables, 47 migrations), `database/security/staging-role.sql` (`swasthya_app_staging` LOGIN NOSUPERUSER NOBYPASSRLS NOINHERIT), grants applied, backend on port 58998 as the least-privilege role with `APP_ENV=staging`. Health/liveness + readiness verified; both fixture tenants authenticate.
+- **`StagingFixtureSeeder`** (reproducible, refuses production): two synthetic tenants (smoke-group / apex-care) with the full OPD shape — org → facility → department → users → staff (doctor linked to the doctor login, DOC-001) → service → Tuesday schedule → **formulary** (`para-500` Paracetamol, 3000 minor). The formulary was the one piece the dev fixture had that the seeder originally omitted — without it the E2E's medication `selectOption({ index: 1 })` could not resolve, and the desktop staging E2E stalled at the prescription tab (bug found by the staging run, fixed in the seeder, then green).
+- **Tenant isolation in staging:** tenant A created a patient; tenant B could not read/search it (API-level); SQL-level RLS probe as `swasthya_app_staging`: no context → 0 rows, wrong tenant → 0, owner → correct count.
+- **Staging E2E:** `frontend/playwright.staging.config.ts` (Vite on 5174 → 58998; IPv4 binding fix — `localhost`→`::1` mismatch broke the API helper) — desktop OPD workflow, mobile receptionist flow, and new `accessibility.spec.ts` (axe) all pass against the real staging backend/DB/RLS.
+- **Accessibility fixes (real AA defects):** `.muted` text `#64748b` was 4.38:1 on the mist background — darkened to `#627188` (4.96/4.56:1); inline links had no underline and 1.53:1 against parent text — global `a` now underlines by default (WCAG 1.4.1) with nav chrome (`side-nav__item`, `bottom-nav__item`, `more-sheet__item`) opting out. Both a11y specs pass (zero serious/critical).
+- **Backup/restore drill (real):** `pg_dump -Fc` → 304,440 bytes (~1 s); restore into disposable `swasthya_staging_restore` (~1 s, exit 0); verified 50 tables / 47 migrations / 144 policies / 37 RLS tables / both tenants / 6 users / 2 meds / 123 audit events; RLS probes hold on the restored copy; app-role grants re-applied post-restore (pg_dump does not carry roles/grants — documented fixup). RPO/RTO explicitly NOT claimed from a local drill.
+- **CI/CD:** `.github/workflows/ci.yml` gained a `frontend` job (Node 20, npm ci, typecheck, 20 unit tests, `npm run build`, E2E on disposable postgres:16 via `playwright.ci.config.ts` which also starts the backend as `swasthya_app`). Whole pipeline executed locally as a twin: `backend/ci/run-local-ci.sh` (241 tests / 1,748 assertions) + the CI E2E config against `swasthya_ci` (4 tests green). **Not yet run on a real GitHub-hosted runner** — requires pushing the repository.
+- **Observability/perf (staging):** structured logs carry `request_id`/`correlation_id`/tenant/facility/user/duration; no secrets/PII in logs (the single regex hit was a stale dev SQL error naming the `password` *column*). Perf micro-benchmarks on the local staging stack: login ~0.9–1.1 s, tenant-scoped reads (patient search / appointments / queue / me) ~0.35–0.65 s.
+
+**Files added:** `backend/.env.staging` (untracked), `backend/.env.staging.example`, `backend/database/security/staging-role.sql`, `backend/database/seeders/StagingFixtureSeeder.php`, `frontend/playwright.staging.config.ts`, `frontend/playwright.ci.config.ts`, `frontend/e2e/accessibility.spec.ts`, `STAGING_DEPLOYMENT_REPORT.md`, `frontend/.gitignore`, `.github/workflows/ci.yml` (frontend job). **Files changed:** `backend/database/seeders/StagingFixtureSeeder.php` (doctor-staff link fix + formulary), `frontend/src/styles/tokens.css` (muted AA contrast), `frontend/src/styles/base.css` (link underline + bottom-nav), `frontend/src/layout/shell.css` (nav underline opt-out), `frontend/e2e/helpers.ts` (env-driven base URL), `.gitignore`, `STAGING.md`, `DEPLOYMENT.md`, `DISASTER_RECOVERY.md`, `TESTING_STRATEGY.md`, `README.md`, `DEVELOPMENT_LOG.md`. Git: baseline commits `fd7d77f`, `82f6b51`.
+
+**Database changes:** new `swasthya_staging` database + `swasthya_ci` disposable test databases (dropped after drills); `swasthya_app_staging` role; fixture data only (synthetic tenants, never real patient data). No schema migrations — the schema is unchanged from Tenancy V2.
+
+**API changes:** none (contract unchanged; E2E exercised existing endpoints).
+
+**Security changes:** git secret hygiene; staging least-privilege role; WCAG 1.4.1 link distinguishability; never-log verified; backup encryption not yet applied (local drill — the documented production step remains).
+
+**Tests:** backend full suite green on disposable DB (241 tests / 1,748 assertions, local CI twin); frontend 20 unit/component + typecheck clean + production build; staging E2E 4/4 (desktop 1.2 m, mobile 15 s, a11y ×2); CI E2E config 4/4 on `swasthya_ci`; backup/restore drill verified end-to-end.
+
+**Known issues / remaining risks:** (1) CI has never run on a real GitHub-hosted runner (repo not pushed) — this is the top remaining validation; (2) no cloud staging host: TLS, load balancer, secrets store, provider choice remain (STAGING.md §15–16); (3) MFA, secrets store, compliance assessment still open; (4) RPO/RTO unmeasured at production scale — local drill evidence only; (5) staging app-role password is in the local `.env.staging` (untracked) — real staging must use a secrets store.
+
+**Next steps:** push the repository and run CI on a real runner; then deploy the artifact to a real staging host per STAGING.md §15; await architectural review before any next HMS module.
+
+### 2026-08-12 — Real staging infrastructure: repository cleanup audit, halted at external-input boundary
+
+**Task:** begin the REAL STAGING INFRASTRUCTURE IMPLEMENTATION milestone (per the independent NOT READY FOR STAGING verdict) — Phase 1 repository cleanup first, then the git remote / CI / staging-host phases.
+
+**Decision:** complete Phase 1 (working-tree audit + secret hygiene), then **halt at the Phase 2 boundary** and report `GITHUB_REPOSITORY_REQUIRED` rather than fabricate a remote URL, credentials, domain, or provider. Phases 3–16 (real-runner CI, staging host, TLS, secrets store, deploy, staging E2E, backup, monitoring) all depend on inputs only the user can supply.
+
+**Reason:** the milestone's own rules — never invent a GitHub repository URL, never invent domains/IPs/credentials/TLS/secret values, never claim "staging deployed" / "CI passed" without the real artifact. The local mirror and local CI twin remain local evidence only.
+
+**Working-tree audit result (18 files, all KEEP/COMMIT — none REMOVE):**
+- *Modified (9):* `.github/workflows/ci.yml` (frontend CI job — must be committed for a real runner to execute it), `frontend/e2e/helpers.ts` (env-driven base URL), `frontend/package.json` + `package-lock.json` (`@axe-core/playwright`), `frontend/src/styles/tokens.css` + `base.css` + `layout/shell.css` (WCAG 1.4.1 fixes), `STAGING.md`, `DEPLOYMENT.md`, `DISASTER_RECOVERY.md`, `TESTING_STRATEGY.md`, `README.md`, `DEVELOPMENT_LOG.md`.
+- *Untracked (9):* `STAGING_DEPLOYMENT_REPORT.md`, `STAGING_STATUS_REPORT.md`, `backend/.env.staging.example` (template, no values), `backend/database/security/staging-role.sql` (uses `<staging-secret>` placeholder), `backend/database/seeders/StagingFixtureSeeder.php` (synthetic tenants, refuses production), `frontend/e2e/accessibility.spec.ts`, `frontend/playwright.ci.config.ts`, `frontend/playwright.staging.config.ts`.
+
+**Secret hygiene verified (git check-ignore + pattern scans):** `backend/.env`, `backend/.env.staging`, `backend/.env.testing`, `.env.testing.bak` all ignored; `.env.example` / `.env.staging.example` are un-ignored value-free templates; `ci-owner-password-2026` / `ci-app-role-password-2026` in ci.yml are disposable CI defaults with a `secrets.APP_ROLE_PASSWORD` fallback (documented pattern); `SmokePass-2026!` is the synthetic E2E fixture password (already in the committed baseline); `vendor`, `node_modules`, `dist`, `.toolchain`, `.freebuff`, `*.tsbuildinfo` all ignored.
+
+**Files changed:** `DEVELOPMENT_LOG.md` only at the time of the audit; subsequently (2026-08-12, milestone continuation) the 21 classified files were committed as `9566dd8` (see entry below). **No application code, no clinical workflow, no modules touched.**
+
+**Known issues / remaining risks:** the entire remaining milestone is blocked on external inputs: GitHub repository URL (remote + real-runner CI), staging provider/account, staging domain + DNS + TLS, secrets store, deployment credentials, managed PostgreSQL with WAL archiving, monitoring/alerting platform. Exact requirements are enumerated in `STAGING.md` §15–16 and `STAGING_STATUS_REPORT.md` §23–25.
+
+**Next steps:** on user supply of the GitHub URL → configure the remote, push `main` (commit `9566dd8`), and run the real CI pipeline; then provision the staging host per STAGING.md §2–§9; then re-issue the staging report.
+
+### 2026-08-12 — Real staging infrastructure: push-ready commit + Docker availability check
+
+**Task:** continue the staging milestone from the verified local state: inspect git/remotes/deployment requirements, complete the staging deployment prerequisites that require no external input, and stop at the boundary.
+
+**Decision:** (1) commit the 21 classified files as `9566dd8` (CI `frontend` job, staging mirror config, E2E/a11y coverage, milestone reports) so a real CI runner can execute the pipeline once the repository is pushed; (2) check whether container images can be built locally; (3) stop before configuring a remote / inventing provider or secrets.
+
+**Reason:** the CI frontend job cannot run on a real runner while uncommitted; committing is the one genuine staging prerequisite fully within reach. Docker Desktop has been **uninstalled** from this machine (only `tmp-delete` remnants and install logs remain), so the container image build/verify step cannot be performed here — that remains external work, not fabricated. Staging verdict unchanged: **NOT READY FOR STAGING**.
+
+**Verified before commit:** `ci.yml` parses as valid YAML; every path it references exists (`roles.sql`, `grants.sql`, `StagingFixtureSeeder.php`, `playwright.ci.config.ts`, `run-local-ci.sh`, both lockfiles); `npm ci --dry-run` syncs; staged-content secret scan clean (the only `.env*` in the payload is the value-free `.env.staging.example` template; `backend/.env`, `.env.staging`, `.env.testing` all ignored). Working tree clean after commit.
+
+**Files changed:** `DEVELOPMENT_LOG.md` (this entry). Git: commit `9566dd8` (21 files, +1,579/−27).
+
+**Tests:** none run in this pass (inspection + commit only); all prior local evidence unchanged and still valid only as *local* evidence.
+
+**Known issues / remaining risks:** identical to the boundary above — no remote, no real-runner CI, no staging host, no TLS/secrets/monitoring. Docker unavailable locally for image builds.
+
+**Next steps:** user supplies the GitHub repository URL → add remote, push, real-runner CI; then provider + domain + secrets for the staging host per STAGING.md §2–§9.
+
 ---
 
 *This log opens with the truth: a greenfield folder, seventeen design documents, and no code. Every entry from here on records what is actually done — and this document will be the permanent witness to whether Swasthya is built the way it was designed.*

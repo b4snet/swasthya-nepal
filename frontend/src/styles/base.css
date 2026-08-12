@@ -58,11 +58,14 @@ h3 {
 
 a {
   color: var(--teal-800);
-  text-decoration: none;
+  /* WCAG 1.4.1 (axe link-in-text-block): inline links must be
+distinguishable without relying on color alone — underline by default. */
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 a:hover {
-  text-decoration: underline;
+  text-decoration-thickness: 2px;
 }
 
 button {
@@ -194,6 +197,7 @@ button {
   font-weight: 600;
   min-height: 48px;
   cursor: pointer;
+  text-decoration: none; /* nav chrome: not inline text (WCAG 1.4.1) */
 }
 
 .bottom-nav__item[aria-current='page'],

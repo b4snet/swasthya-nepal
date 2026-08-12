@@ -2,7 +2,7 @@
 
 **A production-grade, nationally scalable Hospital Management System (HMS) SaaS — under development.**
 
-> **Status: Phases 0–5 substantially complete, the first clinical workflow (Phase 6/7 + billing/payment spine) is implemented end to end, and the Swasthya web application (`frontend/`) is now real: a React + TypeScript SPA connected to the backend.**
+> **Status: the backend foundation, identity/tenancy spine (incl. PostgreSQL RLS + the non-owner `swasthya_app` role), the first clinical workflow (patient → appointment → check-in → queue → encounter → note → diagnosis → prescription → invoice → payment, all audited) and the React SPA are implemented, hardened, and staging-validated. A local staging mirror, a real backup/restore drill, and a CI pipeline (backend + frontend jobs) exist; the pipeline has not yet run on a real GitHub-hosted runner, and no cloud staging/production host is deployed.**
 > This repository contains the engineering contract (nineteen documents), a working backend (environment, PostgreSQL configuration, migrations, the API envelope/error/middleware stack, authentication with rotating refresh tokens, RBAC, tenant/facility context, authorization gates, the append-only audit trail, and the Patient Master — all isolated per tenant/facility with PostgreSQL RLS enforced), the complete vertical clinical workflow (patient → appointment → check-in → queue → doctor → encounter → clinical note → diagnosis → prescription → invoice → payment, every step real and audited), and the web application that runs that workflow: login, tenant/facility context, patient list/registration/profile, availability-driven booking, check-in, queue, the doctor workspace (note → diagnosis → prescription → sign), invoice + idempotent payment, and the authorized audit view — mobile-first with a bottom navigation and no horizontal overflow, verified by Playwright end-to-end tests against the real backend and real database (desktop + iPhone viewport). **IPD, emergency, pharmacy dispensing, laboratory, radiology, inventory, and the rest of the roadmap are not implemented.** Nothing in this README describes a feature that does not exist.
 
 ---
@@ -230,12 +230,17 @@ Swasthya is governed by **`MASTER_RULES.md`** — read it before contributing. T
 | What exists | What does not |
 |---|---|
 | Nineteen design/governance documents | Any clinical, financial, or operational business module |
-| Laravel backend foundation (Phase 2): env, PostgreSQL config, migrations, API envelope/errors/middleware, health checks, validation | Git repository (not yet initialized) |
-| Identity and tenancy (Phase 3): orgs, facilities, users, token auth + refresh rotation, RBAC, tenant/facility context, authorization gates, audit | Database-level RLS (designed; app-layer isolation tested), MFA TOTP flow, CI, Docker, any deployment |
+| Git repository (initialized; baseline commits with no secrets) | MFA TOTP flow, secrets store, compliance assessment |
+| Laravel backend foundation (Phase 2): env, PostgreSQL config, migrations, API envelope/errors/middleware, health checks, validation | A real cloud staging/production host (provider not yet selected) |
+| Identity and tenancy (Phase 3): orgs, facilities, branches, users, token auth + refresh rotation, RBAC, tenant/facility/branch context, authorization gates, audit | Docker images / containerized deployment |
+| **PostgreSQL RLS** (Tenancy V2): 144 policies on 37 tenant-owned tables, enforced with the least-privilege `swasthya_app` role (NOBYPASSRLS); dedicated `swasthya_app_staging` role on the local staging mirror | Any claimed feature, integration, or compliance status |
 | Hospital administration (Phase 4): departments, locations, wards/rooms/beds, staff (license encrypted at rest), services catalog, facility configuration | IPD, emergency, laboratory, radiology, pharmacy dispensing, inventory, HR/assets, OT/ICU/blood, analytics, interoperability, telehealth, RPM, CDSS/AI, national scale |
-| Patient Master (Phase 5): registration + MRN, encrypted identifiers with duplicate detection/merge, contacts, insurance, consents, documents, timeline | Any claimed feature, integration, or compliance status |
+| Patient Master (Phase 5): registration + MRN, encrypted identifiers with duplicate detection/merge, contacts, insurance, consents, documents, timeline | — |
 | First clinical workflow (Phase 6/7 + billing spine): schedules/availability, booking, check-in/queue, encounter, notes, diagnoses, prescriptions, sign, charges, invoices, payments | — |
-| 201 tests / 1475 assertions green against real PostgreSQL | — |
+| **Web application** (`frontend/`): React + TS + Vite SPA — real auth, tenant context, patients, appointments, queue, doctor workspace, billing, audit; mobile-first | — |
+| **CI/CD** (`.github/workflows/ci.yml`): backend + frontend jobs on disposable PostgreSQL; local twin executed green | CI has not run on a real GitHub-hosted runner (repo not pushed) |
+| **Staging mirror + drills**: `swasthya_staging` DB, `StagingFixtureSeeder` (two tenants), staging E2E (desktop/mobile/a11y) green, real backup/restore drill verified | Cloud staging with TLS + secrets store |
+| 241 backend tests / 1,748 assertions; 20 frontend unit tests; E2E + a11y suites green | — |
 | A development log recording only real work | — |
 
 **Swasthya is a production healthcare platform under development.** The design contract is complete and honest; the platform foundation, identity/tenancy spine, hospital-administration catalogs, the Patient Master, and the first complete clinical workflow (patient → appointment → check-in → queue → encounter → documentation → diagnosis → prescription → billing → payment, all audited) are built and tested against real PostgreSQL, with the full vertical slice verified over live HTTP. The next milestones — M0 (ADR-001, repository initialization), Phase 3 hardening (RLS, MFA), and the roadmap phases from IPD onward — are recorded in `ROADMAP.md` and `DEVELOPMENT_LOG.md`.

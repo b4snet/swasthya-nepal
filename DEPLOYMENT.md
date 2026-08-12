@@ -153,6 +153,17 @@ flowchart LR
 - **Hotfix path:** branch from the release tag, minimal fix, full gate, promoted like a release — never a manual production edit (`MASTER_RULES.md` §21.2).
 - **Deploy credentials** live in the CI secret store; pipeline runs are audited; production deploy steps require explicit approval.
 
+**Implemented (2026-08-12):** `.github/workflows/ci.yml` runs a `backend`
+job (PHP 8.2/8.3 matrix; Pint; disposable `postgres:16`; migrations; RLS
+verification; full Pest suite incl. tenant isolation) **and** a `frontend`
+job (Node 20; npm ci; typecheck; 20 unit tests; production build; E2E
+against the disposable DB — desktop + mobile OPD workflow + axe a11y).
+The complete pipeline was executed locally as a twin
+(`backend/ci/run-local-ci.sh` + `frontend/playwright.ci.config.ts`); it has
+**not yet run on a real GitHub-hosted runner** (the repository has not been
+pushed). A real-runner run is the first remaining CI step
+(`STAGING.md` §14–15).
+
 ---
 
 ## 9. Database Migrations

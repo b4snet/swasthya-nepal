@@ -48,7 +48,7 @@ flowchart TB
 ## 2. Test Environment and Tooling
 
 - **Backend:** Pest/PHPUnit — unit, feature/API, database, authorization, isolation, security suites. Factories for all entities (`DATABASE.md` §3).
-- **Frontend:** Vitest + Testing Library (unit/component), Playwright (E2E + responsive + accessibility scans).
+- **Frontend:** Vitest + Testing Library (unit/component — 20 tests), Playwright (E2E + responsive + accessibility scans). **Implemented E2E surface (2026-08-12):** `frontend/e2e/opd-workflow.spec.ts` (complete desktop OPD chain), `opd-workflow-mobile.spec.ts` (receptionist flow at iPhone 13 viewport), and `accessibility.spec.ts` (axe — zero serious/critical violations on dashboard/patients/appointments/queue/billing + doctor workspace). Three Playwright configs: `playwright.config.ts` (dev preview), `playwright.staging.config.ts` (staging backend on 58998), and `playwright.ci.config.ts` (CI — starts the backend itself against the disposable DB). All run against the real backend/DB/RLS — no mocks for the workflow.
 - **Contract:** OpenAPI-schema validation in API tests — every response is validated against the generated spec, so the contract cannot drift.
 - **Databases in CI:** real PostgreSQL + Redis as service containers; one fresh test database per parallel worker; schema built by running the migrations (this *is* the migration test — Section 3.15).
 - **Seeding:** factories + explicit fixtures per test; never production data; deterministic where determinism matters (time is injected, not read from the wall clock, in every test that asserts on time).
