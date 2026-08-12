@@ -994,6 +994,21 @@ Every entry uses the following 13 fields, in order. Fields that do not apply are
 
 **Next steps:** push → frontend job (static checks, build, Playwright E2E desktop+mobile+a11y) should now reach the E2E step → confirm green → then the Render boundary items per `RENDER_STAGING.md`.
 
+### 2026-08-12 (follow-up 2) — REAL-RUNNER CI GREEN: full pipeline passes on GitHub Actions
+
+**Task:** get the real-runner pipeline fully green (the earlier entries cover the composer-platform, psql-client, RLS-verify-SQL, and DB_HOST/DB_PORT fixes; this entry covers the last two gaps):
+
+1. **`d005899` — frontend-only commits silently skipped CI.** The workflow's push `paths` filter matched only `backend/**` and the workflow file, so the `frontend/tsconfig.json` fix never triggered a run. Fix: add `frontend/**` to push + pull_request paths.
+2. **`73cf5d5` — E2E diagnostics.** The frontend E2E step failed in ~24s on the runner while the identical CI config passed locally (fresh disposable DB, app running as `swasthya_app`, RLS active); raw runner logs and artifact downloads both require GitHub auth, so the failure was not directly readable. Added `tee`-captured Playwright output plus an `if: failure()` step that emits the notable lines as `::error::` annotations (visible via the checks API), and widened the failure artifact to include the HTML report.
+
+**RESULT — run `31590541836` on `73cf5d5` is GREEN end-to-end on a real GitHub runner:** backend (PHP 8.2) success — source check, composer install, Pint, roles.sql (NOBYPASSRLS), `migrate:fresh` on disposable `postgres:16-alpine`, RLS policy/role verification (fail-closed), full Pest suite (61s, 241 tests / 1,748 assertions incl. RLS + tenant isolation), build artifact; backend (PHP 8.3) success (same); frontend success — backend deps, `npm ci`, role + migrate + grants + `StagingFixtureSeeder`, typecheck, 20 unit tests, production build, Playwright chromium, then **E2E 28s green (desktop OPD workflow + mobile receptionist flow + 2 axe accessibility scans)**.
+
+**Flakiness note:** the E2E failed at 24s on `d005899` under identical test code and passed at 28s on `73cf5d5` — classified as a flaky failure, not a deterministic defect; the annotation/artifact diagnostics are now permanent so the next flake is readable.
+
+**Files changed:** `.github/workflows/ci.yml` (paths + diagnostics), `DEVELOPMENT_LOG.md` (this entry). Working tree clean; no secrets in any diff.
+
+**Next steps (external boundary):** Render provisioning per `RENDER_STAGING.md` §3 — user must (1) link the Render account to GitHub and authorize the repo, (2) choose the paid Postgres plan (PITR/backups exist only on paid), (3) enter the Dashboard secrets (`APP_KEY`, `DB_PASSWORD` auto-generated; `APP_URL`, `SWASTHYA_CORS_ALLOWED_ORIGINS`, `VITE_API_BASE_URL`), (4) pick a region. The blueprint (`render.yaml`), Docker images, runbook, and CI are all in the repo and verified; nothing is deployed yet.
+
 **Follow-up (same day):** the frontend job then failed at step 12 "Frontend static checks". Root cause: commit `28cfcc4`'s `import.meta.env.VITE_API_BASE_URL` in `frontend/src/api/client.ts` had no `vite/client` types wired, so `tsc -b --noEmit` failed with `Property 'env' does not exist on type 'ImportMeta'` — reproduced locally, a regression introduced by the Render env wiring. Fix: add `"vite/client"` to `types` in `frontend/tsconfig.json`. Verified locally: typecheck exit 0 and `npm test` 20/20 green. Commit `295b041` (with the DB_HOST/DB_PORT fix) plus this tsconfig fix — push and re-run.
 
 ---
