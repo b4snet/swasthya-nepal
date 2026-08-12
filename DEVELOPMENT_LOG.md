@@ -994,6 +994,8 @@ Every entry uses the following 13 fields, in order. Fields that do not apply are
 
 **Next steps:** push → frontend job (static checks, build, Playwright E2E desktop+mobile+a11y) should now reach the E2E step → confirm green → then the Render boundary items per `RENDER_STAGING.md`.
 
+**Follow-up (same day):** the frontend job then failed at step 12 "Frontend static checks". Root cause: commit `28cfcc4`'s `import.meta.env.VITE_API_BASE_URL` in `frontend/src/api/client.ts` had no `vite/client` types wired, so `tsc -b --noEmit` failed with `Property 'env' does not exist on type 'ImportMeta'` — reproduced locally, a regression introduced by the Render env wiring. Fix: add `"vite/client"` to `types` in `frontend/tsconfig.json`. Verified locally: typecheck exit 0 and `npm test` 20/20 green. Commit `295b041` (with the DB_HOST/DB_PORT fix) plus this tsconfig fix — push and re-run.
+
 ---
 
 *This log opens with the truth: a greenfield folder, seventeen design documents, and no code. Every entry from here on records what is actually done — and this document will be the permanent witness to whether Swasthya is built the way it was designed.*
