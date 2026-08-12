@@ -962,6 +962,24 @@ Every entry uses the following 13 fields, in order. Fields that do not apply are
 
 **Next steps:** user confirms billing + links Render to GitHub + enters secrets (per `RENDER_STAGING.md` §3) → blueprint provisions → post-deploy verification checklist (§4) → real OPD + RLS + mobile + a11y + backup/restore evidence against the actual Render environment → re-issue `STAGING_DEPLOYMENT_REPORT.md` verdict.
 
+### 2026-08-12 — Real-runner CI failures: composer platform pin, psql client, RLS verify SQL
+
+**Task:** after the push to GitHub, the real-runner pipeline (`backend-ci`) failed on three distinct problems that the local twin could not expose. Fix each, verify locally, push, and let the real runner confirm.
+
+**Finding 1 — lockfile resolved against PHP 8.4 (both matrix jobs fail `composer install`).** The lockfile pinned `symfony/*` v8.1 components requiring `php >= 8.4.1`, but `composer.json` declares `"php": "^8.2"` and CI runs 8.2/8.3. The lock was generated on the local PHP 8.4 toolchain, so the local twin (warm vendor) passed while fresh CI installs failed the platform check. Fix: `composer config platform.php 8.2` and regenerate the lockfile — Symfony components downgraded to 8.2-compatible versions, `composer audit` clean (no advisories), and the full suite re-verified locally: **241 passed / 1,748 assertions** with the resolved lock. Commit `3511969`.
+
+**Finding 2 — `ubuntu-latest` runners have no `postgresql-client`.** The role/grants/verify steps call `psql`, which the runner lacks (the local twin used the bundled toolchain psql). Fix: `apt-get install postgresql-client` step in both jobs. Commit `0523e4a`.
+
+**Finding 3 — the RLS-verify step SQL referenced a non-existent view column.** `pg_policies` does not expose `polrelid` (the join column is renamed inside the view definition; the exposed column is `policyname`, not `polname`), so `select ... from pg_policies p join pg_class c on c.oid = p.polrelid` failed with `column p.polrelid does not exist` — both jobs failed at the "Verify RLS policies and role configuration" step while migrations had passed. Reproduced locally against the dev schema and confirmed the corrected queries return the four `p_rls_patients_*` policies and `swasthya_app|f|f` (NOBYPASSRLS, no superuser). Fix: rewrite the step against `pg_policies.policyname/tablename` and make it **fail-closed** — `set -euo pipefail`, capture each result once, and assert the select/delete policies exist and the role row is exactly `swasthya_app|f|f`, so a missing policy can no longer pass silently. Local run of the exact step body: `VERIFY-STEP-OK`.
+
+**Files changed:** `backend/composer.json` + `backend/composer.lock` (platform pin; commit `3511969`), `.github/workflows/ci.yml` (psql client step; commit `0523e4a`, and the verify-step SQL fix in this entry), `DEVELOPMENT_LOG.md` (this entry).
+
+**Tests:** local full backend suite 241 passed / 1,748 assertions (post-lock-regeneration); corrected verify-step body run locally to exit 0 with policies present. No secrets in any diff.
+
+**Known issues / remaining risks:** real-runner CI remains RED until this verify-step fix is pushed and confirmed by a green run; the frontend job (`needs: backend`) has not executed yet; Render provisioning still blocked on the external boundary (billing, OAuth link, secret entry).
+
+**Next steps:** push the verify-step fix → confirm both backend matrix jobs green on the real runner → frontend job (build + E2E + a11y on disposable Postgres) → then the Render boundary items per `RENDER_STAGING.md`.
+
 ---
 
 *This log opens with the truth: a greenfield folder, seventeen design documents, and no code. Every entry from here on records what is actually done — and this document will be the permanent witness to whether Swasthya is built the way it was designed.*

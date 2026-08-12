@@ -106,11 +106,20 @@ jobs:
           php artisan migrate:fresh --force
 
       - name: Verify RLS policies and role configuration
+        # Fail-closed: assert the tenant-scoped policies on `patients` exist and
+        # that the application role has NOBYPASSRLS / no superuser. The view
+        # pg_policies exposes policyname/tablename (not polrelid/polname).
         run: |
-          PGPASSWORD=ci-owner-password-2026 psql -h 127.0.0.1 -p 54329 -U swasthya -d swasthya_ci -t -A -c \
-            "select relname from pg_policies p join pg_class c on c.oid=p.polrelid where c.relname='patients'"
-          PGPASSWORD=ci-owner-password-2026 psql -h 127.0.0.1 -p 54329 -U swasthya -d swasthya_ci -t -A -c \
-            "select rolname, rolbypassrls, rolsuper from pg_roles where rolname='swasthya_app'"
+          set -euo pipefail
+          POLICIES=$(PGPASSWORD=ci-owner-password-2026 psql -h 127.0.0.1 -p 54329 -U swasthya -d swasthya_ci -t -A -c \
+            "select policyname from pg_policies where schemaname='public' and tablename='patients' order by policyname")
+          echo "$POLICIES"
+          echo "$POLICIES" | grep -q 'p_rls_patients_select'
+          echo "$POLICIES" | grep -q 'p_rls_patients_delete'
+          ROLE=$(PGPASSWORD=ci-owner-password-2026 psql -h 127.0.0.1 -p 54329 -U swasthya -d swasthya_ci -t -A -c \
+            "select rolname, rolbypassrls, rolsuper from pg_roles where rolname='swasthya_app'")
+          echo "$ROLE"
+          echo "$ROLE" | grep -q '^swasthya_app|f|f$'
 
       - name: Run full test suite (unit, integration, API, database, RLS, isolation, audit)
         run: |
