@@ -237,4 +237,10 @@ function createClient(baseUrl: string): ApiClient {
   };
 }
 
-export const api = createClient(''); // '' => same-origin; the Vite proxy targets the backend in dev.
+// Same-origin by default ('' — the Vite dev proxy targets the backend). In
+// deployed environments the SPA and API are separate origins, so the build
+// bakes the API base URL from VITE_API_BASE_URL (deployment wiring, not a
+// secret — SECURITY.md §24 CORS allowlist is configured on the backend).
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
+
+export const api = createClient(API_BASE_URL);

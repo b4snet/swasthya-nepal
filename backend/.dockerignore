@@ -1,0 +1,29 @@
+# Swasthya backend .dockerignore — never let secrets or local artifacts into
+# the image (SECURITY.md §13, DEPLOYMENT.md §15).
+
+# Local environment files (secrets — MUST stay out).
+.env
+.env.*
+!.env.example
+
+# Dependencies (built in the image from lockfiles).
+vendor
+
+# Tests / CI (not shipped in the runtime image).
+tests
+phpunit.xml*
+pint.json
+.phpunit.cache
+
+# Logs, caches, local artifacts.
+storage/logs/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/*.key
+
+# VCS / editor noise.
+.git
+.gitignore
+.idea
+.vscode

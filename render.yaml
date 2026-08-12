@@ -1,0 +1,165 @@
+# ============================================================================
+# Swasthya — Render Blueprint (staging)
+# ============================================================================
+# Provisioned via "New + > Blueprint" pointing at this repository, branch
+# `main`, environment `staging`. Renders the three documented staging
+# services (STAGING.md §2–§9): managed PostgreSQL 16, the Laravel API as a
+# Docker web service, and the React/Vite SPA as a static site.
+#
+# Security invariants (STAGING.md §6, SECURITY.md §13–14):
+#   * NO secrets in this file or anywhere in git — APP_KEY and the app-role
+#     DB password are `generateValue` (generated once by Render, kept in
+#     Render's env), and any var marked `sync: false` is entered in the
+#     Dashboard at creation time only.
+#   * The running API connects as the least-privilege `swasthya_app` role
+#     (NOBYPASSRLS). The predeploy bootstrap (roles.sql -> migrate --force ->
+#     grants.sql) runs as the DB owner and ABORTS the deploy on any failure
+#     (MASTER_RULES.md §30, STAGING.md §6: never migrate:fresh/reset/DROP).
+#   * Render terminates TLS at its edge; onrender.com URLs are HTTPS by
+#     default (SECURITY.md §11).
+#
+# Billing decision required (NOT made here): PITR + logical exports exist
+# ONLY on paid Render Postgres (Free has no backups — DISASTER_RECOVERY.md
+# §5, SECURITY.md §29 REQUIRE backups). The `plan` values below are paid;
+# adjust them in the Dashboard if the workspace plan differs.
+# ============================================================================
+
+projects:
+  - name: swasthya-staging
+    environments:
+      - name: staging
+        databases:
+          - name: swasthya-db
+            plan: starter           # paid — required for PITR/backups (billing decision)
+            postgresMajorVersion: 16
+            databaseName: swasthya
+            user: swasthya
+            region: singapore       # closest Render region to Nepal; immutable after create
+            ipAllowList:
+              - source: 0.0.0.0/0   # tightened below (private network / allowlist) after creation
+                description: temporary staging allowlist — replace with internal-only access
+
+        services:
+          # ---- Laravel API (Docker web service) ----
+          - type: web
+            name: swasthya-api
+            runtime: docker
+            plan: starter
+            region: singapore
+            branch: main
+            dockerfilePath: ./backend/Dockerfile
+            dockerContext: ./backend
+            autoDeployTrigger: commit
+            healthCheckPath: /api/v1/health/ready
+            preDeployCommand: |
+              SWASTHYA_RUN_BOOTSTRAP=1 /usr/local/bin/docker-entrypoint
+            envVars:
+              # --- Application ---
+              - key: APP_ENV
+                value: staging
+              - key: APP_DEBUG
+                value: "false"
+              - key: APP_KEY
+                generateValue: true
+              - key: APP_URL
+                sync: false         # enter the service URL (https://<name>.onrender.com) at creation
+              - key: APP_TIMEZONE
+                value: Asia/Kathmandu
+
+              # --- Logging (structured JSON; OBSERVABILITY.md) ---
+              - key: LOG_CHANNEL
+                value: json
+              - key: LOG_LEVEL
+                value: info
+
+              # --- Runtime database connection: least-privilege swasthya_app ---
+              - key: DB_CONNECTION
+                value: pgsql
+              - key: DB_HOST
+                fromDatabase:
+                  name: swasthya-db
+                  property: host
+              - key: DB_PORT
+                fromDatabase:
+                  name: swasthya-db
+                  property: port
+              - key: DB_DATABASE
+                fromDatabase:
+                  name: swasthya-db
+                  property: database
+              - key: DB_USERNAME
+                value: swasthya_app   # runtime role — NEVER the owner (SECURITY.md §14)
+              - key: DB_PASSWORD
+                generateValue: true   # ONE generated secret: roles.sql creates swasthya_app with it AND the runtime app connects with it (single source of truth)
+              - key: DB_SSLMODE
+                value: require        # TLS to PostgreSQL (Render supports TLS on internal/external URLs)
+
+              # --- Predeploy bootstrap (owner credentials; NOT used by the runtime app) ---
+              - key: BOOTSTRAP_DB_HOST
+                fromDatabase:
+                  name: swasthya-db
+                  property: host
+              - key: BOOTSTRAP_DB_PORT
+                fromDatabase:
+                  name: swasthya-db
+                  property: port
+              - key: BOOTSTRAP_DB_DATABASE
+                fromDatabase:
+                  name: swasthya-db
+                  property: database
+              - key: BOOTSTRAP_DB_USERNAME
+                fromDatabase:
+                  name: swasthya-db
+                  property: user
+              - key: BOOTSTRAP_DB_PASSWORD
+                fromDatabase:
+                  name: swasthya-db
+                  property: password
+              # --- CORS (SECURITY.md §24): the SPA origin(s) only ---
+              - key: SWASTHYA_CORS_ALLOWED_ORIGINS
+                sync: false         # enter https://<frontend-name>.onrender.com at creation
+
+              # --- Rate limits (prod-like values; SECURITY.md §17) ---
+              - key: SWASTHYA_RATE_LIMIT_AUTH
+                value: "5"
+              - key: SWASTHYA_RATE_LIMIT_API
+                value: "120"
+              - key: SWASTHYA_RATE_LIMIT_WRITES
+                value: "60"
+
+              # --- Sessions / cache / queues (staging v1: database-backed) ---
+              - key: SESSION_DRIVER
+                value: database
+              - key: SESSION_SECURE_COOKIE
+                value: "true"
+              - key: CACHE_STORE
+                value: database
+              - key: QUEUE_CONNECTION
+                value: sync
+
+          # ---- React/Vite SPA (static site) ----
+          - type: web
+            name: swasthya-frontend
+            runtime: static
+            region: singapore
+            branch: main
+            rootDir: frontend
+            buildCommand: npm ci && npm run build
+            staticPublishPath: ./dist
+            autoDeployTrigger: commit
+            envVars:
+              # The SPA's API base URL. Same-origin by default; on Render the
+              # SPA and API are separate origins, so point at the API service
+              # URL (set at creation; the value is not a secret).
+              - key: VITE_API_BASE_URL
+                sync: false         # enter https://<api-name>.onrender.com at creation
+            headers:
+              - path: /*
+                name: X-Content-Type-Options
+                value: nosniff
+              - path: /*
+                name: X-Frame-Options
+                value: DENY
+              - path: /*
+                name: Referrer-Policy
+                value: strict-origin-when-cross-origin

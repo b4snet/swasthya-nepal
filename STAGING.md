@@ -1,14 +1,15 @@
 # Swasthya — Staging Environment Specification
 
-> **Status: SPECIFICATION + IMPLEMENTED LOCAL MIRROR.** This document is the
-> concrete build spec for the first staging deployment. A **local staging
-> mirror** has been provisioned and verified on this machine: a dedicated
-> `swasthya_staging` PostgreSQL database, the least-privilege
-> `swasthya_app_staging` role (NOBYPASSRLS, non-owner), a backend running
-> with `APP_ENV=staging`, and both tenants from `StagingFixtureSeeder` — the
-> full verification results are in `STAGING_DEPLOYMENT_REPORT.md`. A real
-> cloud staging host with TLS + a secrets store has NOT been created; that
-> remains the provider-selected deployment step (§16).
+> **Status: SPECIFICATION + LOCAL MIRROR + RENDER PROVISIONING READY.** This
+> document is the concrete build spec for the first staging deployment. A
+> **local staging mirror** is provisioned and verified on this machine
+> (dedicated `swasthya_staging` DB, least-privilege `swasthya_app_staging`
+> role, `APP_ENV=staging`, both fixture tenants — see
+> `STAGING_DEPLOYMENT_REPORT.md`). The staging **provider is now Render**;
+> the provisionable blueprint is `render.yaml` (Postgres 16 + Docker API
+> service + static SPA) with the exact user actions in `RENDER_STAGING.md`.
+> **No Render environment is deployed yet** — provisioning awaits the billing
+> decision (paid Postgres for PITR) and the user's Render OAuth/secret entry.
 
 ## 1. Purpose
 
