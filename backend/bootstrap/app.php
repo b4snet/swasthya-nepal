@@ -6,12 +6,22 @@ use App\Http\Middleware\EnsurePermission;
 use App\Http\Middleware\LogRequest;
 use App\Http\Middleware\ResolveTenantContext;
 use App\Http\Middleware\SecurityHeaders;
+use Illuminate\Auth\Middleware\Authorize;
+use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
+use Illuminate\Contracts\Session\Middleware\AuthenticatesSessions;
+use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
+use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Foundation\Http\Middleware\HandlePrecognitiveRequests;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Middleware\SubstituteBindings;
+use Illuminate\Routing\Middleware\ThrottleRequests;
+use Illuminate\Routing\Middleware\ThrottleRequestsWithRedis;
+use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Str;
+use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -42,19 +52,33 @@ return Application::configure(basePath: dirname(__DIR__))
             'authorize' => EnsurePermission::class,
         ]);
 
-        // Tenant context MUST be established BEFORE Laravel's implicit route
-        // model binding (SubstituteBindings lives in the framework 'api'
-        // group and otherwise runs ahead of our route-level middleware).
-        // Route-bound tenant-scoped models (departments, staff, patients, …)
-        // are resolved by querying the database; under RLS those queries are
-        // empty until app.tenant_id / app.facility_id are set, which would
-        // 404 every {model} route. Ordering the context middleware before
-        // SubstituteBindings makes every bound model resolve inside the
-        // request's RLS context (TENANCY.md V2 §7, §10).
-        $middleware->prependToPriorityList(
-            SubstituteBindings::class,
+        // Explicit middleware priority (SECURITY.md §17, TENANCY.md V2 §7, §10).
+        // The framework default orders AuthenticatesRequests BEFORE
+        // ThrottleRequests, which means an unauthenticated request to a
+        // protected route fails at auth:sanctum and NEVER reaches the rate
+        // limiter — a scanner could hammer protected endpoints without
+        // consuming the per-IP budget. Reordering puts both ThrottleRequests
+        // variants ahead of auth, so throttle:api counts every request that
+        // reaches the API group, authenticated or not (a missing/invalid
+        // token still yields 401, just after the limiter runs). ResolveTenantContext
+        // stays before SubstituteBindings so tenant-scoped model binding
+        // resolves inside the request's RLS context. Note: prependToPriorityList
+        // cannot express this — it only inserts ABSENT entries, and
+        // ThrottleRequests already exists in the framework default list.
+        $middleware->priority([
+            HandlePrecognitiveRequests::class,
+            EncryptCookies::class,
+            AddQueuedCookiesToResponse::class,
+            StartSession::class,
+            ShareErrorsFromSession::class,
+            ThrottleRequests::class,
+            ThrottleRequestsWithRedis::class,
+            AuthenticatesRequests::class,
+            AuthenticatesSessions::class,
             ResolveTenantContext::class,
-        );
+            SubstituteBindings::class,
+            Authorize::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (Throwable $exception, Request $request) {

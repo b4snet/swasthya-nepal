@@ -11,6 +11,8 @@ use App\Models\ClinicalNote;
 use App\Models\Department;
 use App\Models\Encounter;
 use App\Models\Invoice;
+use App\Models\LabOrder;
+use App\Models\LabTest;
 use App\Models\Location;
 use App\Models\Medication;
 use App\Models\Payment;
@@ -80,6 +82,9 @@ final class AuditLogger
         'charge' => Charge::class,
         'invoice' => Invoice::class,
         'payment' => Payment::class,
+        // Phase 3 slice 2 — laboratory & radiology.
+        'lab_test' => LabTest::class,
+        'lab_order' => LabOrder::class,
     ];
 
     /**

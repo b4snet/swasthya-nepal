@@ -105,6 +105,20 @@ class RolePermissionSeeder extends Seeder
             'medication:view' => ['domain' => 'medication', 'description' => 'View the formulary within scope'],
             'medication:manage' => ['domain' => 'medication', 'description' => 'Create and update formulary entries'],
 
+            // Phase 3 slice 2 — Laboratory & radiology order lifecycle
+            // (PRODUCT_REQUIREMENTS §6.8). Verification is a distinct
+            // permission from entry — entry ≠ verification is a clinical
+            // safety rule, enforced by both the permission split and a
+            // different-staff guard in the controller.
+            'lab:view' => ['domain' => 'lab', 'description' => 'View laboratory and radiology orders, results, and the test catalog within scope'],
+            'lab:order' => ['domain' => 'lab', 'description' => 'Order laboratory/radiology tests from an encounter'],
+            'lab:specimen' => ['domain' => 'lab', 'description' => 'Collect and accession specimens for lab orders'],
+            'lab:process' => ['domain' => 'lab', 'description' => 'Mark lab orders as processing'],
+            'lab:result_entry' => ['domain' => 'lab', 'description' => 'Enter laboratory results (entry, never verification)'],
+            'lab:verify' => ['domain' => 'lab', 'description' => 'Verify laboratory results before release (distinct from entry)'],
+            'lab:report' => ['domain' => 'lab', 'description' => 'Release final laboratory/radiology reports'],
+            'lab:manage' => ['domain' => 'lab', 'description' => 'Manage the lab/radiology test catalog'],
+
             // Billing and payments (Phase 13 spine, shipped with the
             // first clinical workflow).
             'billing:view' => ['domain' => 'billing', 'description' => 'View charges, invoices, and payments within scope'],
@@ -218,6 +232,7 @@ class RolePermissionSeeder extends Seeder
                     'encounter:view', 'encounter:create', 'encounter:document',
                     'encounter:prescribe', 'encounter:sign',
                     'medication:view', 'medication:manage',
+                    'lab:view', 'lab:order', 'lab:manage',
                     'billing:view', 'billing:invoice', 'billing:collect',
                 ],
             ],
@@ -257,6 +272,7 @@ class RolePermissionSeeder extends Seeder
                     'consent:view', 'consent:manage',
                     'document:view', 'document:manage',
                     'payer:view', 'payer:manage',
+                    'lab:view', 'lab:manage',
                     // Phase 6/7 — manages their facility's front desk and
                     // clinical workflows.
                     'schedule:view', 'schedule:manage',
@@ -329,6 +345,7 @@ class RolePermissionSeeder extends Seeder
                     'encounter:view', 'encounter:create', 'encounter:document',
                     'encounter:prescribe', 'encounter:sign',
                     'medication:view', 'billing:view',
+                    'lab:view', 'lab:order',
                 ],
             ],
             'nurse' => [
@@ -342,6 +359,7 @@ class RolePermissionSeeder extends Seeder
                     'schedule:view', 'appointment:view', 'queue:view',
                     'encounter:view', 'encounter:document',
                     'medication:view', 'billing:view',
+                    'lab:view',
                 ],
             ],
             'pharmacist' => [
@@ -353,8 +371,23 @@ class RolePermissionSeeder extends Seeder
             'lab_technician' => [
                 'name' => 'Lab Technician',
                 'scope_type' => 'facility',
-                // Phase 5 — minimal patient visibility for specimen work.
-                'permissions' => ['patient:view', 'patient:search'],
+                // Phase 5 — minimal patient visibility for specimen work;
+                // Phase 3 slice 2 — specimen, processing, and result ENTRY
+                // (never verification).
+                'permissions' => [
+                    'patient:view', 'patient:search',
+                    'lab:view', 'lab:specimen', 'lab:process', 'lab:result_entry',
+                ],
+            ],
+            'lab_supervisor' => [
+                'name' => 'Lab Supervisor',
+                'scope_type' => 'facility',
+                // Phase 3 slice 2 — verification and report release: the
+                // quality gate AFTER entry (entry ≠ verification).
+                'permissions' => [
+                    'patient:view', 'patient:search',
+                    'lab:view', 'lab:verify', 'lab:report',
+                ],
             ],
         ];
     }

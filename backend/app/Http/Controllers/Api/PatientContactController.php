@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exceptions\ApiException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Patient\StoreContactRequest;
 use App\Http\Requests\Patient\UpdateContactRequest;
@@ -10,6 +11,7 @@ use App\Models\PatientContact;
 use App\Support\AccessCheck;
 use App\Support\AuditLogger;
 use App\Support\Envelope;
+use App\Support\ErrorCodes;
 use App\Support\PatientTimeline;
 use App\Support\TenantContext;
 use Illuminate\Http\JsonResponse;
@@ -78,8 +80,15 @@ final class PatientContactController extends Controller
         return Envelope::success(data: self::present($contact), status: 201, request: $request);
     }
 
-    public function update(UpdateContactRequest $request, PatientContact $contact): JsonResponse
+    public function update(UpdateContactRequest $request, Patient $patient, PatientContact $contact): JsonResponse
     {
+        // The URL patient must own the addressed contact (nested-resource
+        // contract): a mismatched parent is indistinguishable from a missing
+        // resource (existence is never leaked).
+        if ($contact->patient_id !== $patient->getKey()) {
+            throw new ApiException(ErrorCodes::NOT_FOUND, 'Resource not found.', 404);
+        }
+
         AccessCheck::patientChild($contact, write: true);
 
         $context = TenantContext::current();

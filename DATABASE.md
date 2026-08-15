@@ -632,22 +632,27 @@ erDiagram
 | **Soft deletion** | No |
 | **Retention** | Clinical class; vitals archived by partition to cold storage after the active clinical window |
 
-### 3.28 laboratory (lab_tests, specimens, lab_results)
+### 3.28 laboratory & radiology orders (lab_tests, lab_orders, lab_order_items)
 
 | Aspect | Design |
 |---|---|
-| **Purpose** | The lab: test catalog, specimen chain-of-custody, result entry and verification, critical-value escalation. Three tables. |
-| **Primary key** | `lab_tests.id`, `specimens.id`, `lab_results.id` (uuid) |
-| **Tenant ownership** | Tenant-scoped: `tenant_id NOT NULL`, `facility_id NOT NULL`. |
-| **Important fields** | Tests: `tenant_id`, `facility_id`, `code varchar(50)`, `name text`, `specimen_type text`, `method text`, `reference_ranges jsonb` (age/sex aware), `price_minor bigint`, `status text`. Specimens: `tenant_id`, `order_id uuid NOT NULL`, `accession_number varchar(50)`, `collected_at`, `collected_by uuid`, `received_at`, `status text` (ordered, collected, in_transit, received, processing, completed, rejected), `reject_reason text NULL`. Results: `tenant_id`, `specimen_id uuid NOT NULL`, `test_id uuid NOT NULL`, `analyte text NULL`, `value text`, `unit text NULL`, `reference_range_snapshot jsonb`, `is_abnormal boolean`, `is_critical boolean`, `entered_by uuid`, `entered_at`, `verified_by uuid NULL`, `verified_at timestamptz NULL`, `status text` (entered, verified, corrected), `correction_of_id uuid NULL` |
-| **Relationships** | Specimens N–1 `orders`; results N–1 `specimens`, N–1 `lab_tests`; correction chain self-references |
-| **Indexes** | Unique `(tenant_id, accession_number)`; `(tenant_id, order_id)`; results: `(tenant_id, specimen_id)`; `(tenant_id, is_critical, verified_at)` for escalation monitoring; tests: unique `(tenant_id, facility_id, code)` |
-| **Uniqueness** | Accession number unique per tenant; one result row per (specimen, test, analyte) |
-| **Audit** | Specimen chain (collect → receive → process), result entry vs. verification (who entered, who verified), corrections, critical-value escalation and acknowledgment timestamps |
-| **Soft deletion** | No — corrections are new audited versions, never edits |
+| **Purpose** | The shared lab/radiology order lifecycle (Phase 3 slice 2, PRODUCT_REQUIREMENTS §6.8): tenant test catalog, order container with one status state machine, and one item row per ordered test carrying the result. Laboratory tests and radiology studies share this surface (`category` distinguishes them). |
+| **Primary key** | `lab_tests.id`, `lab_orders.id`, `lab_order_items.id` (uuid) |
+| **Tenant ownership** | TENANT_FACILITY tier: `tenant_id NOT NULL`, `facility_id NOT NULL`; RLS on + FORCED (companion migration `2026_08_15_130100`). |
+| **Important fields** | Tests (catalog, soft-deletable like medications): `tenant_id`, `facility_id`, `code varchar(50)`, `name`, `category` (laboratory/hematology/biochemistry/microbiology/immunology/pathology/radiology/ultrasound/other), `sample_type NULL`, `unit NULL`, `reference_range NULL`, `method NULL`, `status` (active/inactive), `lock_version`. Orders: `tenant_id`, `facility_id`, `patient_id`, `encounter_id`, `ordered_by_staff_id`, `priority` (routine/urgent/stat), `status` (ordered → collected → processing → results_entered → verified → reported), `clinical_indication NULL`, `ordered_at`, `collected_by_staff_id/collected_at NULL`, `processing_at NULL`, `verified_by_staff_id/verified_at NULL`, `reported_by_staff_id/reported_at NULL`, `lock_version`. Items: `tenant_id`, `facility_id`, `lab_order_id`, `lab_test_id`, `result_value NULL`, `result_unit NULL`, `reference_range NULL` (snapshot taken at order time), `entered_by_staff_id/entered_at NULL`, `verified_by_staff_id/verified_at NULL` |
+| **State machine** | Order-level CAS transitions: `ordered → collected → processing → results_entered → verified → reported`. Each transition is a compare-and-swap on `(status, lock_version)` — a concurrent writer affects 0 rows and gets 409 CONFLICT (no double-advance). `reported` is immutable; corrections are new audited versions (later phase). |
+| **Entry ≠ verification** | Enforced twice: distinct permissions (`lab:result_entry` vs `lab:verify`) AND a different-staff guard (the verifier must not be the enterer, 403 SCOPE_DENIED). Verification requires a result for every item. |
+| **Relationships** | Orders N–1 patients/encounters; N–1 staff (ordered/collected/verified/reported); items N–1 orders (composite `(tenant_id, id)`), N–1 lab_tests; items reference-range is the catalog snapshot at order time |
+| **Indexes** | `uq_lab_tests_tenant_facility_code` (partial, active); `uq_lab_tests_tenant_id`; `uq_lab_orders_tenant_id`; `uq_lab_order_items_tenant_order_test` (one item per test per order); query indexes on (tenant, facility, status, ordered_at), (tenant, patient, ordered_at), (tenant, encounter), (tenant, lab_order) |
+| **Uniqueness** | One catalog code per (tenant, facility); one item per (order, test) |
+| **Audit** | Order creation, collect, processing, results entry, verification, report release — facts only (`lab_order.*`), never result values/PHI; `lab_test.created` for the catalog |
+| **Soft deletion** | Catalog soft-deletes (history stays referenced); orders/items never delete |
 | **Retention** | Clinical class |
+| **Later-phase plan** | Specimen accession chain-of-custody, critical/panic-value escalation with acknowledgment, instrument interfaces (LIS/HL7), radiology studies/reports with DICOM refs — documented in PRODUCT_REQUIREMENTS §6.8 but NOT part of slice 2 |
 
-### 3.29 radiology (studies, radiology_reports)
+### 3.29 radiology (studies, radiology_reports) — planned, NOT yet implemented
+
+> Radiology orders currently run on the SHARED lab order surface (§3.28): a `lab_tests` row with `category = 'radiology'` is ordered and reported through `lab_orders`/`lab_order_items`. The modality scheduling, study records, and preliminary/final report tables below are the documented later-phase plan.
 
 | Aspect | Design |
 |---|---|

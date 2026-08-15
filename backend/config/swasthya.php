@@ -34,6 +34,24 @@ return [
         // account is locked out for the window below (SECURITY.md §18).
         'login_failure_threshold' => (int) env('SWASTHYA_LOGIN_FAILURE_THRESHOLD', 5),
         'login_lockout_minutes' => (int) env('SWASTHYA_LOGIN_LOCKOUT_MINUTES', 15),
+
+        // Phase 3 — Supabase-native access-token claims (see
+        // App\Support\JwtClaims). HS256-signed JWTs whose payload carries the
+        // five `app_*` claims the RLS layer reads from `request.jwt.claims`.
+        // This models the token an edge-function signer mints in the native
+        // architecture; the signature secret is server-side only and NEVER
+        // reaches the browser or the frontend build.
+        'jwt' => [
+            // Signing secret. MUST be set in production via
+            // SWASTHYA_AUTH_JWT_SECRET; when empty, JwtClaims derives a
+            // stable key from APP_KEY (local/testing only — rotating APP_KEY
+            // then fails every token closed, which is the safe direction).
+            'secret' => (string) env('SWASTHYA_AUTH_JWT_SECRET', ''),
+            'issuer' => (string) env('SWASTHYA_AUTH_JWT_ISSUER', 'swasthya'),
+            'audience' => (string) env('SWASTHYA_AUTH_JWT_AUDIENCE', 'swasthya-api'),
+            // Access-token lifetime (seconds) for issued claims tokens.
+            'access_ttl_seconds' => (int) env('SWASTHYA_ACCESS_TOKEN_TTL_MINUTES', 60) * 60,
+        ],
     ],
 
     'rate_limits' => [

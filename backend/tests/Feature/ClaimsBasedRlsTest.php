@@ -17,7 +17,7 @@ use Illuminate\Support\Str;
  * exercised end-to-end. Every test runs in a transaction on the app-role
  * connection and rolls back in all paths: no fixtures leak.
  */
-it('re-keys every RLS policy to the claims helpers (144 policies, zero GUC references)', function () {
+it('re-keys every RLS policy to the claims helpers (156 policies, zero GUC references)', function () {
     $policies = DB::connection('pgsql')->select(
         <<<'SQL'
         select count(*) as total,
@@ -29,7 +29,7 @@ it('re-keys every RLS policy to the claims helpers (144 policies, zero GUC refer
         SQL
     )[0];
 
-    expect((int) $policies->total)->toBe(144)
+    expect((int) $policies->total)->toBe(156)
         ->and((int) $policies->not_claims)->toBe(0)
         ->and((int) $policies->still_guc)->toBe(0);
 
@@ -45,7 +45,7 @@ it('re-keys every RLS policy to the claims helpers (144 policies, zero GUC refer
     ]);
 });
 
-it('keeps the RLS matrix intact: 37 scoped on, 13 off, none on-without-policies', function () {
+it('keeps the RLS matrix intact: 40 scoped on, 15 off, none on-without-policies', function () {
     $matrix = DB::connection('pgsql')->selectOne(
         <<<'SQL'
         select count(*) filter (where relrowsecurity) as rls_on,
@@ -59,8 +59,14 @@ it('keeps the RLS matrix intact: 37 scoped on, 13 off, none on-without-policies'
         SQL
     );
 
-    expect((int) $matrix->rls_on)->toBe(37)
-        ->and((int) $matrix->rls_off)->toBe(13)
+    // 55 tables total: 40 tenant-scoped (RLS on, FORCE on) + 15 off. The 15
+    // are the framework/identity/public tables: users, roles, permissions,
+    // role_permissions, organizations (tenant root — no tenant column to scope
+    // by), migrations, jobs, job_batches, failed_jobs, cache, cache_locks,
+    // personal_access_tokens, refresh_tokens, mfa_challenges, and
+    // password_reset_tokens (the last three are pre-tenant public-route flows).
+    expect((int) $matrix->rls_on)->toBe(40)
+        ->and((int) $matrix->rls_off)->toBe(15)
         ->and((int) $matrix->on_without_policies)->toBe(0);
 });
 
@@ -107,6 +113,53 @@ it('denies cross-tenant access purely from claims (read, update, delete)', funct
         // Row untouched.
         claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
         expect($c->selectOne('select status from patients where id = ?', [$patientA])->status)->toBe('active');
+    });
+});
+
+it('isolates lab orders from claims end to end (tenant, facility, mutation immunity)', function () {
+    rlsTx(rlsConn(), function ($c): void {
+        $t = claimsTenants($c);
+        $department = (string) Str::uuid();
+        $staff = (string) Str::uuid();
+        $patient = (string) Str::uuid();
+        $encounter = (string) Str::uuid();
+        $test = (string) Str::uuid();
+        $order = (string) Str::uuid();
+        $item = (string) Str::uuid();
+
+        // Full lab chain in tenant A: staff → patient → encounter → catalog
+        // test → order → item (RLS policies apply on every row).
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
+        $c->insert('insert into departments (id, tenant_id, facility_id, name, code, status) values (?, ?, ?, ?, ?, ?)', [$department, $t['tenantA'], $t['facilityA'], 'Pathology', 'pathology', 'active']);
+        $c->insert('insert into staff (id, tenant_id, facility_id, department_id, employee_code, full_name, designation, status) values (?, ?, ?, ?, ?, ?, ?, ?)', [$staff, $t['tenantA'], $t['facilityA'], $department, 'EMP-LAB', 'Lab Staff', 'Technician', 'active']);
+        $c->insert('insert into patients (id, tenant_id, facility_id, mrn, full_name, date_of_birth, sex, status) values (?, ?, ?, ?, ?, ?, ?, ?)', [$patient, $t['tenantA'], $t['facilityA'], 'MRN-LAB', 'Lab Patient', '1990-01-01', 'female', 'active']);
+        $c->insert('insert into encounters (id, tenant_id, facility_id, patient_id, provider_staff_id, type, status, started_at) values (?, ?, ?, ?, ?, ?, ?, ?)', [$encounter, $t['tenantA'], $t['facilityA'], $patient, $staff, 'opd', 'open', '2026-08-15 09:00:00+00']);
+        $c->insert('insert into lab_tests (id, tenant_id, facility_id, code, name, category, status, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?)', [$test, $t['tenantA'], $t['facilityA'], 'CBC', 'Complete Blood Count', 'laboratory', 'active', 0]);
+        $c->insert('insert into lab_orders (id, tenant_id, facility_id, patient_id, encounter_id, ordered_by_staff_id, priority, status, ordered_at, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$order, $t['tenantA'], $t['facilityA'], $patient, $encounter, $staff, 'routine', 'ordered', '2026-08-15 09:10:00+00', 0]);
+        $c->insert('insert into lab_order_items (id, tenant_id, facility_id, lab_order_id, lab_test_id) values (?, ?, ?, ?, ?)', [$item, $t['tenantA'], $t['facilityA'], $order, $test]);
+
+        // Own tenant+facility claims → visible.
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
+        expect($c->selectOne('select id from lab_orders where id = ?', [$order]))->not->toBeNull()
+            ->and($c->selectOne('select id from lab_order_items where id = ?', [$item]))->not->toBeNull();
+
+        // Another tenant → invisible; update/delete affect zero rows.
+        claimsSet($c, ['app_tenant_id' => $t['tenantB'], 'app_facility_id' => $t['facilityB']]);
+        expect($c->selectOne('select id from lab_orders where id = ?', [$order]))->toBeNull()
+            ->and($c->update('update lab_orders set status = ? where id = ?', ['reported', $order]))->toBe(0)
+            ->and($c->delete('delete from lab_orders where id = ?', [$order]))->toBe(0);
+
+        // Same tenant, a different facility → invisible (TENANT_FACILITY tier).
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityB']]);
+        expect($c->selectOne('select id from lab_orders where id = ?', [$order]))->toBeNull();
+
+        // Org-wide claims (no facility) → sees the tenant's orders.
+        claimsSet($c, ['app_tenant_id' => $t['tenantA']]);
+        expect($c->selectOne('select id from lab_orders where id = ?', [$order]))->not->toBeNull();
+
+        // The row is untouched by every attack above.
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
+        expect($c->selectOne('select status from lab_orders where id = ?', [$order])->status)->toBe('ordered');
     });
 });
 

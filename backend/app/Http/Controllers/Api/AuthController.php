@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RefreshRequest;
 use App\Models\User;
+use App\Services\MfaService;
 use App\Services\RefreshTokenService;
 use App\Support\AuditLogger;
 use App\Support\DatabaseTenantContext;
@@ -37,6 +38,7 @@ final class AuthController extends Controller
     public function __construct(
         private readonly RefreshTokenService $refreshTokens,
         private readonly AuditLogger $audit,
+        private readonly MfaService $mfa,
     ) {}
 
     public function login(LoginRequest $request): JsonResponse
@@ -64,6 +66,22 @@ final class AuthController extends Controller
             $this->audit->record('auth.login_denied', 'user', $user->getKey(), ['reason' => 'account_not_active'], $request, $user);
 
             throw new ApiException(ErrorCodes::FORBIDDEN, 'This account is not active.', 403);
+        }
+
+        // Phase 2 (MFA, SECURITY.md §3): an MFA-enabled account receives a
+        // one-shot challenge and NO tokens — password alone is never enough.
+        // The challengeId travels in error.details so the client can prompt
+        // for a code and complete it at POST auth/mfa/challenge.
+        if ($user->mfaEnabled()) {
+            $challengeId = $this->mfa->issueChallenge($user, $request->ip(), $request->userAgent());
+            $this->audit->record('auth.mfa_challenge', 'user', $user->getKey(), [], $request, $user);
+
+            throw new ApiException(
+                ErrorCodes::MFA_REQUIRED,
+                'MFA verification required.',
+                403,
+                ['challengeId' => $challengeId],
+            );
         }
 
         Cache::forget('auth.failures:'.$email);
@@ -242,6 +260,7 @@ final class AuthController extends Controller
             'id' => $user->getKey(),
             'email' => $user->email,
             'status' => $user->status,
+            'mfaEnabled' => $user->mfaEnabled(),
         ];
     }
 

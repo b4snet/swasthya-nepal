@@ -9,6 +9,7 @@ use App\Http\Requests\Patient\StorePatientRequest;
 use App\Http\Requests\Patient\UpdatePatientRequest;
 use App\Models\Consent;
 use App\Models\InsurancePolicy;
+use App\Models\Organization;
 use App\Models\Patient;
 use App\Models\PatientContact;
 use App\Models\PatientIdentifier;
@@ -45,12 +46,14 @@ final class PatientController extends Controller
         private readonly DuplicateDetector $duplicates,
     ) {}
 
-    public function index(Request $request): JsonResponse
+    public function index(Request $request, Organization $organization): JsonResponse
     {
+        AccessCheck::organization($organization->getKey(), write: false);
+
         $context = TenantContext::current();
 
         $query = Patient::query()
-            ->where('tenant_id', $context->tenantId())
+            ->where('tenant_id', $organization->getKey())
             ->orderByDesc('created_at');
 
         if (! $context->isPlatform && $context->facilityId() !== null) {

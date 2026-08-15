@@ -13,9 +13,13 @@ use App\Http\Controllers\Api\FacilityController;
 use App\Http\Controllers\Api\FacilitySettingsController;
 use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\InsurancePolicyController;
+use App\Http\Controllers\Api\LabOrderController;
+use App\Http\Controllers\Api\LabTestController;
 use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\MedicationController;
+use App\Http\Controllers\Api\MfaController;
 use App\Http\Controllers\Api\OrganizationController;
+use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\PatientContactController;
 use App\Http\Controllers\Api\PatientController;
 use App\Http\Controllers\Api\PatientDocumentController;
@@ -62,11 +66,32 @@ Route::prefix('health')->group(function (): void {
 // Public auth surface — strictest rate limits (API_CONTRACTS.md §15).
 Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:auth');
 Route::post('auth/refresh', [AuthController::class, 'refresh'])->middleware('throttle:auth');
+// Public MFA challenge completion — the ONLY path to tokens for an
+// MFA-enabled account (Phase 2; strictest throttle like login/refresh).
+Route::post('auth/mfa/challenge', [MfaController::class, 'challenge'])->middleware('throttle:auth');
 
-Route::middleware(['auth:sanctum', ResolveTenantContext::class])->group(function (): void {
+// Public password reset (Phase 2, SECURITY.md §5): request a single-use
+// token and complete the reset. Both sit behind the strict auth throttle;
+// reset additionally enforces per-account failure limiting in the service.
+Route::post('auth/password/forgot', [PasswordResetController::class, 'forgot'])->middleware('throttle:auth');
+Route::post('auth/password/reset', [PasswordResetController::class, 'reset'])->middleware('throttle:auth');
+
+// The whole API surface is rate-limited per IP (throttle:api,
+// SWASTHYA_RATE_LIMIT_API, config/swasthya.php §rate_limits) BEFORE
+// authentication so unauthenticated scanners are counted too. Auth and MFA
+// endpoints keep their own stricter limits above; writes keep the stricter
+// throttle:writes where declared. Health endpoints remain unlimited.
+Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])->group(function (): void {
     // Session.
     Route::post('auth/logout', [AuthController::class, 'logout']);
     Route::get('auth/me', [AuthController::class, 'me']);
+
+    // MFA lifecycle (Phase 2) — authenticated endpoints.
+    Route::get('auth/mfa/status', [MfaController::class, 'status']);
+    Route::post('auth/mfa/enroll', [MfaController::class, 'enroll'])->middleware('throttle:writes');
+    Route::post('auth/mfa/activate', [MfaController::class, 'activate'])->middleware('throttle:writes');
+    Route::post('auth/mfa/disable', [MfaController::class, 'disable'])->middleware('throttle:writes');
+    Route::post('auth/mfa/recovery-codes', [MfaController::class, 'regenerateRecoveryCodes'])->middleware('throttle:writes');
     Route::get('users/me', [UserController::class, 'me']);
 
     // Organizations.
@@ -351,6 +376,30 @@ Route::middleware(['auth:sanctum', ResolveTenantContext::class])->group(function
         ->middleware('authorize:medication:view');
     Route::post('organizations/{organization}/medications', [MedicationController::class, 'store'])
         ->middleware('authorize:medication:manage');
+
+    // Phase 3 slice 2 — Laboratory & radiology order lifecycle.
+    Route::get('organizations/{organization}/lab-tests', [LabTestController::class, 'index'])
+        ->middleware('authorize:lab:view');
+    Route::post('organizations/{organization}/lab-tests', [LabTestController::class, 'store'])
+        ->middleware('authorize:lab:manage');
+    Route::post('encounters/{encounter}/lab-orders', [LabOrderController::class, 'store'])
+        ->middleware('authorize:lab:order');
+    Route::get('encounters/{encounter}/lab-orders', [LabOrderController::class, 'forEncounter'])
+        ->middleware('authorize:lab:view');
+    Route::get('patients/{patient}/lab-orders', [LabOrderController::class, 'forPatient'])
+        ->middleware('authorize:lab:view');
+    Route::get('lab-orders/{labOrder}', [LabOrderController::class, 'show'])
+        ->middleware('authorize:lab:view');
+    Route::post('lab-orders/{labOrder}/collect', [LabOrderController::class, 'collect'])
+        ->middleware('authorize:lab:specimen');
+    Route::post('lab-orders/{labOrder}/process', [LabOrderController::class, 'process'])
+        ->middleware('authorize:lab:process');
+    Route::post('lab-orders/{labOrder}/results', [LabOrderController::class, 'enterResults'])
+        ->middleware('authorize:lab:result_entry');
+    Route::post('lab-orders/{labOrder}/verify', [LabOrderController::class, 'verify'])
+        ->middleware('authorize:lab:verify');
+    Route::post('lab-orders/{labOrder}/report', [LabOrderController::class, 'report'])
+        ->middleware('authorize:lab:report');
 
     // Billing and payments.
     Route::get('invoices/{invoice}', [BillingController::class, 'showInvoice'])

@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Crypt;
 use Laravel\Sanctum\HasApiTokens;
 
 /**
@@ -43,6 +44,7 @@ class User extends Authenticatable
         'email',
         'password_hash',
         'status',
+        'auth_subject_id',
         'mfa_secret_encrypted',
         'mfa_recovery_codes_encrypted',
         'last_login_at',
@@ -93,5 +95,59 @@ class User extends Authenticatable
     public function refreshTokens(): HasMany
     {
         return $this->hasMany(RefreshToken::class);
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* MFA (PROGRAM PHASE 2, SECURITY.md §3) */
+    /* ------------------------------------------------------------------ */
+
+    /**
+     * Fully enrolled AND activated: a stored (encrypted) secret AND a
+     * non-empty set of recovery-code hashes. Enrollment alone (secret set,
+     * no recovery hashes) does not enable the requirement.
+     */
+    public function mfaEnabled(): bool
+    {
+        return $this->mfa_secret_encrypted !== null
+            && is_array($this->mfa_recovery_codes_encrypted)
+            && count($this->mfa_recovery_codes_encrypted) > 0;
+    }
+
+    public function mfaSecret(): ?string
+    {
+        return $this->mfa_secret_encrypted !== null
+            ? Crypt::decryptString($this->mfa_secret_encrypted)
+            : null;
+    }
+
+    public function setMfaSecret(string $secret): void
+    {
+        $this->forceFill(['mfa_secret_encrypted' => Crypt::encryptString($secret)])->save();
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function mfaRecoveryHashes(): array
+    {
+        $codes = $this->mfa_recovery_codes_encrypted;
+
+        return is_array($codes) ? array_values($codes) : [];
+    }
+
+    /**
+     * @param  list<string>  $hashes
+     */
+    public function setMfaRecoveryHashes(array $hashes): void
+    {
+        $this->forceFill(['mfa_recovery_codes_encrypted' => $hashes])->save();
+    }
+
+    public function clearMfa(): void
+    {
+        $this->forceFill([
+            'mfa_secret_encrypted' => null,
+            'mfa_recovery_codes_encrypted' => null,
+        ])->save();
     }
 }

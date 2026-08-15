@@ -23,37 +23,6 @@ use Illuminate\Support\Str;
  */
 
 /**
- * The dedicated least-privilege connection (config/database.php 'pgsql_rls').
- */
-function rlsConn(): ConnectionInterface
-{
-    return DB::connection('pgsql_rls');
-}
-
-/**
- * Set a transaction-local RLS GUC on the app-role connection.
- */
-function rlsSet(ConnectionInterface $c, string $name, ?string $value): void
-{
-    $c->statement('select set_config(?, ?, true)', ['app.'.$name, $value ?? '']);
-}
-
-/**
- * Run $fn inside a transaction on the app-role connection and ALWAYS roll
- * back (including on assertion failure) so the test database stays clean.
- */
-function rlsTx(ConnectionInterface $c, callable $fn): mixed
-{
-    $c->beginTransaction();
-
-    try {
-        return $fn($c);
-    } finally {
-        $c->rollBack();
-    }
-}
-
-/**
  * @return array{tenantA: string, tenantB: string, facilityA: string, facilityB: string}
  */
 function rlsTenants(ConnectionInterface $c): array
@@ -399,8 +368,15 @@ it('keeps two concurrent connections with different tenants isolated', function 
 
         return $row === false ? null : $row;
     };
-    $set = function (PDO $pdo, string $name, ?string $value) use ($run): void {
+    $set = function (PDO $pdo, string $name, ?string $value) use ($run, $one): void {
         $run($pdo, 'select set_config(?, ?, true)', ['app.'.$name, $value ?? '']);
+
+        $claims = [];
+        foreach (['user_id', 'tenant_id', 'facility_id', 'branch_id', 'is_platform'] as $key) {
+            $row = $one($pdo, 'select current_setting(?, true) as value', ['app.'.$key]);
+            $claims['app_'.$key] = (string) ($row->value ?? '');
+        }
+        $run($pdo, 'select set_config(?, ?, true)', ['request.jwt.claims', json_encode($claims)]);
     };
     $tenant = function (PDO $pdo, string $label) use ($run): array {
         $org = (string) Str::uuid();

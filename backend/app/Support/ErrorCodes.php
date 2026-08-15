@@ -22,6 +22,8 @@ final class ErrorCodes
 
     public const MFA_REQUIRED = 'MFA_REQUIRED';
 
+    public const INVALID_CODE = 'INVALID_CODE';
+
     public const INVALID_CREDENTIALS = 'INVALID_CREDENTIALS';
 
     public const FORBIDDEN = 'FORBIDDEN';

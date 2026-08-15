@@ -128,4 +128,12 @@ class Encounter extends Model
     {
         return $this->hasMany(Charge::class, 'encounter_id');
     }
+
+    /**
+     * @return HasMany<LabOrder, $this>
+     */
+    public function labOrders(): HasMany
+    {
+        return $this->hasMany(LabOrder::class, 'encounter_id');
+    }
 }

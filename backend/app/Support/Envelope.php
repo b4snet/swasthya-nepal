@@ -20,6 +20,16 @@ final class Envelope
 
     public const HEADER_CORRELATION_ID = 'X-Correlation-Id';
 
+    /**
+     * json_encode options for every API payload: hex-escape HTML-significant
+     * characters (JSON_HEX_TAG/APOS/AMP/QUOT) so stored user text can never
+     * become executable markup if a payload is ever embedded in an HTML
+     * context, while JSON_UNESCAPED_UNICODE keeps non-ASCII data readable.
+     * (Laravel's response()->json() defaults to options=0, which serializes
+     * '<script>' raw.)
+     */
+    private const JSON_OPTIONS = \JSON_HEX_TAG | \JSON_HEX_APOS | \JSON_HEX_AMP | \JSON_HEX_QUOT | \JSON_UNESCAPED_UNICODE;
+
     public static function success(
         mixed $data,
         array $meta = [],
@@ -33,7 +43,7 @@ final class Envelope
                 'data' => $data,
                 'meta' => array_replace_recursive(self::baseMeta(), $meta),
                 'links' => (object) $links,
-            ], $status, $headers),
+            ], $status, $headers, self::JSON_OPTIONS),
             $request,
         );
     }
@@ -56,7 +66,7 @@ final class Envelope
             $payload['error']['details'] = $details;
         }
 
-        return self::withIds(response()->json($payload, $status, $headers), $request);
+        return self::withIds(response()->json($payload, $status, $headers, self::JSON_OPTIONS), $request);
     }
 
     /**
