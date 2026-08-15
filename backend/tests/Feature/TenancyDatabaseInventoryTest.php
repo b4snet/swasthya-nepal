@@ -8,7 +8,7 @@ use Illuminate\Support\Str;
  * PROGRAM PHASE 1 — systematic database-layer tenancy verification.
  *
  * Unlike the representative isolation suites (DatabaseRowLevelSecurityTest,
- * ClinicalIsolationTest, ...), this suite iterates the FULL set of 40
+ * ClinicalIsolationTest, ...), this suite iterates the FULL set of 42
  * tenant-owned tables: it seeds a complete two-tenant fixture chain and then
  * probes every table for cross-tenant SELECT/UPDATE/DELETE isolation as the
  * least-privilege `swasthya_app` role (NOBYPASSRLS) under transaction-local
@@ -31,6 +31,8 @@ const RLS_SCOPED_TABLES = [
     'medications', 'charges', 'invoices', 'payments', 'branches', 'patients',
     // Phase 3 slice 2 — laboratory & radiology order lifecycle.
     'lab_tests', 'lab_orders', 'lab_order_items',
+    // Phase 3 slice 3 — pharmacy dispensing & inventory.
+    'inventory_items', 'inventory_movements',
     // TENANT_ONLY
     'payers', 'mrn_counters', 'patient_identifiers', 'patient_contacts',
     'insurance_policies', 'patient_documents', 'consents',
@@ -228,6 +230,16 @@ function seedTenantChain(ConnectionInterface $c, string $tenantId, string $facil
     $c->insert('insert into lab_order_items (id, tenant_id, facility_id, lab_order_id, lab_test_id) values (?, ?, ?, ?, ?)', [$labItem, $tenantId, $facilityId, $labOrder, $labTest]);
     $ids['lab_order_items'] = $labItem;
 
+    // Phase 3 slice 3 — pharmacy inventory (inventory_items →
+    // inventory_movements, chained to the medication above).
+    $inventoryItem = (string) Str::uuid();
+    $c->insert('insert into inventory_items (id, tenant_id, facility_id, medication_id, quantity_on_hand, reorder_level, lock_version) values (?, ?, ?, ?, ?, ?, ?)', [$inventoryItem, $tenantId, $facilityId, $medication, 100, 10, 0]);
+    $ids['inventory_items'] = $inventoryItem;
+
+    $movement = (string) Str::uuid();
+    $c->insert('insert into inventory_movements (id, tenant_id, facility_id, inventory_item_id, movement_type, quantity_delta, reason, occurred_at) values (?, ?, ?, ?, ?, ?, ?, ?)', [$movement, $tenantId, $facilityId, $inventoryItem, 'receipt', 100, 'Chain receipt', '2026-08-15 12:00:00+00']);
+    $ids['inventory_movements'] = $movement;
+
     $audit = (string) Str::uuid();
     $c->insert('insert into audit_events (id, tenant_id, facility_id, occurred_at, actor_type, action, resource_type, payload, correlation_id, prev_hash, event_hash) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$audit, $tenantId, $facilityId, '2026-08-15 00:00:00+00', 'user', 'chain.seeded', 'test', '{}', (string) Str::uuid(), null, hash('sha256', (string) Str::uuid())]);
     $ids['audit_events'] = $audit;
@@ -268,6 +280,8 @@ function chainUpdateColumns(): array
         'insurance_policies' => ['policy_number', 'upd'],
         'invoice_lines' => ['description', 'upd'],
         'invoices' => ['void_reason', 'upd'],
+        'inventory_items' => ['reorder_level', '12'],
+        'inventory_movements' => ['reason', 'upd'],
         'lab_order_items' => ['result_unit', 'upd'],
         'lab_orders' => ['clinical_indication', 'upd'],
         'lab_tests' => ['method', 'upd'],
@@ -321,7 +335,7 @@ function inventoryTenants(ConnectionInterface $c): array
     return $t;
 }
 
-it('records the current RLS inventory: 40 scoped tables enabled + FORCED, 15 unscoped off', function () {
+it('records the current RLS inventory: 42 scoped tables enabled + FORCED, 15 unscoped off', function () {
     $rows = DB::connection('pgsql')->select(
         'select c.relname as table_name, c.relrowsecurity::text as enabled, c.relforcerowsecurity::text as forced
          from pg_class c
@@ -459,7 +473,7 @@ it('FORCE RLS binds a non-superuser table owner (defense-in-depth proof)', funct
     }
 });
 
-it('denies cross-tenant SELECT, UPDATE, and DELETE on all 40 tenant-owned tables — two-sided', function () {
+it('denies cross-tenant SELECT, UPDATE, and DELETE on all 42 tenant-owned tables — two-sided', function () {
     rlsTx(rlsConn(), function ($c): void {
         $t = inventoryTenants($c);
 

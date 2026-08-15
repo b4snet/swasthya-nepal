@@ -38,6 +38,8 @@ class PrescriptionLine extends Model
         'instructions',
         'status',
         'line_no',
+        'dispensed_by_staff_id',
+        'dispensed_at',
         'created_by',
     ];
 
@@ -49,6 +51,7 @@ class PrescriptionLine extends Model
         return [
             'quantity_minor' => 'integer',
             'line_no' => 'integer',
+            'dispensed_at' => 'datetime',
         ];
     }
 
@@ -66,5 +69,13 @@ class PrescriptionLine extends Model
     public function medication(): BelongsTo
     {
         return $this->belongsTo(Medication::class, 'medication_id');
+    }
+
+    /**
+     * @return BelongsTo<Staff, $this>
+     */
+    public function dispensedBy(): BelongsTo
+    {
+        return $this->belongsTo(Staff::class, 'dispensed_by_staff_id');
     }
 }

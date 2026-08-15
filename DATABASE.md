@@ -671,31 +671,30 @@ erDiagram
 
 | Aspect | Design |
 |---|---|
-| **Purpose** | The dispensing event: what was given from which batch against which prescription line, with verification and reversal handling. |
-| **Primary key** | `id uuid` |
-| **Tenant ownership** | Tenant-scoped: `tenant_id NOT NULL`, `facility_id NOT NULL`, `branch_id NULL`. |
-| **Important fields** | `tenant_id`, `facility_id`, `branch_id`, `prescription_line_id uuid NOT NULL`, `stock_batch_id uuid NOT NULL`, `quantity_minor bigint NOT NULL`, `dispensed_by uuid NOT NULL`, `verified_by uuid NULL`, `dispensed_at timestamptz`, `status text` (prepared, dispensed, returned, reversed), `reversal_reason text NULL`, `reversed_by uuid NULL`, `reversed_at timestamptz NULL`, `price_minor bigint`, `currency char(3)` |
-| **Relationships** | N–1 `prescription_lines`; N–1 `stock_batches`; 1–0..1 `charges` (source) |
-| **Indexes** | `(tenant_id, prescription_line_id)`; `(tenant_id, stock_batch_id, dispensed_at)`; `(tenant_id, dispensed_by, dispensed_at)` |
-| **Uniqueness** | None beyond PK — each dispense is its own audited event |
-| **Audit** | Every dispense (who, which batch, verification), returns and reversals (reason, who) — medication errors must be fully reconstructable |
-| **Soft deletion** | No — a reversal is a status with audit, never a delete |
+| **Purpose** | Prescription dispensing: the pharmacist verifies the prescription (drafted → active) and dispenses it (active → dispensed). The LINE is the unit of dispensing — `prescription_lines` carries the per-line stamps `dispensed_by_staff_id`, `dispensed_at` (plus `status` ordered → dispensed), and the header carries the verification stamps `verified_by_staff_id`, `verified_at`. A standalone `dispensings` table with batch linkage, returns, and reversals is a later-phase plan. |
+| **Primary key** | `prescriptions.id` + `prescription_lines.id` (composite-FK supported) |
+| **Tenant ownership** | Tenant-scoped via the prescription/encounter (TENANT_FACILITY; the effective facility is the encounter's facility — `AccessCheck::prescription`). |
+| **Important fields** | Lines: `status` (ordered → dispensed, cancelled), `dispensed_by_staff_id NULL`, `dispensed_at NULL`. Header: `status` (drafted → active → dispensed; discontinued/expired terminal), `verified_by_staff_id NULL`, `verified_at NULL`, `lock_version` |
+| **Relationships** | N–1 `prescription_lines` (dispense movements); charges `source_type='prescription'` posted per dispensed line (price × quantity, minor units) |
+| **Uniqueness** | Header CAS on `(status, lock_version)`; line `(tenant_id, prescription_id, line_no)` unique |
+| **Audit** | `pharmacy.verified`, `pharmacy.dispensed` — facts only (patientId/encounterId, lineCount, totalAmountMinor, staff ids), never names or clinical content |
+| **Soft deletion** | No — dispensing is a status, a reversal would be a new audited event (planned) |
 | **Retention** | Clinical class |
 
-### 3.31 inventory (items, stores, stock_balances, stock_movements, stock_batches)
+### 3.31 inventory (inventory_items, inventory_movements)
 
 | Aspect | Design |
 |---|---|
-| **Purpose** | Item master, stores, live balances, an append-only movement ledger, and expiry-tracked batches. Five tables; the movement ledger is the source of stock truth. |
+| **Purpose** | Implemented lean stock model: one `inventory_items` row per (tenant, facility, medication) with a live on-hand quantity, plus the append-only `inventory_movements` ledger (receipt / adjustment / dispense). The full designed model — item master, stores, expiry-tracked `stock_batches`, BRIN-ledger — is a later-phase plan; batches/expiry are not implemented yet. |
 | **Primary key** | each table: `id uuid` |
-| **Tenant ownership** | Tenant-scoped: `tenant_id NOT NULL`; `facility_id`/`branch_id` where placement is local. |
-| **Important fields** | Items: `tenant_id`, `facility_id`, `code varchar(50)`, `name text`, `category_id uuid NULL`, `unit text`, `reorder_point bigint NULL`, `price_minor bigint`, `is_medicine boolean`, `status text`, `lock_version bigint`. Stores: `tenant_id`, `facility_id`, `branch_id NULL`, `location_id uuid NULL`, `name text`, `code varchar(50)`, `status text`. Stock balances: `tenant_id`, `store_id uuid NOT NULL`, `item_id uuid NOT NULL`, `batch_id uuid NULL`, `quantity_minor bigint NOT NULL`, `lock_version bigint`. Stock movements: `tenant_id`, `store_id`, `item_id`, `batch_id NULL`, `type text` (receipt, issue, transfer_out, transfer_in, adjustment, wastage, return), `quantity_minor bigint`, `direction int` (+1/−1), `reference_type text`, `reference_id uuid NULL`, `reason_code text NULL` (required for adjustments), `created_by uuid`, `approved_by uuid NULL`, `created_at`. Stock batches: `tenant_id`, `item_id uuid NOT NULL`, `batch_no varchar(100)`, `expiry_date date NULL`, `received_quantity_minor bigint`, `remaining_quantity_minor bigint`, `status text` (available, quarantined, expired, depleted) |
-| **Relationships** | Balances N–1 `stores`, N–1 `items` (tenant-safe FKs); movements N–1 balances context; batches N–1 `items`; movements typed-reference sources (receipt → GRN, issue → dispensing) |
-| **Indexes** | Balances: unique `(store_id, item_id, batch_id)` (batch NULL for non-batched items — partial unique variants); movements: `(tenant_id, store_id, created_at)` **BRIN**; batches: `(tenant_id, item_id, expiry_date)`; `(tenant_id, status)` for expiring-stock alerts |
-| **Uniqueness** | One balance per (store, item, batch); one movement per source reference (receipt/issue idempotency via reference FKs) |
-| **Audit** | Every movement with reason codes and approval trail; adjustments require approval; valuation impact recorded |
-| **Soft deletion** | No for movements/batches (ledger truth); items/stores soft-delete with RESTRICT while balances exist |
-| **Retention** | Financial/operational class: movement ledger retained per financial rules; expired batches archived after disposition |
+| **Tenant ownership** | Tenant-scoped: `tenant_id NOT NULL`, `facility_id NOT NULL` (TENANT_FACILITY tier, RLS enabled + FORCED). |
+| **Important fields** | Items: `tenant_id`, `facility_id`, `medication_id uuid NOT NULL`, `quantity_on_hand bigint NOT NULL CHECK (>= 0)`, `reorder_level bigint NULL CHECK (>= 0)`, `lock_version bigint`, `created_by/updated_by NULL`. Movements: `tenant_id`, `facility_id`, `inventory_item_id uuid NOT NULL`, `movement_type text` (receipt, adjustment, dispense) CHECK, `quantity_delta bigint NOT NULL CHECK (<> 0)`, `reason text NULL` (required for adjustments), `prescription_line_id uuid NULL` (dispense linkage, composite FK), `occurred_at timestamptz`, `created_by NULL` |
+| **Relationships** | Items N–1 `medications` (composite FK), N–1 `facilities`; movements N–1 `inventory_items` (composite FK), N–1 `prescription_lines` (composite FK) |
+| **Indexes** | Items: unique `(tenant_id, facility_id, medication_id)`; `(tenant_id, id)` composite-FK unique; `(tenant_id, facility_id)`; `(tenant_id, medication_id)`. Movements: `(tenant_id, id)`; `(tenant_id, inventory_item_id, occurred_at)` |
+| **Uniqueness** | One stock row per (facility, medication); receipts upsert atomically (INSERT … ON CONFLICT DO UPDATE); dispenses/adjustments are CAS on `(quantity_on_hand, lock_version)` — stock can never go negative or double-deduct |
+| **Audit** | `inventory.received`, `inventory.adjusted` — facts only; every change is a ledger row, never a silent overwrite |
+| **Soft deletion** | No for movements (ledger truth); items are not soft-deletable in the implemented model (planned with the full item master) |
+| **Retention** | Financial/operational class |
 
 ### 3.32 procurement (vendors, purchase_requests, purchase_orders, goods_receipts)
 

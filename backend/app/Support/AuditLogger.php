@@ -10,6 +10,8 @@ use App\Models\Charge;
 use App\Models\ClinicalNote;
 use App\Models\Department;
 use App\Models\Encounter;
+use App\Models\InventoryItem;
+use App\Models\InventoryMovement;
 use App\Models\Invoice;
 use App\Models\LabOrder;
 use App\Models\LabTest;
@@ -85,6 +87,9 @@ final class AuditLogger
         // Phase 3 slice 2 — laboratory & radiology.
         'lab_test' => LabTest::class,
         'lab_order' => LabOrder::class,
+        // Phase 3 slice 3 — pharmacy inventory ledger.
+        'inventory_item' => InventoryItem::class,
+        'inventory_movement' => InventoryMovement::class,
     ];
 
     /**

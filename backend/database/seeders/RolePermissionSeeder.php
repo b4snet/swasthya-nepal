@@ -119,6 +119,14 @@ class RolePermissionSeeder extends Seeder
             'lab:report' => ['domain' => 'lab', 'description' => 'Release final laboratory/radiology reports'],
             'lab:manage' => ['domain' => 'lab', 'description' => 'Manage the lab/radiology test catalog'],
 
+            // Phase 3 slice 3 — pharmacy dispensing & inventory
+            // (PRODUCT_REQUIREMENTS §6.9). Verification and dispensing are
+            // the same pharmacist workflow (unlike lab's entry ≠
+            // verification, which is a laboratory-specific safety rule).
+            'pharmacy:view' => ['domain' => 'pharmacy', 'description' => 'View prescriptions, dispensing status, and inventory within scope'],
+            'pharmacy:dispense' => ['domain' => 'pharmacy', 'description' => 'Verify and dispense prescriptions (stock deduction, audited)'],
+            'pharmacy:stock' => ['domain' => 'pharmacy', 'description' => 'Manage pharmacy inventory (receipts and adjustments)'],
+
             // Billing and payments (Phase 13 spine, shipped with the
             // first clinical workflow).
             'billing:view' => ['domain' => 'billing', 'description' => 'View charges, invoices, and payments within scope'],
@@ -190,7 +198,7 @@ class RolePermissionSeeder extends Seeder
                     'patient:view', 'patient:search',
                     'insurance:view', 'consent:view', 'document:view', 'payer:view',
                     'schedule:view', 'appointment:view', 'queue:view',
-                    'encounter:view', 'medication:view', 'billing:view',
+                    'encounter:view', 'medication:view', 'pharmacy:view', 'billing:view',
                 ],
             ],
             'org_admin' => [
@@ -233,6 +241,7 @@ class RolePermissionSeeder extends Seeder
                     'encounter:prescribe', 'encounter:sign',
                     'medication:view', 'medication:manage',
                     'lab:view', 'lab:order', 'lab:manage',
+                    'pharmacy:view', 'pharmacy:stock',
                     'billing:view', 'billing:invoice', 'billing:collect',
                 ],
             ],
@@ -281,6 +290,7 @@ class RolePermissionSeeder extends Seeder
                     'encounter:view', 'encounter:create', 'encounter:document',
                     'encounter:prescribe', 'encounter:sign',
                     'medication:view', 'medication:manage',
+                    'pharmacy:view', 'pharmacy:stock',
                     'billing:view', 'billing:invoice', 'billing:collect',
                 ],
             ],
@@ -344,7 +354,7 @@ class RolePermissionSeeder extends Seeder
                     'schedule:view', 'appointment:view', 'queue:view',
                     'encounter:view', 'encounter:create', 'encounter:document',
                     'encounter:prescribe', 'encounter:sign',
-                    'medication:view', 'billing:view',
+                    'medication:view', 'pharmacy:view', 'billing:view',
                     'lab:view', 'lab:order',
                 ],
             ],
@@ -358,15 +368,20 @@ class RolePermissionSeeder extends Seeder
                     'insurance:view', 'consent:view', 'document:view',
                     'schedule:view', 'appointment:view', 'queue:view',
                     'encounter:view', 'encounter:document',
-                    'medication:view', 'billing:view',
+                    'medication:view', 'pharmacy:view', 'billing:view',
                     'lab:view',
                 ],
             ],
             'pharmacist' => [
                 'name' => 'Pharmacist',
                 'scope_type' => 'facility',
-                // Phase 5 — minimal patient visibility for dispensing.
-                'permissions' => ['patient:view', 'patient:search'],
+                // Phase 5 — minimal patient visibility for dispensing;
+                // Phase 3 slice 3 — the full dispensing surface: verify,
+                // dispense (stock deduction), and stock management.
+                'permissions' => [
+                    'patient:view', 'patient:search',
+                    'pharmacy:view', 'pharmacy:dispense', 'pharmacy:stock',
+                ],
             ],
             'lab_technician' => [
                 'name' => 'Lab Technician',

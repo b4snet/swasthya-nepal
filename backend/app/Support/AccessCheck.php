@@ -139,6 +139,39 @@ final class AccessCheck
     }
 
     /**
+     * Scope check for a prescription: the row carries tenant_id but not
+     * facility_id — the effective facility is its encounter's facility (the
+     * same anchor the pharmacy workflow dispenses from). An orphaned
+     * prescription (no encounter) is out of scope for everyone but platform.
+     */
+    public static function prescription(Model $prescription, bool $write): Model
+    {
+        $context = TenantContext::current();
+
+        if ($context->isPlatform) {
+            return $prescription;
+        }
+
+        if ($prescription->getAttribute('tenant_id') !== $context->tenantId()) {
+            self::deny($write);
+        }
+
+        $encounter = $prescription->relationLoaded('encounter')
+            ? $prescription->getRelation('encounter')
+            : $prescription->encounter;
+
+        if ($encounter === null || ! is_string($encounter->getAttribute('facility_id'))) {
+            self::deny($write);
+        }
+
+        if ($context->facilityId() !== null && $encounter->getAttribute('facility_id') !== $context->facilityId()) {
+            self::deny($write);
+        }
+
+        return $prescription;
+    }
+
+    /**
      * Scope check for a patient child (identifiers, contacts, policies,
      * consents, documents, timeline): these rows carry tenant_id but not
      * facility_id — the effective scope is their PARENT patient's facility.

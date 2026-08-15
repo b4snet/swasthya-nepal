@@ -17,7 +17,7 @@ use Illuminate\Support\Str;
  * exercised end-to-end. Every test runs in a transaction on the app-role
  * connection and rolls back in all paths: no fixtures leak.
  */
-it('re-keys every RLS policy to the claims helpers (156 policies, zero GUC references)', function () {
+it('re-keys every RLS policy to the claims helpers (164 policies, zero GUC references)', function () {
     $policies = DB::connection('pgsql')->select(
         <<<'SQL'
         select count(*) as total,
@@ -29,7 +29,7 @@ it('re-keys every RLS policy to the claims helpers (156 policies, zero GUC refer
         SQL
     )[0];
 
-    expect((int) $policies->total)->toBe(156)
+    expect((int) $policies->total)->toBe(164)
         ->and((int) $policies->not_claims)->toBe(0)
         ->and((int) $policies->still_guc)->toBe(0);
 
@@ -45,7 +45,7 @@ it('re-keys every RLS policy to the claims helpers (156 policies, zero GUC refer
     ]);
 });
 
-it('keeps the RLS matrix intact: 40 scoped on, 15 off, none on-without-policies', function () {
+it('keeps the RLS matrix intact: 42 scoped on, 15 off, none on-without-policies', function () {
     $matrix = DB::connection('pgsql')->selectOne(
         <<<'SQL'
         select count(*) filter (where relrowsecurity) as rls_on,
@@ -59,13 +59,13 @@ it('keeps the RLS matrix intact: 40 scoped on, 15 off, none on-without-policies'
         SQL
     );
 
-    // 55 tables total: 40 tenant-scoped (RLS on, FORCE on) + 15 off. The 15
+    // 57 tables total: 42 tenant-scoped (RLS on, FORCE on) + 15 off. The 15
     // are the framework/identity/public tables: users, roles, permissions,
     // role_permissions, organizations (tenant root — no tenant column to scope
     // by), migrations, jobs, job_batches, failed_jobs, cache, cache_locks,
     // personal_access_tokens, refresh_tokens, mfa_challenges, and
     // password_reset_tokens (the last three are pre-tenant public-route flows).
-    expect((int) $matrix->rls_on)->toBe(40)
+    expect((int) $matrix->rls_on)->toBe(42)
         ->and((int) $matrix->rls_off)->toBe(15)
         ->and((int) $matrix->on_without_policies)->toBe(0);
 });
@@ -160,6 +160,47 @@ it('isolates lab orders from claims end to end (tenant, facility, mutation immun
         // The row is untouched by every attack above.
         claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
         expect($c->selectOne('select status from lab_orders where id = ?', [$order])->status)->toBe('ordered');
+    });
+});
+
+it('isolates pharmacy inventory from claims end to end (tenant, facility, mutation immunity)', function () {
+    rlsTx(rlsConn(), function ($c): void {
+        $t = claimsTenants($c);
+        $medication = (string) Str::uuid();
+        $item = (string) Str::uuid();
+        $movement = (string) Str::uuid();
+
+        // Full pharmacy chain in tenant A: medication → inventory item →
+        // movement (RLS policies apply on every row).
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
+        $c->insert('insert into medications (id, tenant_id, facility_id, code, generic_name, strength, form, unit, price_minor, currency, is_controlled, status, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$medication, $t['tenantA'], $t['facilityA'], 'PARA', 'Paracetamol', '500mg', 'tablet', 'tab', 500, 'NPR', false, 'active', 0]);
+        $c->insert('insert into inventory_items (id, tenant_id, facility_id, medication_id, quantity_on_hand, reorder_level, lock_version) values (?, ?, ?, ?, ?, ?, ?)', [$item, $t['tenantA'], $t['facilityA'], $medication, 100, 10, 0]);
+        $c->insert('insert into inventory_movements (id, tenant_id, facility_id, inventory_item_id, movement_type, quantity_delta, reason, occurred_at) values (?, ?, ?, ?, ?, ?, ?, ?)', [$movement, $t['tenantA'], $t['facilityA'], $item, 'receipt', 100, 'Claims receipt', '2026-08-15 09:00:00+00']);
+
+        // Own tenant+facility claims → visible.
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
+        expect($c->selectOne('select id from inventory_items where id = ?', [$item]))->not->toBeNull()
+            ->and($c->selectOne('select id from inventory_movements where id = ?', [$movement]))->not->toBeNull();
+
+        // Another tenant → invisible; update/delete affect zero rows.
+        claimsSet($c, ['app_tenant_id' => $t['tenantB'], 'app_facility_id' => $t['facilityB']]);
+        expect($c->selectOne('select id from inventory_items where id = ?', [$item]))->toBeNull()
+            ->and($c->update('update inventory_items set reorder_level = ? where id = ?', [20, $item]))->toBe(0)
+            ->and($c->delete('delete from inventory_items where id = ?', [$item]))->toBe(0)
+            ->and($c->update('update inventory_movements set reason = ? where id = ?', ['pwned', $movement]))->toBe(0);
+
+        // Same tenant, a different facility → invisible (TENANT_FACILITY tier).
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityB']]);
+        expect($c->selectOne('select id from inventory_items where id = ?', [$item]))->toBeNull();
+
+        // Org-wide claims (no facility) → sees the tenant's inventory.
+        claimsSet($c, ['app_tenant_id' => $t['tenantA']]);
+        expect($c->selectOne('select id from inventory_items where id = ?', [$item]))->not->toBeNull();
+
+        // The rows are untouched by every attack above.
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
+        expect($c->selectOne('select quantity_on_hand from inventory_items where id = ?', [$item])->quantity_on_hand)->toBe(100)
+            ->and($c->selectOne('select movement_type from inventory_movements where id = ?', [$movement])->movement_type)->toBe('receipt');
     });
 });
 

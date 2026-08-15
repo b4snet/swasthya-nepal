@@ -39,6 +39,8 @@ class Prescription extends Model
         'status',
         'notes',
         'lock_version',
+        'verified_by_staff_id',
+        'verified_at',
         'created_by',
         'updated_by',
     ];
@@ -50,6 +52,7 @@ class Prescription extends Model
     {
         return [
             'lock_version' => 'integer',
+            'verified_at' => 'datetime',
         ];
     }
 
@@ -75,6 +78,14 @@ class Prescription extends Model
     public function prescriber(): BelongsTo
     {
         return $this->belongsTo(Staff::class, 'prescriber_staff_id');
+    }
+
+    /**
+     * @return BelongsTo<Staff, $this>
+     */
+    public function verifiedBy(): BelongsTo
+    {
+        return $this->belongsTo(Staff::class, 'verified_by_staff_id');
     }
 
     /**

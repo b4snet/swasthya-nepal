@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\FacilityController;
 use App\Http\Controllers\Api\FacilitySettingsController;
 use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\InsurancePolicyController;
+use App\Http\Controllers\Api\InventoryController;
 use App\Http\Controllers\Api\LabOrderController;
 use App\Http\Controllers\Api\LabTestController;
 use App\Http\Controllers\Api\LocationController;
@@ -26,6 +27,7 @@ use App\Http\Controllers\Api\PatientDocumentController;
 use App\Http\Controllers\Api\PatientIdentifierController;
 use App\Http\Controllers\Api\PayerController;
 use App\Http\Controllers\Api\PermissionController;
+use App\Http\Controllers\Api\PharmacyController;
 use App\Http\Controllers\Api\PlatformAssignmentController;
 use App\Http\Controllers\Api\PlatformSupportController;
 use App\Http\Controllers\Api\RoleAssignmentController;
@@ -402,6 +404,22 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
         ->middleware('authorize:lab:report');
 
     // Billing and payments.
+    // Phase 3 slice 3 — pharmacy dispensing & inventory
+    // (PRODUCT_REQUIREMENTS §6.9): prescription → verification → stock
+    // check → dispense → inventory deduction → billing.
+    Route::get('organizations/{organization}/inventory', [InventoryController::class, 'index'])
+        ->middleware('authorize:pharmacy:view');
+    Route::post('organizations/{organization}/inventory', [InventoryController::class, 'store'])
+        ->middleware('authorize:pharmacy:stock');
+    Route::post('inventory-items/{inventoryItem}/adjust', [InventoryController::class, 'adjust'])
+        ->middleware('authorize:pharmacy:stock');
+    Route::get('prescriptions/{prescription}', [PharmacyController::class, 'show'])
+        ->middleware('authorize:pharmacy:view');
+    Route::post('prescriptions/{prescription}/verify', [PharmacyController::class, 'verify'])
+        ->middleware('authorize:pharmacy:dispense');
+    Route::post('prescriptions/{prescription}/dispense', [PharmacyController::class, 'dispense'])
+        ->middleware('authorize:pharmacy:dispense');
+
     Route::get('invoices/{invoice}', [BillingController::class, 'showInvoice'])
         ->middleware('authorize:billing:view');
     Route::get('invoices/{invoice}/payments', [BillingController::class, 'payments'])
