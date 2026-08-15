@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2022", "DOM"],
+    "types": [],
+    "strict": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": [
+    "../errors.ts",
+    "../jwt.ts",
+    "../types.ts",
+    "../claims.ts",
+    "../context.ts",
+    "../authorize.ts",
+    "../envelope.ts",
+    "../identity.ts",
+    "../health_auth.ts"
+  ]
+}
