@@ -1,0 +1,150 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Billing\RejectRefundRequest;
+use App\Http\Requests\Billing\StoreRefundRequest;
+use App\Models\Charge;
+use App\Models\RefundRequest;
+use App\Services\BillingService;
+use App\Support\AccessCheck;
+use App\Support\AuditLogger;
+use App\Support\Envelope;
+use App\Support\TenantContext;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+
+/**
+ * Phase 3 slice 5 — the refund/adjustment request surface (PRODUCT_REQUIREMENTS
+ * §6.13, DATABASE.md §3.33): a posted charge → refund/adjustment request →
+ * authorized approval → immutable reversing entry. The approved request IS
+ * the reversal; the original charge is never mutated.
+ *
+ * AccessCheck::scoped covers tenant + facility scope on both the charge and
+ * the request (refund_requests carries tenant_id + facility_id). Segregation
+ * of duties: the approver must differ from the requester (enforced in
+ * BillingService).
+ */
+final class RefundController extends Controller
+{
+    public function __construct(
+        private readonly AuditLogger $audit,
+        private readonly BillingService $billing,
+    ) {}
+
+    /**
+     * GET charges/{charge}/refunds — the requests (and approved reversals)
+     * against one charge, oldest first.
+     */
+    public function index(Request $request, Charge $charge): JsonResponse
+    {
+        AccessCheck::scoped($charge, write: false);
+
+        $requests = $charge->refunds()
+            ->orderBy('created_at')
+            ->get()
+            ->map(fn (RefundRequest $r): array => self::present($r))
+            ->values();
+
+        return Envelope::success(data: $requests, request: $request);
+    }
+
+    /**
+     * POST charges/{charge}/refunds — request a refund/adjustment.
+     */
+    public function store(StoreRefundRequest $request, Charge $charge): JsonResponse
+    {
+        AccessCheck::scoped($charge, write: true);
+
+        $context = TenantContext::current();
+
+        $refundRequest = $this->billing->requestRefund(
+            (string) $context->tenantId(),
+            (string) $charge->facility_id,
+            (string) $charge->getKey(),
+            (int) $request->validated('amountMinor'),
+            (string) $request->validated('reasonCode'),
+            $request->validated('reasonNote'),
+            $context->user?->getKey(),
+        );
+
+        $this->audit->record('refund.requested', 'refund_request', $refundRequest->getKey(), [
+            'chargeId' => $charge->getKey(),
+            'amountMinor' => $refundRequest->amount_minor,
+            'reasonCode' => $refundRequest->reason_code,
+        ], $request);
+
+        return Envelope::success(data: self::present($refundRequest), status: 201, request: $request);
+    }
+
+    /**
+     * POST refund-requests/{refundRequest}/approve — the financial gate.
+     */
+    public function approve(Request $request, RefundRequest $refundRequest): JsonResponse
+    {
+        AccessCheck::scoped($refundRequest, write: true);
+
+        $context = TenantContext::current();
+
+        $approved = $this->billing->approveRefund(
+            (string) $context->tenantId(),
+            (string) $refundRequest->getKey(),
+            $context->user?->getKey(),
+        );
+
+        $this->audit->record('refund.approved', 'refund_request', $approved->getKey(), [
+            'chargeId' => $approved->charge_id,
+            'amountMinor' => $approved->amount_minor,
+            'reasonCode' => $approved->reason_code,
+        ], $request);
+
+        return Envelope::success(data: self::present($approved), request: $request);
+    }
+
+    /**
+     * POST refund-requests/{refundRequest}/reject — approver declines.
+     */
+    public function reject(RejectRefundRequest $request, RefundRequest $refundRequest): JsonResponse
+    {
+        AccessCheck::scoped($refundRequest, write: true);
+
+        $context = TenantContext::current();
+
+        $rejected = $this->billing->rejectRefund(
+            (string) $context->tenantId(),
+            (string) $refundRequest->getKey(),
+            (string) $request->validated('rejectionReason'),
+            $context->user?->getKey(),
+        );
+
+        $this->audit->record('refund.rejected', 'refund_request', $rejected->getKey(), [
+            'chargeId' => $rejected->charge_id,
+            'amountMinor' => $rejected->amount_minor,
+            'reasonCode' => $rejected->reason_code,
+        ], $request);
+
+        return Envelope::success(data: self::present($rejected), request: $request);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function present(RefundRequest $request): array
+    {
+        return [
+            'id' => $request->getKey(),
+            'chargeId' => $request->charge_id,
+            'amountMinor' => $request->amount_minor,
+            'reasonCode' => $request->reason_code,
+            'status' => $request->status,
+            'requestedBy' => $request->requested_by,
+            'approvedBy' => $request->approved_by,
+            'approvedAt' => $request->approved_at?->toIso8601String(),
+            'rejectedBy' => $request->rejected_by,
+            'rejectedAt' => $request->rejected_at?->toIso8601String(),
+            'lockVersion' => $request->lock_version,
+            'createdAt' => $request->created_at?->toIso8601String(),
+        ];
+    }
+}

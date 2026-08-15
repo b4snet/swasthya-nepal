@@ -17,7 +17,7 @@ use Illuminate\Support\Str;
  * exercised end-to-end. Every test runs in a transaction on the app-role
  * connection and rolls back in all paths: no fixtures leak.
  */
-it('re-keys every RLS policy to the claims helpers (168 policies, zero GUC references)', function () {
+it('re-keys every RLS policy to the claims helpers (172 policies, zero GUC references)', function () {
     $policies = DB::connection('pgsql')->select(
         <<<'SQL'
         select count(*) as total,
@@ -29,7 +29,7 @@ it('re-keys every RLS policy to the claims helpers (168 policies, zero GUC refer
         SQL
     )[0];
 
-    expect((int) $policies->total)->toBe(168)
+    expect((int) $policies->total)->toBe(172)
         ->and((int) $policies->not_claims)->toBe(0)
         ->and((int) $policies->still_guc)->toBe(0);
 
@@ -45,7 +45,7 @@ it('re-keys every RLS policy to the claims helpers (168 policies, zero GUC refer
     ]);
 });
 
-it('keeps the RLS matrix intact: 43 scoped on, 15 off, none on-without-policies', function () {
+it('keeps the RLS matrix intact: 44 scoped on, 15 off, none on-without-policies', function () {
     $matrix = DB::connection('pgsql')->selectOne(
         <<<'SQL'
         select count(*) filter (where relrowsecurity) as rls_on,
@@ -59,13 +59,13 @@ it('keeps the RLS matrix intact: 43 scoped on, 15 off, none on-without-policies'
         SQL
     );
 
-    // 58 tables total: 43 tenant-scoped (RLS on, FORCE on) + 15 off. The 15
+    // 59 tables total: 44 tenant-scoped (RLS on, FORCE on) + 15 off. The 15
     // are the framework/identity/public tables: users, roles, permissions,
     // role_permissions, organizations (tenant root — no tenant column to scope
     // by), migrations, jobs, job_batches, failed_jobs, cache, cache_locks,
     // personal_access_tokens, refresh_tokens, mfa_challenges, and
     // password_reset_tokens (the last three are pre-tenant public-route flows).
-    expect((int) $matrix->rls_on)->toBe(43)
+    expect((int) $matrix->rls_on)->toBe(44)
         ->and((int) $matrix->rls_off)->toBe(15)
         ->and((int) $matrix->on_without_policies)->toBe(0);
 });
@@ -243,6 +243,50 @@ it('isolates follow-up plans from claims end to end (tenant, facility, mutation 
         // The row is untouched by every attack above.
         claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
         expect($c->selectOne('select status from follow_ups where id = ?', [$followUp])->status)->toBe('planned');
+    });
+});
+
+it('isolates refund requests from claims end to end (tenant, facility, mutation immunity)', function () {
+    rlsTx(rlsConn(), function ($c): void {
+        $t = claimsTenants($c);
+        $department = (string) Str::uuid();
+        $staff = (string) Str::uuid();
+        $patient = (string) Str::uuid();
+        $encounter = (string) Str::uuid();
+        $charge = (string) Str::uuid();
+        $refundRequest = (string) Str::uuid();
+
+        // Full chain in tenant A: staff → patient → encounter → posted
+        // charge → refund request (RLS policies apply on every row).
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
+        $c->insert('insert into departments (id, tenant_id, facility_id, name, code, status) values (?, ?, ?, ?, ?, ?)', [$department, $t['tenantA'], $t['facilityA'], 'OPD', 'opd', 'active']);
+        $c->insert('insert into staff (id, tenant_id, facility_id, department_id, employee_code, full_name, designation, status) values (?, ?, ?, ?, ?, ?, ?, ?)', [$staff, $t['tenantA'], $t['facilityA'], $department, 'EMP-RR', 'Refund Staff', 'Consultant', 'active']);
+        $c->insert('insert into patients (id, tenant_id, facility_id, mrn, full_name, date_of_birth, sex, status) values (?, ?, ?, ?, ?, ?, ?, ?)', [$patient, $t['tenantA'], $t['facilityA'], 'MRN-RR', 'Refund Patient', '1990-01-01', 'female', 'active']);
+        $c->insert('insert into encounters (id, tenant_id, facility_id, patient_id, provider_staff_id, type, status, started_at) values (?, ?, ?, ?, ?, ?, ?, ?)', [$encounter, $t['tenantA'], $t['facilityA'], $patient, $staff, 'opd', 'signed', '2026-08-15 09:00:00+00']);
+        $c->insert('insert into charges (id, tenant_id, facility_id, patient_id, source_type, description, amount_minor, currency, tax_rate_bps, status, charged_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$charge, $t['tenantA'], $t['facilityA'], $patient, 'encounter', 'Consultation', 5000, 'NPR', 0, 'posted', '2026-08-15 09:10:00+00']);
+        $c->insert('insert into refund_requests (id, tenant_id, facility_id, patient_id, charge_id, amount_minor, reason_code, status, requested_by, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$refundRequest, $t['tenantA'], $t['facilityA'], $patient, $charge, 2000, 'overcharge', 'requested', $staff, 0]);
+
+        // Own tenant+facility claims → visible.
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
+        expect($c->selectOne('select id from refund_requests where id = ?', [$refundRequest]))->not->toBeNull();
+
+        // Another tenant → invisible; update/delete affect zero rows.
+        claimsSet($c, ['app_tenant_id' => $t['tenantB'], 'app_facility_id' => $t['facilityB']]);
+        expect($c->selectOne('select id from refund_requests where id = ?', [$refundRequest]))->toBeNull()
+            ->and($c->update('update refund_requests set status = ? where id = ?', ['approved', $refundRequest]))->toBe(0)
+            ->and($c->delete('delete from refund_requests where id = ?', [$refundRequest]))->toBe(0);
+
+        // Same tenant, a different facility → invisible (TENANT_FACILITY tier).
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityB']]);
+        expect($c->selectOne('select id from refund_requests where id = ?', [$refundRequest]))->toBeNull();
+
+        // Org-wide claims (no facility) → sees the tenant's requests.
+        claimsSet($c, ['app_tenant_id' => $t['tenantA']]);
+        expect($c->selectOne('select id from refund_requests where id = ?', [$refundRequest]))->not->toBeNull();
+
+        // The row is untouched by every attack above.
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
+        expect($c->selectOne('select status from refund_requests where id = ?', [$refundRequest])->status)->toBe('requested');
     });
 });
 

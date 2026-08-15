@@ -137,6 +137,13 @@ class RolePermissionSeeder extends Seeder
             'billing:view' => ['domain' => 'billing', 'description' => 'View charges, invoices, and payments within scope'],
             'billing:invoice' => ['domain' => 'billing', 'description' => 'Issue invoices from posted charges'],
             'billing:collect' => ['domain' => 'billing', 'description' => 'Capture payments and allocate them to invoices'],
+
+            // Phase 3 slice 5 — billing refunds & adjustments
+            // (PRODUCT_REQUIREMENTS §6.13): requesting is one permission,
+            // approving is another (segregation of duties — the requester
+            // can never approve, enforced in BillingService).
+            'billing:refund' => ['domain' => 'billing', 'description' => 'Request refunds and adjustments against posted charges'],
+            'billing:refund-approve' => ['domain' => 'billing', 'description' => 'Approve or reject refund/adjustment requests (financial gate)'],
         ];
     }
 
@@ -249,6 +256,7 @@ class RolePermissionSeeder extends Seeder
                     'pharmacy:view', 'pharmacy:stock',
                     'followup:view', 'followup:manage',
                     'billing:view', 'billing:invoice', 'billing:collect',
+                    'billing:refund', 'billing:refund-approve',
                 ],
             ],
             'org_finance' => [
@@ -299,6 +307,7 @@ class RolePermissionSeeder extends Seeder
                     'pharmacy:view', 'pharmacy:stock',
                     'followup:view', 'followup:manage',
                     'billing:view', 'billing:invoice', 'billing:collect',
+                    'billing:refund', 'billing:refund-approve',
                 ],
             ],
             'branch_manager' => [
@@ -348,6 +357,7 @@ class RolePermissionSeeder extends Seeder
                     'insurance:view', 'insurance:manage', 'payer:view',
                     'appointment:view', 'queue:view', 'encounter:view',
                     'billing:view', 'billing:invoice', 'billing:collect',
+                    'billing:refund',
                 ],
             ],
             'doctor' => [

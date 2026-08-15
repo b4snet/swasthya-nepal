@@ -7,6 +7,7 @@ use Database\Factories\ChargeFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * A charge (DATABASE.md §3.33): what was charged and from which source.
@@ -84,5 +85,13 @@ class Charge extends Model
     public function prescription(): BelongsTo
     {
         return $this->belongsTo(Prescription::class, 'prescription_id');
+    }
+
+    /**
+     * @return HasMany<RefundRequest, $this>
+     */
+    public function refunds(): HasMany
+    {
+        return $this->hasMany(RefundRequest::class, 'charge_id');
     }
 }

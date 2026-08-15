@@ -31,6 +31,7 @@ use App\Http\Controllers\Api\PermissionController;
 use App\Http\Controllers\Api\PharmacyController;
 use App\Http\Controllers\Api\PlatformAssignmentController;
 use App\Http\Controllers\Api\PlatformSupportController;
+use App\Http\Controllers\Api\RefundController;
 use App\Http\Controllers\Api\RoleAssignmentController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\RoomController;
@@ -444,4 +445,18 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
         ->middleware('authorize:billing:view');
     Route::post('invoices/{invoice}/pay', [BillingController::class, 'pay'])
         ->middleware('authorize:billing:collect');
+
+    // Phase 3 slice 5 — billing refunds & adjustments (PRODUCT_REQUIREMENTS
+    // §6.13): posted charge → refund/adjustment request → authorized
+    // approval → immutable reversing entry. Approval is a distinct
+    // permission (segregation of duties — the approver is never the
+    // requester).
+    Route::get('charges/{charge}/refunds', [RefundController::class, 'index'])
+        ->middleware('authorize:billing:view');
+    Route::post('charges/{charge}/refunds', [RefundController::class, 'store'])
+        ->middleware('authorize:billing:refund');
+    Route::post('refund-requests/{refundRequest}/approve', [RefundController::class, 'approve'])
+        ->middleware('authorize:billing:refund-approve');
+    Route::post('refund-requests/{refundRequest}/reject', [RefundController::class, 'reject'])
+        ->middleware('authorize:billing:refund-approve');
 });

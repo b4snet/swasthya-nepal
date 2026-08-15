@@ -8,6 +8,7 @@ use App\Models\Invoice;
 use App\Models\InvoiceLine;
 use App\Models\Payment;
 use App\Models\PaymentAllocation;
+use App\Models\RefundRequest;
 use App\Support\ErrorCodes;
 use Illuminate\Support\Facades\DB;
 
@@ -191,6 +192,195 @@ final class BillingService
 
             return $payment;
         });
+    }
+
+    /**
+     * Request a refund/adjustment against a posted charge. The request does
+     * not move money — approval does. The refundable amount is
+     * `amount_minor − Σ(approved)` for the charge; a request beyond it is
+     * refused here, and again under the charge-row lock at approval, so
+     * over-refund is impossible even under concurrency.
+     */
+    public function requestRefund(
+        string $tenantId,
+        string $facilityId,
+        string $chargeId,
+        int $amountMinor,
+        string $reasonCode,
+        ?string $reasonNote,
+        ?string $requestedBy = null,
+    ): RefundRequest {
+        return DB::transaction(function () use ($tenantId, $facilityId, $chargeId, $amountMinor, $reasonCode, $reasonNote, $requestedBy): RefundRequest {
+            // Lock the charge row: concurrent requests serialize here.
+            $charge = Charge::query()
+                ->where('tenant_id', $tenantId)
+                ->where('id', $chargeId)
+                ->lockForUpdate()
+                ->first();
+
+            if ($charge === null) {
+                throw new ApiException(ErrorCodes::NOT_FOUND, 'Charge not found.', 404);
+            }
+
+            if ($charge->status !== Charge::STATUS_POSTED) {
+                throw new ApiException(ErrorCodes::CONFLICT, 'Only a posted charge can be refunded.', 409);
+            }
+
+            $refundable = $charge->amount_minor - $this->approvedTotal($tenantId, $chargeId);
+
+            if ($amountMinor > $refundable) {
+                throw new ApiException(
+                    ErrorCodes::VALIDATION_ERROR,
+                    sprintf('Refund of %d exceeds the refundable amount of %d.', $amountMinor, $refundable),
+                    422,
+                );
+            }
+
+            return RefundRequest::query()->create([
+                'tenant_id' => $tenantId,
+                'facility_id' => $facilityId,
+                'patient_id' => $charge->patient_id,
+                'charge_id' => $chargeId,
+                'amount_minor' => $amountMinor,
+                'reason_code' => $reasonCode,
+                'reason_note' => $reasonNote,
+                'status' => RefundRequest::STATUS_REQUESTED,
+                'requested_by' => $requestedBy,
+                'lock_version' => 0,
+                'created_by' => $requestedBy,
+            ]);
+        });
+    }
+
+    /**
+     * Approve a pending refund request. This is the financial gate: the
+     * approved request IS the immutable reversing entry — the charge is
+     * never mutated. Duplicate approval is impossible (CAS on status +
+     * lock_version) and the refundable check runs under the charge-row lock,
+     * so concurrent approvals of different requests on one charge can never
+     * over-refund.
+     */
+    public function approveRefund(string $tenantId, string $requestId, ?string $approverId = null): RefundRequest
+    {
+        return DB::transaction(function () use ($tenantId, $requestId, $approverId): RefundRequest {
+            $request = RefundRequest::query()
+                ->where('tenant_id', $tenantId)
+                ->where('id', $requestId)
+                ->first();
+
+            if ($request === null) {
+                throw new ApiException(ErrorCodes::NOT_FOUND, 'Refund request not found.', 404);
+            }
+
+            if ($request->status !== RefundRequest::STATUS_REQUESTED) {
+                throw new ApiException(ErrorCodes::CONFLICT, 'Only a pending refund request can be approved.', 409);
+            }
+
+            if ($approverId !== null && $request->requested_by === $approverId) {
+                throw new ApiException(ErrorCodes::FORBIDDEN, 'The requester cannot approve their own refund request.', 403);
+            }
+
+            // Lock the charge row: concurrent approvals of DIFFERENT requests
+            // on the same charge serialize here — the second sees the first's
+            // approved total and cannot exceed the refundable amount.
+            $charge = Charge::query()
+                ->where('tenant_id', $tenantId)
+                ->where('id', $request->charge_id)
+                ->lockForUpdate()
+                ->first();
+
+            if ($charge === null || $charge->status !== Charge::STATUS_POSTED) {
+                throw new ApiException(ErrorCodes::CONFLICT, 'The charge is no longer refundable.', 409);
+            }
+
+            $refundable = $charge->amount_minor - $this->approvedTotal($tenantId, $request->charge_id);
+
+            if ($request->amount_minor > $refundable) {
+                throw new ApiException(
+                    ErrorCodes::VALIDATION_ERROR,
+                    sprintf('Refund of %d exceeds the refundable amount of %d.', $request->amount_minor, $refundable),
+                    422,
+                );
+            }
+
+            // CAS on the request row: a stale approver (same status +
+            // lock_version snapshot) affects zero rows and gets a 409.
+            $affected = DB::table('refund_requests')
+                ->where('id', $requestId)
+                ->where('status', RefundRequest::STATUS_REQUESTED)
+                ->where('lock_version', $request->lock_version)
+                ->update([
+                    'status' => RefundRequest::STATUS_APPROVED,
+                    'approved_by' => $approverId,
+                    'approved_at' => now(),
+                    'lock_version' => $request->lock_version + 1,
+                    'updated_at' => now(),
+                ]);
+
+            if ($affected === 0) {
+                throw new ApiException(ErrorCodes::LOCK_CONFLICT, 'This refund request was changed by another approval. Reload and retry.', 409);
+            }
+
+            return $request->refresh();
+        });
+    }
+
+    /**
+     * Reject a pending refund request (approver declines). CAS-guarded like
+     * approval; rejection is terminal.
+     */
+    public function rejectRefund(string $tenantId, string $requestId, string $rejectionReason, ?string $rejectedBy = null): RefundRequest
+    {
+        return DB::transaction(function () use ($tenantId, $requestId, $rejectionReason, $rejectedBy): RefundRequest {
+            $request = RefundRequest::query()
+                ->where('tenant_id', $tenantId)
+                ->where('id', $requestId)
+                ->first();
+
+            if ($request === null) {
+                throw new ApiException(ErrorCodes::NOT_FOUND, 'Refund request not found.', 404);
+            }
+
+            if ($request->status !== RefundRequest::STATUS_REQUESTED) {
+                throw new ApiException(ErrorCodes::CONFLICT, 'Only a pending refund request can be rejected.', 409);
+            }
+
+            if ($rejectedBy !== null && $request->requested_by === $rejectedBy) {
+                throw new ApiException(ErrorCodes::FORBIDDEN, 'The requester cannot reject their own refund request.', 403);
+            }
+
+            $affected = DB::table('refund_requests')
+                ->where('id', $requestId)
+                ->where('status', RefundRequest::STATUS_REQUESTED)
+                ->where('lock_version', $request->lock_version)
+                ->update([
+                    'status' => RefundRequest::STATUS_REJECTED,
+                    'rejected_by' => $rejectedBy,
+                    'rejection_reason' => $rejectionReason,
+                    'rejected_at' => now(),
+                    'lock_version' => $request->lock_version + 1,
+                    'updated_at' => now(),
+                ]);
+
+            if ($affected === 0) {
+                throw new ApiException(ErrorCodes::LOCK_CONFLICT, 'This refund request was changed by another approval. Reload and retry.', 409);
+            }
+
+            return $request->refresh();
+        });
+    }
+
+    /**
+     * Total approved refund/adjustment value against a charge (integer minor
+     * units). The refundable amount is amount_minor minus this total.
+     */
+    private function approvedTotal(string $tenantId, string $chargeId): int
+    {
+        return (int) RefundRequest::query()
+            ->where('tenant_id', $tenantId)
+            ->where('charge_id', $chargeId)
+            ->where('status', RefundRequest::STATUS_APPROVED)
+            ->sum('amount_minor');
     }
 
     private function nextNumber(string $tenantId): string

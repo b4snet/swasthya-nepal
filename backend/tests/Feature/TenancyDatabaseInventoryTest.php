@@ -8,7 +8,7 @@ use Illuminate\Support\Str;
  * PROGRAM PHASE 1 — systematic database-layer tenancy verification.
  *
  * Unlike the representative isolation suites (DatabaseRowLevelSecurityTest,
- * ClinicalIsolationTest, ...), this suite iterates the FULL set of 43
+ * ClinicalIsolationTest, ...), this suite iterates the FULL set of 44
  * tenant-owned tables: it seeds a complete two-tenant fixture chain and then
  * probes every table for cross-tenant SELECT/UPDATE/DELETE isolation as the
  * least-privilege `swasthya_app` role (NOBYPASSRLS) under transaction-local
@@ -18,7 +18,7 @@ use Illuminate\Support\Str;
  */
 
 /**
- * The 40 tables with RLS enabled (the documented scoped set).
+ * The 44 tables with RLS enabled (the documented scoped set).
  *
  * @var list<string>
  */
@@ -35,6 +35,8 @@ const RLS_SCOPED_TABLES = [
     'inventory_items', 'inventory_movements',
     // Phase 3 slice 4 — discharge & follow-up.
     'follow_ups',
+    // Phase 3 slice 5 — billing refunds & adjustments.
+    'refund_requests',
     // TENANT_ONLY
     'payers', 'mrn_counters', 'patient_identifiers', 'patient_contacts',
     'insurance_policies', 'patient_documents', 'consents',
@@ -202,6 +204,10 @@ function seedTenantChain(ConnectionInterface $c, string $tenantId, string $facil
     $c->insert('insert into charges (id, tenant_id, facility_id, patient_id, source_type, description, amount_minor, currency, tax_rate_bps, status, charged_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$charge, $tenantId, $facilityId, $patient, 'manual', 'Consultation', 5000, 'NPR', 0, 'posted', '2026-08-15 10:30:00+00']);
     $ids['charges'] = $charge;
 
+    $refundRequest = (string) Str::uuid();
+    $c->insert('insert into refund_requests (id, tenant_id, facility_id, patient_id, charge_id, amount_minor, reason_code, status, requested_by, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$refundRequest, $tenantId, $facilityId, $patient, $charge, 1000, 'overcharge', 'requested', $user, 0]);
+    $ids['refund_requests'] = $refundRequest;
+
     $invoice = (string) Str::uuid();
     $c->insert('insert into invoices (id, tenant_id, facility_id, patient_id, invoice_number, status, total_minor, total_tax_minor, paid_minor, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$invoice, $tenantId, $facilityId, $patient, $u('inv'), 'draft', 5000, 0, 0, 0]);
     $ids['invoices'] = $invoice;
@@ -308,6 +314,7 @@ function chainUpdateColumns(): array
         'prescriptions' => ['notes', 'upd'],
         'role_assignments' => ['granted_by', '00000000-0000-0000-0000-000000000001'],
         'rooms' => ['code', 'upd'],
+        'refund_requests' => ['reason_note', 'upd'],
         'schedule_exceptions' => ['status', 'cancelled'],
         'schedule_templates' => ['capacity', '2'],
         'services' => ['code', 'upd'],
@@ -343,7 +350,7 @@ function inventoryTenants(ConnectionInterface $c): array
     return $t;
 }
 
-it('records the current RLS inventory: 43 scoped tables enabled + FORCED, 15 unscoped off', function () {
+it('records the current RLS inventory: 44 scoped tables enabled + FORCED, 15 unscoped off', function () {
     $rows = DB::connection('pgsql')->select(
         'select c.relname as table_name, c.relrowsecurity::text as enabled, c.relforcerowsecurity::text as forced
          from pg_class c
@@ -481,7 +488,7 @@ it('FORCE RLS binds a non-superuser table owner (defense-in-depth proof)', funct
     }
 });
 
-it('denies cross-tenant SELECT, UPDATE, and DELETE on all 43 tenant-owned tables — two-sided', function () {
+it('denies cross-tenant SELECT, UPDATE, and DELETE on all 44 tenant-owned tables — two-sided', function () {
     rlsTx(rlsConn(), function ($c): void {
         $t = inventoryTenants($c);
 

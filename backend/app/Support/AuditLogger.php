@@ -20,6 +20,7 @@ use App\Models\Location;
 use App\Models\Medication;
 use App\Models\Payment;
 use App\Models\Prescription;
+use App\Models\RefundRequest;
 use App\Models\Room;
 use App\Models\ScheduleException;
 use App\Models\ScheduleTemplate;
@@ -93,6 +94,8 @@ final class AuditLogger
         'inventory_movement' => InventoryMovement::class,
         // Phase 3 slice 4 — discharge & follow-up.
         'follow_up' => FollowUp::class,
+        // Phase 3 slice 5 — billing refunds & adjustments.
+        'refund_request' => RefundRequest::class,
     ];
 
     /**
