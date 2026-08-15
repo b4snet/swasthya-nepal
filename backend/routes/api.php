@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AdmissionController;
 use App\Http\Controllers\Api\AppointmentController;
 use App\Http\Controllers\Api\AuditController;
 use App\Http\Controllers\Api\AuthController;
@@ -459,4 +460,16 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
         ->middleware('authorize:billing:refund-approve');
     Route::post('refund-requests/{refundRequest}/reject', [RefundController::class, 'reject'])
         ->middleware('authorize:billing:refund-approve');
+
+    // Phase 3 slice 6 — IPD admission/discharge with bed release
+    // (PRODUCT_REQUIREMENTS §6.5): admit from an open encounter onto a live
+    // available bed, then discharge with a structured summary that releases
+    // the bed. Bed claims are CAS-guarded — two clerks can never book the
+    // same bed.
+    Route::post('encounters/{encounter}/admissions', [AdmissionController::class, 'store'])
+        ->middleware('authorize:admission:create');
+    Route::get('admissions/{admission}', [AdmissionController::class, 'show'])
+        ->middleware('authorize:admission:view');
+    Route::post('admissions/{admission}/discharge', [AdmissionController::class, 'discharge'])
+        ->middleware('authorize:admission:discharge');
 });

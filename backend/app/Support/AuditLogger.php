@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\Admission;
 use App\Models\Appointment;
 use App\Models\AuditEvent;
 use App\Models\Bed;
@@ -96,6 +97,8 @@ final class AuditLogger
         'follow_up' => FollowUp::class,
         // Phase 3 slice 5 — billing refunds & adjustments.
         'refund_request' => RefundRequest::class,
+        // Phase 3 slice 6 — IPD admission/discharge.
+        'admission' => Admission::class,
     ];
 
     /**

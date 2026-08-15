@@ -29,6 +29,8 @@ class ClinicalNote extends Model
 
     public const TYPE_CONSULTATION = 'consultation';
 
+    public const TYPE_DISCHARGE = 'discharge';
+
     /**
      * @var list<string>
      */

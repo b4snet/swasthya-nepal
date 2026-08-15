@@ -577,6 +577,8 @@ erDiagram
 
 ### 3.23 admissions
 
+> **Implemented with Phase 3 slice 6.** The inpatient stay: admission from an OPEN encounter claims a live AVAILABLE bed atomically (compare-and-swap on `beds (status, current_admission_id, lock_version)` — two clerks can never book the same bed; the partial unique `uq_beds_tenant_current_admission` is the DB backstop), and discharge writes a SIGNED discharge-summary clinical note (type `discharge`) that releases the bed (occupied → cleaning, never immediately reassignable). Every status transition is CAS-guarded (`status, lock_version`); one open admission per patient and per encounter is enforced by partial uniques. The tenant-safe composite FK `fk_beds_tenant_current_admission` (`beds` → `admissions` via `(tenant_id, id)`) was added with the table. Bed-day charging and transfers (`in_ward`, `transferred`) are later-phase billing/nursing work.
+
 | Aspect | Design |
 |---|---|
 | **Purpose** | The inpatient stay: admission through discharge, with ward/bed placement, transfers, and the discharge summary. |
@@ -584,8 +586,8 @@ erDiagram
 | **Tenant ownership** | Tenant-scoped: `tenant_id NOT NULL`, `facility_id NOT NULL`. |
 | **Important fields** | `tenant_id`, `facility_id`, `patient_id uuid NOT NULL`, `encounter_id uuid NOT NULL` (the IPD encounter), `admission_number varchar(50)`, `admission_type text` (emergency, planned, transfer_in), `admitting_diagnosis text`, `admitted_at timestamptz`, `status text` (admitted, in_ward, transferred, discharged, cancelled), `discharged_at timestamptz NULL`, `discharge_type text NULL` (home, referral, transfer_out, against_advice), `discharge_summary_id uuid NULL`, `lock_version bigint` |
 | **Relationships** | N–1 `patients`; 1–1 `encounters`; 1–0..N `clinical_notes`; 1–N `charges` (bed days); 0–1 `discharge_summary` (a clinical note of type discharge); bed placement via `beds.current_admission_id` |
-| **Indexes** | Unique `(tenant_id, admission_number)`; `(tenant_id, patient_id, admitted_at)`; `(tenant_id, status)`; `(tenant_id, current_bed_id)` partial |
-| **Uniqueness** | `admission_number` unique per tenant; one open admission per patient at a time (partial unique on status open) |
+| **Indexes** | Unique `(tenant_id, admission_number)`; partial uniques `(tenant_id, encounter_id)` and `(tenant_id, patient_id)` on the open statuses (admitted/in_ward/transferred); `(tenant_id, patient_id, admitted_at)`; `(tenant_id, status)`; `(tenant_id, id)` composite-FK unique |
+| **Uniqueness** | `admission_number` unique per tenant; one open admission per patient and per encounter at a time (partial uniques on status open); one admission per occupied bed |
 | **Audit** | Admission, every bed/ward transfer (who moved the patient, where, why), discharge, discharge-summary reads |
 | **Soft deletion** | No |
 | **Retention** | Clinical class |
@@ -629,7 +631,7 @@ erDiagram
 | **Tenant ownership** | Tenant-scoped: `tenant_id NOT NULL`, `facility_id NOT NULL`. |
 | **Important fields** | `tenant_id`, `facility_id`, `room_id uuid NOT NULL`, `bed_code varchar(20)`, `status text` (available, occupied, reserved, cleaning, out_of_service), `current_admission_id uuid NULL`, `lock_version bigint` |
 | **Relationships** | N–1 `rooms`; 0–1 `admissions` (current occupant, tenant-safe composite FK) |
-| **Indexes** | Unique `(tenant_id, room_id, bed_code)`; partial `(tenant_id, status)` for occupancy views; partial unique `(tenant_id, current_admission_id) WHERE current_admission_id IS NOT NULL` |
+| **Indexes** | Unique `(tenant_id, room_id, bed_code)`; partial `(tenant_id, status)` for occupancy views; partial unique `(tenant_id, current_admission_id) WHERE current_admission_id IS NOT NULL` (created with the beds table, backstops the CAS claim) |
 | **Uniqueness** | `bed_code` unique per room; one admission per occupied bed; one bed per current admission |
 | **Audit** | Every state change and assignment/transfer (who, when) — assignment is row-locked and transactional |
 | **Soft deletion** | No — beds persist; `out_of_service` is a status |

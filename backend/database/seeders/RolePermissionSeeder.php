@@ -144,6 +144,14 @@ class RolePermissionSeeder extends Seeder
             // can never approve, enforced in BillingService).
             'billing:refund' => ['domain' => 'billing', 'description' => 'Request refunds and adjustments against posted charges'],
             'billing:refund-approve' => ['domain' => 'billing', 'description' => 'Approve or reject refund/adjustment requests (financial gate)'],
+
+            // Phase 3 slice 6 — IPD admission/discharge (PRODUCT_REQUIREMENTS
+            // §6.5): admit from an open encounter onto a live bed; discharge
+            // releases the bed. Discharge requires clinical authority (the
+            // encounter provider, enforced in the controller).
+            'admission:view' => ['domain' => 'admission', 'description' => 'View inpatient admissions and discharge records within scope'],
+            'admission:create' => ['domain' => 'admission', 'description' => 'Admit a patient from an open encounter and assign a bed'],
+            'admission:discharge' => ['domain' => 'admission', 'description' => 'Discharge an inpatient (structured summary, bed release)'],
         ];
     }
 
@@ -211,6 +219,7 @@ class RolePermissionSeeder extends Seeder
                     'insurance:view', 'consent:view', 'document:view', 'payer:view',
                     'schedule:view', 'appointment:view', 'queue:view',
                     'encounter:view', 'medication:view', 'pharmacy:view', 'followup:view', 'billing:view',
+                    'admission:view',
                 ],
             ],
             'org_admin' => [
@@ -257,6 +266,7 @@ class RolePermissionSeeder extends Seeder
                     'followup:view', 'followup:manage',
                     'billing:view', 'billing:invoice', 'billing:collect',
                     'billing:refund', 'billing:refund-approve',
+                    'admission:view', 'admission:create', 'admission:discharge',
                 ],
             ],
             'org_finance' => [
@@ -308,6 +318,7 @@ class RolePermissionSeeder extends Seeder
                     'followup:view', 'followup:manage',
                     'billing:view', 'billing:invoice', 'billing:collect',
                     'billing:refund', 'billing:refund-approve',
+                    'admission:view', 'admission:create', 'admission:discharge',
                 ],
             ],
             'branch_manager' => [
@@ -327,6 +338,7 @@ class RolePermissionSeeder extends Seeder
                     // clinical record, and bills.
                     'schedule:view', 'appointment:view', 'queue:view',
                     'encounter:view', 'medication:view', 'billing:view',
+                    'admission:view',
                 ],
             ],
             'receptionist' => [
@@ -358,6 +370,7 @@ class RolePermissionSeeder extends Seeder
                     'appointment:view', 'queue:view', 'encounter:view',
                     'billing:view', 'billing:invoice', 'billing:collect',
                     'billing:refund',
+                    'admission:view',
                 ],
             ],
             'doctor' => [
@@ -373,6 +386,7 @@ class RolePermissionSeeder extends Seeder
                     'encounter:prescribe', 'encounter:sign',
                     'medication:view', 'pharmacy:view', 'followup:view', 'followup:manage', 'billing:view',
                     'lab:view', 'lab:order',
+                    'admission:view', 'admission:create', 'admission:discharge',
                 ],
             ],
             'nurse' => [
@@ -387,6 +401,7 @@ class RolePermissionSeeder extends Seeder
                     'encounter:view', 'encounter:document',
                     'medication:view', 'pharmacy:view', 'followup:view', 'billing:view',
                     'lab:view',
+                    'admission:view',
                 ],
             ],
             'pharmacist' => [
