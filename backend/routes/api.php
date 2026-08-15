@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\BedController;
 use App\Http\Controllers\Api\BillingController;
 use App\Http\Controllers\Api\BranchController;
 use App\Http\Controllers\Api\ConsentController;
+use App\Http\Controllers\Api\CriticalValueEventController;
 use App\Http\Controllers\Api\DepartmentController;
 use App\Http\Controllers\Api\EncounterController;
 use App\Http\Controllers\Api\FacilityController;
@@ -405,6 +406,18 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
         ->middleware('authorize:lab:verify');
     Route::post('lab-orders/{labOrder}/report', [LabOrderController::class, 'report'])
         ->middleware('authorize:lab:report');
+
+    // Phase 3 slice 7 — laboratory critical-value escalation
+    // (PRODUCT_REQUIREMENTS §6.8 workflow 6, CLINICAL_SAFETY §7): a critical
+    // result flagged at entry triggers an event targeted at the ordering
+    // clinician; the clinician acknowledges (who/when) or a supervisor
+    // escalates it — fail loudly, never silently.
+    Route::get('critical-value-events', [CriticalValueEventController::class, 'index'])
+        ->middleware('authorize:lab:view');
+    Route::post('critical-value-events/{criticalValueEvent}/acknowledge', [CriticalValueEventController::class, 'acknowledge'])
+        ->middleware('authorize:lab:acknowledge');
+    Route::post('critical-value-events/{criticalValueEvent}/escalate', [CriticalValueEventController::class, 'escalate'])
+        ->middleware('authorize:lab:escalate');
 
     // Billing and payments.
     // Phase 3 slice 3 — pharmacy dispensing & inventory

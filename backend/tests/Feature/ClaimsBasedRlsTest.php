@@ -17,7 +17,7 @@ use Illuminate\Support\Str;
  * exercised end-to-end. Every test runs in a transaction on the app-role
  * connection and rolls back in all paths: no fixtures leak.
  */
-it('re-keys every RLS policy to the claims helpers (176 policies, zero GUC references)', function () {
+it('re-keys every RLS policy to the claims helpers (180 policies, zero GUC references)', function () {
     $policies = DB::connection('pgsql')->select(
         <<<'SQL'
         select count(*) as total,
@@ -29,7 +29,7 @@ it('re-keys every RLS policy to the claims helpers (176 policies, zero GUC refer
         SQL
     )[0];
 
-    expect((int) $policies->total)->toBe(176)
+    expect((int) $policies->total)->toBe(180)
         ->and((int) $policies->not_claims)->toBe(0)
         ->and((int) $policies->still_guc)->toBe(0);
 
@@ -45,7 +45,7 @@ it('re-keys every RLS policy to the claims helpers (176 policies, zero GUC refer
     ]);
 });
 
-it('keeps the RLS matrix intact: 45 scoped on, 15 off, none on-without-policies', function () {
+it('keeps the RLS matrix intact: 46 scoped on, 15 off, none on-without-policies', function () {
     $matrix = DB::connection('pgsql')->selectOne(
         <<<'SQL'
         select count(*) filter (where relrowsecurity) as rls_on,
@@ -59,13 +59,13 @@ it('keeps the RLS matrix intact: 45 scoped on, 15 off, none on-without-policies'
         SQL
     );
 
-    // 60 tables total: 45 tenant-scoped (RLS on, FORCE on) + 15 off. The 15
+    // 61 tables total: 46 tenant-scoped (RLS on, FORCE on) + 15 off. The 15
     // are the framework/identity/public tables: users, roles, permissions,
     // role_permissions, organizations (tenant root — no tenant column to scope
     // by), migrations, jobs, job_batches, failed_jobs, cache, cache_locks,
     // personal_access_tokens, refresh_tokens, mfa_challenges, and
     // password_reset_tokens (the last three are pre-tenant public-route flows).
-    expect((int) $matrix->rls_on)->toBe(45)
+    expect((int) $matrix->rls_on)->toBe(46)
         ->and((int) $matrix->rls_off)->toBe(15)
         ->and((int) $matrix->on_without_policies)->toBe(0);
 });
@@ -329,6 +329,54 @@ it('isolates admissions from claims end to end (tenant, facility, mutation immun
         // The row is untouched by every attack above.
         claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
         expect($c->selectOne('select status from admissions where id = ?', [$admission])->status)->toBe('admitted');
+    });
+});
+
+it('isolates critical-value events from claims end to end (tenant, facility, mutation immunity)', function () {
+    rlsTx(rlsConn(), function ($c): void {
+        $t = claimsTenants($c);
+        $department = (string) Str::uuid();
+        $staff = (string) Str::uuid();
+        $patient = (string) Str::uuid();
+        $encounter = (string) Str::uuid();
+        $labTest = (string) Str::uuid();
+        $labOrder = (string) Str::uuid();
+        $labItem = (string) Str::uuid();
+        $criticalEvent = (string) Str::uuid();
+
+        // Full chain in tenant A: staff → patient → encounter → lab order →
+        // flagged item → critical-value event (RLS applies on every row).
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
+        $c->insert('insert into departments (id, tenant_id, facility_id, name, code, status) values (?, ?, ?, ?, ?, ?)', [$department, $t['tenantA'], $t['facilityA'], 'Lab', 'lab', 'active']);
+        $c->insert('insert into staff (id, tenant_id, facility_id, department_id, employee_code, full_name, designation, status) values (?, ?, ?, ?, ?, ?, ?, ?)', [$staff, $t['tenantA'], $t['facilityA'], $department, 'EMP-CV', 'Critical Staff', 'Consultant', 'active']);
+        $c->insert('insert into patients (id, tenant_id, facility_id, mrn, full_name, date_of_birth, sex, status) values (?, ?, ?, ?, ?, ?, ?, ?)', [$patient, $t['tenantA'], $t['facilityA'], 'MRN-CV', 'Critical Patient', '1990-01-01', 'female', 'active']);
+        $c->insert('insert into encounters (id, tenant_id, facility_id, patient_id, provider_staff_id, type, status, started_at) values (?, ?, ?, ?, ?, ?, ?, ?)', [$encounter, $t['tenantA'], $t['facilityA'], $patient, $staff, 'opd', 'open', '2026-08-15 09:00:00+00']);
+        $c->insert('insert into lab_tests (id, tenant_id, facility_id, code, name, category, status) values (?, ?, ?, ?, ?, ?, ?)', [$labTest, $t['tenantA'], $t['facilityA'], 'CVT', 'Critical Test', 'laboratory', 'active']);
+        $c->insert('insert into lab_orders (id, tenant_id, facility_id, patient_id, encounter_id, ordered_by_staff_id, priority, status, ordered_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?)', [$labOrder, $t['tenantA'], $t['facilityA'], $patient, $encounter, $staff, 'stat', 'results_entered', '2026-08-15 09:10:00+00']);
+        $c->insert('insert into lab_order_items (id, tenant_id, facility_id, lab_order_id, lab_test_id, result_value) values (?, ?, ?, ?, ?, ?)', [$labItem, $t['tenantA'], $t['facilityA'], $labOrder, $labTest, '18.9']);
+        $c->insert('insert into critical_value_events (id, tenant_id, facility_id, lab_order_item_id, patient_id, encounter_id, target_staff_id, status, detected_by_staff_id, detected_at, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$criticalEvent, $t['tenantA'], $t['facilityA'], $labItem, $patient, $encounter, $staff, 'triggered', $staff, '2026-08-15 09:30:00+00', 0]);
+
+        // Own tenant+facility claims → visible.
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
+        expect($c->selectOne('select id from critical_value_events where id = ?', [$criticalEvent]))->not->toBeNull();
+
+        // Another tenant → invisible; update/delete affect zero rows.
+        claimsSet($c, ['app_tenant_id' => $t['tenantB'], 'app_facility_id' => $t['facilityB']]);
+        expect($c->selectOne('select id from critical_value_events where id = ?', [$criticalEvent]))->toBeNull()
+            ->and($c->update('update critical_value_events set status = ? where id = ?', ['acknowledged', $criticalEvent]))->toBe(0)
+            ->and($c->delete('delete from critical_value_events where id = ?', [$criticalEvent]))->toBe(0);
+
+        // Same tenant, a different facility → invisible (TENANT_FACILITY tier).
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityB']]);
+        expect($c->selectOne('select id from critical_value_events where id = ?', [$criticalEvent]))->toBeNull();
+
+        // Org-wide claims (no facility) → sees the tenant's events.
+        claimsSet($c, ['app_tenant_id' => $t['tenantA']]);
+        expect($c->selectOne('select id from critical_value_events where id = ?', [$criticalEvent]))->not->toBeNull();
+
+        // The row is untouched by every attack above.
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
+        expect($c->selectOne('select status from critical_value_events where id = ?', [$criticalEvent])->status)->toBe('triggered');
     });
 });
 

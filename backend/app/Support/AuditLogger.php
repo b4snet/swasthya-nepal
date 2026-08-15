@@ -9,6 +9,7 @@ use App\Models\Bed;
 use App\Models\Branch;
 use App\Models\Charge;
 use App\Models\ClinicalNote;
+use App\Models\CriticalValueEvent;
 use App\Models\Department;
 use App\Models\Encounter;
 use App\Models\FollowUp;
@@ -99,6 +100,8 @@ final class AuditLogger
         'refund_request' => RefundRequest::class,
         // Phase 3 slice 6 — IPD admission/discharge.
         'admission' => Admission::class,
+        // Phase 3 slice 7 — laboratory critical-value escalation.
+        'critical_value_event' => CriticalValueEvent::class,
     ];
 
     /**

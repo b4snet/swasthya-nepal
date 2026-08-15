@@ -6,6 +6,7 @@ use App\Exceptions\ApiException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Lab\EnterLabResultsRequest;
 use App\Http\Requests\Lab\StoreLabOrderRequest;
+use App\Models\CriticalValueEvent;
 use App\Models\Encounter;
 use App\Models\LabOrder;
 use App\Models\LabOrderItem;
@@ -227,7 +228,16 @@ final class LabOrderController extends Controller
 
         $byItem = $submitted->keyBy('itemId');
 
-        DB::transaction(function () use ($labOrder, $context, $staff, $items, $byItem): void {
+        // Phase 3 slice 7 — items flagged critical trigger a
+        // critical_value_event targeted at the ordering clinician. The event
+        // is created in the SAME transaction as the entry (a critical value
+        // can never be entered without its escalation record), and the
+        // entry transition is CAS — entry happens exactly once per order, so
+        // a repeated trigger is structurally impossible (the partial unique
+        // uq_critical_value_events_tenant_item_open is the DB backstop).
+        $triggeredItemIds = [];
+
+        DB::transaction(function () use ($labOrder, $context, $staff, $items, $byItem, &$triggeredItemIds): void {
             foreach ($items as $item) {
                 $entry = $byItem[$item->getKey()];
                 $item->update([
@@ -237,6 +247,23 @@ final class LabOrderController extends Controller
                     'entered_at' => now(),
                     'updated_by' => $context->user?->getKey(),
                 ]);
+
+                if (($entry['isCritical'] ?? false) === true) {
+                    CriticalValueEvent::query()->create([
+                        'tenant_id' => $labOrder->tenant_id,
+                        'facility_id' => $labOrder->facility_id,
+                        'lab_order_item_id' => $item->getKey(),
+                        'patient_id' => $labOrder->patient_id,
+                        'encounter_id' => $labOrder->encounter_id,
+                        'target_staff_id' => $labOrder->ordered_by_staff_id,
+                        'status' => CriticalValueEvent::STATUS_TRIGGERED,
+                        'detected_by_staff_id' => $staff->getKey(),
+                        'detected_at' => now(),
+                        'lock_version' => 0,
+                        'created_by' => $context->user?->getKey(),
+                    ]);
+                    $triggeredItemIds[] = $item->getKey();
+                }
             }
 
             $this->applyTransition($labOrder, LabOrder::STATUS_PROCESSING, [
@@ -251,6 +278,16 @@ final class LabOrderController extends Controller
             ['encounterId' => $labOrder->encounter_id, 'enteredByStaffId' => $staff->getKey(), 'itemCount' => $items->count()],
             $request,
         );
+
+        foreach ($triggeredItemIds as $itemId) {
+            $this->audit->record(
+                'critical_value.triggered',
+                'critical_value_event',
+                CriticalValueEvent::query()->where('lab_order_item_id', $itemId)->firstOrFail()->getKey(),
+                ['encounterId' => $labOrder->encounter_id, 'itemId' => $itemId, 'targetStaffId' => $labOrder->ordered_by_staff_id],
+                $request,
+            );
+        }
 
         return Envelope::success(data: $this->present($labOrder->fresh(['items.test:id,name,sample_type'])), request: $request);
     }

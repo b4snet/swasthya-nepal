@@ -668,7 +668,9 @@ erDiagram
 | **Audit** | Order creation, collect, processing, results entry, verification, report release — facts only (`lab_order.*`), never result values/PHI; `lab_test.created` for the catalog |
 | **Soft deletion** | Catalog soft-deletes (history stays referenced); orders/items never delete |
 | **Retention** | Clinical class |
-| **Later-phase plan** | Specimen accession chain-of-custody, critical/panic-value escalation with acknowledgment, instrument interfaces (LIS/HL7), radiology studies/reports with DICOM refs — documented in PRODUCT_REQUIREMENTS §6.8 but NOT part of slice 2 |
+| **Later-phase plan** | Specimen accession chain-of-custody, instrument interfaces (LIS/HL7), radiology studies/reports with DICOM refs, notification delivery (SMS/email via the notifications module §3.37) and the timing-based auto-escalation job — documented in PRODUCT_REQUIREMENTS §6.8 |
+
+> **Critical-value escalation (Phase 3 slice 7):** a result flagged `isCritical` at entry triggers a `critical_value_events` row targeted at the ordering clinician (the flag lives on the flagged `lab_order_items` result; the event stores NO result value). Lifecycle `triggered → acknowledged` (the target clinician, who/when recorded — `lab:acknowledge`) and `triggered → escalated` (a supervisor, `lab:escalate`, never the target — fail loudly, never silently per `MASTER_RULES.md` §11.3); `escalated → acknowledged` still closes the loop. Transitions are CAS on `(status, lock_version)`; one OPEN event per item is the partial-unique backstop (a repeated trigger while open is a no-op; after acknowledgment a correction re-runs escalation). Audit: `critical_value.triggered/.acknowledged/.escalated` — facts only (encounterId, itemId, target/actor staff ids), never the result value, test name, or patient name.
 
 ### 3.29 radiology (studies, radiology_reports) — planned, NOT yet implemented
 

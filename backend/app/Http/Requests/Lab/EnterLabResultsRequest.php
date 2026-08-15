@@ -21,6 +21,10 @@ class EnterLabResultsRequest extends ApiRequest
             'results.*.itemId' => ['required', 'uuid', 'distinct'],
             'results.*.resultValue' => ['required', 'string', 'max:1000'],
             'results.*.resultUnit' => ['nullable', 'string', 'max:20'],
+            // Phase 3 slice 7 — critical/panic value flag (PRODUCT_REQUIREMENTS
+            // §6.8 workflow 3: "enter results → flag out-of-range and
+            // critical/panic values"). Triggers the escalation event.
+            'results.*.isCritical' => ['nullable', 'boolean'],
         ];
     }
 }
