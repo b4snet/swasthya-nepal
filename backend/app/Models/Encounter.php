@@ -32,6 +32,14 @@ class Encounter extends Model
 
     public const STATUS_CLOSED = 'closed';
 
+    public const DISPOSITION_HOME = 'home';
+
+    public const DISPOSITION_ADMITTED = 'admitted';
+
+    public const DISPOSITION_REFERRED = 'referred';
+
+    public const DISPOSITION_DECEASED = 'deceased';
+
     public const TYPE_OPD = 'opd';
 
     public const TYPE_IPD = 'ipd';
@@ -55,6 +63,10 @@ class Encounter extends Model
         'ended_at',
         'signed_by',
         'signed_at',
+        'disposition',
+        'discharge_summary',
+        'discharged_by',
+        'discharged_at',
         'lock_version',
         'created_by',
         'updated_by',
@@ -69,6 +81,7 @@ class Encounter extends Model
             'started_at' => 'datetime',
             'ended_at' => 'datetime',
             'signed_at' => 'datetime',
+            'discharged_at' => 'datetime',
             'lock_version' => 'integer',
         ];
     }
@@ -119,6 +132,14 @@ class Encounter extends Model
     public function prescriptions(): HasMany
     {
         return $this->hasMany(Prescription::class, 'encounter_id');
+    }
+
+    /**
+     * @return HasMany<FollowUp, $this>
+     */
+    public function followUps(): HasMany
+    {
+        return $this->hasMany(FollowUp::class, 'encounter_id');
     }
 
     /**

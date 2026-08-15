@@ -459,20 +459,38 @@ erDiagram
 
 ### 3.17 encounters
 
-> **Implemented with Phase 7.** Started from a checked-in appointment (`POST /appointments/{appointment}/start-encounter`); one encounter per appointment (partial unique). Status lifecycle in this phase: open → signed. Signed encounters are immutable — clinical content cannot be added after signing (amendment is a later phase). Only the encounter's provider (via their staff profile) can document or sign.
+> **Implemented with Phase 7 + Phase 3 slice 4.** Started from a checked-in appointment (`POST /appointments/{appointment}/start-encounter`); one encounter per appointment (partial unique). Status lifecycle: open → signed → closed (discharge, `POST /encounters/{encounter}/discharge`). Signed encounters are immutable — clinical content cannot be added after signing (amendment is a later phase). Only the encounter's provider (via their staff profile) can document, sign, or discharge.
 
 | Aspect | Design |
 |---|---|
 | **Purpose** | The clinical visit container: OPD, ER, teleconsult, or linked to an admission. The spine of the clinical record. |
 | **Primary key** | `id uuid` |
 | **Tenant ownership** | Tenant-scoped: `tenant_id NOT NULL`, `facility_id NOT NULL`, `branch_id NULL`. |
-| **Important fields** | `tenant_id`, `facility_id`, `branch_id`, `patient_id uuid NOT NULL`, `admission_id uuid NULL`, `appointment_id uuid NULL`, `type text` (opd, ipd, er, teleconsult), `status text` (open, in_progress, signed, amended, closed), `provider_staff_id uuid NOT NULL`, `started_at timestamptz`, `ended_at timestamptz NULL`, `signed_by uuid NULL`, `signed_at timestamptz NULL`, `lock_version bigint` |
+| **Important fields** | `tenant_id`, `facility_id`, `branch_id`, `patient_id uuid NOT NULL`, `admission_id uuid NULL`, `appointment_id uuid NULL`, `type text` (opd, ipd, er, teleconsult), `status text` (open, in_progress, signed, amended, closed), `provider_staff_id uuid NOT NULL`, `started_at timestamptz`, `ended_at timestamptz NULL`, `signed_by uuid NULL`, `signed_at timestamptz NULL`, `disposition text NULL` (home, admitted, referred, deceased), `discharge_summary text NULL`, `discharged_by uuid NULL`, `discharged_at timestamptz NULL`, `lock_version bigint` |
+| **Discharge** | `signed → closed` via CAS on `(status, lock_version)`; only the encounter provider (gate `encounter:sign`); audited `encounter.discharged` (disposition + ids, never the summary text) |
 | **Relationships** | N–1 `patients`; 0–1 `admissions`; 0–1 `appointments`; 1–N `diagnoses`, `clinical_notes`, `orders`, `prescriptions`, `charges` |
 | **Indexes** | `(tenant_id, patient_id, started_at)`; `(tenant_id, provider_staff_id, started_at)`; `(tenant_id, facility_id, status)`; unique `(tenant_id, appointment_id) WHERE appointment_id IS NOT NULL` |
 | **Uniqueness** | One encounter per appointment (where appointment-driven); encounter numbers unique per tenant |
 | **Audit** | Creation, **reads**, sign, amendment (amendments are new audited entries, never silent edits — per `PRODUCT_REQUIREMENTS.md` §6.4), closure |
 | **Soft deletion** | No — signed records are immutable history; amendment is the only evolution path |
 | **Retention** | Clinical class (longest) |
+
+### 3.17a follow_ups
+
+> **Implemented with Phase 3 slice 4.** A planned return visit or teleconsult linked to the encounter that generated it (`PRODUCT_REQUIREMENTS` §6.7). Lifecycle: planned → booked (linked to a real appointment of the same patient/facility) → completed, or cancelled with a reason. Every transition is a compare-and-swap on `(status, lock_version)`.
+
+| Aspect | Design |
+|---|---|
+| **Purpose** | The follow-up plan: who to see, when, and why — the clinical hand-off from this visit to the next. |
+| **Primary key** | `id uuid` |
+| **Tenant ownership** | Tenant-scoped: `tenant_id NOT NULL`, `facility_id NOT NULL` (TENANT_FACILITY tier, RLS enabled + FORCED). |
+| **Important fields** | `tenant_id`, `facility_id`, `patient_id uuid NOT NULL`, `encounter_id uuid NOT NULL`, `provider_staff_id uuid NOT NULL`, `follow_up_type text` (return_visit, teleconsult), `planned_at timestamptz NOT NULL`, `reason text NULL`, `booked_appointment_id uuid NULL`, `status text` (planned, booked, completed, cancelled), `cancel_reason text NULL`, `lock_version bigint`, `created_by/updated_by NULL` |
+| **Relationships** | N–1 `patients`, `encounters`, `staff` (provider); 0–1 `appointments` (booked linkage, same patient/facility enforced) |
+| **Indexes** | `(tenant_id, patient_id, planned_at)`; `(tenant_id, encounter_id)`; `(tenant_id, provider_staff_id, planned_at)`; `(tenant_id, facility_id, status, planned_at)`; `(tenant_id, id)` composite-FK unique |
+| **Uniqueness** | None beyond PK — each plan is its own event |
+| **Audit** | `follow_up.planned`, `.booked`, `.cancelled`, `.completed` — facts only (ids, type, plannedAt), never reason text or clinical content |
+| **Soft deletion** | No — cancellation is a status with a reason, never a delete |
+| **Retention** | Clinical class |
 
 ### 3.18 diagnoses
 

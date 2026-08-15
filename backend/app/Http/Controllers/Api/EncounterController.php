@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Exceptions\ApiException;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Encounter\DischargeEncounterRequest;
 use App\Http\Requests\Encounter\StoreClinicalNoteRequest;
 use App\Http\Requests\Encounter\StoreDiagnosisRequest;
 use App\Http\Requests\Encounter\StorePrescriptionRequest;
@@ -553,6 +554,61 @@ final class EncounterController extends Controller
     }
 
     /**
+     * POST /encounters/{encounter}/discharge — the clinical close of a
+     * signed visit (PRODUCT_REQUIREMENTS §6.7): only the encounter provider
+     * may discharge, the encounter must be signed (the record is final), and
+     * the transition signed → closed is a compare-and-swap on (status,
+     * lock_version) — two concurrent discharges can never double-close.
+     * IPD's structured discharge (diagnoses/procedures/medications sections)
+     * is a later-phase plan; the OPD summary is captured here.
+     */
+    public function discharge(DischargeEncounterRequest $request, Encounter $encounter): JsonResponse
+    {
+        AccessCheck::scoped($encounter, write: true);
+
+        if ($encounter->status !== Encounter::STATUS_SIGNED) {
+            throw new ApiException(
+                ErrorCodes::CONFLICT,
+                'Only a signed encounter can be discharged (current status: '.$encounter->status.').',
+                409,
+            );
+        }
+
+        $context = TenantContext::current();
+        $provider = $this->currentProvider($encounter, $context);
+
+        DB::transaction(function () use ($request, $encounter, $context): void {
+            $updated = DB::table('encounters')
+                ->where('id', $encounter->getKey())
+                ->where('lock_version', $encounter->lock_version)
+                ->where('status', Encounter::STATUS_SIGNED)
+                ->update([
+                    'status' => Encounter::STATUS_CLOSED,
+                    'disposition' => $request->validated('disposition'),
+                    'discharge_summary' => $request->validated('summary'),
+                    'discharged_by' => $context->user?->getKey(),
+                    'discharged_at' => now(),
+                    'lock_version' => $encounter->lock_version + 1,
+                    'updated_by' => $context->user?->getKey(),
+                ]);
+
+            if ($updated !== 1) {
+                throw new ApiException(ErrorCodes::CONFLICT, 'This encounter was concurrently modified; refresh and retry.', 409);
+            }
+        });
+
+        $this->audit->record(
+            'encounter.discharged',
+            'encounter',
+            $encounter->getKey(),
+            ['patientId' => $encounter->patient_id, 'providerStaffId' => $provider->getKey(), 'appointmentId' => $encounter->appointment_id, 'disposition' => $request->validated('disposition')],
+            $request,
+        );
+
+        return Envelope::success(data: self::present($encounter->fresh()), request: $request);
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private static function present(Encounter $encounter): array
@@ -568,6 +624,9 @@ final class EncounterController extends Controller
             'startedAt' => $encounter->started_at?->toIso8601String(),
             'endedAt' => $encounter->ended_at?->toIso8601String(),
             'signedAt' => $encounter->signed_at?->toIso8601String(),
+            'disposition' => $encounter->disposition,
+            'dischargeSummary' => $encounter->discharge_summary,
+            'dischargedAt' => $encounter->discharged_at?->toIso8601String(),
             'lockVersion' => $encounter->lock_version,
         ];
     }

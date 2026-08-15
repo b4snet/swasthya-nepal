@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\DepartmentController;
 use App\Http\Controllers\Api\EncounterController;
 use App\Http\Controllers\Api\FacilityController;
 use App\Http\Controllers\Api\FacilitySettingsController;
+use App\Http\Controllers\Api\FollowUpController;
 use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\InsurancePolicyController;
 use App\Http\Controllers\Api\InventoryController;
@@ -419,6 +420,23 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
         ->middleware('authorize:pharmacy:dispense');
     Route::post('prescriptions/{prescription}/dispense', [PharmacyController::class, 'dispense'])
         ->middleware('authorize:pharmacy:dispense');
+
+    // Phase 3 slice 4 — discharge & follow-up (PRODUCT_REQUIREMENTS §6.7):
+    // clinical close of the visit + planned return visits linked to it.
+    Route::post('encounters/{encounter}/discharge', [EncounterController::class, 'discharge'])
+        ->middleware('authorize:encounter:sign');
+    Route::post('encounters/{encounter}/follow-ups', [FollowUpController::class, 'create'])
+        ->middleware('authorize:followup:manage');
+    Route::get('encounters/{encounter}/follow-ups', [FollowUpController::class, 'forEncounter'])
+        ->middleware('authorize:followup:view');
+    Route::get('patients/{patient}/follow-ups', [FollowUpController::class, 'forPatient'])
+        ->middleware('authorize:followup:view');
+    Route::post('follow-ups/{followUp}/book', [FollowUpController::class, 'book'])
+        ->middleware('authorize:followup:manage');
+    Route::post('follow-ups/{followUp}/cancel', [FollowUpController::class, 'cancel'])
+        ->middleware('authorize:followup:manage');
+    Route::post('follow-ups/{followUp}/complete', [FollowUpController::class, 'complete'])
+        ->middleware('authorize:followup:manage');
 
     Route::get('invoices/{invoice}', [BillingController::class, 'showInvoice'])
         ->middleware('authorize:billing:view');

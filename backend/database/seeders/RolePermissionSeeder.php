@@ -127,6 +127,11 @@ class RolePermissionSeeder extends Seeder
             'pharmacy:dispense' => ['domain' => 'pharmacy', 'description' => 'Verify and dispense prescriptions (stock deduction, audited)'],
             'pharmacy:stock' => ['domain' => 'pharmacy', 'description' => 'Manage pharmacy inventory (receipts and adjustments)'],
 
+            // Phase 3 slice 4 — discharge & follow-up (PRODUCT_REQUIREMENTS
+            // §6.7): planned return visits linked to the encounter.
+            'followup:view' => ['domain' => 'followup', 'description' => 'View follow-up plans within scope'],
+            'followup:manage' => ['domain' => 'followup', 'description' => 'Plan, book, cancel, and complete follow-up visits'],
+
             // Billing and payments (Phase 13 spine, shipped with the
             // first clinical workflow).
             'billing:view' => ['domain' => 'billing', 'description' => 'View charges, invoices, and payments within scope'],
@@ -198,7 +203,7 @@ class RolePermissionSeeder extends Seeder
                     'patient:view', 'patient:search',
                     'insurance:view', 'consent:view', 'document:view', 'payer:view',
                     'schedule:view', 'appointment:view', 'queue:view',
-                    'encounter:view', 'medication:view', 'pharmacy:view', 'billing:view',
+                    'encounter:view', 'medication:view', 'pharmacy:view', 'followup:view', 'billing:view',
                 ],
             ],
             'org_admin' => [
@@ -242,6 +247,7 @@ class RolePermissionSeeder extends Seeder
                     'medication:view', 'medication:manage',
                     'lab:view', 'lab:order', 'lab:manage',
                     'pharmacy:view', 'pharmacy:stock',
+                    'followup:view', 'followup:manage',
                     'billing:view', 'billing:invoice', 'billing:collect',
                 ],
             ],
@@ -291,6 +297,7 @@ class RolePermissionSeeder extends Seeder
                     'encounter:prescribe', 'encounter:sign',
                     'medication:view', 'medication:manage',
                     'pharmacy:view', 'pharmacy:stock',
+                    'followup:view', 'followup:manage',
                     'billing:view', 'billing:invoice', 'billing:collect',
                 ],
             ],
@@ -354,7 +361,7 @@ class RolePermissionSeeder extends Seeder
                     'schedule:view', 'appointment:view', 'queue:view',
                     'encounter:view', 'encounter:create', 'encounter:document',
                     'encounter:prescribe', 'encounter:sign',
-                    'medication:view', 'pharmacy:view', 'billing:view',
+                    'medication:view', 'pharmacy:view', 'followup:view', 'followup:manage', 'billing:view',
                     'lab:view', 'lab:order',
                 ],
             ],
@@ -368,7 +375,7 @@ class RolePermissionSeeder extends Seeder
                     'insurance:view', 'consent:view', 'document:view',
                     'schedule:view', 'appointment:view', 'queue:view',
                     'encounter:view', 'encounter:document',
-                    'medication:view', 'pharmacy:view', 'billing:view',
+                    'medication:view', 'pharmacy:view', 'followup:view', 'billing:view',
                     'lab:view',
                 ],
             ],

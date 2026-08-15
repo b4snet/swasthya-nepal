@@ -10,6 +10,7 @@ use App\Models\Charge;
 use App\Models\ClinicalNote;
 use App\Models\Department;
 use App\Models\Encounter;
+use App\Models\FollowUp;
 use App\Models\InventoryItem;
 use App\Models\InventoryMovement;
 use App\Models\Invoice;
@@ -90,6 +91,8 @@ final class AuditLogger
         // Phase 3 slice 3 — pharmacy inventory ledger.
         'inventory_item' => InventoryItem::class,
         'inventory_movement' => InventoryMovement::class,
+        // Phase 3 slice 4 — discharge & follow-up.
+        'follow_up' => FollowUp::class,
     ];
 
     /**

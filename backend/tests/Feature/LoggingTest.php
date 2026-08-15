@@ -10,6 +10,14 @@ use Illuminate\Support\Str;
  * These tests assert on the real 'json' channel output, so they also prove
  * the JSON formatter configuration actually produces parseable lines.
  */
+beforeAll(function (): void {
+    // The request logger appends one line per request across the WHOLE test
+    // suite; by the time this file runs (alphabetically late), the log holds
+    // tens of thousands of lines and loading it whole can exhaust the test
+    // process memory ceiling. These tests only need their OWN entries, so the
+    // log is cleared once before this file's tests run.
+    @unlink(storage_path('logs/laravel.log'));
+});
 function logEntriesFor(string $correlationId): array
 {
     $logFile = storage_path('logs/laravel.log');
