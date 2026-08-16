@@ -285,6 +285,11 @@ class RolePermissionSeeder extends Seeder
             // patient's own revocation is self-service and needs NO
             // permission — it is bound to the authenticated portal token.
             'portal:manage' => ['domain' => 'portal', 'description' => 'Provision patient portal accounts and manage consent-bound access grants'],
+            // Phase 3 slice 23 — Interoperability readiness (INTEROPERABILITY.md
+            // §13–14): view/register integrations (measured status, registry
+            // truth), the egress allowlist (SSRF guard), and OAuth2 partners.
+            'integration:view' => ['domain' => 'interop', 'description' => 'View the integration registry, egress allowlist, and partners'],
+            'integration:manage' => ['domain' => 'interop', 'description' => 'Register integrations, record measured status, manage the egress allowlist and OAuth2 partners'],
         ];
     }
 
@@ -354,6 +359,9 @@ class RolePermissionSeeder extends Seeder
                     'encounter:view', 'medication:view', 'pharmacy:view', 'followup:view', 'billing:view',
                     'admission:view',
                     'er:view',
+                    // Phase 3 slice 23 — read-only registry visibility for
+                    // support agents (status truth, never management).
+                    'integration:view',
                 ],
             ],
             'org_admin' => [
@@ -430,6 +438,8 @@ class RolePermissionSeeder extends Seeder
                     // Phase 3 slice 22 — Patient Portal: the org admin
                     // provisions portal accounts and consent-bound grants.
                     'portal:manage',
+                    // Phase 3 slice 23 — Interoperability readiness.
+                    'integration:view', 'integration:manage',
                 ],
             ],
             'org_finance' => [
@@ -522,6 +532,8 @@ class RolePermissionSeeder extends Seeder
                     // provisions portal accounts for their facility's
                     // patients and manages consent-bound grants.
                     'portal:manage',
+                    // Phase 3 slice 23 — Interoperability readiness.
+                    'integration:view', 'integration:manage',
                 ],
             ],
             'branch_manager' => [

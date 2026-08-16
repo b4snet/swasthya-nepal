@@ -27,6 +27,7 @@ use App\Models\Deposit;
 use App\Models\DepositAllocation;
 use App\Models\Donation;
 use App\Models\Donor;
+use App\Models\EgressDestination;
 use App\Models\Encounter;
 use App\Models\ErEvent;
 use App\Models\ErRegistration;
@@ -36,6 +37,8 @@ use App\Models\IcuAlert;
 use App\Models\IcuBed;
 use App\Models\IcuObservationSet;
 use App\Models\InsuranceClaim;
+use App\Models\Integration;
+use App\Models\IntegrationEvent;
 use App\Models\InventoryItem;
 use App\Models\InventoryMovement;
 use App\Models\Invoice;
@@ -51,6 +54,8 @@ use App\Models\MarEntry;
 use App\Models\Medication;
 use App\Models\MetricSnapshot;
 use App\Models\NursingNote;
+use App\Models\OauthPartner;
+use App\Models\OauthPartnerToken;
 use App\Models\Payment;
 use App\Models\PayrollExport;
 use App\Models\PharmacyReturn;
@@ -258,6 +263,16 @@ final class AuditLogger
         'portal_account' => PortalAccount::class,
         'portal_session' => PortalSession::class,
         'portal_access_grant' => PortalAccessGrant::class,
+        // Phase 3 slice 23 — Interoperability readiness (DATABASE.md §3.42,
+        // INTEROPERABILITY.md §10): the registry, its message log, the egress
+        // allowlist, and the OAuth2 partner surface. Payloads carry facts
+        // only — types, providers, statuses, scopes, timestamps — never PHI
+        // (a projection audit records WHAT was projected, not its content).
+        'integration' => Integration::class,
+        'integration_event' => IntegrationEvent::class,
+        'egress_destination' => EgressDestination::class,
+        'oauth_partner' => OauthPartner::class,
+        'oauth_partner_token' => OauthPartnerToken::class,
     ];
 
     /**

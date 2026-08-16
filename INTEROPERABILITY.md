@@ -183,7 +183,7 @@ flowchart LR
 
 | System | Readiness | What "ready" means here |
 |---|---|---|
-| **FHIR** | **Design** | The R4 projection layer and contract-tested fixtures are specified; export/import readiness. No live FHIR endpoint exists or is claimed. |
+| **FHIR** | **Design → readiness layer implemented** | The R4 projection layer is implemented (`FhirProjection`: Patient, Encounter, MedicationRequest, DiagnosticReport) and contract-tested against fixtures (`backend/tests/Fixtures/fhir/`), served to OAuth2 partners through a scoped, consent-bound surface (`ResolvePartnerContext` + tenant-scope check + ACTIVE data-use consent at the boundary, INTEROPERABILITY.md §10). The integration registry, egress allowlist, and OAuth2 partner/token tables are live (DATABASE.md §3.54, 2026_08_17_300000/300100). No live FHIR endpoint exists or is claimed. |
 | **HL7** | **Design → readiness layer implemented** | The ORU^R01 parser (`Hl7Message`/`Hl7Segment`/`OruR01Parser`) and mapper (`OruResultMapper`) are implemented and contract-tested against fixtures (`backend/tests/Fixtures/hl7/`, `Hl7MessageTest`, `OruResultMapperTest`). This is the mapping/readiness layer only — no live HL7 connection exists; inbound transport (inbox, dedup, webhook signature verification) and LIS integration remain `future`. |
 | **DICOM** | **Design → readiness layer implemented** | The reference model is implemented: `studies` + `image_references` carry study/series/SOP instance UIDs and PACS URLs (references only, never pixels), the composite FK is the no-dangling guarantee, and the radiology report surface is contract-tested (RadiologyWorkflowTest). DICOM MWL worklists and any live PACS connection remain `future`; the platform is not a PACS and does not claim DICOM viewing or storage. |
 | **PACS** | **Future** | Depends on a hospital's PACS vendor; DICOM reference readiness is the enabler. No PACS is connected or claimed. |
@@ -199,6 +199,8 @@ flowchart LR
 | **National health systems** | **Future** | Built only when the national system exists and is specified; each is a contract-tested project with a named owner (`MASTER_RULES.md` §32.4). Nothing is simulated, nothing is claimed. |
 
 **Rule of the inventory:** when a "planned" integration ships, the registry records it as active with monitored status and the contract tests in CI; when a "future" integration becomes possible, it enters the pipeline through the ADR process — it never appears on a status page first.
+
+**Phase 3 slice 23 (2026-08-17):** the readiness REGISTRY itself is implemented and governed — `integrations` (measured status, CAS, kill-switch), `integration_events` (append-only outbox with bounded CAS retry budget + quarantine), `egress_allowlist` (the SSRF guard an adapter must pass), and the OAuth2 partner surface (`oauth_partners`/`oauth_partner_tokens` — hash-at-rest secrets, scoped short-lived tokens, revocation). Staff surfaces are `authorize:integration:view|manage`; the partner FHIR surface derives the tenant from the token, projects only the tenant claim, and requires scope + consent per projection. Every layer is TENANT-tier RLS FORCE-enabled and the cross-tenant boundary is proven at the API (InteroperabilityTest) and database (ClaimsBasedRlsTest/TenancyDatabaseInventoryTest) layers. Nothing here connects to a live system — it records and governs readiness truthfully.
 
 ---
 

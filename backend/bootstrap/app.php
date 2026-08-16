@@ -4,6 +4,7 @@ use App\Exceptions\ApiExceptionMapper;
 use App\Http\Middleware\AssignRequestIds;
 use App\Http\Middleware\EnsurePermission;
 use App\Http\Middleware\LogRequest;
+use App\Http\Middleware\ResolvePartnerContext;
 use App\Http\Middleware\ResolvePortalContext;
 use App\Http\Middleware\ResolveTenantContext;
 use App\Http\Middleware\SecurityHeaders;
@@ -78,6 +79,7 @@ return Application::configure(basePath: dirname(__DIR__))
             AuthenticatesSessions::class,
             ResolveTenantContext::class,
             ResolvePortalContext::class,
+            ResolvePartnerContext::class,
             SubstituteBindings::class,
             Authorize::class,
         ]);

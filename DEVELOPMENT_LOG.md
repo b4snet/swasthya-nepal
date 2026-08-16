@@ -1728,3 +1728,45 @@ ent schedule → 409 with zero rows changed; cross-tenant isolation — read 404
 | Tracked-secret scan | 0 matches |
 
 **Remaining risks.** MFA enforcement for portal accounts is stored (`mfa_enabled`) but Phase-2 enforcement is future; portal password reset and patient document access are future; appointment self-booking (write side) is explicitly NOT in this slice; the patient portal UI is not yet built (API surface only); portal login has no email/phone verification channel yet (identifier is the credential, exactly like staff login — documented, not faked).
+
+## Phase 3 — Slice 23: Interoperability Readiness (ROADMAP Phase 18)
+
+**Date:** 2026-08-17
+
+**Objective.** Readiness layers ONLY — nothing connects to, simulates, or claims a live national/LIS/PACS integration (the honesty clause, INTEROPERABILITY.md §13). Implemented truthfully: the integration registry with MEASURED status, the egress allowlist (SSRF guard), tenant-scoped OAuth2 partner registration/token issuance, fixture-tested FHIR R4 projections and an HL7 v2 ADT^A01 mapper, and signed-webhook verification. No new dependencies; monolith preserved.
+
+**Files created.**
+- Migrations: `2026_08_17_300000_create_interop_readiness_tables.php` (5 tables: integrations, integration_events, egress_allowlist, oauth_partners, oauth_partner_tokens), `2026_08_17_300100_enable_interop_row_level_security.php` (5 × 4 = 20 policies, RLS + FORCE, TENANT tier)
+- Models: `Integration`, `IntegrationEvent`, `EgressDestination`, `OauthPartner`, `OauthPartnerToken` (+ 5 factories)
+- Services: `IntegrationRegistryService` (CAS status/kill-switch, bounded retry budget + quarantine, egress guard, unique 409s), `PartnerOauthService` (client_credentials issuance, hash-at-rest secrets, scoped short-lived revocable tokens), `FhirProjection` (Patient/Encounter/MedicationRequest/DiagnosticReport R4 projections)
+- Support: `Hl7/AdtA01Mapper` (canonical internal shape), `WebhookSignature` (HMAC verify with replay protection)
+- Middleware: `ResolvePartnerContext` (partner tenant DERIVED from the token — never client input; ONE transaction, LOCAL GUCs, projects only the tenant claim)
+- Requests: `Interop/StoreIntegrationRequest`, `RecordIntegrationStatusRequest`, `StoreEgressDestinationRequest`, `RegisterPartnerRequest`, `IssueTokenRequest`
+- Controller: `InteropController` (staff registry/allowlist/partner surface under `authorize:integration:view|manage`; public `oauth/token` behind `throttle:auth`; partner FHIR projection surface gated by scope + ACTIVE data-use consent at the boundary)
+- Fixtures: `tests/Fixtures/fhir/*.json` (5 resources), `tests/Fixtures/hl7/adt_a01_basic.hl7`
+- Test: `InteroperabilityTest`
+
+**Files modified.** `AccessCheck` (new `tenantScoped` — the TENANT-tier mirror of RLS invisibility: a cross-tenant id is a 404 for every method, never an existence leak, never a reachable write; scoped() stays for TENANT_FACILITY models), `routes/api.php` (staff interop group in the tenant group; public `interop/oauth/token`; standalone partner FHIR group OUTSIDE the staff tenant group with `throttle:api → ResolvePartnerContext`), `bootstrap/app.php` (ResolvePartnerContext priority slot before SubstituteBindings), `RolePermissionSeeder` (2 permissions: `integration:view` + `integration:manage` — org_admin + hospital_admin; support_agent view-only), `AuditLogger` (interop resource types + ACTOR_INTEGRATION), `ClaimsBasedRlsTest`, `TenancyDatabaseInventoryTest`, `DATABASE.md` (§3.54), `INTEROPERABILITY.md` (§13 FHIR row + slice-23 note), this log.
+
+**Migrations.** Two, applied to the disposable test DB (`swasthya_test`) and dev DB (`swasthya`). No real/staging Supabase touched.
+
+**Tests.**
+- New `InteroperabilityTest` — **22 tests / 104 assertions**: FHIR projections match fixtures exactly (patient/encounter/lab observation/medication request/reported diagnostic report); ADT^A01 maps to the canonical shape; webhook signature verify + replay protection; integration registration + duplicate 409; registry management denied without `integration:manage`; measured status CAS (concurrent writer 409); kill-switch independent + audited; egress allowlist enforced (SSRF guard); partner registration returns the client secret exactly once; scoped client_credentials issuance + bad/revoked client refusal; partner revocation revokes every token; partner surface requires auth + resource scope; consent at the boundary (no ACTIVE data-use consent → 403); FHIR Patient served to a scoped consented partner; DiagnosticReport only for REPORTED orders; **cross-tenant isolation both ways** (a tenant-A partner token cannot resolve tenant-B's patient → 404; a tenant-B admin cannot bind tenant-A's integration → 404 — no existence leak); audit payloads fact-only (no secret/token keys anywhere)
+- ClaimsBasedRlsTest: interop claims isolation proof; 448 → 468 policies, matrix 113 → 118
+- TenancyDatabaseInventoryTest: +5 tables in the scoped set + chain seed + update probes; 113 → 118 counts
+
+**Gate results (all green).**
+| Gate | Result |
+|---|---|
+| InteroperabilityTest (new) | **22 passed / 104 assertions** |
+| RLS suites (ClaimsBased + Inventory) | **34 passed / 2,332 assertions** (468 policies, 118-table sweep, FORCE intact, swasthya_app NOBYPASSRLS) |
+| Full backend Pest | **699 passed / 9,432 assertions** (Slice-22 baseline 677/9,213 → **+22/+219**) |
+| Node harness | **855 / 855** (unchanged — Laravel-only slice) |
+| Frontend Vitest | **26 passed** + tsc clean |
+| Harness TypeScript | PASS |
+| Pint | PASS (677 files, 1 style fix in InteroperabilityTest) |
+| `git diff --check` | CLEAN |
+| Debug-marker / artifact sweep | CLEAN (removed a stray empty file artifact) |
+| Tracked-secret scan | 0 matches (remaining hits are pre-existing non-secret column-name/script matches) |
+
+**Remaining risks.** Real adapter implementations (LIS/PACS/national) are explicitly OUT of scope and never claimed — the registry records readiness truthfully; live FHIR/HL7 endpoints depend on real partners; the reporting replica wiring remains a deployment-phase task; the egress allowlist and webhook verification are the guards a future adapter must pass.

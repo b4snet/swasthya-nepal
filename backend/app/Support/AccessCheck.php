@@ -76,6 +76,39 @@ final class AccessCheck
     }
 
     /**
+     * Tenant-only scope check for TENANT-tier models (rows carrying
+     * tenant_id but NO facility_id — integrations, partners, egress
+     * allowlist, report schedules, integration events: DATABASE.md §3.42).
+     *
+     * Unlike scoped(), there is no facility dimension: a facility-scoped
+     * principal legitimately manages tenant-tier infrastructure for their
+     * whole tenant. A row outside the caller's tenant returns 404 for
+     * every method — the RLS mirror: under real RLS such a row is
+     * invisible, so route binding fails with 404 before any write could
+     * happen; the application layer reproduces exactly that (existence is
+     * never leaked, writes are unreachable).
+     *
+     *  - out of tenant → 404 (reads AND writes — RLS invisibility)
+     *  - platform context → any row
+     */
+    public static function tenantScoped(Model $model): Model
+    {
+        $context = TenantContext::current();
+
+        if ($context->isPlatform) {
+            return $model;
+        }
+
+        $modelTenantId = $model->getAttribute('tenant_id');
+
+        if (is_string($modelTenantId) && $modelTenantId !== $context->tenantId()) {
+            throw new ApiException(ErrorCodes::NOT_FOUND, 'Resource not found.', 404);
+        }
+
+        return $model;
+    }
+
+    /**
      * Generic tenant/facility-scope check for any tenant-scoped model
      * carrying tenant_id and facility_id (Phase 4 catalogs: departments,
      * locations, wards, rooms, beds, staff, services).

@@ -23,6 +23,7 @@ use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\HrController;
 use App\Http\Controllers\Api\IcuController;
 use App\Http\Controllers\Api\InsurancePolicyController;
+use App\Http\Controllers\Api\InteropController;
 use App\Http\Controllers\Api\InventoryController;
 use App\Http\Controllers\Api\IpdNursingController;
 use App\Http\Controllers\Api\LabOrderController;
@@ -54,6 +55,7 @@ use App\Http\Controllers\Api\ServiceController;
 use App\Http\Controllers\Api\StaffController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\WardController;
+use App\Http\Middleware\ResolvePartnerContext;
 use App\Http\Middleware\ResolvePortalContext;
 use App\Http\Middleware\ResolveTenantContext;
 use Illuminate\Support\Facades\Route;
@@ -903,6 +905,30 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
         ->middleware('authorize:reports:run');
     Route::post('analytics/reports/export', [AnalyticsController::class, 'exportReport'])
         ->middleware('authorize:reports:export');
+
+    // Phase 3 slice 23 — Interoperability readiness (ROADMAP Phase 18,
+    // INTEROPERABILITY.md §13–14): the integration registry with MEASURED
+    // status, the egress allowlist (SSRF guard), and OAuth2 partner
+    // registration. Nothing here connects to a live system — it records and
+    // governs readiness truthfully.
+    Route::get('interop/integrations', [InteropController::class, 'indexIntegrations'])
+        ->middleware('authorize:integration:view');
+    Route::post('interop/integrations', [InteropController::class, 'registerIntegration'])
+        ->middleware('authorize:integration:manage');
+    Route::post('interop/integrations/{integration}/status', [InteropController::class, 'recordIntegrationStatus'])
+        ->middleware('authorize:integration:manage');
+    Route::post('interop/integrations/{integration}/kill-switch', [InteropController::class, 'setKillSwitch'])
+        ->middleware('authorize:integration:manage');
+    Route::get('interop/egress-allowlist', [InteropController::class, 'indexEgressAllowlist'])
+        ->middleware('authorize:integration:view');
+    Route::post('interop/egress-allowlist', [InteropController::class, 'storeEgressDestination'])
+        ->middleware('authorize:integration:manage');
+    Route::get('interop/partners', [InteropController::class, 'indexPartners'])
+        ->middleware('authorize:integration:view');
+    Route::post('interop/partners', [InteropController::class, 'registerPartner'])
+        ->middleware('authorize:integration:manage');
+    Route::post('interop/partners/{partner}/revoke', [InteropController::class, 'revokePartner'])
+        ->middleware('authorize:integration:manage');
 });
 
 // Patient Portal — portal-authenticated surface (Phase 3 slice 22,
@@ -923,4 +949,21 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolvePortalContext::class])
     Route::get('grants', [PatientPortalController::class, 'grants']);
     // The patient may revoke ANY of their own grants (self-service).
     Route::post('grants/{grant}/revoke', [PatientPortalController::class, 'revokeGrant']);
+});
+
+// Partner OAuth2 token endpoint (Phase 3 slice 23): public, behind the
+// strict auth throttle like staff login; credentials are verified in
+// PartnerOauthService (unknown client ≡ wrong secret — no enumeration).
+Route::post('interop/oauth/token', [InteropController::class, 'issueToken'])->middleware('throttle:auth');
+
+// Partner FHIR projection surface — OUTSIDE the staff tenant group:
+// ResolvePartnerContext authenticates the partner access token and derives
+// the tenant from it (never client input), projects ONLY the tenant claim
+// (partners are tenant-level consumers), and every projection is gated by
+// the token's scope AND an active data-use consent at the boundary.
+Route::middleware(['throttle:api', ResolvePartnerContext::class])->prefix('interop/fhir')->group(function (): void {
+    Route::get('Patient/{patient}', [InteropController::class, 'fhirPatient']);
+    Route::get('Encounter/{encounter}', [InteropController::class, 'fhirEncounter']);
+    Route::get('MedicationRequest/{prescription}', [InteropController::class, 'fhirMedicationRequest']);
+    Route::get('DiagnosticReport/{labOrder}', [InteropController::class, 'fhirDiagnosticReport']);
 });

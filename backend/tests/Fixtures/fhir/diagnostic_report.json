@@ -1,0 +1,25 @@
+{
+  "resourceType": "DiagnosticReport",
+  "id": "ord-1",
+  "status": "final",
+  "code": {
+    "text": "CBC"
+  },
+  "subject": {
+    "reference": "Patient/p1"
+  },
+  "issued": "2026-08-16T12:00:00+00:00",
+  "result": [
+    {
+      "reference": "Observation/item-1"
+    },
+    {
+      "reference": "Observation/item-2"
+    }
+  ],
+  "meta": {
+    "profile": [
+      "http://hl7.org/fhir/StructureDefinition/DiagnosticReport"
+    ]
+  }
+}

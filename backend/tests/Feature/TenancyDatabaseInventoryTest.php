@@ -90,6 +90,11 @@ const RLS_SCOPED_TABLES = [
     // Phase 3 slice 22 — Patient Portal (DATABASE.md §3.53): portal
     // identities, append-only session logs, and consent-bound grants.
     'portal_accounts', 'portal_sessions', 'portal_access_grants',
+    // Phase 3 slice 23 — Interoperability readiness (DATABASE.md §3.54,
+    // INTEROPERABILITY.md §13–14): the integration registry, measured-status
+    // events, the egress allowlist, and the OAuth2 partner/token pair.
+    'integrations', 'integration_events', 'egress_allowlist',
+    'oauth_partners', 'oauth_partner_tokens',
     // TENANT_ONLY
     'payers', 'mrn_counters', 'patient_identifiers', 'patient_contacts',
     'insurance_policies', 'patient_documents', 'consents',
@@ -635,6 +640,30 @@ function seedTenantChain(ConnectionInterface $c, string $tenantId, string $facil
     $c->insert('insert into portal_access_grants (id, tenant_id, facility_id, portal_account_id, patient_id, data_scope, purpose, status, granted_at, granted_by_staff_id, revoked_at, revoked_by_staff_id, revoked_by_patient, lock_version, created_by, updated_by, created_at, updated_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$portalGrant, $tenantId, $facilityId, $portalAccount, $patient, 'appointments', 'Chain appointment visibility', 'granted', '2026-08-16 12:00:00+00', $staff, null, null, false, 0, $staff, $staff, '2026-08-16 12:00:00+00', '2026-08-16 12:00:00+00']);
     $ids['portal_access_grants'] = $portalGrant;
 
+    // Phase 3 slice 23 — Interoperability readiness (integrations,
+    // integration_events, egress_allowlist, oauth_partners,
+    // oauth_partner_tokens — DATABASE.md §3.54). TENANT-tier infrastructure
+    // rows: no facility_id, scoped purely by tenant.
+    $integration = (string) Str::uuid();
+    $c->insert('insert into integrations (id, tenant_id, type, provider, config_encrypted, status, owner_staff_id, purpose, contract_version, standards_version, mapping_version, kill_switched, last_checked_at, health, lock_version, created_by_staff_id, updated_by_staff_id, created_at, updated_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$integration, $tenantId, 'fhir', 'chain-fhir', null, 'configured', $staff, 'Chain FHIR projection', '1.0', 'R4.0.1', '1.0', false, null, null, 0, $staff, $staff, '2026-08-16 12:00:00+00', '2026-08-16 12:00:00+00']);
+    $ids['integrations'] = $integration;
+
+    $integrationEvent = (string) Str::uuid();
+    $c->insert('insert into integration_events (id, tenant_id, integration_id, direction, message_type, correlation_id, consent_basis, payload, status, attempts, error, mapping_version, occurred_at, created_at, updated_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$integrationEvent, $tenantId, $integration, 'outbound', 'ADT^A01', (string) Str::uuid(), null, '{"ref":"chain-1"}', 'queued', 0, null, '1.0', '2026-08-16 12:00:00+00', '2026-08-16 12:00:00+00', '2026-08-16 12:00:00+00']);
+    $ids['integration_events'] = $integrationEvent;
+
+    $egress = (string) Str::uuid();
+    $c->insert('insert into egress_allowlist (id, tenant_id, integration_id, host, port, purpose, is_active, created_by_staff_id, created_at, updated_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$egress, $tenantId, $integration, 'chain.example.test', 443, 'Chain outbound', true, $staff, '2026-08-16 12:00:00+00', '2026-08-16 12:00:00+00']);
+    $ids['egress_allowlist'] = $egress;
+
+    $partner = (string) Str::uuid();
+    $c->insert('insert into oauth_partners (id, tenant_id, name, client_id, client_secret_hash, scopes, status, token_ttl_seconds, webhook_url, webhook_secret_hash, created_by_staff_id, lock_version, created_at, updated_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$partner, $tenantId, 'Chain Partner', $u('cli'), 'hash', '["fhir:Patient"]', 'active', 3600, null, null, $staff, 0, '2026-08-16 12:00:00+00', '2026-08-16 12:00:00+00']);
+    $ids['oauth_partners'] = $partner;
+
+    $partnerToken = (string) Str::uuid();
+    $c->insert('insert into oauth_partner_tokens (id, tenant_id, oauth_partner_id, token_hash, scopes, expires_at, revoked_at, last_used_at, created_at, updated_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$partnerToken, $tenantId, $partner, hash('sha256', $partnerToken), '["fhir:Patient"]', '2026-08-17 12:00:00+00', null, null, '2026-08-16 12:00:00+00', '2026-08-16 12:00:00+00']);
+    $ids['oauth_partner_tokens'] = $partnerToken;
+
     // Support sessions are owner-or-platform visible: insert with the chain
     // user as the owning context (user_id GUC).
     $session = (string) Str::uuid();
@@ -703,6 +732,11 @@ function chainUpdateColumns(): array
         'portal_accounts' => ['status', 'locked'],
         'portal_sessions' => ['revoked_by', 'staff'],
         'portal_access_grants' => ['status', 'revoked'],
+        'integrations' => ['status', 'disabled'],
+        'integration_events' => ['status', 'failed'],
+        'egress_allowlist' => ['is_active', 'false'],
+        'oauth_partners' => ['status', 'revoked'],
+        'oauth_partner_tokens' => ['revoked_at', '2026-08-16 13:00:00+00'],
         'payment_allocations' => ['amount_minor', '1'],
         'payments' => ['provider_ref', 'upd'],
         'payroll_exports' => ['format', 'csv'],
