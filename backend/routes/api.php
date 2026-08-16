@@ -37,6 +37,7 @@ use App\Http\Controllers\Api\PatientContactController;
 use App\Http\Controllers\Api\PatientController;
 use App\Http\Controllers\Api\PatientDocumentController;
 use App\Http\Controllers\Api\PatientIdentifierController;
+use App\Http\Controllers\Api\PatientPortalController;
 use App\Http\Controllers\Api\PayerController;
 use App\Http\Controllers\Api\PermissionController;
 use App\Http\Controllers\Api\PharmacyController;
@@ -53,6 +54,7 @@ use App\Http\Controllers\Api\ServiceController;
 use App\Http\Controllers\Api\StaffController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\WardController;
+use App\Http\Middleware\ResolvePortalContext;
 use App\Http\Middleware\ResolveTenantContext;
 use Illuminate\Support\Facades\Route;
 
@@ -92,6 +94,12 @@ Route::post('auth/mfa/challenge', [MfaController::class, 'challenge'])->middlewa
 // reset additionally enforces per-account failure limiting in the service.
 Route::post('auth/password/forgot', [PasswordResetController::class, 'forgot'])->middleware('throttle:auth');
 Route::post('auth/password/reset', [PasswordResetController::class, 'reset'])->middleware('throttle:auth');
+
+// Patient Portal login (Phase 3 slice 22, PRODUCT_REQUIREMENTS §6.2):
+// identifier + password against a tenant disambiguated by organization
+// code. Behind the strict auth throttle like staff login; the service
+// layers DB-backed per-account lockout on top (SECURITY.md §18).
+Route::post('portal/login', [PatientPortalController::class, 'login'])->middleware('throttle:auth');
 
 // The whole API surface is rate-limited per IP (throttle:api,
 // SWASTHYA_RATE_LIMIT_API, config/swasthya.php §rate_limits) BEFORE
@@ -337,6 +345,20 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
         ->middleware('authorize:document:view');
     Route::post('patients/{patient}/documents', [PatientDocumentController::class, 'store'])
         ->middleware('authorize:document:manage');
+
+    // Patient Portal — staff-managed surface (Phase 3 slice 22, PRODUCT
+    // REQUIREMENTS §6.2): provisioning portal accounts, issuing and revoking
+    // consent-bound access grants, and disabling accounts. All gated by
+    // portal:manage; the patient is resolved inside the tenant context so
+    // a cross-tenant/cross-facility patient is a 404 (no existence leak).
+    Route::post('organizations/{organization}/patients/{patient}/portal', [PatientPortalController::class, 'provisionAccount'])
+        ->middleware('authorize:portal:manage');
+    Route::post('portal-accounts/{portalAccount}/grants', [PatientPortalController::class, 'grantAccess'])
+        ->middleware('authorize:portal:manage');
+    Route::post('portal-accounts/{portalAccount}/disable', [PatientPortalController::class, 'disableAccount'])
+        ->middleware('authorize:portal:manage');
+    Route::post('portal-access-grants/{grant}/revoke', [PatientPortalController::class, 'revokeGrantByStaff'])
+        ->middleware('authorize:portal:manage');
 
     // Phase 6 — Front Desk: schedules, availability, bookings, queue.
     Route::get('organizations/{organization}/schedule-templates', [ScheduleController::class, 'templates'])
@@ -881,4 +903,24 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
         ->middleware('authorize:reports:run');
     Route::post('analytics/reports/export', [AnalyticsController::class, 'exportReport'])
         ->middleware('authorize:reports:export');
+});
+
+// Patient Portal — portal-authenticated surface (Phase 3 slice 22,
+// PRODUCT_REQUIREMENTS §6.2): self-only, consent-bound reads. This group is
+// deliberately OUTSIDE the staff tenant group — ResolvePortalContext
+// replaces ResolveTenantContext (a portal token's tokenable is a
+// PortalAccount, never a User), derives the patient identity from the token
+// (never client input), loads the patient inside the tenant/facility RLS
+// context, and carries NO role permissions — authorization is the portal's
+// own scope checks. throttle:api still runs first so unauthenticated
+// requests consume the per-IP budget.
+Route::middleware(['throttle:api', 'auth:sanctum', ResolvePortalContext::class])->prefix('portal')->group(function (): void {
+    Route::post('logout', [PatientPortalController::class, 'logout']);
+    Route::get('me', [PatientPortalController::class, 'me']);
+    Route::get('appointments', [PatientPortalController::class, 'appointments']);
+    Route::get('results', [PatientPortalController::class, 'results']);
+    Route::get('bills', [PatientPortalController::class, 'bills']);
+    Route::get('grants', [PatientPortalController::class, 'grants']);
+    // The patient may revoke ANY of their own grants (self-service).
+    Route::post('grants/{grant}/revoke', [PatientPortalController::class, 'revokeGrant']);
 });

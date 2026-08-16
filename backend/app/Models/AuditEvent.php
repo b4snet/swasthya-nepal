@@ -28,6 +28,11 @@ class AuditEvent extends Model
 
     public const ACTOR_INTEGRATION = 'integration';
 
+    // Phase 3 slice 22 — patient-portal principals (PRODUCT REQUIREMENTS
+    // §6.2): portal actions are audited with the patient identity, the same
+    // discipline as staff actions.
+    public const ACTOR_PATIENT = 'patient';
+
     // The append-only table has no created_at/updated_at: occurred_at IS the
     // event time (DATABASE.md §3.36). Eloquent's created-at machinery maps to
     // it; updated_at stays disabled.

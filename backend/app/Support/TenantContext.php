@@ -5,7 +5,9 @@ namespace App\Support;
 use App\Models\Branch;
 use App\Models\Facility;
 use App\Models\Organization;
+use App\Models\Patient;
 use App\Models\Permission;
+use App\Models\PortalAccount;
 use App\Models\Role;
 use App\Models\RoleAssignment;
 use App\Models\User;
@@ -52,6 +54,8 @@ final class TenantContext
         public readonly Collection $assignments,
         public readonly ?Branch $branch = null,
         public readonly ?string $supportSessionId = null,
+        public readonly ?PortalAccount $portalAccount = null,
+        public readonly ?Patient $patient = null,
     ) {}
 
     public static function current(): self
@@ -82,6 +86,16 @@ final class TenantContext
     public function branchId(): ?string
     {
         return $this->branch?->getKey();
+    }
+
+    /**
+     * Whether this is a patient-portal principal (self-only access; NO role
+     * permissions — its authorization is the portal's consent-bound,
+     * patient-scoped checks, never role-based).
+     */
+    public function isPortalPatient(): bool
+    {
+        return $this->portalAccount !== null;
     }
 
     public function timezone(): string

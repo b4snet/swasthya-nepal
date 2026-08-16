@@ -17,7 +17,7 @@ use Illuminate\Support\Str;
  * exercised end-to-end. Every test runs in a transaction on the app-role
  * connection and rolls back in all paths: no fixtures leak.
  */
-it('re-keys every RLS policy to the claims helpers (436 policies, zero GUC references)', function () {
+it('re-keys every RLS policy to the claims helpers (448 policies, zero GUC references)', function () {
     $policies = DB::connection('pgsql')->select(
         <<<'SQL'
         select count(*) as total,
@@ -29,7 +29,7 @@ it('re-keys every RLS policy to the claims helpers (436 policies, zero GUC refer
         SQL
     )[0];
 
-    expect((int) $policies->total)->toBe(436)
+    expect((int) $policies->total)->toBe(448)
         ->and((int) $policies->not_claims)->toBe(0)
         ->and((int) $policies->still_guc)->toBe(0);
 
@@ -83,7 +83,9 @@ it('keeps the RLS matrix intact: 62 scoped on, 15 off, none on-without-policies'
     // icu_observation_sets, warning_scores, icu_alerts, critical_care_notes,
     // donors, donations, blood_units, compatibility_results, crossmatches,
     // transfusions, reaction_reports.
-    expect((int) $matrix->rls_on)->toBe(110)
+    // +3 since slice 22: portal_accounts, portal_sessions,
+    // portal_access_grants.
+    expect((int) $matrix->rls_on)->toBe(113)
         ->and((int) $matrix->rls_off)->toBe(15)
         ->and((int) $matrix->on_without_policies)->toBe(0);
 });
@@ -1036,6 +1038,62 @@ it('isolates the Analytics and Reporting surface from claims (7 tables, TENANT_F
         expect($c->selectOne('select name from kpi_definitions where id = ?', [$kpi])->name)->toBe('Registrations')
             ->and((float) $c->selectOne('select value from metric_snapshots where id = ?', [$snapshot])->value)->toBe(2.0)
             ->and($c->selectOne('select status from report_runs where id = ?', [$reportRun])->status)->toBe('completed');
+    });
+});
+
+it('isolates the Patient Portal surface from claims (3 tables, TENANT_FACILITY — §3.53)', function () {
+    rlsTx(rlsConn(), function ($c): void {
+        $t = claimsTenants($c);
+        $department = (string) Str::uuid();
+        $staff = (string) Str::uuid();
+        $patient = (string) Str::uuid();
+        $account = (string) Str::uuid();
+        $session = (string) Str::uuid();
+        $grant = (string) Str::uuid();
+
+        // Full chain in tenant A (RLS policies apply on every row).
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
+        $c->insert('insert into departments (id, tenant_id, facility_id, name, code, status) values (?, ?, ?, ?, ?, ?)', [$department, $t['tenantA'], $t['facilityA'], 'Portal', 'prtl', 'active']);
+        $c->insert('insert into staff (id, tenant_id, facility_id, department_id, employee_code, full_name, designation, status) values (?, ?, ?, ?, ?, ?, ?, ?)', [$staff, $t['tenantA'], $t['facilityA'], $department, 'EMP-P1', 'Portal Staff', 'Registrar', 'active']);
+        $c->insert('insert into patients (id, tenant_id, facility_id, mrn, full_name, date_of_birth, sex, status) values (?, ?, ?, ?, ?, ?, ?, ?)', [$patient, $t['tenantA'], $t['facilityA'], 'MRN-PTL', 'Portal Patient', '1990-01-01', 'female', 'active']);
+        $c->insert('insert into portal_accounts (id, tenant_id, facility_id, patient_id, login_identifier, password_hash, status, failed_attempts, locked_until, mfa_enabled, last_login_at, lock_version, created_by_staff_id, updated_by_staff_id, created_at, updated_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$account, $t['tenantA'], $t['facilityA'], $patient, 'portal-a@two.test', 'hash', 'active', 0, null, false, null, 0, $staff, $staff, now(), now()]);
+        $c->insert('insert into portal_sessions (id, tenant_id, facility_id, portal_account_id, patient_id, token_id, ip_address, user_agent, expires_at, revoked_at, revoked_by, created_at, updated_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$session, $t['tenantA'], $t['facilityA'], $account, $patient, 1001, '127.0.0.1', 'test', '2026-08-17 12:00:00+00', null, null, now(), now()]);
+        $c->insert('insert into portal_access_grants (id, tenant_id, facility_id, portal_account_id, patient_id, data_scope, purpose, status, granted_at, granted_by_staff_id, revoked_at, revoked_by_staff_id, revoked_by_patient, lock_version, created_by, updated_by, created_at, updated_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$grant, $t['tenantA'], $t['facilityA'], $account, $patient, 'appointments', 'Patient requested appointment visibility', 'granted', '2026-08-16 12:00:00+00', $staff, null, null, false, 0, $staff, $staff, now(), now()]);
+
+        // Own tenant+facility claims → visible.
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
+        expect($c->selectOne('select id from portal_accounts where id = ?', [$account]))->not->toBeNull()
+            ->and($c->selectOne('select id from portal_sessions where id = ?', [$session]))->not->toBeNull()
+            ->and($c->selectOne('select id from portal_access_grants where id = ?', [$grant]))->not->toBeNull();
+
+        // Another tenant → invisible; update/delete affect zero rows.
+        claimsSet($c, ['app_tenant_id' => $t['tenantB'], 'app_facility_id' => $t['facilityB']]);
+        expect($c->selectOne('select id from portal_accounts where id = ?', [$account]))->toBeNull()
+            ->and($c->selectOne('select id from portal_sessions where id = ?', [$session]))->toBeNull()
+            ->and($c->selectOne('select id from portal_access_grants where id = ?', [$grant]))->toBeNull()
+            ->and($c->update('update portal_accounts set status = ? where id = ?', ['disabled', $account]))->toBe(0)
+            ->and($c->update('update portal_access_grants set status = ? where id = ?', ['revoked', $grant]))->toBe(0)
+            ->and($c->delete('delete from portal_sessions where id = ?', [$session]))->toBe(0)
+            ->and($c->delete('delete from portal_accounts where id = ?', [$account]))->toBe(0);
+
+        // Same tenant, a different facility → invisible (TENANT_FACILITY).
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityB']]);
+        expect($c->selectOne('select id from portal_accounts where id = ?', [$account]))->toBeNull()
+            ->and($c->selectOne('select id from portal_access_grants where id = ?', [$grant]))->toBeNull()
+            ->and($c->selectOne('select id from portal_sessions where id = ?', [$session]))->toBeNull();
+
+        // Org-wide claims (no facility) → the tenant's portal rows are seen
+        // (the established `OR facility_id IS NULL` claim semantics).
+        claimsSet($c, ['app_tenant_id' => $t['tenantA']]);
+        expect($c->selectOne('select id from portal_accounts where id = ?', [$account]))->not->toBeNull()
+            ->and($c->selectOne('select id from portal_sessions where id = ?', [$session]))->not->toBeNull()
+            ->and($c->selectOne('select id from portal_access_grants where id = ?', [$grant]))->not->toBeNull();
+
+        // The rows are untouched by every attack above.
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
+        expect($c->selectOne('select status from portal_accounts where id = ?', [$account])->status)->toBe('active')
+            ->and($c->selectOne('select status from portal_access_grants where id = ?', [$grant])->status)->toBe('granted')
+            ->and($c->selectOne('select id from portal_sessions where id = ?', [$session]))->not->toBeNull();
     });
 });
 

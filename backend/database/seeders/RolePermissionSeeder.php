@@ -279,6 +279,12 @@ class RolePermissionSeeder extends Seeder
             'reports:run' => ['domain' => 'analytics', 'description' => 'Run report templates on the reporting connection'],
             'reports:schedule' => ['domain' => 'analytics', 'description' => 'Schedule reports on cron expressions'],
             'reports:export' => ['domain' => 'analytics', 'description' => 'Export report runs (audited, fingerprint checksum)'],
+            // Phase 3 slice 22 — Patient Portal (PRODUCT REQUIREMENTS §6.2):
+            // staff provision portal accounts and issue/revoke the
+            // consent-bound scopes (appointments, results, bills). The
+            // patient's own revocation is self-service and needs NO
+            // permission — it is bound to the authenticated portal token.
+            'portal:manage' => ['domain' => 'portal', 'description' => 'Provision patient portal accounts and manage consent-bound access grants'],
         ];
     }
 
@@ -421,6 +427,9 @@ class RolePermissionSeeder extends Seeder
                     // surface (definitions, dashboards, reports, exports).
                     'analytics:view', 'analytics:manage',
                     'reports:run', 'reports:schedule', 'reports:export',
+                    // Phase 3 slice 22 — Patient Portal: the org admin
+                    // provisions portal accounts and consent-bound grants.
+                    'portal:manage',
                 ],
             ],
             'org_finance' => [
@@ -509,6 +518,10 @@ class RolePermissionSeeder extends Seeder
                     // surface (definitions, dashboards, reports, exports).
                     'analytics:view', 'analytics:manage',
                     'reports:run', 'reports:schedule', 'reports:export',
+                    // Phase 3 slice 22 — Patient Portal: the hospital admin
+                    // provisions portal accounts for their facility's
+                    // patients and manages consent-bound grants.
+                    'portal:manage',
                 ],
             ],
             'branch_manager' => [

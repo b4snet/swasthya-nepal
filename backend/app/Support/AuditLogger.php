@@ -54,6 +54,9 @@ use App\Models\NursingNote;
 use App\Models\Payment;
 use App\Models\PayrollExport;
 use App\Models\PharmacyReturn;
+use App\Models\PortalAccessGrant;
+use App\Models\PortalAccount;
+use App\Models\PortalSession;
 use App\Models\Position;
 use App\Models\Prescription;
 use App\Models\PrescriptionLine;
@@ -248,6 +251,13 @@ final class AuditLogger
         'report_template' => ReportTemplate::class,
         'report_schedule' => ReportSchedule::class,
         'report_run' => ReportRun::class,
+        // Phase 3 slice 22 — Patient Portal (PRODUCT REQUIREMENTS §6.2,
+        // DATABASE.md §3.53): portal accounts, sessions, and consent-bound
+        // access grants. Payloads carry facts only — scopes, statuses,
+        // timestamps, counts — never result values or clinical content.
+        'portal_account' => PortalAccount::class,
+        'portal_session' => PortalSession::class,
+        'portal_access_grant' => PortalAccessGrant::class,
     ];
 
     /**
@@ -270,6 +280,17 @@ final class AuditLogger
         $request ??= request();
         $context = TenantContext::current();
         $actor ??= $context->user;
+
+        // Patient-portal principals have no User row: the actor is the
+        // portal account, audited as a patient identity with the login
+        // identifier as the actor label (the same discipline as staff
+        // emails — never the password, never PHI beyond the identifier).
+        $portalAccount = $context->portalAccount;
+        if ($actor === null && $portalAccount !== null) {
+            $actorType = AuditEvent::ACTOR_PATIENT;
+            $actorEmail ??= $portalAccount->login_identifier;
+        }
+
         $tenantId ??= $context->tenantId();
         $facilityId ??= $context->facilityId();
         $occurredAt ??= now();
@@ -295,7 +316,7 @@ final class AuditLogger
         return DB::transaction(function () use (
             $action, $resourceType, $resourceId, $payload, $request, $actor,
             $tenantId, $facilityId, $actorType, $occurredAt, $correlationId, $actorEmail,
-            $supportSessionId,
+            $supportSessionId, $portalAccount,
         ): AuditEvent {
             // Serialize chain appends; the lock dies with the transaction.
             DB::statement('select pg_advisory_xact_lock(?)', [self::CHAIN_LOCK_KEY]);
@@ -315,7 +336,7 @@ final class AuditLogger
                 'tenant_id' => $tenantId,
                 'occurred_at' => $occurredAt,
                 'actor_type' => $actorType,
-                'actor_id' => $actor?->getKey(),
+                'actor_id' => $actor?->getKey() ?? $portalAccount?->getKey(),
                 'actor_email' => $actorEmail,
                 'action' => $action,
                 'resource_type' => $resourceType,

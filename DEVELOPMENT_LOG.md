@@ -1687,3 +1687,44 @@ ent schedule → 409 with zero rows changed; cross-tenant isolation — read 404
 | Tracked-secret scan | 0 matches |
 
 **Remaining risks.** Financial/clinical analytics breadth (more sources/dimensions via the same whitelist) and executive dashboards per role are Phase 2/3 per PRODUCT_REQUIREMENTS §6.19; patient-level drill-down stays access-controlled like clinical data; AI forecasting is Phase 3 and never fabricated; the `reporting` connection is a simulated replica locally (real read-replica wiring is a deployment-phase task — `REPORTING_DB_*` envs).
+---
+
+## Phase 3 — Slice 22: Patient Portal (PRODUCT REQUIREMENTS §6.2)
+
+**Date:** 2026-08-17
+
+**Objective.** The patient's secure, CONSENT-BOUND window into their OWN hospital record — read-only access to permitted appointments, results, and bills. Strict self-only access (the patient identity is DERIVED from the authenticated portal token by the new `ResolvePortalContext` middleware — never from client input), DB-backed lockout, append-only audited sessions, per-scope consent grants staff issue for a stated purpose and the PATIENT can revoke themselves. No new dependencies; monolith preserved.
+
+**Files created.**
+- Migrations: `2026_08_17_290000_create_patient_portal_tables.php` (3 tables), `2026_08_17_290100_enable_patient_portal_row_level_security.php` (3 × 4 policies, RLS + FORCE), `2026_08_17_290200_add_patient_actor_type_to_audit_events.php` (audit CHECK extended with `patient`)
+- Models: `PortalAccount`, `PortalSession`, `PortalAccessGrant` (+ 3 factories)
+- Middleware: `ResolvePortalContext` (derives patient + projects tenant/facility onto `request.jwt.claims` exactly like ResolveTenantContext; ONE transaction, LOCAL GUCs)
+- Service: `PatientPortalService` — identifier normalization (email lower-cased / phone E.164), DB-backed per-account lockout (`lockForUpdate`), within-tenant login resolution (org code disambiguates the tenant), CAS grant revocation, 409-on-duplicate provisioning/grant, session-resolved logout, PHI-safe self-views
+- Requests: `Portal/LoginRequest`, `Portal/ProvisionAccountRequest`, `Portal/GrantAccessRequest`
+- Controller: `PatientPortalController` (public login; portal-authed me/appointments/results/bills/grants/self-revoke; staff provision/grant/revoke/disable)
+- Test: `PatientPortalTest`
+
+**Files modified.** `routes/api.php` (public `portal/login` behind `throttle:auth`; standalone portal-authed group with `throttle:api → auth:sanctum → ResolvePortalContext` — deliberately OUTSIDE the staff tenant group since a portal token's tokenable is a PortalAccount, never a User; staff surfaces under `authorize:portal:manage`), `bootstrap/app.php` (ResolvePortalContext priority slot before SubstituteBindings so portal model binding resolves inside the portal context), `TenantContext` (portalAccount + patient), `AuditEvent` (ACTOR_PATIENT), `AuditLogger` (portal resource types + portal-principal actor derivation), `RolePermissionSeeder` (1 new permission: `portal:manage` — org_admin + hospital_admin), `ClaimsBasedRlsTest`, `TenancyDatabaseInventoryTest`, `DATABASE.md` (§3.53), this log.
+
+**Migrations.** Three, applied to the disposable test DB (`swasthya_test`) and dev DB (`swasthya`). No real/staging Supabase touched.
+
+**Tests.**
+- New `PatientPortalTest` — **17 tests / 153 assertions**: login happy path (token + session row); no enumeration (unknown org code ≡ wrong password, same 401); per-account lockout → 429 with Retry-After (per-IP auth throttle raised to isolate the account layer, AuthTest pattern); disabled account → 403; every portal surface 401 unauthenticated; logout revokes the token AND the session row (subsequent 401, idempotent); staff provisioning 201 + duplicate → 409 (one account); receptionist (no `portal:manage`) → 403; appointments consent-bound (no grant → generic 403; grant → own rows only, sibling patient's appointment never leaks, no patientId echoed); results consent-bound (reported orders only — drafts and other patients' reported orders excluded; item result value verified); bills consent-bound (voided + other patients' invoices excluded); patient self-revoke closes the surface immediately AND a patient cannot revoke another patient's grant (404, no existence leak); staff revoke + double-revoke → 409 (CAS); duplicate ACTIVE grant → 409 + re-grant after revocation (DB partial unique); disable revokes every token + session and refuses login; audit events for every action with fact-only payloads (no PHI keys) and `actor_type = patient` for portal login; cross-tenant structural isolation (two tenants, same-shaped accounts, per-tenant tokens)
+- ClaimsBasedRlsTest: +1 proof (3-table portal claims isolation: tenant/facility/mutation immunity, org-wide visibility), 436 → 448 policies, matrix 110 → 113
+- TenancyDatabaseInventoryTest: +3 tables in the scoped set + chain seed + update probes; 110 → 113 counts
+
+**Gate results (all green).**
+| Gate | Result |
+|---|---|
+| PatientPortalTest (new) | **17 passed / 153 assertions** |
+| RLS suites (ClaimsBased + Inventory) | **34 passed / 2,247 assertions** (448 policies, 113-table sweep, FORCE intact, swasthya_app NOBYPASSRLS) |
+| Full backend Pest | **677 passed / 9,213 assertions** (Slice-21 baseline 659/8,975 → **+18/+238**) |
+| Node harness | **855 / 855** (unchanged — Laravel-only slice) |
+| Frontend Vitest | **26 passed** + tsc clean |
+| Harness TypeScript | PASS |
+| Pint | PASS (677 files) |
+| `git diff --check` | CLEAN |
+| Debug-marker / artifact sweep | CLEAN |
+| Tracked-secret scan | 0 matches |
+
+**Remaining risks.** MFA enforcement for portal accounts is stored (`mfa_enabled`) but Phase-2 enforcement is future; portal password reset and patient document access are future; appointment self-booking (write side) is explicitly NOT in this slice; the patient portal UI is not yet built (API surface only); portal login has no email/phone verification channel yet (identifier is the credential, exactly like staff login — documented, not faked).

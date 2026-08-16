@@ -18,7 +18,7 @@ use Illuminate\Support\Str;
  */
 
 /**
- * The 110 tables with RLS enabled (the documented scoped set).
+ * The 113 tables with RLS enabled (the documented scoped set).
  *
  * @var list<string>
  */
@@ -87,6 +87,9 @@ const RLS_SCOPED_TABLES = [
     // composition, and the audited report template/schedule/run surface.
     'kpi_definitions', 'metric_snapshots', 'dashboards', 'dashboard_kpis',
     'report_templates', 'report_schedules', 'report_runs',
+    // Phase 3 slice 22 — Patient Portal (DATABASE.md §3.53): portal
+    // identities, append-only session logs, and consent-bound grants.
+    'portal_accounts', 'portal_sessions', 'portal_access_grants',
     // TENANT_ONLY
     'payers', 'mrn_counters', 'patient_identifiers', 'patient_contacts',
     'insurance_policies', 'patient_documents', 'consents',
@@ -616,6 +619,22 @@ function seedTenantChain(ConnectionInterface $c, string $tenantId, string $facil
     $c->insert('insert into report_runs (id, tenant_id, facility_id, template_id, schedule_id, requested_by_staff_id, status, run_at, completed_at, row_count, is_export, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$reportRun, $tenantId, $facilityId, $reportTemplate, $reportSchedule, $staff, 'completed', '2026-08-16 12:00:00+00', '2026-08-16 12:00:01+00', 3, false, 0]);
     $ids['report_runs'] = $reportRun;
 
+    // Phase 3 slice 22 — Patient Portal (portal_accounts, portal_sessions,
+    // portal_access_grants — DATABASE.md §3.53). The chain patient + staff
+    // already exist above; portal identities are patient-identifying data
+    // and are tenant+facility scoped like clinical rows.
+    $portalAccount = (string) Str::uuid();
+    $c->insert('insert into portal_accounts (id, tenant_id, facility_id, patient_id, login_identifier, password_hash, status, failed_attempts, locked_until, mfa_enabled, last_login_at, lock_version, created_by_staff_id, updated_by_staff_id, created_at, updated_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$portalAccount, $tenantId, $facilityId, $patient, $u('portal').'@chain.test', 'hash', 'active', 0, null, false, null, 0, $staff, $staff, '2026-08-16 12:00:00+00', '2026-08-16 12:00:00+00']);
+    $ids['portal_accounts'] = $portalAccount;
+
+    $portalSession = (string) Str::uuid();
+    $c->insert('insert into portal_sessions (id, tenant_id, facility_id, portal_account_id, patient_id, token_id, ip_address, user_agent, expires_at, revoked_at, revoked_by, created_at, updated_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$portalSession, $tenantId, $facilityId, $portalAccount, $patient, 9001, '127.0.0.1', 'chain', '2026-08-17 12:00:00+00', null, null, '2026-08-16 12:00:00+00', '2026-08-16 12:00:00+00']);
+    $ids['portal_sessions'] = $portalSession;
+
+    $portalGrant = (string) Str::uuid();
+    $c->insert('insert into portal_access_grants (id, tenant_id, facility_id, portal_account_id, patient_id, data_scope, purpose, status, granted_at, granted_by_staff_id, revoked_at, revoked_by_staff_id, revoked_by_patient, lock_version, created_by, updated_by, created_at, updated_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$portalGrant, $tenantId, $facilityId, $portalAccount, $patient, 'appointments', 'Chain appointment visibility', 'granted', '2026-08-16 12:00:00+00', $staff, null, null, false, 0, $staff, $staff, '2026-08-16 12:00:00+00', '2026-08-16 12:00:00+00']);
+    $ids['portal_access_grants'] = $portalGrant;
+
     // Support sessions are owner-or-platform visible: insert with the chain
     // user as the owning context (user_id GUC).
     $session = (string) Str::uuid();
@@ -681,6 +700,9 @@ function chainUpdateColumns(): array
         'patient_timeline_entries' => ['event_type', 'upd'],
         'patients' => ['full_name', 'upd'],
         'payers' => ['code', 'upd'],
+        'portal_accounts' => ['status', 'locked'],
+        'portal_sessions' => ['revoked_by', 'staff'],
+        'portal_access_grants' => ['status', 'revoked'],
         'payment_allocations' => ['amount_minor', '1'],
         'payments' => ['provider_ref', 'upd'],
         'payroll_exports' => ['format', 'csv'],
@@ -775,7 +797,7 @@ function inventoryTenants(ConnectionInterface $c): array
     return $t;
 }
 
-it('records the current RLS inventory: 110 scoped tables enabled + FORCED, 15 unscoped off', function () {
+it('records the current RLS inventory: 113 scoped tables enabled + FORCED, 15 unscoped off', function () {
     $rows = DB::connection('pgsql')->select(
         'select c.relname as table_name, c.relrowsecurity::text as enabled, c.relforcerowsecurity::text as forced
          from pg_class c
@@ -913,7 +935,7 @@ it('FORCE RLS binds a non-superuser table owner (defense-in-depth proof)', funct
     }
 });
 
-it('denies cross-tenant SELECT, UPDATE, and DELETE on all 110 tenant-owned tables — two-sided', function () {
+it('denies cross-tenant SELECT, UPDATE, and DELETE on all 113 tenant-owned tables — two-sided', function () {
     rlsTx(rlsConn(), function ($c): void {
         $t = inventoryTenants($c);
 
