@@ -29,6 +29,8 @@ class RefundRequest extends Model
 
     public const STATUS_REJECTED = 'rejected';
 
+    public const STATUS_COMPLETED = 'completed';
+
     public const REASON_OVERCHARGE = 'overcharge';
 
     public const REASON_DUPLICATE_CHARGE = 'duplicate_charge';
@@ -59,6 +61,8 @@ class RefundRequest extends Model
         'rejected_by',
         'rejection_reason',
         'rejected_at',
+        'completed_by',
+        'completed_at',
         'lock_version',
         'created_by',
     ];
@@ -72,6 +76,7 @@ class RefundRequest extends Model
             'amount_minor' => 'integer',
             'approved_at' => 'datetime',
             'rejected_at' => 'datetime',
+            'completed_at' => 'datetime',
             'lock_version' => 'integer',
         ];
     }

@@ -326,6 +326,63 @@ final class BillingService
     }
 
     /**
+     * Complete an approved refund request: the money has actually been
+     * disbursed back to the patient (DATABASE.md §3.33 — the documented
+     * 'completed' state). No payment provider exists or is invented; the
+     * finance officer who hands the money over records it here.
+     *
+     * The approved request remains the immutable reversing entry — the
+     * charge is never mutated and the refundable accounting is unchanged
+     * (the amount was already reserved at approval). Completion is
+     * CAS-guarded (status + lock_version) so a stale or duplicate
+     * completion affects zero rows and gets a 409 — a refund can be
+     * disbursed exactly once. Segregation of duties: the requester can
+     * never complete their own refund (mirrors approval).
+     */
+    public function completeRefund(string $tenantId, string $requestId, ?string $completerId = null): RefundRequest
+    {
+        return DB::transaction(function () use ($tenantId, $requestId, $completerId): RefundRequest {
+            $request = RefundRequest::query()
+                ->where('tenant_id', $tenantId)
+                ->where('id', $requestId)
+                ->first();
+
+            if ($request === null) {
+                throw new ApiException(ErrorCodes::NOT_FOUND, 'Refund request not found.', 404);
+            }
+
+            if ($request->status !== RefundRequest::STATUS_APPROVED) {
+                throw new ApiException(ErrorCodes::CONFLICT, 'Only an approved refund request can be completed.', 409);
+            }
+
+            if ($completerId !== null && $request->requested_by === $completerId) {
+                throw new ApiException(ErrorCodes::FORBIDDEN, 'The requester cannot complete their own refund request.', 403);
+            }
+
+            // CAS on the request row: a stale completer (same status +
+            // lock_version snapshot) affects zero rows and gets a 409 — the
+            // duplicate-disbursement backstop.
+            $affected = DB::table('refund_requests')
+                ->where('id', $requestId)
+                ->where('status', RefundRequest::STATUS_APPROVED)
+                ->where('lock_version', $request->lock_version)
+                ->update([
+                    'status' => RefundRequest::STATUS_COMPLETED,
+                    'completed_by' => $completerId,
+                    'completed_at' => now(),
+                    'lock_version' => $request->lock_version + 1,
+                    'updated_at' => now(),
+                ]);
+
+            if ($affected === 0) {
+                throw new ApiException(ErrorCodes::LOCK_CONFLICT, 'This refund request was changed by another completion. Reload and retry.', 409);
+            }
+
+            return $request->refresh();
+        });
+    }
+
+    /**
      * Reject a pending refund request (approver declines). CAS-guarded like
      * approval; rejection is terminal.
      */
@@ -371,15 +428,19 @@ final class BillingService
     }
 
     /**
-     * Total approved refund/adjustment value against a charge (integer minor
+     * Total refund/adjustment value reserved against a charge (integer minor
      * units). The refundable amount is amount_minor minus this total.
+     *
+     * APPROVED and COMPLETED both count: the money was reserved at approval,
+     * and completion (Phase 3 slice 11 — the disbursement state) does NOT
+     * free it — otherwise a completed refund could be refunded again.
      */
     private function approvedTotal(string $tenantId, string $chargeId): int
     {
         return (int) RefundRequest::query()
             ->where('tenant_id', $tenantId)
             ->where('charge_id', $chargeId)
-            ->where('status', RefundRequest::STATUS_APPROVED)
+            ->whereIn('status', [RefundRequest::STATUS_APPROVED, RefundRequest::STATUS_COMPLETED])
             ->sum('amount_minor');
     }
 

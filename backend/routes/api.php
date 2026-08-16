@@ -494,6 +494,10 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
         ->middleware('authorize:billing:refund-approve');
     Route::post('refund-requests/{refundRequest}/reject', [RefundController::class, 'reject'])
         ->middleware('authorize:billing:refund-approve');
+    // Phase 3 slice 11 — the approved refund's money is disbursed back to
+    // the patient (the documented 'completed' state — DATABASE.md §3.33).
+    Route::post('refund-requests/{refundRequest}/complete', [RefundController::class, 'complete'])
+        ->middleware('authorize:billing:refund-approve');
 
     // Phase 3 slice 6 — IPD admission/discharge with bed release
     // (PRODUCT_REQUIREMENTS §6.5): admit from an open encounter onto a live

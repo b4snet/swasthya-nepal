@@ -103,6 +103,33 @@ final class RefundController extends Controller
     }
 
     /**
+     * POST refund-requests/{refundRequest}/complete — the approved refund's
+     * money has been disbursed back to the patient (DATABASE.md §3.33 — the
+     * documented 'completed' state). Same financial gate as approval; the
+     * requester can never complete their own refund (segregation of duties).
+     */
+    public function complete(Request $request, RefundRequest $refundRequest): JsonResponse
+    {
+        AccessCheck::scoped($refundRequest, write: true);
+
+        $context = TenantContext::current();
+
+        $completed = $this->billing->completeRefund(
+            (string) $context->tenantId(),
+            (string) $refundRequest->getKey(),
+            $context->user?->getKey(),
+        );
+
+        $this->audit->record('refund.completed', 'refund_request', $completed->getKey(), [
+            'chargeId' => $completed->charge_id,
+            'amountMinor' => $completed->amount_minor,
+            'reasonCode' => $completed->reason_code,
+        ], $request);
+
+        return Envelope::success(data: self::present($completed), request: $request);
+    }
+
+    /**
      * POST refund-requests/{refundRequest}/reject — approver declines.
      */
     public function reject(RejectRefundRequest $request, RefundRequest $refundRequest): JsonResponse
@@ -143,6 +170,8 @@ final class RefundController extends Controller
             'approvedAt' => $request->approved_at?->toIso8601String(),
             'rejectedBy' => $request->rejected_by,
             'rejectedAt' => $request->rejected_at?->toIso8601String(),
+            'completedBy' => $request->completed_by,
+            'completedAt' => $request->completed_at?->toIso8601String(),
             'lockVersion' => $request->lock_version,
             'createdAt' => $request->created_at?->toIso8601String(),
         ];
