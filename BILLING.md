@@ -155,7 +155,7 @@ flowchart LR
 
 ## 14. Patient Billing — the Boundary Restated
 
-Patient billing is **its own healthcare domain** and is designed in `PRODUCT_REQUIREMENTS.md` §6.13, `DATABASE.md` §3.33–3.35, and `MASTER_RULES.md` §37: charges from clinical events, invoices with tax, deposits, refunds, insurance claims, outstanding aging, and daily reconciliation — tenant-scoped, RLS-isolated, healthcare-audited.
+Patient billing is **its own healthcare domain** and is designed in `PRODUCT_REQUIREMENTS.md` §6.13, `DATABASE.md` §3.33–3.35, and `MASTER_RULES.md` §37: charges from clinical events, invoices with tax, deposits, refunds, insurance claims, outstanding aging, and daily reconciliation — tenant-scoped, RLS-isolated, healthcare-audited. **Implemented status:** charges/invoices/payments (Phase 6/7), refunds/adjustments (slice 5), refund completion (slice 11), and — with Phase 3 slice 18 — deposits (collect/allocate, exact + CAS), outstanding aging (computed from invoice truth), daily cashier settlements (variance never silently absorbed), and insurance claims (build/submit/track/settle, invoice-truth lines). No payment gateway is connected (planned — INTEROPERABILITY.md §13) and nothing is faked.
 
 **The boundary rules between the two systems:**
 

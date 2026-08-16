@@ -11,10 +11,13 @@ use App\Models\Charge;
 use App\Models\ClinicalNote;
 use App\Models\CriticalValueEvent;
 use App\Models\Department;
+use App\Models\Deposit;
+use App\Models\DepositAllocation;
 use App\Models\Encounter;
 use App\Models\ErEvent;
 use App\Models\ErRegistration;
 use App\Models\FollowUp;
+use App\Models\InsuranceClaim;
 use App\Models\InventoryItem;
 use App\Models\InventoryMovement;
 use App\Models\Invoice;
@@ -33,6 +36,7 @@ use App\Models\Room;
 use App\Models\ScheduleException;
 use App\Models\ScheduleTemplate;
 use App\Models\Service;
+use App\Models\Settlement;
 use App\Models\Specimen;
 use App\Models\Staff;
 use App\Models\StockBatch;
@@ -115,6 +119,13 @@ final class AuditLogger
         'follow_up' => FollowUp::class,
         // Phase 3 slice 5 — billing refunds & adjustments.
         'refund_request' => RefundRequest::class,
+        // Phase 3 slice 18 — deposits, daily settlements, insurance claims.
+        'deposit' => Deposit::class,
+        'deposit_allocation' => DepositAllocation::class,
+        'settlement' => Settlement::class,
+        // insurance_claim is TENANT-tier (no facility_id) — the resolved
+        // facility is null, so the event lands at tenant level (§3.35).
+        'insurance_claim' => InsuranceClaim::class,
         // Phase 3 slice 6 — IPD admission/discharge.
         'admission' => Admission::class,
         // Phase 3 slice 7 — laboratory critical-value escalation.

@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\EncounterController;
 use App\Http\Controllers\Api\ErController;
 use App\Http\Controllers\Api\FacilityController;
 use App\Http\Controllers\Api\FacilitySettingsController;
+use App\Http\Controllers\Api\FinanceController;
 use App\Http\Controllers\Api\FollowUpController;
 use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\InsurancePolicyController;
@@ -567,6 +568,38 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
     // the patient (the documented 'completed' state — DATABASE.md §3.33).
     Route::post('refund-requests/{refundRequest}/complete', [RefundController::class, 'complete'])
         ->middleware('authorize:billing:refund-approve');
+
+    // Phase 3 slice 18 — remaining Billing and Finance (PRODUCT_REQUIREMENTS
+    // §6.13–6.14, DATABASE.md §3.33–3.35): deposits (collect/allocate),
+    // patient-account aging, daily cashier settlements, and insurance
+    // claims (build/submit/track/settle). No payment gateway is connected
+    // (INTEROPERABILITY.md §13 — planned, no provider contract exists).
+    Route::get('patients/{patient}/deposits', [FinanceController::class, 'deposits'])
+        ->middleware('authorize:billing:view');
+    Route::post('patients/{patient}/deposits', [FinanceController::class, 'collectDeposit'])
+        ->middleware('authorize:billing:collect');
+    Route::post('deposits/{deposit}/allocate', [FinanceController::class, 'allocateDeposit'])
+        ->middleware('authorize:billing:collect');
+    Route::get('patients/{patient}/aging', [FinanceController::class, 'aging'])
+        ->middleware('authorize:billing:view');
+    Route::get('cashier-settlements', [FinanceController::class, 'settlements'])
+        ->middleware('authorize:billing:view');
+    Route::post('cashier-settlements/reconcile', [FinanceController::class, 'reconcileSettlement'])
+        ->middleware('authorize:billing:reconcile');
+    Route::get('invoices/{invoice}/claims', [FinanceController::class, 'claims'])
+        ->middleware('authorize:billing:view');
+    Route::post('invoices/{invoice}/claims', [FinanceController::class, 'buildClaim'])
+        ->middleware('authorize:insurance:claim');
+    Route::get('claims/{claim}', [FinanceController::class, 'showClaim'])
+        ->middleware('authorize:billing:view');
+    Route::post('claims/{claim}/submit', [FinanceController::class, 'submitClaim'])
+        ->middleware('authorize:insurance:claim');
+    Route::post('claims/{claim}/reopen', [FinanceController::class, 'reopenClaim'])
+        ->middleware('authorize:insurance:claim');
+    Route::post('claims/{claim}/status', [FinanceController::class, 'recordClaimStatus'])
+        ->middleware('authorize:insurance:claim');
+    Route::post('claims/{claim}/settle', [FinanceController::class, 'settleClaim'])
+        ->middleware('authorize:insurance:settle');
 
     // Phase 3 slice 6 — IPD admission/discharge with bed release
     // (PRODUCT_REQUIREMENTS §6.5): admit from an open encounter onto a live

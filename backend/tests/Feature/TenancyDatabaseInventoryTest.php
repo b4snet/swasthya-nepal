@@ -8,7 +8,7 @@ use Illuminate\Support\Str;
  * PROGRAM PHASE 1 — systematic database-layer tenancy verification.
  *
  * Unlike the representative isolation suites (DatabaseRowLevelSecurityTest,
- * ClinicalIsolationTest, ...), this suite iterates the FULL set of 63
+ * ClinicalIsolationTest, ...), this suite iterates the FULL set of 68
  * tenant-owned tables: it seeds a complete two-tenant fixture chain and then
  * probes every table for cross-tenant SELECT/UPDATE/DELETE isolation as the
  * least-privilege `swasthya_app` role (NOBYPASSRLS) under transaction-local
@@ -18,7 +18,7 @@ use Illuminate\Support\Str;
  */
 
 /**
- * The 63 tables with RLS enabled (the documented scoped set).
+ * The 68 tables with RLS enabled (the documented scoped set).
  *
  * @var list<string>
  */
@@ -46,6 +46,10 @@ const RLS_SCOPED_TABLES = [
     'follow_ups',
     // Phase 3 slice 5 — billing refunds & adjustments.
     'refund_requests',
+    // Phase 3 slice 18 — deposits, daily settlements, insurance claims
+    // (claims/claim_lines are TENANT tier — no facility_id, §3.35).
+    'deposits', 'deposit_allocations', 'settlements',
+    'claims', 'claim_lines',
     // Phase 3 slice 6 — IPD admission/discharge with bed release.
     'admissions',
     // Phase 3 slice 7 — laboratory critical-value escalation.
@@ -245,6 +249,30 @@ function seedTenantChain(ConnectionInterface $c, string $tenantId, string $facil
     $c->insert('insert into payment_allocations (id, tenant_id, payment_id, invoice_id, amount_minor, allocated_at) values (?, ?, ?, ?, ?, ?)', [$allocation, $tenantId, $payment, $invoice, 5000, '2026-08-15 11:00:00+00']);
     $ids['payment_allocations'] = $allocation;
 
+    // Phase 3 slice 18 — finance chain: deposit chained to the patient,
+    // allocation chained to the deposit + invoice, settlement chained to
+    // the staff cashier, insurance claim chained to the policy + invoice,
+    // claim line chained to the invoice line above.
+    $deposit = (string) Str::uuid();
+    $c->insert('insert into deposits (id, tenant_id, facility_id, patient_id, amount_minor, remaining_minor, status, idempotency_key, collected_at, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$deposit, $tenantId, $facilityId, $patient, 5000, 5000, 'active', 'CHAIN-DEP-1', '2026-08-15 11:05:00+00', 0]);
+    $ids['deposits'] = $deposit;
+
+    $depositAllocation = (string) Str::uuid();
+    $c->insert('insert into deposit_allocations (id, tenant_id, facility_id, deposit_id, invoice_id, amount_minor, allocated_at) values (?, ?, ?, ?, ?, ?, ?)', [$depositAllocation, $tenantId, $facilityId, $deposit, $invoice, 1000, '2026-08-15 11:10:00+00']);
+    $ids['deposit_allocations'] = $depositAllocation;
+
+    $settlement = (string) Str::uuid();
+    $c->insert('insert into settlements (id, tenant_id, facility_id, cashier_id, settlement_date, expected_minor, actual_minor, variance_minor, status, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$settlement, $tenantId, $facilityId, $staff, '2026-08-15', 1000, 1000, 0, 'reconciled', 0]);
+    $ids['settlements'] = $settlement;
+
+    $claim = (string) Str::uuid();
+    $c->insert('insert into claims (id, tenant_id, claim_number, policy_id, invoice_id, payer_id, status, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?)', [$claim, $tenantId, 'CHAIN-CLM-1', $policy, $invoice, $payer, 'draft', 0]);
+    $ids['claims'] = $claim;
+
+    $claimLine = (string) Str::uuid();
+    $c->insert('insert into claim_lines (id, tenant_id, claim_id, invoice_line_id, billed_minor, status) values (?, ?, ?, ?, ?, ?)', [$claimLine, $tenantId, $claim, $invoiceLine, 5000, 'pending']);
+    $ids['claim_lines'] = $claimLine;
+
     // Phase 3 slice 2 — laboratory & radiology (lab_tests → lab_orders →
     // lab_order_items, chained to the encounter/patient/staff above).
     $labTest = (string) Str::uuid();
@@ -422,6 +450,11 @@ function chainUpdateColumns(): array
         'invoice_lines' => ['description', 'upd'],
         'follow_ups' => ['cancel_reason', 'upd'],
         'invoices' => ['void_reason', 'upd'],
+        'deposits' => ['remaining_minor', '1'],
+        'deposit_allocations' => ['amount_minor', '1'],
+        'settlements' => ['status', 'disputed'],
+        'claims' => ['status', 'pending'],
+        'claim_lines' => ['status', 'denied'],
         'inventory_items' => ['reorder_level', '12'],
         'inventory_movements' => ['reason', 'upd'],
         'stock_batches' => ['batch_number', 'upd'],
@@ -495,7 +528,7 @@ function inventoryTenants(ConnectionInterface $c): array
     return $t;
 }
 
-it('records the current RLS inventory: 63 scoped tables enabled + FORCED, 15 unscoped off', function () {
+it('records the current RLS inventory: 68 scoped tables enabled + FORCED, 15 unscoped off', function () {
     $rows = DB::connection('pgsql')->select(
         'select c.relname as table_name, c.relrowsecurity::text as enabled, c.relforcerowsecurity::text as forced
          from pg_class c
@@ -633,7 +666,7 @@ it('FORCE RLS binds a non-superuser table owner (defense-in-depth proof)', funct
     }
 });
 
-it('denies cross-tenant SELECT, UPDATE, and DELETE on all 63 tenant-owned tables — two-sided', function () {
+it('denies cross-tenant SELECT, UPDATE, and DELETE on all 68 tenant-owned tables — two-sided', function () {
     rlsTx(rlsConn(), function ($c): void {
         $t = inventoryTenants($c);
 

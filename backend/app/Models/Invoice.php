@@ -87,4 +87,15 @@ class Invoice extends Model
     {
         return $this->hasMany(PaymentAllocation::class, 'invoice_id');
     }
+
+    /**
+     * Phase 3 slice 18 — insurance claims built from this invoice's truth
+     * (DATABASE.md §3.35).
+     *
+     * @return HasMany<InsuranceClaim, $this>
+     */
+    public function claims(): HasMany
+    {
+        return $this->hasMany(InsuranceClaim::class, 'invoice_id');
+    }
 }

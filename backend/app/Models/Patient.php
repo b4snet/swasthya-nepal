@@ -124,4 +124,15 @@ class Patient extends Model
     {
         return $this->hasMany(PatientTimelineEntry::class, 'patient_id');
     }
+
+    /**
+     * Phase 3 slice 18 — advance payments held on the account
+     * (DATABASE.md §3.33).
+     *
+     * @return HasMany<Deposit, $this>
+     */
+    public function deposits(): HasMany
+    {
+        return $this->hasMany(Deposit::class, 'patient_id');
+    }
 }

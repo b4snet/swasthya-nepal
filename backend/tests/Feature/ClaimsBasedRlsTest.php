@@ -29,7 +29,7 @@ it('re-keys every RLS policy to the claims helpers (244 policies, zero GUC refer
         SQL
     )[0];
 
-    expect((int) $policies->total)->toBe(248)
+    expect((int) $policies->total)->toBe(268)
         ->and((int) $policies->not_claims)->toBe(0)
         ->and((int) $policies->still_guc)->toBe(0);
 
@@ -71,7 +71,9 @@ it('keeps the RLS matrix intact: 62 scoped on, 15 off, none on-without-policies'
     // er_events.
     // +2 since slice 15: specimens, lab_result_versions.
     // +1 since slice 17: stock_batches.
-    expect((int) $matrix->rls_on)->toBe(63)
+    // +5 since slice 18: deposits, deposit_allocations, settlements,
+    // claims, claim_lines.
+    expect((int) $matrix->rls_on)->toBe(68)
         ->and((int) $matrix->rls_off)->toBe(15)
         ->and((int) $matrix->on_without_policies)->toBe(0);
 });
@@ -720,6 +722,72 @@ it('isolates pharmacy returns from claims end to end (tenant, facility, mutation
         // The row is untouched by every attack above.
         claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
         expect($c->selectOne('select reason_code from pharmacy_returns where id = ?', [$pharmacyReturn])->reason_code)->toBe('patient_return');
+    });
+});
+
+it('isolates the finance surface from claims (deposits, allocations, settlements, claims, lines)', function () {
+    rlsTx(rlsConn(), function ($c): void {
+        $t = claimsTenants($c);
+        $department = (string) Str::uuid();
+        $staff = (string) Str::uuid();
+        $patient = (string) Str::uuid();
+        $payer = (string) Str::uuid();
+        $policy = (string) Str::uuid();
+        $charge = (string) Str::uuid();
+        $invoice = (string) Str::uuid();
+        $invoiceLine = (string) Str::uuid();
+        $deposit = (string) Str::uuid();
+        $allocation = (string) Str::uuid();
+        $settlement = (string) Str::uuid();
+        $claim = (string) Str::uuid();
+        $claimLine = (string) Str::uuid();
+
+        // Full chain in tenant A: staff → patient → payer → policy → charge
+        // → invoice → line → deposit → allocation → settlement → claim →
+        // line (RLS policies apply on every row).
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
+        $c->insert('insert into departments (id, tenant_id, facility_id, name, code, status) values (?, ?, ?, ?, ?, ?)', [$department, $t['tenantA'], $t['facilityA'], 'Finance', 'finance', 'active']);
+        $c->insert('insert into staff (id, tenant_id, facility_id, department_id, employee_code, full_name, designation, status) values (?, ?, ?, ?, ?, ?, ?, ?)', [$staff, $t['tenantA'], $t['facilityA'], $department, 'EMP-FIN', 'Finance Staff', 'Cashier', 'active']);
+        $c->insert('insert into patients (id, tenant_id, facility_id, mrn, full_name, date_of_birth, sex, status) values (?, ?, ?, ?, ?, ?, ?, ?)', [$patient, $t['tenantA'], $t['facilityA'], 'MRN-FIN', 'Finance Patient', '1990-01-01', 'female', 'active']);
+        $c->insert('insert into payers (id, tenant_id, name, code, payer_type, status) values (?, ?, ?, ?, ?, ?)', [$payer, $t['tenantA'], 'Payer A', 'PAY-A', 'private', 'active']);
+        $c->insert('insert into insurance_policies (id, tenant_id, patient_id, payer_id, policy_number, coverage_type, valid_from, status, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?)', [$policy, $t['tenantA'], $patient, $payer, 'POL-FIN-1', 'general', '2026-01-01', 'active', 0]);
+        $c->insert('insert into charges (id, tenant_id, facility_id, patient_id, source_type, description, amount_minor, currency, tax_rate_bps, status, charged_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$charge, $t['tenantA'], $t['facilityA'], $patient, 'manual', 'Consultation', 10000, 'NPR', 0, 'posted', '2026-08-15 09:00:00+00']);
+        $c->insert('insert into invoices (id, tenant_id, facility_id, patient_id, invoice_number, status, total_minor, total_tax_minor, paid_minor, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$invoice, $t['tenantA'], $t['facilityA'], $patient, 'INV-FIN-1', 'issued', 10000, 0, 0, 0]);
+        $c->insert('insert into invoice_lines (id, tenant_id, invoice_id, charge_id, description, amount_minor, tax_minor, line_no) values (?, ?, ?, ?, ?, ?, ?, ?)', [$invoiceLine, $t['tenantA'], $invoice, $charge, 'Consultation', 10000, 0, 1]);
+        $c->insert('insert into deposits (id, tenant_id, facility_id, patient_id, amount_minor, remaining_minor, status, idempotency_key, collected_at, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$deposit, $t['tenantA'], $t['facilityA'], $patient, 5000, 4000, 'active', 'dep-fin-1', '2026-08-15 09:05:00+00', 0]);
+        $c->insert('insert into deposit_allocations (id, tenant_id, facility_id, deposit_id, invoice_id, amount_minor, allocated_at) values (?, ?, ?, ?, ?, ?, ?)', [$allocation, $t['tenantA'], $t['facilityA'], $deposit, $invoice, 1000, '2026-08-15 09:10:00+00']);
+        $c->insert('insert into settlements (id, tenant_id, facility_id, cashier_id, settlement_date, expected_minor, actual_minor, variance_minor, status, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$settlement, $t['tenantA'], $t['facilityA'], $staff, '2026-08-15', 1000, 1000, 0, 'reconciled', 0]);
+        $c->insert('insert into claims (id, tenant_id, claim_number, policy_id, invoice_id, payer_id, status, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?)', [$claim, $t['tenantA'], 'CLM-FIN-1', $policy, $invoice, $payer, 'draft', 0]);
+        $c->insert('insert into claim_lines (id, tenant_id, claim_id, invoice_line_id, billed_minor, status) values (?, ?, ?, ?, ?, ?)', [$claimLine, $t['tenantA'], $claim, $invoiceLine, 10000, 'pending']);
+
+        // Own tenant+facility claims → visible.
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
+        expect($c->selectOne('select id from deposits where id = ?', [$deposit]))->not->toBeNull()
+            ->and($c->selectOne('select id from claim_lines where id = ?', [$claimLine]))->not->toBeNull();
+
+        // Another tenant → invisible; update/delete affect zero rows.
+        claimsSet($c, ['app_tenant_id' => $t['tenantB'], 'app_facility_id' => $t['facilityB']]);
+        expect($c->selectOne('select id from deposits where id = ?', [$deposit]))->toBeNull()
+            ->and($c->selectOne('select id from claims where id = ?', [$claim]))->toBeNull()
+            ->and($c->update('update deposits set remaining_minor = 1 where id = ?', [$deposit]))->toBe(0)
+            ->and($c->delete('delete from claim_lines where id = ?', [$claimLine]))->toBe(0);
+
+        // Same tenant, a different facility → the TENANT_FACILITY tables are
+        // invisible; the TENANT-tier claim tables stay visible (facility-
+        // agnostic, per §3.35).
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityB']]);
+        expect($c->selectOne('select id from deposits where id = ?', [$deposit]))->toBeNull()
+            ->and($c->selectOne('select id from claims where id = ?', [$claim]))->not->toBeNull();
+
+        // Org-wide claims (no facility) → the tenant's finance rows are seen.
+        claimsSet($c, ['app_tenant_id' => $t['tenantA']]);
+        expect($c->selectOne('select id from settlements where id = ?', [$settlement]))->not->toBeNull()
+            ->and($c->selectOne('select id from claim_lines where id = ?', [$claimLine]))->not->toBeNull();
+
+        // The rows are untouched by every attack above.
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
+        expect($c->selectOne('select remaining_minor from deposits where id = ?', [$deposit])->remaining_minor)->toBe(4000)
+            ->and($c->selectOne('select status from claims where id = ?', [$claim])->status)->toBe('draft');
     });
 });
 

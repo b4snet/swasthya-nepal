@@ -179,6 +179,19 @@ class RolePermissionSeeder extends Seeder
             'billing:refund' => ['domain' => 'billing', 'description' => 'Request refunds and adjustments against posted charges'],
             'billing:refund-approve' => ['domain' => 'billing', 'description' => 'Approve or reject refund/adjustment requests (financial gate)'],
 
+            // Phase 3 slice 18 — daily cashier settlement (PRODUCT_REQUIREMENTS
+            // §6.13): reconciling a day is a distinct financial act, kept out
+            // of the billing_clerk role (the cashier whose drawer is settled
+            // does not reconcile it — segregation of duties).
+            'billing:reconcile' => ['domain' => 'billing', 'description' => 'Reconcile daily cashier settlements'],
+
+            // Phase 3 slice 18 — insurance claims (PRODUCT_REQUIREMENTS
+            // §6.14): building/submitting/tracking a claim is one
+            // permission; recording the payer SETTLEMENT is another
+            // (insurance:settle — money moves only under the finance gate).
+            'insurance:claim' => ['domain' => 'insurance', 'description' => 'Build, submit, and track insurance claims'],
+            'insurance:settle' => ['domain' => 'insurance', 'description' => 'Record payer settlements against claims'],
+
             // Phase 3 slice 6 — IPD admission/discharge (PRODUCT_REQUIREMENTS
             // §6.5): admit from an open encounter onto a live bed; discharge
             // releases the bed. Discharge requires clinical authority (the
@@ -323,6 +336,9 @@ class RolePermissionSeeder extends Seeder
                     'followup:view', 'followup:manage',
                     'billing:view', 'billing:invoice', 'billing:collect',
                     'billing:refund', 'billing:refund-approve',
+                    // Phase 3 slice 18 — the org admin reconciles and settles.
+                    'billing:reconcile',
+                    'insurance:claim', 'insurance:settle',
                     'admission:view', 'admission:create', 'admission:discharge',
                     'admission:transfer', 'nursing:document', 'mar:administer',
                     'er:view', 'er:register', 'triage:assign', 'er:document', 'er:disposition', 'er:manage',
@@ -337,10 +353,15 @@ class RolePermissionSeeder extends Seeder
                 'scope_type' => 'organization',
                 // Phase 5: read access to the patient index and insurance
                 // for billing work — no registration or clinical visibility.
+                // Phase 3 slice 18: the finance officer reconciles daily
+                // settlements and records payer claim settlements.
                 'permissions' => [
                     'organization:view', 'audit:view',
                     'patient:view', 'patient:search',
                     'insurance:view', 'payer:view',
+                    'billing:view',
+                    'billing:reconcile',
+                    'insurance:claim', 'insurance:settle',
                 ],
             ],
             'hospital_admin' => [
@@ -382,6 +403,9 @@ class RolePermissionSeeder extends Seeder
                     'followup:view', 'followup:manage',
                     'billing:view', 'billing:invoice', 'billing:collect',
                     'billing:refund', 'billing:refund-approve',
+                    // Phase 3 slice 18 — the hospital admin reconciles and settles.
+                    'billing:reconcile',
+                    'insurance:claim', 'insurance:settle',
                     'admission:view', 'admission:create', 'admission:discharge',
                     'admission:transfer', 'nursing:document', 'mar:administer',
                     'er:view', 'er:register', 'triage:assign', 'er:document', 'er:disposition', 'er:manage',
@@ -446,6 +470,10 @@ class RolePermissionSeeder extends Seeder
                     'appointment:view', 'queue:view', 'encounter:view',
                     'billing:view', 'billing:invoice', 'billing:collect',
                     'billing:refund',
+                    // Phase 3 slice 18 — the clerk builds/submits/tracks
+                    // claims but does NOT settle them (segregation of
+                    // duties) and does NOT reconcile its own drawer.
+                    'insurance:claim',
                     'admission:view',
                 ],
             ],
