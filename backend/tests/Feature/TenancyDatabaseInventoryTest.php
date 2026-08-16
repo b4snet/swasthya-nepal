@@ -8,7 +8,7 @@ use Illuminate\Support\Str;
  * PROGRAM PHASE 1 — systematic database-layer tenancy verification.
  *
  * Unlike the representative isolation suites (DatabaseRowLevelSecurityTest,
- * ClinicalIsolationTest, ...), this suite iterates the FULL set of 62
+ * ClinicalIsolationTest, ...), this suite iterates the FULL set of 63
  * tenant-owned tables: it seeds a complete two-tenant fixture chain and then
  * probes every table for cross-tenant SELECT/UPDATE/DELETE isolation as the
  * least-privilege `swasthya_app` role (NOBYPASSRLS) under transaction-local
@@ -18,7 +18,7 @@ use Illuminate\Support\Str;
  */
 
 /**
- * The 62 tables with RLS enabled (the documented scoped set).
+ * The 63 tables with RLS enabled (the documented scoped set).
  *
  * @var list<string>
  */
@@ -38,6 +38,8 @@ const RLS_SCOPED_TABLES = [
     'modalities', 'studies', 'radiology_reports', 'image_references',
     // Phase 3 slice 3 — pharmacy dispensing & inventory.
     'inventory_items', 'inventory_movements',
+    // Phase 3 slice 17 — pharmacy batch/expiry tracking.
+    'stock_batches',
     // Phase 3 slice 8 — pharmacy returns & reversals.
     'pharmacy_returns',
     // Phase 3 slice 4 — discharge & follow-up.
@@ -295,6 +297,13 @@ function seedTenantChain(ConnectionInterface $c, string $tenantId, string $facil
     $c->insert('insert into inventory_movements (id, tenant_id, facility_id, inventory_item_id, movement_type, quantity_delta, reason, occurred_at) values (?, ?, ?, ?, ?, ?, ?, ?)', [$movement, $tenantId, $facilityId, $inventoryItem, 'receipt', 100, 'Chain receipt', '2026-08-15 12:00:00+00']);
     $ids['inventory_movements'] = $movement;
 
+    // Phase 3 slice 17 — stock batch chained to the inventory item and
+    // medication above; the ledger movement records the batch it touched.
+    $batch = (string) Str::uuid();
+    $c->insert('insert into stock_batches (id, tenant_id, facility_id, inventory_item_id, medication_id, batch_number, expiry_date, quantity_received, quantity_remaining, status, controlled_dispense_requires_dual, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$batch, $tenantId, $facilityId, $inventoryItem, $medication, 'B-CHAIN', '2026-12-31', 100, 100, 'available', false, 0]);
+    $ids['stock_batches'] = $batch;
+    $c->update('update inventory_movements set stock_batch_id = ? where id = ?', [$batch, $movement]);
+
     // Phase 3 slice 4 — follow-up plan chained to the encounter above.
     $followUp = (string) Str::uuid();
     $c->insert('insert into follow_ups (id, tenant_id, facility_id, patient_id, encounter_id, provider_staff_id, follow_up_type, planned_at, status, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$followUp, $tenantId, $facilityId, $patient, $encounter, $staff, 'return_visit', '2026-08-22 09:00:00+00', 'planned', 0]);
@@ -415,6 +424,7 @@ function chainUpdateColumns(): array
         'invoices' => ['void_reason', 'upd'],
         'inventory_items' => ['reorder_level', '12'],
         'inventory_movements' => ['reason', 'upd'],
+        'stock_batches' => ['batch_number', 'upd'],
         'lab_order_items' => ['result_unit', 'upd'],
         'lab_orders' => ['clinical_indication', 'upd'],
         'specimens' => ['container', 'upd'],
@@ -485,7 +495,7 @@ function inventoryTenants(ConnectionInterface $c): array
     return $t;
 }
 
-it('records the current RLS inventory: 62 scoped tables enabled + FORCED, 15 unscoped off', function () {
+it('records the current RLS inventory: 63 scoped tables enabled + FORCED, 15 unscoped off', function () {
     $rows = DB::connection('pgsql')->select(
         'select c.relname as table_name, c.relrowsecurity::text as enabled, c.relforcerowsecurity::text as forced
          from pg_class c
@@ -623,7 +633,7 @@ it('FORCE RLS binds a non-superuser table owner (defense-in-depth proof)', funct
     }
 });
 
-it('denies cross-tenant SELECT, UPDATE, and DELETE on all 62 tenant-owned tables — two-sided', function () {
+it('denies cross-tenant SELECT, UPDATE, and DELETE on all 63 tenant-owned tables — two-sided', function () {
     rlsTx(rlsConn(), function ($c): void {
         $t = inventoryTenants($c);
 

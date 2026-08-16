@@ -10,6 +10,7 @@ use App\Models\InventoryItem;
 use App\Models\InventoryMovement;
 use App\Models\Medication;
 use App\Models\Organization;
+use App\Models\StockBatch;
 use App\Support\AccessCheck;
 use App\Support\AuditLogger;
 use App\Support\Envelope;
@@ -99,7 +100,12 @@ final class InventoryController extends Controller
             throw new ApiException(ErrorCodes::VALIDATION_ERROR, 'The medication must be an active formulary item in this facility.', 422);
         }
 
-        $item = DB::transaction(function () use ($organization, $facilityId, $medicationId, $quantity, $reorderLevel, $context, $medication): InventoryItem {
+        // Phase 3 slice 17 — optional batch receipt: {batchNumber,
+        // expiryDate, controlledDispenseRequiresDual}. When supplied, the
+        // batch row is created atomically with the shelf receipt.
+        $batchInput = $request->input('batch');
+
+        $item = DB::transaction(function () use ($organization, $facilityId, $medicationId, $quantity, $reorderLevel, $context, $medication, $batchInput): InventoryItem {
             $userId = $context->user?->getKey();
             $id = (string) Str::uuid();
 
@@ -121,7 +127,7 @@ final class InventoryController extends Controller
 
             $item = InventoryItem::query()->findOrFail($row->id);
 
-            InventoryMovement::query()->create([
+            $movement = InventoryMovement::query()->create([
                 'tenant_id' => $organization->getKey(),
                 'facility_id' => $facilityId,
                 'inventory_item_id' => $item->getKey(),
@@ -131,6 +137,25 @@ final class InventoryController extends Controller
                 'occurred_at' => now(),
                 'created_by' => $userId,
             ]);
+
+            if ($batchInput !== null) {
+                $batch = StockBatch::query()->create([
+                    'tenant_id' => $organization->getKey(),
+                    'facility_id' => $facilityId,
+                    'inventory_item_id' => $item->getKey(),
+                    'medication_id' => $medicationId,
+                    'batch_number' => $batchInput['batchNumber'],
+                    'expiry_date' => $batchInput['expiryDate'],
+                    'quantity_received' => $quantity,
+                    'quantity_remaining' => $quantity,
+                    'status' => StockBatch::STATUS_AVAILABLE,
+                    'controlled_dispense_requires_dual' => $batchInput['controlledDispenseRequiresDual'] ?? false,
+                    'lock_version' => 0,
+                    'created_by' => $userId,
+                ]);
+
+                $movement->update(['stock_batch_id' => $batch->getKey()]);
+            }
 
             return $item;
         });

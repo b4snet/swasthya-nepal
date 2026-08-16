@@ -507,6 +507,13 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
     Route::post('prescription-lines/{prescriptionLine}/return', [PharmacyReturnController::class, 'store'])
         ->middleware('authorize:pharmacy:return');
 
+    // Phase 3 slice 17 — controlled-substance dual verification: a SECOND
+    // pharmacist (different staff member) stamps a dispensed controlled
+    // line before the dispense is complete (PRODUCT_REQUIREMENTS §6.7
+    // workflow 2 — "verify by a second pharmacist where policy requires").
+    Route::post('prescription-lines/{prescriptionLine}/dual-verify', [PharmacyController::class, 'dualVerify'])
+        ->middleware('authorize:pharmacy:dispense');
+
     // Phase 3 slice 4 — discharge & follow-up (PRODUCT_REQUIREMENTS §6.7):
     // clinical close of the visit + planned return visits linked to it.
     Route::post('encounters/{encounter}/discharge', [EncounterController::class, 'discharge'])

@@ -27,6 +27,7 @@ use App\Models\NursingNote;
 use App\Models\Payment;
 use App\Models\PharmacyReturn;
 use App\Models\Prescription;
+use App\Models\PrescriptionLine;
 use App\Models\RefundRequest;
 use App\Models\Room;
 use App\Models\ScheduleException;
@@ -34,6 +35,7 @@ use App\Models\ScheduleTemplate;
 use App\Models\Service;
 use App\Models\Specimen;
 use App\Models\Staff;
+use App\Models\StockBatch;
 use App\Models\TransferEvent;
 use App\Models\TriageAssignment;
 use App\Models\TriageScale;
@@ -104,6 +106,9 @@ final class AuditLogger
         // Phase 3 slice 3 — pharmacy inventory ledger.
         'inventory_item' => InventoryItem::class,
         'inventory_movement' => InventoryMovement::class,
+        // Phase 3 slice 17 — pharmacy batch/expiry + dual verification.
+        'stock_batch' => StockBatch::class,
+        'prescription_line' => PrescriptionLine::class,
         // Phase 3 slice 8 — pharmacy returns & reversals.
         'pharmacy_return' => PharmacyReturn::class,
         // Phase 3 slice 4 — discharge & follow-up.

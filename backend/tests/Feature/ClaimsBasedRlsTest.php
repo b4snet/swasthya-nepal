@@ -29,7 +29,7 @@ it('re-keys every RLS policy to the claims helpers (244 policies, zero GUC refer
         SQL
     )[0];
 
-    expect((int) $policies->total)->toBe(244)
+    expect((int) $policies->total)->toBe(248)
         ->and((int) $policies->not_claims)->toBe(0)
         ->and((int) $policies->still_guc)->toBe(0);
 
@@ -70,7 +70,8 @@ it('keeps the RLS matrix intact: 62 scoped on, 15 off, none on-without-policies'
     // +4 since slice 14: er_registrations, triage_scales, triage_assignments,
     // er_events.
     // +2 since slice 15: specimens, lab_result_versions.
-    expect((int) $matrix->rls_on)->toBe(62)
+    // +1 since slice 17: stock_batches.
+    expect((int) $matrix->rls_on)->toBe(63)
         ->and((int) $matrix->rls_off)->toBe(15)
         ->and((int) $matrix->on_without_policies)->toBe(0);
 });

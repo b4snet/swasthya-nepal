@@ -37,6 +37,9 @@ class InventoryMovement extends Model
         'quantity_delta',
         'reason',
         'prescription_line_id',
+        // Phase 3 slice 17 — the batch every movement touched (batch-level
+        // ledger traceability for expiry-safe dispensing).
+        'stock_batch_id',
         'occurred_at',
         'created_by',
     ];

@@ -13,8 +13,10 @@ use App\Models\Patient;
 use App\Models\Prescription;
 use App\Models\PrescriptionLine;
 use App\Models\Staff;
+use App\Models\StockBatch;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Tests\Support\Identity;
 use Tests\TestCase;
 
@@ -78,6 +80,22 @@ function pharmacyStock(Organization $org, Facility $facility, string $code, int 
         'medication_id' => $medication->getKey(),
         'quantity_on_hand' => $quantity,
         'reorder_level' => 10,
+        'lock_version' => 0,
+    ]);
+
+    // Phase 3 slice 17 — dispensing is batch-selected; the shelf always
+    // carries a matching available, unexpired batch.
+    StockBatch::factory()->create([
+        'tenant_id' => $org->getKey(),
+        'facility_id' => $facility->getKey(),
+        'inventory_item_id' => $item->getKey(),
+        'medication_id' => $medication->getKey(),
+        'batch_number' => 'B-'.strtoupper(substr((string) Str::uuid(), 0, 8)),
+        'expiry_date' => now()->addMonths(6)->toDateString(),
+        'quantity_received' => $quantity,
+        'quantity_remaining' => $quantity,
+        'status' => StockBatch::STATUS_AVAILABLE,
+        'controlled_dispense_requires_dual' => false,
         'lock_version' => 0,
     ]);
 

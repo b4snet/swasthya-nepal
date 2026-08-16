@@ -42,6 +42,14 @@ class PrescriptionLine extends Model
         'line_no',
         'dispensed_by_staff_id',
         'dispensed_at',
+        // Phase 3 slice 17 — the exact batch dispensed and the second
+        // pharmacist's dual-verification stamp.
+        'batch_id',
+        'batch_number',
+        'batch_expires_at',
+        'batch_quantity_minor',
+        'dual_verified_by_staff_id',
+        'dual_verified_at',
         'created_by',
     ];
 
@@ -54,6 +62,9 @@ class PrescriptionLine extends Model
             'quantity_minor' => 'integer',
             'line_no' => 'integer',
             'dispensed_at' => 'datetime',
+            // Phase 3 slice 17 — batch expiry + dual-verification stamps.
+            'batch_expires_at' => 'date',
+            'dual_verified_at' => 'datetime',
         ];
     }
 

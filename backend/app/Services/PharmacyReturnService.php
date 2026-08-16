@@ -9,6 +9,7 @@ use App\Models\InventoryMovement;
 use App\Models\PharmacyReturn;
 use App\Models\PrescriptionLine;
 use App\Models\RefundRequest;
+use App\Models\StockBatch;
 use App\Support\ErrorCodes;
 use Illuminate\Support\Facades\DB;
 
@@ -94,7 +95,10 @@ final class PharmacyReturnService
                 throw new ApiException(ErrorCodes::CONFLICT, 'No posted charge is linked to this dispensed line; it cannot be returned.', 409);
             }
 
-            // Restore stock: CAS on the same shelf the dispense deducted from.
+            // Restore stock: CAS on the same shelf the dispense deducted
+            // from. Phase 3 slice 17 — when the line was dispensed from a
+            // batch, the batch is restored FIRST (the exact lot returns);
+            // the aggregate shelf restore still applies (ledger truth).
             $item = InventoryItem::query()
                 ->where('tenant_id', $tenantId)
                 ->where('facility_id', $facilityId)
@@ -103,6 +107,35 @@ final class PharmacyReturnService
 
             if ($item === null) {
                 throw new ApiException(ErrorCodes::CONFLICT, 'No stock is configured for '.$medication->generic_name.' at this facility; the line cannot be returned.', 409);
+            }
+
+            if ($line->batch_id !== null) {
+                $batch = StockBatch::query()
+                    ->where('tenant_id', $tenantId)
+                    ->where('facility_id', $facilityId)
+                    ->where('id', $line->batch_id)
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($batch === null) {
+                    throw new ApiException(ErrorCodes::CONFLICT, 'The dispensed batch no longer exists; the line cannot be returned.', 409);
+                }
+
+                $batchRestored = DB::table('stock_batches')
+                    ->where('tenant_id', $tenantId)
+                    ->where('id', $batch->getKey())
+                    ->where('status', StockBatch::STATUS_AVAILABLE)
+                    ->where('lock_version', $batch->lock_version)
+                    ->update([
+                        'quantity_remaining' => DB::raw('quantity_remaining + '.$quantity),
+                        'lock_version' => DB::raw('lock_version + 1'),
+                        'updated_by' => $userId,
+                        'updated_at' => now(),
+                    ]);
+
+                if ($batchRestored !== 1) {
+                    throw new ApiException(ErrorCodes::CONFLICT, 'The dispensed batch was concurrently modified; refresh and retry.', 409);
+                }
             }
 
             $restored = DB::table('inventory_items')
@@ -128,6 +161,8 @@ final class PharmacyReturnService
                 'quantity_delta' => $quantity,
                 'reason' => $medication->generic_name.' return',
                 'prescription_line_id' => $line->getKey(),
+                // Phase 3 slice 17 — the exact lot restored.
+                'stock_batch_id' => $line->batch_id,
                 'occurred_at' => now(),
                 'created_by' => $userId,
             ]);

@@ -10,6 +10,7 @@ use App\Models\InventoryMovement;
 use App\Models\Prescription;
 use App\Models\PrescriptionLine;
 use App\Models\Staff;
+use App\Services\PharmacyService;
 use App\Support\AccessCheck;
 use App\Support\AuditLogger;
 use App\Support\Envelope;
@@ -20,24 +21,29 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Pharmacy dispensing (DATABASE.md §3.23, PRODUCT_REQUIREMENTS §6.9):
+ * Pharmacy dispensing (DATABASE.md §3.30/§3.31, PRODUCT_REQUIREMENTS §6.7):
  *
  *   pharmacist verifies the prescription (drafted → active) →
  *   stock is checked → dispense (active → dispensed) —
- *   each ordered line's stock is deducted atomically, the line is marked
- *   dispensed, a charge is posted, and the whole operation is one
+ *   each ordered line's stock is deducted atomically from a batch, the line
+ *   is marked dispensed, a charge is posted, and the whole operation is one
  *   transaction: a single line that cannot be filled rolls back everything
  *   (no partial dispensing, no partial deduction).
  *
- * The stock deduction is a compare-and-swap on (quantity_on_hand,
- * lock_version) — two concurrent dispenses of the same shelf cannot both
- * succeed or drive stock negative. Verification is a required step before
- * dispensing and is recorded on the header.
+ * Phase 3 slice 17 — dispensing is batch-selected: either the pharmacist
+ * names the batch (batchSelections) or the system picks FEFO among
+ * available, unexpired batches. An EXPIRED batch can never be drawn (CAS
+ * expiry guard). Controlled substances with controlled_dispense_requires_dual
+ * demand a SECOND pharmacist's verification (dualVerify — dispenser ≠
+ * verifier). Stock deductions are compare-and-swap on
+ * (quantity, lock_version) — two concurrent dispenses cannot both succeed
+ * or drive stock negative.
  */
 final class PharmacyController extends Controller
 {
     public function __construct(
         private readonly AuditLogger $audit,
+        private readonly PharmacyService $pharmacy,
     ) {}
 
     /**
@@ -103,7 +109,18 @@ final class PharmacyController extends Controller
         $context = TenantContext::current();
         $pharmacist = $this->currentPharmacyStaff($prescription, $context);
 
-        $totalMinor = DB::transaction(function () use ($prescription, $context, $pharmacist): int {
+        // Phase 3 slice 17 — optional explicit batch selections keyed by
+        // line id; when omitted, FEFO auto-selection applies. Every selected
+        // batch must belong to the line's own medication.
+        $batchSelections = $request->input('batchSelections');
+        if ($batchSelections !== null && ! is_array($batchSelections)) {
+            throw new ApiException(ErrorCodes::VALIDATION_ERROR, 'batchSelections must be an array of {lineId, batchId}.', 422);
+        }
+        $selectionsByLine = $batchSelections !== null
+            ? collect($batchSelections)->keyBy('lineId')
+            : collect();
+
+        $totalMinor = DB::transaction(function () use ($prescription, $context, $pharmacist, $selectionsByLine): int {
             $encounter = $prescription->encounter;
 
             if ($encounter === null) {
@@ -112,7 +129,7 @@ final class PharmacyController extends Controller
 
             $lines = $prescription->lines()
                 ->where('status', PrescriptionLine::STATUS_ORDERED)
-                ->with('medication:id,generic_name,brand_name,strength,unit,price_minor,currency')
+                ->with('medication:id,generic_name,brand_name,strength,unit,is_controlled,price_minor,currency')
                 ->get();
 
             if ($lines->isEmpty()) {
@@ -120,6 +137,7 @@ final class PharmacyController extends Controller
             }
 
             $totalMinor = 0;
+            $controlledDualPending = false;
 
             foreach ($lines as $line) {
                 $medication = $line->medication;
@@ -140,6 +158,33 @@ final class PharmacyController extends Controller
                     throw new ApiException(ErrorCodes::CONFLICT, 'No stock is configured for '.$medication->generic_name.' at this facility.', 409);
                 }
 
+                // Resolve the batch: explicit selection (validated against
+                // the line's medication + expiry/availability) or FEFO.
+                $selection = $selectionsByLine->get($line->getKey());
+                if ($selection !== null) {
+                    $batch = $this->pharmacy->resolveSelectedBatch(
+                        $prescription->tenant_id,
+                        $encounter->facility_id,
+                        $line->medication_id,
+                        (string) $selection['batchId'],
+                    );
+                } else {
+                    $batch = $this->pharmacy->fefoBatch(
+                        $prescription->tenant_id,
+                        $encounter->facility_id,
+                        $line->medication_id,
+                    );
+
+                    if ($batch === null) {
+                        throw new ApiException(ErrorCodes::CONFLICT, 'No available, unexpired batch has stock for '.$medication->generic_name.' at this facility.', 409);
+                    }
+                }
+
+                // Batch-level CAS deduction (expiry + availability + stock).
+                $this->pharmacy->deductFromBatch($batch, $quantity, $context->user?->getKey());
+
+                // Aggregate shelf deduction (the ledger truth the return
+                // path restores against) — same CAS discipline.
                 $this->deductStock($item, $quantity, $medication->generic_name, $context);
 
                 InventoryMovement::query()->create([
@@ -148,8 +193,10 @@ final class PharmacyController extends Controller
                     'inventory_item_id' => $item->getKey(),
                     'movement_type' => InventoryMovement::TYPE_DISPENSE,
                     'quantity_delta' => -$quantity,
-                    'reason' => $medication->generic_name.' dispense',
+                    'reason' => $medication->generic_name.' dispense (batch '.$batch->batch_number.')',
                     'prescription_line_id' => $line->getKey(),
+                    // Phase 3 slice 17 — batch-level ledger traceability.
+                    'stock_batch_id' => $batch->getKey(),
                     'occurred_at' => now(),
                     'created_by' => $context->user?->getKey(),
                 ]);
@@ -158,7 +205,23 @@ final class PharmacyController extends Controller
                     'status' => PrescriptionLine::STATUS_DISPENSED,
                     'dispensed_by_staff_id' => $pharmacist->getKey(),
                     'dispensed_at' => now(),
+                    // Phase 3 slice 17 — the exact batch this line came from
+                    // (return restores to the SAME batch).
+                    'batch_id' => $batch->getKey(),
+                    'batch_number' => $batch->batch_number,
+                    'batch_expires_at' => $batch->expiry_date->toDateString(),
+                    'batch_quantity_minor' => $quantity,
                 ]);
+
+                // Phase 3 slice 17 — controlled substances with the dual
+                // policy need a SECOND pharmacist before the dispense is
+                // complete (the charge still posts at dispense; the return
+                // path requires the dual stamp).
+                $requiresDual = (bool) $medication->is_controlled
+                    && $batch->controlled_dispense_requires_dual;
+                if ($requiresDual) {
+                    $controlledDualPending = true;
+                }
 
                 Charge::query()->create([
                     'tenant_id' => $prescription->tenant_id,
@@ -197,6 +260,35 @@ final class PharmacyController extends Controller
         );
 
         return Envelope::success(data: $this->present($prescription->fresh(['lines.medication:id,generic_name,brand_name,strength,form,unit,is_controlled,price_minor,currency', 'encounter'])), request: $request);
+    }
+
+    /**
+     * POST /prescription-lines/{prescriptionLine}/dual-verify — Phase 3
+     * slice 17 controlled-substance dual verification: a SECOND pharmacist
+     * (different staff member) stamps the dispensed line. The return path
+     * requires this stamp for controlled lines.
+     */
+    public function dualVerify(Request $request, PrescriptionLine $prescriptionLine): JsonResponse
+    {
+        // The line is authorized through its prescription (lines carry no
+        // facility_id of their own — the established line pattern).
+        $prescriptionLine->load('prescription');
+        AccessCheck::prescription($prescriptionLine->prescription, write: true);
+
+        $context = TenantContext::current();
+        $verifier = $this->currentPharmacyStaffLine($prescriptionLine, $context);
+
+        $verified = $this->pharmacy->dualVerify($prescriptionLine, $verifier->getKey(), $context->user?->getKey());
+
+        $this->audit->record(
+            'pharmacy.dual_verified',
+            'prescription_line',
+            $verified->getKey(),
+            ['prescriptionId' => $verified->prescription_id, 'dispensedByStaffId' => $verified->dispensed_by_staff_id, 'dualVerifiedByStaffId' => $verified->dual_verified_by_staff_id],
+            $request,
+        );
+
+        return Envelope::success(data: $this->presentLine($verified), request: $request);
     }
 
     /* ------------------------------------------------------------------ */
@@ -329,8 +421,60 @@ final class PharmacyController extends Controller
                     'dispensedByStaffId' => $line->dispensed_by_staff_id,
                     'dispensedAt' => $line->dispensed_at?->toIso8601String(),
                     'availableQuantity' => $stock,
+                    // Phase 3 slice 17 — the exact batch and the second
+                    // pharmacist's stamp.
+                    'batchId' => $line->batch_id,
+                    'batchNumber' => $line->batch_number,
+                    'batchExpiresAt' => $line->batch_expires_at?->toDateString(),
+                    'batchQuantityMinor' => $line->batch_quantity_minor,
+                    'dualVerifiedByStaffId' => $line->dual_verified_by_staff_id,
+                    'dualVerifiedAt' => $line->dual_verified_at?->toIso8601String(),
                 ];
             })->values(),
         ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function presentLine(PrescriptionLine $line): array
+    {
+        return [
+            'id' => $line->getKey(),
+            'prescriptionId' => $line->prescription_id,
+            'medicationId' => $line->medication_id,
+            'status' => $line->status,
+            'quantityMinor' => $line->quantity_minor,
+            'batchId' => $line->batch_id,
+            'batchNumber' => $line->batch_number,
+            'batchExpiresAt' => $line->batch_expires_at?->toDateString(),
+            'batchQuantityMinor' => $line->batch_quantity_minor,
+            'dispensedByStaffId' => $line->dispensed_by_staff_id,
+            'dispensedAt' => $line->dispensed_at?->toIso8601String(),
+            'dualVerifiedByStaffId' => $line->dual_verified_by_staff_id,
+            'dualVerifiedAt' => $line->dual_verified_at?->toIso8601String(),
+        ];
+    }
+
+    /**
+     * The authenticated user's staff profile for a LINE's tenant+facility
+     * (the dual-verification actor).
+     */
+    private function currentPharmacyStaffLine(PrescriptionLine $line, TenantContext $context): Staff
+    {
+        // The line carries no facility_id — its facility is the
+        // prescription's encounter facility (the established line pattern).
+        $facilityId = $line->prescription?->encounter?->facility_id;
+
+        $staff = $context->user?->staff()
+            ->where('tenant_id', $line->tenant_id)
+            ->where('status', '!=', Staff::STATUS_DEPARTED)
+            ->first();
+
+        if ($staff === null || ($facilityId !== null && $staff->facility_id !== $facilityId)) {
+            throw new ApiException(ErrorCodes::SCOPE_DENIED, 'No active staff profile for this user in the line\'s facility.', 403);
+        }
+
+        return $staff;
     }
 }
