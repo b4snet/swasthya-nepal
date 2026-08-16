@@ -7,6 +7,7 @@ use Database\Factories\AdmissionFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
@@ -114,5 +115,39 @@ class Admission extends Model
     public function bed(): HasOne
     {
         return $this->hasOne(Bed::class, 'current_admission_id');
+    }
+
+    /**
+     * The audited transfer timeline (DATABASE.md §3.23, slice 13).
+     *
+     * @return HasMany<TransferEvent, $this>
+     */
+    public function transfers(): HasMany
+    {
+        return $this->hasMany(TransferEvent::class, 'admission_id');
+    }
+
+    /**
+     * @return HasMany<NursingNote, $this>
+     */
+    public function nursingNotes(): HasMany
+    {
+        return $this->hasMany(NursingNote::class, 'admission_id');
+    }
+
+    /**
+     * @return HasMany<MarEntry, $this>
+     */
+    public function marEntries(): HasMany
+    {
+        return $this->hasMany(MarEntry::class, 'admission_id');
+    }
+
+    /**
+     * @return HasMany<VitalObservation, $this>
+     */
+    public function vitalObservations(): HasMany
+    {
+        return $this->hasMany(VitalObservation::class, 'admission_id');
     }
 }

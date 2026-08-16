@@ -577,7 +577,9 @@ erDiagram
 
 ### 3.23 admissions
 
-> **Implemented with Phase 3 slice 6.** The inpatient stay: admission from an OPEN encounter claims a live AVAILABLE bed atomically (compare-and-swap on `beds (status, current_admission_id, lock_version)` — two clerks can never book the same bed; the partial unique `uq_beds_tenant_current_admission` is the DB backstop), and discharge writes a SIGNED discharge-summary clinical note (type `discharge`) that releases the bed (occupied → cleaning, never immediately reassignable). Every status transition is CAS-guarded (`status, lock_version`); one open admission per patient and per encounter is enforced by partial uniques. The tenant-safe composite FK `fk_beds_tenant_current_admission` (`beds` → `admissions` via `(tenant_id, id)`) was added with the table. Bed-day charging and transfers (`in_ward`, `transferred`) are later-phase billing/nursing work.
+> **Implemented with Phase 3 slice 6.** The inpatient stay: admission from an OPEN encounter claims a live AVAILABLE bed atomically (compare-and-swap on `beds (status, current_admission_id, lock_version)` — two clerks can never book the same bed; the partial unique `uq_beds_tenant_current_admission` is the DB backstop), and discharge writes a SIGNED discharge-summary clinical note (type `discharge`) that releases the bed (occupied → cleaning, never immediately reassignable). Every status transition is CAS-guarded (`status, lock_version`); one open admission per patient and per encounter is enforced by partial uniques. The tenant-safe composite FK `fk_beds_tenant_current_admission` (`beds` → `admissions` via `(tenant_id, id)`) was added with the table.
+>
+> **Phase 3 slice 13 — transfers implemented (ROADMAP Phase 8, PRODUCT_REQUIREMENTS §6.5).** An admitted patient (`admitted`/`in_ward`/`transferred`) moves bed-to-bed/ward-to-ward with a captured reason (doctor-approved — `admission:transfer`): the admission CAS-advances to `transferred`, an immutable `transfer_events` row preserves the historical bed timeline (from-bed → to-bed, reason, who, when), the vacated bed goes occupied → cleaning, and the target bed is claimed by compare-and-swap (available AND no current admission AND lock_version — two clerks can never book the same bed; `uq_beds_tenant_current_admission` is the DB backstop). Discharge accepts `transferred` and releases the CURRENT bed. Bed-day charging remains later-phase billing work.
 
 | Aspect | Design |
 |---|---|
@@ -638,6 +640,15 @@ erDiagram
 | **Retention** | Operational class |
 
 ### 3.27 nursing (nursing_notes, mar_entries, vital_observations)
+
+> **Implemented with Phase 3 slice 13** (ROADMAP Phase 8, PRODUCT_REQUIREMENTS §6.5). Three TENANT_FACILITY tables with RLS on + FORCED (companion migration `2026_08_16_200100`, 4 tables × 4 policies — 188 → 204 total, scoped matrix 48 → 52):
+>
+> - **transfer_events** — the audited transfer timeline: from-bed → to-bed, reason, authorizing staff, transferred_at; immutable; indexed by `(tenant_id, admission_id, transferred_at)`. The vacated bed goes occupied → cleaning; the target bed is CAS-claimed (never double-booked).
+> - **nursing_notes** — structured ward documentation, `draft → signed` (author-only sign, CAS; signed is immutable).
+> - **mar_entries** — the medication administration record from prescription lines: a scheduled dose (`scheduled`) transitions to `given | refused | missed | held` with the administering nurse, time, and refusal/miss reason; `given` requires identity re-confirmation (name + MRN, CLINICAL_SAFETY §190); ONE administration per scheduled dose is DB-enforced (`uq_mar_entries_tenant_line_scheduled` — duplicates are 409).
+> - **vital_observations** — typed vital signs (`bp/pulse/temp/spo2/weight/score`) with a per-type JSON value, BRIN-indexed on `measured_at`; `is_abnormal` is the later-phase CDSS-derived flag (nullable, never client-supplied).
+>
+> Composite-FK support index `uq_beds_tenant_id` was added (beds already carries `uq_prescription_lines_tenant_id` from the pharmacy slice). Permissions: `admission:transfer` (doctor/admin), `nursing:document` (nurse/admin — notes + vitals), `mar:administer` (nurse/admin). Audit (`admission.transferred`, `nursing_note.created/.signed`, `vital_observation.recorded`, `mar_entry.scheduled/.administered`) carries facts and ids only — note content, vital values, and reasons are PHI and never reach audit payloads.
 
 | Aspect | Design |
 |---|---|

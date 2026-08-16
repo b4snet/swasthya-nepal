@@ -168,6 +168,16 @@ class RolePermissionSeeder extends Seeder
             'admission:view' => ['domain' => 'admission', 'description' => 'View inpatient admissions and discharge records within scope'],
             'admission:create' => ['domain' => 'admission', 'description' => 'Admit a patient from an open encounter and assign a bed'],
             'admission:discharge' => ['domain' => 'admission', 'description' => 'Discharge an inpatient (structured summary, bed release)'],
+
+            // Phase 3 slice 13 — the remaining documented IPD workflow
+            // (ROADMAP Phase 8, PRODUCT_REQUIREMENTS §6.5): audited bed/ward
+            // transfers (doctor-approved), nursing documentation (notes +
+            // vitals), and MAR administration. The nursing permissions are
+            // the nurse's acts — clinical roles only, like pharmacy
+            // dispensing.
+            'admission:transfer' => ['domain' => 'admission', 'description' => 'Transfer an inpatient between beds or wards (audited, doctor-authorized)'],
+            'nursing:document' => ['domain' => 'nursing', 'description' => 'Record and sign nursing notes and vital observations within scope'],
+            'mar:administer' => ['domain' => 'mar', 'description' => 'Schedule and record medication administration on the MAR (identity-confirmed)'],
         ];
     }
 
@@ -284,6 +294,7 @@ class RolePermissionSeeder extends Seeder
                     'billing:view', 'billing:invoice', 'billing:collect',
                     'billing:refund', 'billing:refund-approve',
                     'admission:view', 'admission:create', 'admission:discharge',
+                    'admission:transfer', 'nursing:document', 'mar:administer',
                 ],
             ],
             'org_finance' => [
@@ -336,6 +347,7 @@ class RolePermissionSeeder extends Seeder
                     'billing:view', 'billing:invoice', 'billing:collect',
                     'billing:refund', 'billing:refund-approve',
                     'admission:view', 'admission:create', 'admission:discharge',
+                    'admission:transfer', 'nursing:document', 'mar:administer',
                 ],
             ],
             'branch_manager' => [
@@ -404,6 +416,7 @@ class RolePermissionSeeder extends Seeder
                     'medication:view', 'pharmacy:view', 'followup:view', 'followup:manage', 'billing:view',
                     'lab:view', 'lab:order', 'lab:acknowledge',
                     'admission:view', 'admission:create', 'admission:discharge',
+                    'admission:transfer',
                 ],
             ],
             'nurse' => [
@@ -419,6 +432,9 @@ class RolePermissionSeeder extends Seeder
                     'medication:view', 'pharmacy:view', 'followup:view', 'billing:view',
                     'lab:view',
                     'admission:view',
+                    // Phase 3 slice 13 — the nurse's IPD acts: nursing
+                    // documentation (notes + vitals) and MAR administration.
+                    'nursing:document', 'mar:administer',
                 ],
             ],
             'pharmacist' => [

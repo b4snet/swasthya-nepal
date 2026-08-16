@@ -8,7 +8,7 @@ use Illuminate\Support\Str;
  * PROGRAM PHASE 1 — systematic database-layer tenancy verification.
  *
  * Unlike the representative isolation suites (DatabaseRowLevelSecurityTest,
- * ClinicalIsolationTest, ...), this suite iterates the FULL set of 48
+ * ClinicalIsolationTest, ...), this suite iterates the FULL set of 52
  * tenant-owned tables: it seeds a complete two-tenant fixture chain and then
  * probes every table for cross-tenant SELECT/UPDATE/DELETE isolation as the
  * least-privilege `swasthya_app` role (NOBYPASSRLS) under transaction-local
@@ -18,7 +18,7 @@ use Illuminate\Support\Str;
  */
 
 /**
- * The 48 tables with RLS enabled (the documented scoped set).
+ * The 52 tables with RLS enabled (the documented scoped set).
  *
  * @var list<string>
  */
@@ -43,6 +43,9 @@ const RLS_SCOPED_TABLES = [
     'admissions',
     // Phase 3 slice 7 — laboratory critical-value escalation.
     'critical_value_events',
+    // Phase 3 slice 13 — the remaining documented IPD workflow: audited
+    // transfers, nursing notes, MAR administration, vital observations.
+    'transfer_events', 'nursing_notes', 'mar_entries', 'vital_observations',
     // Phase 3 slice 10 — follow-up reminders (TENANT tier, §3.37).
     'notifications',
     // TENANT_ONLY
@@ -286,6 +289,29 @@ function seedTenantChain(ConnectionInterface $c, string $tenantId, string $facil
     $c->insert('insert into notifications (id, tenant_id, patient_id, follow_up_id, type, channel, payload, status, sensitive, created_at, updated_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$notification, $tenantId, $patient, $followUp, 'appointment_reminder', 'in_app', '{}', 'sent', true, '2026-08-15 13:15:00+00', '2026-08-15 13:15:00+00']);
     $ids['notifications'] = $notification;
 
+    // Phase 3 slice 13 — the remaining documented IPD workflow: the
+    // transfer timeline, nursing notes, MAR entries, and vital observations
+    // chained to the admission and prescription line above. A second bed is
+    // created as the transfer target (the chain's main bed is occupied).
+    $bedTarget = (string) Str::uuid();
+    $c->insert('insert into beds (id, tenant_id, facility_id, room_id, bed_code, status, lock_version) values (?, ?, ?, ?, ?, ?, ?)', [$bedTarget, $tenantId, $facilityId, $room, $u('bed2'), 'available', 0]);
+
+    $transferEvent = (string) Str::uuid();
+    $c->insert('insert into transfer_events (id, tenant_id, facility_id, admission_id, from_bed_id, to_bed_id, reason, transferred_by, transferred_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?)', [$transferEvent, $tenantId, $facilityId, $admission, $bed, $bedTarget, 'Chain transfer', $staff, '2026-08-15 13:30:00+00']);
+    $ids['transfer_events'] = $transferEvent;
+
+    $nursingNote = (string) Str::uuid();
+    $c->insert('insert into nursing_notes (id, tenant_id, facility_id, admission_id, author_staff_id, content, status) values (?, ?, ?, ?, ?, ?, ?)', [$nursingNote, $tenantId, $facilityId, $admission, $staff, '{}', 'draft']);
+    $ids['nursing_notes'] = $nursingNote;
+
+    $marEntry = (string) Str::uuid();
+    $c->insert('insert into mar_entries (id, tenant_id, facility_id, admission_id, prescription_line_id, scheduled_at, status) values (?, ?, ?, ?, ?, ?, ?)', [$marEntry, $tenantId, $facilityId, $admission, $line, '2026-08-15 14:00:00+00', 'scheduled']);
+    $ids['mar_entries'] = $marEntry;
+
+    $vital = (string) Str::uuid();
+    $c->insert('insert into vital_observations (id, tenant_id, facility_id, admission_id, encounter_id, patient_id, type, value, measured_at, measured_by) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$vital, $tenantId, $facilityId, $admission, $encounter, $patient, 'bp', '{"systolic": 120, "diastolic": 80}', '2026-08-15 13:45:00+00', $staff]);
+    $ids['vital_observations'] = $vital;
+
     $audit = (string) Str::uuid();
     $c->insert('insert into audit_events (id, tenant_id, facility_id, occurred_at, actor_type, action, resource_type, payload, correlation_id, prev_hash, event_hash) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$audit, $tenantId, $facilityId, '2026-08-15 00:00:00+00', 'user', 'chain.seeded', 'test', '{}', (string) Str::uuid(), null, hash('sha256', (string) Str::uuid())]);
     $ids['audit_events'] = $audit;
@@ -347,6 +373,10 @@ function chainUpdateColumns(): array
         'payments' => ['provider_ref', 'upd'],
         'pharmacy_returns' => ['reason_note', 'upd'],
         'notifications' => ['status', 'delivered'],
+        'transfer_events' => ['reason', 'upd'],
+        'nursing_notes' => ['status', 'signed'],
+        'mar_entries' => ['status', 'given'],
+        'vital_observations' => ['type', 'temp'],
         'prescription_lines' => ['instructions', 'upd'],
         'prescriptions' => ['notes', 'upd'],
         'role_assignments' => ['granted_by', '00000000-0000-0000-0000-000000000001'],
@@ -387,7 +417,7 @@ function inventoryTenants(ConnectionInterface $c): array
     return $t;
 }
 
-it('records the current RLS inventory: 48 scoped tables enabled + FORCED, 15 unscoped off', function () {
+it('records the current RLS inventory: 52 scoped tables enabled + FORCED, 15 unscoped off', function () {
     $rows = DB::connection('pgsql')->select(
         'select c.relname as table_name, c.relrowsecurity::text as enabled, c.relforcerowsecurity::text as forced
          from pg_class c
@@ -525,7 +555,7 @@ it('FORCE RLS binds a non-superuser table owner (defense-in-depth proof)', funct
     }
 });
 
-it('denies cross-tenant SELECT, UPDATE, and DELETE on all 48 tenant-owned tables — two-sided', function () {
+it('denies cross-tenant SELECT, UPDATE, and DELETE on all 52 tenant-owned tables — two-sided', function () {
     rlsTx(rlsConn(), function ($c): void {
         $t = inventoryTenants($c);
 

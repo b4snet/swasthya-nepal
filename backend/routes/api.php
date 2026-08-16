@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\FollowUpController;
 use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\InsurancePolicyController;
 use App\Http\Controllers\Api\InventoryController;
+use App\Http\Controllers\Api\IpdNursingController;
 use App\Http\Controllers\Api\LabOrderController;
 use App\Http\Controllers\Api\LabTestController;
 use App\Http\Controllers\Api\LocationController;
@@ -510,4 +511,31 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
         ->middleware('authorize:admission:view');
     Route::post('admissions/{admission}/discharge', [AdmissionController::class, 'discharge'])
         ->middleware('authorize:admission:discharge');
+
+    // Phase 3 slice 13 — the remaining documented IPD workflow (ROADMAP
+    // Phase 8, PRODUCT_REQUIREMENTS §6.5): audited bed/ward transfers,
+    // nursing notes, MAR administration, and vital observations.
+    Route::post('admissions/{admission}/transfer', [AdmissionController::class, 'transfer'])
+        ->middleware('authorize:admission:transfer');
+    Route::get('admissions/{admission}/transfers', [AdmissionController::class, 'transfers'])
+        ->middleware('authorize:admission:view');
+
+    Route::post('admissions/{admission}/nursing-notes', [IpdNursingController::class, 'storeNote'])
+        ->middleware('authorize:nursing:document');
+    Route::get('admissions/{admission}/nursing-notes', [IpdNursingController::class, 'indexNotes'])
+        ->middleware('authorize:admission:view');
+    Route::post('nursing-notes/{nursingNote}/sign', [IpdNursingController::class, 'signNote'])
+        ->middleware('authorize:nursing:document');
+
+    Route::post('admissions/{admission}/mar', [IpdNursingController::class, 'scheduleMar'])
+        ->middleware('authorize:mar:administer');
+    Route::get('admissions/{admission}/mar', [IpdNursingController::class, 'indexMar'])
+        ->middleware('authorize:admission:view');
+    Route::post('mar-entries/{marEntry}/administer', [IpdNursingController::class, 'administerMar'])
+        ->middleware('authorize:mar:administer');
+
+    Route::post('admissions/{admission}/vitals', [IpdNursingController::class, 'recordVital'])
+        ->middleware('authorize:nursing:document');
+    Route::get('admissions/{admission}/vitals', [IpdNursingController::class, 'indexVitals'])
+        ->middleware('authorize:admission:view');
 });

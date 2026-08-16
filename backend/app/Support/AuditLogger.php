@@ -19,7 +19,9 @@ use App\Models\Invoice;
 use App\Models\LabOrder;
 use App\Models\LabTest;
 use App\Models\Location;
+use App\Models\MarEntry;
 use App\Models\Medication;
+use App\Models\NursingNote;
 use App\Models\Payment;
 use App\Models\PharmacyReturn;
 use App\Models\Prescription;
@@ -29,7 +31,9 @@ use App\Models\ScheduleException;
 use App\Models\ScheduleTemplate;
 use App\Models\Service;
 use App\Models\Staff;
+use App\Models\TransferEvent;
 use App\Models\User;
+use App\Models\VitalObservation;
 use App\Models\Ward;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
@@ -105,6 +109,12 @@ final class AuditLogger
         'admission' => Admission::class,
         // Phase 3 slice 7 — laboratory critical-value escalation.
         'critical_value_event' => CriticalValueEvent::class,
+        // Phase 3 slice 13 — the remaining documented IPD workflow:
+        // audited transfers, nursing notes, MAR, and vital observations.
+        'transfer_event' => TransferEvent::class,
+        'nursing_note' => NursingNote::class,
+        'mar_entry' => MarEntry::class,
+        'vital_observation' => VitalObservation::class,
     ];
 
     /**

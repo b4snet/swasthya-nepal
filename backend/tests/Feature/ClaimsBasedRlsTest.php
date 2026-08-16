@@ -17,7 +17,7 @@ use Illuminate\Support\Str;
  * exercised end-to-end. Every test runs in a transaction on the app-role
  * connection and rolls back in all paths: no fixtures leak.
  */
-it('re-keys every RLS policy to the claims helpers (188 policies, zero GUC references)', function () {
+it('re-keys every RLS policy to the claims helpers (204 policies, zero GUC references)', function () {
     $policies = DB::connection('pgsql')->select(
         <<<'SQL'
         select count(*) as total,
@@ -29,7 +29,7 @@ it('re-keys every RLS policy to the claims helpers (188 policies, zero GUC refer
         SQL
     )[0];
 
-    expect((int) $policies->total)->toBe(188)
+    expect((int) $policies->total)->toBe(204)
         ->and((int) $policies->not_claims)->toBe(0)
         ->and((int) $policies->still_guc)->toBe(0);
 
@@ -45,7 +45,7 @@ it('re-keys every RLS policy to the claims helpers (188 policies, zero GUC refer
     ]);
 });
 
-it('keeps the RLS matrix intact: 48 scoped on, 15 off, none on-without-policies', function () {
+it('keeps the RLS matrix intact: 52 scoped on, 15 off, none on-without-policies', function () {
     $matrix = DB::connection('pgsql')->selectOne(
         <<<'SQL'
         select count(*) filter (where relrowsecurity) as rls_on,
@@ -59,13 +59,15 @@ it('keeps the RLS matrix intact: 48 scoped on, 15 off, none on-without-policies'
         SQL
     );
 
-    // 63 tables total: 48 tenant-scoped (RLS on, FORCE on) + 15 off. The 15
+    // 67 tables total: 52 tenant-scoped (RLS on, FORCE on) + 15 off. The 15
     // are the framework/identity/public tables: users, roles, permissions,
     // role_permissions, organizations (tenant root — no tenant column to scope
     // by), migrations, jobs, job_batches, failed_jobs, cache, cache_locks,
     // personal_access_tokens, refresh_tokens, mfa_challenges, and
     // password_reset_tokens (the last three are pre-tenant public-route flows).
-    expect((int) $matrix->rls_on)->toBe(48)
+    // +4 since slice 13: transfer_events, nursing_notes, mar_entries,
+    // vital_observations.
+    expect((int) $matrix->rls_on)->toBe(52)
         ->and((int) $matrix->rls_off)->toBe(15)
         ->and((int) $matrix->on_without_policies)->toBe(0);
 });
@@ -329,6 +331,90 @@ it('isolates admissions from claims end to end (tenant, facility, mutation immun
         // The row is untouched by every attack above.
         claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
         expect($c->selectOne('select status from admissions where id = ?', [$admission])->status)->toBe('admitted');
+    });
+});
+
+it('isolates the IPD nursing surface from claims end to end (tenant, facility, mutation immunity)', function () {
+    rlsTx(rlsConn(), function ($c): void {
+        $t = claimsTenants($c);
+        $department = (string) Str::uuid();
+        $staff = (string) Str::uuid();
+        $patient = (string) Str::uuid();
+        $encounter = (string) Str::uuid();
+        $admission = (string) Str::uuid();
+        $ward = (string) Str::uuid();
+        $room = (string) Str::uuid();
+        $bed = (string) Str::uuid();
+        $medication = (string) Str::uuid();
+        $prescription = (string) Str::uuid();
+        $line = (string) Str::uuid();
+        $transferEvent = (string) Str::uuid();
+        $note = (string) Str::uuid();
+        $marEntry = (string) Str::uuid();
+        $vital = (string) Str::uuid();
+
+        // Full chain in tenant A: staff → patient → encounter → admission
+        // (occupying a bed in ward/room) → medication → prescription line →
+        // transfer_event / nursing note / MAR entry / vital observation
+        // (RLS on every row).
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
+        $c->insert('insert into departments (id, tenant_id, facility_id, name, code, status) values (?, ?, ?, ?, ?, ?)', [$department, $t['tenantA'], $t['facilityA'], 'IPD', 'ipd', 'active']);
+        $c->insert('insert into staff (id, tenant_id, facility_id, department_id, employee_code, full_name, designation, status) values (?, ?, ?, ?, ?, ?, ?, ?)', [$staff, $t['tenantA'], $t['facilityA'], $department, 'EMP-IPD', 'IPD Nurse', 'Staff Nurse', 'active']);
+        $c->insert('insert into patients (id, tenant_id, facility_id, mrn, full_name, date_of_birth, sex, status) values (?, ?, ?, ?, ?, ?, ?, ?)', [$patient, $t['tenantA'], $t['facilityA'], 'MRN-IPD', 'IPD Patient', '1990-01-01', 'female', 'active']);
+        $c->insert('insert into encounters (id, tenant_id, facility_id, patient_id, provider_staff_id, type, status, started_at) values (?, ?, ?, ?, ?, ?, ?, ?)', [$encounter, $t['tenantA'], $t['facilityA'], $patient, $staff, 'ipd', 'open', '2026-08-16 09:00:00+00']);
+        $c->insert('insert into admissions (id, tenant_id, facility_id, patient_id, encounter_id, admission_number, admission_type, admitting_diagnosis, admitted_at, status, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$admission, $t['tenantA'], $t['facilityA'], $patient, $encounter, 'ADM-IPD', 'emergency', 'Admitted', '2026-08-16 09:30:00+00', 'admitted', 0]);
+        $c->insert('insert into wards (id, tenant_id, facility_id, name, code, ward_type, status) values (?, ?, ?, ?, ?, ?, ?)', [$ward, $t['tenantA'], $t['facilityA'], 'IPD Ward', 'ipd-ward', 'general', 'active']);
+        $c->insert('insert into rooms (id, tenant_id, facility_id, ward_id, name, code, room_type, status) values (?, ?, ?, ?, ?, ?, ?, ?)', [$room, $t['tenantA'], $t['facilityA'], $ward, 'Room 1', 'room-ipd', 'general', 'active']);
+        $c->insert('insert into beds (id, tenant_id, facility_id, room_id, bed_code, status, current_admission_id, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?)', [$bed, $t['tenantA'], $t['facilityA'], $room, 'B-IPD', 'occupied', $admission, 1]);
+        $c->insert('insert into medications (id, tenant_id, facility_id, code, generic_name, strength, form, unit, price_minor, currency, is_controlled, status) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$medication, $t['tenantA'], $t['facilityA'], 'PARA-IPD', 'Paracetamol', '500mg', 'tablet', 'tab', 500, 'NPR', false, 'active']);
+        $c->insert('insert into prescriptions (id, tenant_id, patient_id, encounter_id, prescriber_staff_id, status, lock_version) values (?, ?, ?, ?, ?, ?, ?)', [$prescription, $t['tenantA'], $patient, $encounter, $staff, 'active', 0]);
+        $c->insert('insert into prescription_lines (id, tenant_id, prescription_id, medication_id, dose, route, frequency, line_no, status) values (?, ?, ?, ?, ?, ?, ?, ?, ?)', [$line, $t['tenantA'], $prescription, $medication, '1 tab', 'oral', 'tid', 1, 'ordered']);
+        $c->insert('insert into transfer_events (id, tenant_id, facility_id, admission_id, from_bed_id, to_bed_id, reason, transferred_by, transferred_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?)', [$transferEvent, $t['tenantA'], $t['facilityA'], $admission, $bed, $bed, 'Moved', $staff, '2026-08-16 10:00:00+00']);
+        $c->insert('insert into nursing_notes (id, tenant_id, facility_id, admission_id, author_staff_id, content, status) values (?, ?, ?, ?, ?, ?, ?)', [$note, $t['tenantA'], $t['facilityA'], $admission, $staff, '{}', 'draft']);
+        $c->insert('insert into mar_entries (id, tenant_id, facility_id, admission_id, prescription_line_id, scheduled_at, status) values (?, ?, ?, ?, ?, ?, ?)', [$marEntry, $t['tenantA'], $t['facilityA'], $admission, $line, '2026-08-16 12:00:00+00', 'scheduled']);
+        $c->insert('insert into vital_observations (id, tenant_id, facility_id, admission_id, encounter_id, patient_id, type, value, measured_at, measured_by) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$vital, $t['tenantA'], $t['facilityA'], $admission, $encounter, $patient, 'bp', '{"systolic": 120, "diastolic": 80}', '2026-08-16 10:30:00+00', $staff]);
+
+        // Own tenant+facility claims → visible.
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
+        expect($c->selectOne('select id from transfer_events where id = ?', [$transferEvent]))->not->toBeNull()
+            ->and($c->selectOne('select id from nursing_notes where id = ?', [$note]))->not->toBeNull()
+            ->and($c->selectOne('select id from mar_entries where id = ?', [$marEntry]))->not->toBeNull()
+            ->and($c->selectOne('select id from vital_observations where id = ?', [$vital]))->not->toBeNull();
+
+        // Another tenant → invisible; update/delete affect zero rows.
+        claimsSet($c, ['app_tenant_id' => $t['tenantB'], 'app_facility_id' => $t['facilityB']]);
+        expect($c->selectOne('select id from transfer_events where id = ?', [$transferEvent]))->toBeNull()
+            ->and($c->update('update transfer_events set reason = ? where id = ?', ['pwned', $transferEvent]))->toBe(0)
+            ->and($c->delete('delete from transfer_events where id = ?', [$transferEvent]))->toBe(0)
+            ->and($c->selectOne('select id from nursing_notes where id = ?', [$note]))->toBeNull()
+            ->and($c->update('update nursing_notes set status = ? where id = ?', ['signed', $note]))->toBe(0)
+            ->and($c->delete('delete from nursing_notes where id = ?', [$note]))->toBe(0)
+            ->and($c->selectOne('select id from mar_entries where id = ?', [$marEntry]))->toBeNull()
+            ->and($c->update('update mar_entries set status = ? where id = ?', ['given', $marEntry]))->toBe(0)
+            ->and($c->delete('delete from mar_entries where id = ?', [$marEntry]))->toBe(0)
+            ->and($c->selectOne('select id from vital_observations where id = ?', [$vital]))->toBeNull()
+            ->and($c->update('update vital_observations set type = ? where id = ?', ['temp', $vital]))->toBe(0)
+            ->and($c->delete('delete from vital_observations where id = ?', [$vital]))->toBe(0);
+
+        // Same tenant, a different facility → invisible (TENANT_FACILITY tier).
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityB']]);
+        expect($c->selectOne('select id from nursing_notes where id = ?', [$note]))->toBeNull()
+            ->and($c->selectOne('select id from mar_entries where id = ?', [$marEntry]))->toBeNull()
+            ->and($c->selectOne('select id from vital_observations where id = ?', [$vital]))->toBeNull();
+
+        // Org-wide claims (no facility) → sees the tenant's nursing rows.
+        claimsSet($c, ['app_tenant_id' => $t['tenantA']]);
+        expect($c->selectOne('select id from transfer_events where id = ?', [$transferEvent]))->not->toBeNull()
+            ->and($c->selectOne('select id from nursing_notes where id = ?', [$note]))->not->toBeNull()
+            ->and($c->selectOne('select id from mar_entries where id = ?', [$marEntry]))->not->toBeNull()
+            ->and($c->selectOne('select id from vital_observations where id = ?', [$vital]))->not->toBeNull();
+
+        // The rows are untouched by every attack above.
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
+        expect($c->selectOne('select status from nursing_notes where id = ?', [$note])->status)->toBe('draft')
+            ->and($c->selectOne('select status from mar_entries where id = ?', [$marEntry])->status)->toBe('scheduled')
+            ->and($c->selectOne('select type from vital_observations where id = ?', [$vital])->type)->toBe('bp')
+            ->and($c->selectOne('select reason from transfer_events where id = ?', [$transferEvent])->reason)->toBe('Moved');
     });
 });
 
