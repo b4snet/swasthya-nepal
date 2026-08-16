@@ -1609,3 +1609,42 @@ ent schedule → 409 with zero rows changed; cross-tenant isolation — read 404
 - **Tests:** HrAssetsTest **10 / 123** (position catalog RBAC — unauthenticated 401, doctor 403; shift templates + roster creation with overlap 409 and rest-rule 409 and duplicate 409; attendance record → correction request (record untouched) → approve (proposed times applied) → double-approve 409; correction reject leaves clock times untouched; leave balance — approve within entitlement, over-entitlement approval 422, reject consumes nothing, double approve 409; payroll export — structured payload (worked days/shifts/leave), row count, hash, audit row who/what/when; asset lifecycle — register procured → deploy → transfer (append-only) → downtime work order under_repair → complete with certification back to deployed → invalid downtime order 422 → cancel → retire terminal (transfer/deploy refused); iot readings record + list; facility scoping + cross-tenant isolation (read 404, write 403, data untouched); PHI-safe audit payloads across the surface — no names/licenses/reasons); RLS suites **44 / 1,681** (new 13-table HR/asset claims proof; 81-table sweep; 320 policies / zero GUC refs; FORCE intact); full backend Pest **628 passed / 7,924 assertions** (slice-18 baseline 617/7,428 → +11/+496, re-run post-Pint); Node harness **855/855** (unchanged — the slice is Laravel-only, no Supabase Edge Function); frontend vitest **26 passed** + tsc clean; harness tsc PASS; Pint PASS; `git diff --check` CLEAN; artifact/debug-marker sweep CLEAN (no probes); tracked-secret scan 0 matches.
 - **Known limitations / remaining scope (NOT implemented):** HR self-service views for employees (the contract's "employees see their own records" — the HR surface is admin-operated; a portal self-view is later-phase), biometric/clock-device attendance integration (schedule-based + manual clocking implemented; device feeds are future), position↔staff binding (staff keeps its free-text designation; linking staff to the position catalog is a later refinement), RFID/IoT device feeds (the data model is designed; Phase 3 device integration is NOT faked), and procurement integration for asset acquisition (assets are registered manually; PO-linked acquisition is later-phase procurement).
 - **Next steps:** HR and Assets are complete for the documented Phase 15 surface. Next is the next program phase per the governing plan, with the same success/failure/RBAC/isolation/audit/concurrency discipline.
+---
+
+## 2026-08-16 — Phase 3 slice 20: OT, ICU, and Blood Bank (ROADMAP Phase 16)
+
+**Objective.** Implement the surgical, critical-care, and transfusion workflows at the same safety standard as OPD/IPD — theatre scheduling with conflict detection, surgical safety checklists with recorded per-step completion (compliance-gated case closure), ICU acuity-based admission with ENFORCED observation schedules (a missed observation escalates), computed NEWS-style warning scores with acknowledgment-required alerts, and the blood supply chain (donors → componentized units → testing → compatibility/crossmatch → issue → dual-verified transfusion → reaction reporting → discard). Life-critical invariants: wrong-unit and missed-observation are incidents by design.
+
+**Contract.** PRODUCT_REQUIREMENTS §6.10–6.12, ROADMAP Phase 16, DATABASE.md §3.48–3.51, CLINICAL_SAFETY.md §16–17.
+
+**Files changed (22 new tables + models + factories + 3 controllers + 24 requests + service + 2 migrations + RLS/audit/seeder/docs/tests).**
+- Migrations: `2026_08_16_270000_create_ot_icu_blood_bank_tables.php`, `2026_08_16_270100_enable_ot_icu_blood_bank_row_level_security.php`
+- Models (22): Theatre, ProcedureRequest, Procedure, SurgicalTeamMember, AnesthesiaRecord, SurgicalEvent, ChecklistTemplate, ChecklistItem, RecoveryRecord, IcuBed, IcuAdmission, IcuObservationSet, WarningScore, IcuAlert, CriticalCareNote, Donor, Donation, BloodUnit, CompatibilityResult, Crossmatch, Transfusion, ReactionReport (+ 22 factories)
+- Service: `OtIcuBloodBankService` — scheduling conflict detection (theatre row locked), checklist compliance gate, ICU score computation + escalation/missed-observation/threshold alerts + bed CAS, blood issue guards (tested/unexpired/compatible) + dual verification (starter ≠ verifier, completion refused until verified) + wrong-patient refusal + discard
+- Controllers/requests: OtController, IcuController, BloodBankController + 24 request classes; routes wired with `authorize:ot:* / icu:* / bloodbank:*` and `AccessCheck::scoped` on every route-bound model
+- Permissions (13 new, granted to org_admin + hospital_admin, clinical subset to doctor/nurse/lab_technician): `ot:schedule/document/checklist/close`, `icu:admit/observe/document/transfer`, `bloodbank:register_donor/process/issue/transfuse/discard`
+- AuditLogger: 22 new facility-scoped resource types; donor PII (name/DOB/phone) and clinical content (procedure names, observation values, note content) never in payloads — proven
+- RLS: 22 TENANT_FACILITY tables, enabled + FORCED — policies 320 → **408**, scoped matrix 81 → **103** tables
+
+**Migrations.** Two, applied to the disposable test DB (`swasthya_test`) and dev DB (`swasthya`). No real/staging Supabase touched.
+
+**Tests.**
+- New `OtIcuBloodBankTest` — **16 tests / 139 assertions**: theatre RBAC (401/403), conflict detection (overlap refused 409, non-overlap OK), checklist compliance (close blocked 422 until complete, double-completion 409), team/anesthesia/events/recovery lifecycle, ICU bed CAS (taken bed refused), one-open-admission DB backstop, computed scores + escalation/threshold alerts + acknowledgment audit + double-ack 409, MISSED-observation escalation, bed release on step-down, PHI-safe donor audit, componentized units (quarantined → tested → available / failed → discarded), issue guards (untested/no-crossmatch/incompatible/expired refused; compatible OK), dual verification (same-staff 409, different-staff OK, complete refused until verified, double-verify 409), wrong-patient transfusion refused, reaction + stop, terminal discard, cross-tenant isolation (route-bound 403, body-supplied id 404 — no existence leak)
+- ClaimsBasedRlsTest: +1 proof (22-table OT/ICU/blood claims isolation), 320 → 408 policies, matrix 81 → 103
+- TenancyDatabaseInventoryTest: +22 tables in the scoped set + chain seed + update probes; 81 → 103 counts
+
+**Gate results (all green).**
+| Gate | Result |
+|---|---|
+| OtIcuBloodBankTest (new) | **16 passed / 139 assertions** |
+| RLS suites (ClaimsBased + Inventory) | **32 passed / 2,037 assertions** (408 policies, 103-table sweep, FORCE intact) |
+| Full backend Pest (re-run post-Pint) | **645 passed / 8,657 assertions** (Slice-19 baseline 628/7,924 → **+17/+733**) |
+| Node harness | **855 / 855** (unchanged — Laravel-only slice) |
+| Frontend Vitest | **26 passed** + tsc clean |
+| Harness TypeScript | PASS |
+| Pint | PASS (re-verified) |
+| `git diff --check` | CLEAN |
+| Debug-marker / artifact sweep | CLEAN |
+| Tracked-secret scan | 0 matches |
+
+**Remaining risks.** Real DICOM/device/barcode integration is not faked (Phase 3 readiness only); ICU bedside offline sync and ventilator feeds are future integration (PRODUCT_REQUIREMENTS §6.11 "queued sync with reconciliation" is designed for, not implemented); blood-bank barcode unit tagging is a future integration; PACU observations are a JSON snapshot (structured PACU observation tables are future work if metrics demand).

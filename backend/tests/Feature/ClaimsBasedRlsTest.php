@@ -17,7 +17,7 @@ use Illuminate\Support\Str;
  * exercised end-to-end. Every test runs in a transaction on the app-role
  * connection and rolls back in all paths: no fixtures leak.
  */
-it('re-keys every RLS policy to the claims helpers (244 policies, zero GUC references)', function () {
+it('re-keys every RLS policy to the claims helpers (408 policies, zero GUC references)', function () {
     $policies = DB::connection('pgsql')->select(
         <<<'SQL'
         select count(*) as total,
@@ -29,7 +29,7 @@ it('re-keys every RLS policy to the claims helpers (244 policies, zero GUC refer
         SQL
     )[0];
 
-    expect((int) $policies->total)->toBe(320)
+    expect((int) $policies->total)->toBe(408)
         ->and((int) $policies->not_claims)->toBe(0)
         ->and((int) $policies->still_guc)->toBe(0);
 
@@ -76,8 +76,14 @@ it('keeps the RLS matrix intact: 62 scoped on, 15 off, none on-without-policies'
     // +13 since slice 19: positions, shift_templates, rosters,
     // attendance_records, leave_types, leave_requests, payroll_exports,
     // asset_categories, assets, asset_transfers, maintenance_schedules,
-    // work_orders, iot_readings.
-    expect((int) $matrix->rls_on)->toBe(81)
+    // work_orders, iot_readings. +22 since slice 20: theatres,
+    // procedure_requests, procedures, surgical_team_members,
+    // anesthesia_records, surgical_events, checklist_templates,
+    // checklist_items, recovery_records, icu_beds, icu_admissions,
+    // icu_observation_sets, warning_scores, icu_alerts, critical_care_notes,
+    // donors, donations, blood_units, compatibility_results, crossmatches,
+    // transfusions, reaction_reports.
+    expect((int) $matrix->rls_on)->toBe(103)
         ->and((int) $matrix->rls_off)->toBe(15)
         ->and((int) $matrix->on_without_policies)->toBe(0);
 });
@@ -865,6 +871,108 @@ it('isolates the HR and Assets surface from claims (13 tables, TENANT_FACILITY �
         expect($c->selectOne('select status from attendance_records where id = ?', [$attendance])->status)->toBe('present')
             ->and($c->selectOne('select lifecycle_status from assets where id = ?', [$asset])->lifecycle_status)->toBe('procured')
             ->and($c->selectOne('select status from work_orders where id = ?', [$workOrder])->status)->toBe('open');
+    });
+});
+
+it('isolates the OT, ICU, and Blood Bank surface from claims (22 tables, TENANT_FACILITY — §3.48–3.50)', function () {
+    rlsTx(rlsConn(), function ($c): void {
+        $t = claimsTenants($c);
+        $patient = (string) Str::uuid();
+        $department = (string) Str::uuid();
+        $staff = (string) Str::uuid();
+        $theatre = (string) Str::uuid();
+        $procedureRequest = (string) Str::uuid();
+        $procedure = (string) Str::uuid();
+        $teamMember = (string) Str::uuid();
+        $anesthesia = (string) Str::uuid();
+        $event = (string) Str::uuid();
+        $checklistTemplate = (string) Str::uuid();
+        $checklistItem = (string) Str::uuid();
+        $recovery = (string) Str::uuid();
+        $icuBed = (string) Str::uuid();
+        $icuAdmission = (string) Str::uuid();
+        $observation = (string) Str::uuid();
+        $warningScore = (string) Str::uuid();
+        $icuAlert = (string) Str::uuid();
+        $ccNote = (string) Str::uuid();
+        $donor = (string) Str::uuid();
+        $donation = (string) Str::uuid();
+        $unit = (string) Str::uuid();
+        $compatibility = (string) Str::uuid();
+        $crossmatch = (string) Str::uuid();
+        $transfusion = (string) Str::uuid();
+        $reaction = (string) Str::uuid();
+
+        // Full chain in tenant A (RLS policies apply on every row).
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
+        $c->insert('insert into patients (id, tenant_id, facility_id, mrn, full_name, date_of_birth, sex, status, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?)', [$patient, $t['tenantA'], $t['facilityA'], 'MRN-OT1', 'OT Patient', '1990-01-01', 'male', 'active', 0]);
+        $c->insert('insert into departments (id, tenant_id, facility_id, name, code, status) values (?, ?, ?, ?, ?, ?)', [$department, $t['tenantA'], $t['facilityA'], 'Surgery', 'surg', 'active']);
+        $c->insert('insert into staff (id, tenant_id, facility_id, department_id, employee_code, full_name, designation, status) values (?, ?, ?, ?, ?, ?, ?, ?)', [$staff, $t['tenantA'], $t['facilityA'], $department, 'EMP-OT', 'OT Staff', 'Consultant', 'active']);
+        // OT
+        $c->insert('insert into theatres (id, tenant_id, facility_id, code, name, status) values (?, ?, ?, ?, ?, ?)', [$theatre, $t['tenantA'], $t['facilityA'], 'OT-1', 'Main Theatre', 'active']);
+        $c->insert('insert into procedure_requests (id, tenant_id, facility_id, patient_id, requested_by_staff_id, procedure_name, priority, status, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?)', [$procedureRequest, $t['tenantA'], $t['facilityA'], $patient, $staff, 'Cholecystectomy', 'routine', 'scheduled', 0]);
+        $c->insert('insert into procedures (id, tenant_id, facility_id, procedure_request_id, patient_id, theatre_id, status, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?)', [$procedure, $t['tenantA'], $t['facilityA'], $procedureRequest, $patient, $theatre, 'in_progress', 0]);
+        $c->insert('insert into surgical_team_members (id, tenant_id, facility_id, procedure_id, staff_id, role, time_in) values (?, ?, ?, ?, ?, ?, ?)', [$teamMember, $t['tenantA'], $t['facilityA'], $procedure, $staff, 'surgeon', '2026-08-16 09:00:00+00']);
+        $c->insert('insert into anesthesia_records (id, tenant_id, facility_id, procedure_id, anesthetist_staff_id, anesthesia_type, started_at, status, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?)', [$anesthesia, $t['tenantA'], $t['facilityA'], $procedure, $staff, 'general', '2026-08-16 09:00:00+00', 'active', 0]);
+        $c->insert('insert into surgical_events (id, tenant_id, facility_id, procedure_id, event_type, occurred_at) values (?, ?, ?, ?, ?, ?)', [$event, $t['tenantA'], $t['facilityA'], $procedure, 'incision', '2026-08-16 09:05:00+00']);
+        $c->insert('insert into checklist_templates (id, tenant_id, facility_id, code, name, category, steps, status) values (?, ?, ?, ?, ?, ?, ?, ?)', [$checklistTemplate, $t['tenantA'], $t['facilityA'], 'CL-TO', 'Time-out', 'time_out', '[{"key":"id_verified"}]', 'active']);
+        $c->insert('insert into checklist_items (id, tenant_id, facility_id, procedure_id, checklist_template_id, step_key, step_label, sequence, category) values (?, ?, ?, ?, ?, ?, ?, ?, ?)', [$checklistItem, $t['tenantA'], $t['facilityA'], $procedure, $checklistTemplate, 'id_verified', 'Identity confirmed', 1, 'time_out']);
+        $c->insert('insert into recovery_records (id, tenant_id, facility_id, procedure_id, admitted_at, admitted_by_staff_id, observations, status, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?)', [$recovery, $t['tenantA'], $t['facilityA'], $procedure, '2026-08-16 11:00:00+00', $staff, '{}', 'in_recovery', 0]);
+        // ICU
+        $c->insert('insert into icu_beds (id, tenant_id, facility_id, bed_code, status, acuity_supported, lock_version) values (?, ?, ?, ?, ?, ?, ?)', [$icuBed, $t['tenantA'], $t['facilityA'], 'ICU-1', 'occupied', 'level_3', 0]);
+        $c->insert('insert into icu_admissions (id, tenant_id, facility_id, patient_id, icu_bed_id, source, acuity, observation_interval_minutes, next_observation_due_at, status, admitted_at, admitted_by_staff_id, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$icuAdmission, $t['tenantA'], $t['facilityA'], $patient, $icuBed, 'ot', 'level_3', 60, '2026-08-16 10:00:00+00', 'admitted', '2026-08-16 09:00:00+00', $staff, 0]);
+        $c->insert('insert into icu_observation_sets (id, tenant_id, facility_id, icu_admission_id, observed_at, observed_by_staff_id, values) values (?, ?, ?, ?, ?, ?, ?)', [$observation, $t['tenantA'], $t['facilityA'], $icuAdmission, '2026-08-16 09:30:00+00', $staff, '{"hr": 72}']);
+        $c->insert('insert into warning_scores (id, tenant_id, facility_id, icu_admission_id, observation_set_id, score_total, severity, breakdown, scale_version, computed_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$warningScore, $t['tenantA'], $t['facilityA'], $icuAdmission, $observation, 0, 'low', '{}', 'news-1', '2026-08-16 09:30:00+00']);
+        $c->insert('insert into icu_alerts (id, tenant_id, facility_id, icu_admission_id, alert_type, severity, message, status) values (?, ?, ?, ?, ?, ?, ?, ?)', [$icuAlert, $t['tenantA'], $t['facilityA'], $icuAdmission, 'missed_observation', 'medium', 'Observation was late.', 'open']);
+        $c->insert('insert into critical_care_notes (id, tenant_id, facility_id, icu_admission_id, note_type, content, authored_at, authored_by_staff_id) values (?, ?, ?, ?, ?, ?, ?, ?)', [$ccNote, $t['tenantA'], $t['facilityA'], $icuAdmission, 'daily_goal', 'Goals.', '2026-08-16 09:00:00+00', $staff]);
+        // Blood bank
+        $c->insert('insert into donors (id, tenant_id, facility_id, donor_number, full_name, date_of_birth, status, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?)', [$donor, $t['tenantA'], $t['facilityA'], 'DN-1', 'Donor Name', '1980-01-01', 'active', 0]);
+        $c->insert('insert into donations (id, tenant_id, facility_id, donor_id, donated_at, phlebotomist_staff_id, volume_ml, screening_result, status, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$donation, $t['tenantA'], $t['facilityA'], $donor, '2026-08-16 09:00:00+00', $staff, 450, 'eligible', 'processed', 0]);
+        $c->insert('insert into blood_units (id, tenant_id, facility_id, donation_id, unit_number, component_type, blood_group, rh_factor, collected_at, expiry_at, tested, status, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$unit, $t['tenantA'], $t['facilityA'], $donation, 'BU-1', 'packed_cells', 'O', 'positive', '2026-08-16 09:00:00+00', '2026-09-20 00:00:00+00', false, 'available', 0]);
+        $c->insert('insert into compatibility_results (id, tenant_id, facility_id, patient_id, patient_blood_group, abo_rh_compatible, antibody_screen, result, checked_at, checked_by_staff_id) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$compatibility, $t['tenantA'], $t['facilityA'], $patient, 'O', true, 'negative', 'compatible', '2026-08-16 09:30:00+00', $staff]);
+        $c->insert('insert into crossmatches (id, tenant_id, facility_id, blood_unit_id, patient_id, status, requested_at, requested_by_staff_id, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?)', [$crossmatch, $t['tenantA'], $t['facilityA'], $unit, $patient, 'compatible', '2026-08-16 09:30:00+00', $staff, 0]);
+        $c->insert('insert into transfusions (id, tenant_id, facility_id, blood_unit_id, patient_id, crossmatch_id, started_at, started_by_staff_id, status, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$transfusion, $t['tenantA'], $t['facilityA'], $unit, $patient, $crossmatch, '2026-08-16 10:00:00+00', $staff, 'started', 0]);
+        $c->insert('insert into reaction_reports (id, tenant_id, facility_id, transfusion_id, occurred_at, severity, symptoms, status, reported_by_staff_id, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$reaction, $t['tenantA'], $t['facilityA'], $transfusion, '2026-08-16 10:15:00+00', 'mild', '[]', 'reported', $staff, 0]);
+
+        // Own tenant+facility claims → visible.
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
+        expect($c->selectOne('select id from procedures where id = ?', [$procedure]))->not->toBeNull()
+            ->and($c->selectOne('select id from icu_admissions where id = ?', [$icuAdmission]))->not->toBeNull()
+            ->and($c->selectOne('select id from blood_units where id = ?', [$unit]))->not->toBeNull()
+            ->and($c->selectOne('select id from transfusions where id = ?', [$transfusion]))->not->toBeNull()
+            ->and($c->selectOne('select id from donors where id = ?', [$donor]))->not->toBeNull();
+
+        // Another tenant → invisible; update/delete affect zero rows.
+        claimsSet($c, ['app_tenant_id' => $t['tenantB'], 'app_facility_id' => $t['facilityB']]);
+        expect($c->selectOne('select id from theatres where id = ?', [$theatre]))->toBeNull()
+            ->and($c->selectOne('select id from checklist_items where id = ?', [$checklistItem]))->toBeNull()
+            ->and($c->selectOne('select id from warning_scores where id = ?', [$warningScore]))->toBeNull()
+            ->and($c->selectOne('select id from donors where id = ?', [$donor]))->toBeNull()
+            ->and($c->update('update procedures set status = ? where id = ?', ['completed', $procedure]))->toBe(0)
+            ->and($c->update('update icu_alerts set status = ? where id = ?', ['acknowledged', $icuAlert]))->toBe(0)
+            ->and($c->update('update blood_units set status = ? where id = ?', ['transfused', $unit]))->toBe(0)
+            ->and($c->delete('delete from transfusions where id = ?', [$transfusion]))->toBe(0)
+            ->and($c->delete('delete from reaction_reports where id = ?', [$reaction]))->toBe(0);
+
+        // Same tenant, a different facility → invisible (TENANT_FACILITY).
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityB']]);
+        expect($c->selectOne('select id from icu_beds where id = ?', [$icuBed]))->toBeNull()
+            ->and($c->selectOne('select id from crossmatches where id = ?', [$crossmatch]))->toBeNull()
+            ->and($c->selectOne('select id from recovery_records where id = ?', [$recovery]))->toBeNull();
+
+        // Org-wide claims (no facility) → the tenant's OT/ICU/blood rows are seen.
+        claimsSet($c, ['app_tenant_id' => $t['tenantA']]);
+        expect($c->selectOne('select id from procedures where id = ?', [$procedure]))->not->toBeNull()
+            ->and($c->selectOne('select id from icu_observation_sets where id = ?', [$observation]))->not->toBeNull()
+            ->and($c->selectOne('select id from blood_units where id = ?', [$unit]))->not->toBeNull()
+            ->and($c->selectOne('select id from critical_care_notes where id = ?', [$ccNote]))->not->toBeNull();
+
+        // The rows are untouched by every attack above.
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
+        expect($c->selectOne('select status from procedures where id = ?', [$procedure])->status)->toBe('in_progress')
+            ->and($c->selectOne('select status from icu_alerts where id = ?', [$icuAlert])->status)->toBe('open')
+            ->and($c->selectOne('select status from blood_units where id = ?', [$unit])->status)->toBe('available')
+            ->and($c->selectOne('select status from transfusions where id = ?', [$transfusion])->status)->toBe('started');
     });
 });
 

@@ -1025,6 +1025,65 @@ Phase 3 slice 16 (ROADMAP Phase 11, PRODUCT_REQUIREMENTS §6.9, CLINICAL_SAFETY 
 
 All 13 slice-19 tables are TENANT_FACILITY: SELECT/UPDATE/DELETE use `tenant_id = <tenant> AND (facility_id = <facility> OR <facility> IS NULL)`; INSERT with check (true) — the established, documented boundary (SECURITY.md §8, TENANCY.md §6.2). 13 tables × 4 policies = 52 policies (268 → 320); scoped matrix 68 → 81 tables (15 unscoped). Runtime role `swasthya_app` stays NOBYPASSRLS; FORCE binds the owner (Phase 1 hardening). Staff personal data is RLS-protected to the same standard as patient data.
 
+### 3.48 Operating Theatre (theatres, procedure_requests, procedures, surgical_team_members, anesthesia_records, surgical_events, checklist_templates, checklist_items, recovery_records)
+
+> **Added in Phase 3 slice 20.** PRODUCT_REQUIREMENTS §6.10 (OT), DATABASE.md §3.25 (shared order model), §3.19 (beds), §3.10 (staff). The surgical safety discipline (time-out/sign-out checklists) is structural: a case CANNOT close while any safety-checklist step is incomplete.
+
+| Aspect | Design |
+|---|---|
+| **theatres** | The facility's operating theatre catalog. `code` unique per facility among live rows; soft-deletable; inactive theatres cannot be scheduled. |
+| **procedure_requests** | Request → schedule → start → close. `patient_id`, nullable `encounter_id`, `requested_by_staff_id`, `procedure_name`, `priority` CHECK (routine, urgent, emergency), `status` CHECK (requested, scheduled, in_progress, completed, cancelled). Scheduling assigns `theatre_id` + `scheduled_at` + `scheduled_duration_minutes`; CONFLICT DETECTION is the theatre row locked (SELECT … FOR UPDATE) so concurrent schedulers serialize — two cases cannot overlap on one theatre. |
+| **procedures** | The executed record (one per request, unique). `theatre_id`, `surgeon_staff_id`, `started_at`/`ended_at`, `status` CHECK (scheduled, in_progress, completed, cancelled). Start (ot:document) creates the record AND snapshots the facility's safety checklist into checklist_items. Close (ot:close) is COMPLIANCE-GATED: any incomplete checklist item → 422. |
+| **surgical_team_members** | Append-only team log — `staff_id`, `role` CHECK (surgeon, assistant, anesthetist, nurse, perfusionist, other), `time_in`/`time_out`; unique (procedure, staff, role). |
+| **anesthesia_records** | Anesthesia record — `anesthesia_type` CHECK (general, regional, spinal, local, sedation, other), `anesthetist_staff_id`, started/ended, notes; CAS `lock_version`. |
+| **surgical_events** | Append-only time-stamped intra-operative events (`event_type` CHECK: time_out, incision, closure, sign_out, complication, other) — the medico-legal timeline. |
+| **checklist_templates** | Facility-defined safety checklist DEFINITIONS — `category` CHECK (pre_op, time_out, sign_out, post_op), `steps` jsonb (ordered step key/label definitions). Soft-deletable; unique code per facility. |
+| **checklist_items** | Per-procedure step COMPLETION records — snapshot of the template steps at case start; `completed_at`/`completed_by_staff_id` record WHO completed each step and WHEN (CAS on completed_at IS NULL — double completion affects zero rows). |
+| **recovery_records** | PACU recovery — observations jsonb, `status` CHECK (in_recovery, discharged), admitted/discharged stamps; one per procedure (unique). |
+| **Tenant ownership** | Every table: `tenant_id NOT NULL`, `facility_id NOT NULL` (TENANT_FACILITY — surgical work is facility-local). |
+| **Indexes** | Requests by (facility, status); procedures by (facility, status) and (theatre, started_at); events by (procedure, occurred_at); checklist items by (procedure, sequence). |
+| **Audit** | Scheduling changes, checklist completion (step, who, when), team/anesthesia/events, closure — facts and ids only; procedure names and notes never in payloads (medico-legal records). |
+| **Retention** | Medico-legal class — surgical records are high-value legal documents (PRODUCT_REQUIREMENTS §6.10); never purged without legal assessment. |
+
+### 3.49 ICU / Critical Care (icu_beds, icu_admissions, icu_observation_sets, warning_scores, icu_alerts, critical_care_notes)
+
+> **Added in Phase 3 slice 20.** PRODUCT_REQUIREMENTS §6.11. The acceptance criterion "ICU observation schedules enforced (overdue escalates)" is structural: a MISSED observation is a patient-safety event by design (ROADMAP Phase 16), and the audit trail proves the schedule was met.
+
+| Aspect | Design |
+|---|---|
+| **icu_beds** | ICU bed state — `bed_code` unique per facility, `status` CHECK (available, occupied, reserved, out_of_service), `acuity_supported` CHECK (level_1–3); CAS `lock_version`. |
+| **icu_admissions** | Acuity-based admission. `patient_id`, nullable `admission_id` (IPD source), `icu_bed_id`, `source` CHECK (ipd, er, ot), `acuity` CHECK (level_1–3), policy-defined `observation_interval_minutes` (5–1440) and live `next_observation_due_at`. Status CHECK (admitted, transferred, discharged, cancelled). ONE OPEN ADMISSION PER PATIENT and ONE PER OCCUPIED BED — DB partial uniques backstop double-booking; the bed is CAS-guarded available → occupied and released on step-down. |
+| **icu_observation_sets** | Append-only high-frequency observations — `values` jsonb (temperature_c, heart_rate, respiratory_rate, sbp, dbp, spo2, gcs_eye/verbal/motor, urine_output_ml), `observed_at`, `observed_by_staff_id`, notes. |
+| **warning_scores** | COMPUTED NEWS-style scores (scale_version 'news-1') — derived from observation values in the service, never hand-entered. `score_total`, `severity` CHECK (low, medium, high, emergency), `breakdown` jsonb; one per observation set (unique). |
+| **icu_alerts** | Escalation alerts — `alert_type` CHECK (score_escalation, missed_observation, threshold_breach), severity, PHI-free `message` (facts only), `status` CHECK (open, acknowledged, resolved). A MISSED observation (recording after the previous due time) opens a missed_observation alert; a severity jump opens a score_escalation alert; single-variable life-critical breaches (SpO2 < 85%, HR < 40 / > 140) open threshold_breach alerts. Every alert MUST be acknowledged (WHO saw it, WHEN). |
+| **critical_care_notes** | Documentation — `note_type` CHECK (daily_goal, sedation_scale, weaning_plan, procedure, other), `content` (clinical PHI — stored, NEVER in audit payloads), authored stamps. |
+| **Tenant ownership** | Every table: `tenant_id NOT NULL`, `facility_id NOT NULL` (TENANT_FACILITY — critical care is facility-local). |
+| **Indexes** | Admissions by (status) and (next_observation_due_at — the overdue sweep); observations by (admission, observed_at); scores by (admission, computed_at); alerts by (admission, status). |
+| **Audit** | Observations + scores (who entered, when), alert generation + acknowledgment (who saw it, when), documentation, transfers — facts and ids only; observation values and note content never in payloads. |
+| **Retention** | Clinical class — high-frequency observations are the safety evidence; retained per clinical retention policy. |
+
+### 3.50 Blood Bank (donors, donations, blood_units, compatibility_results, crossmatches, transfusions, reaction_reports)
+
+> **Added in Phase 3 slice 20.** PRODUCT_REQUIREMENTS §6.12. The acceptance criteria "unit traceability exact; dual verification in-app" and "wrong-unit and missed-observation are incidents by design" are structural: expired or untested units are NEVER issuable, issue requires a compatible crossmatch, and transfusion completion waits for a SECOND staff member's verification.
+
+| Aspect | Design |
+|---|---|
+| **donors** | Donor registry — `donor_number` unique per facility, `full_name`/`date_of_birth`/`phone` (PII — protected to the same standard as patient data, NEVER in audit payloads), `blood_group`, `rh_factor`, `status` CHECK (active, deferred, inactive), `deferral_reason`/`deferral_until`, `screening` jsonb questionnaire snapshot. A deferred donor cannot donate. |
+| **donations** | Donation event — `donor_id`, `donated_at`, `phlebotomist_staff_id`, `volume_ml`, `screening_result` CHECK (eligible, deferred), `status` CHECK (collected, processed, discarded). |
+| **blood_units** | Componentized units — `donation_id`, `unit_number` unique per tenant, `component_type` CHECK (whole_blood, packed_cells, plasma, platelets, cryoprecipitate, other), `blood_group`/`rh_factor`, `collected_at`, `expiry_at` (CHECK > collected_at), `tested`, `test_results` jsonb. Lifecycle `status` CHECK (quarantined → available → crossmatched → issued → transfused; ↘ discarded). EXPIRED or UNTESTED units are NEVER issuable (the CAS issue guard refuses them); issue requires a COMPATIBLE crossmatch for the (unit, patient) pair and sets `issued_to_patient_id` — every unit is traceable to its donor and its recipient. |
+| **compatibility_results** | The ABO/Rh + antibody check against the patient's record — `patient_blood_group` snapshot, `abo_rh_compatible`, `antibody_screen` CHECK (negative, positive), `result` CHECK (compatible, incompatible), checked stamps. Compatible requires ABO/Rh compatibility AND a negative antibody screen. |
+| **crossmatches** | One crossmatch per (unit, patient) — the DB unique backstops duplicate matching. `status` CHECK (requested, crossmatched, compatible, incompatible, released); ONLY a compatible crossmatch makes the unit issuable to that patient. |
+| **transfusions** | The transfusion — unit, patient, `crossmatch_id` (one per crossmatch, unique), `encounter_id`, started/stopped stamps, `volume_transfused_ml`. DUAL VERIFICATION: `started_by_staff_id` ≠ `verified_by_staff_id` (the service refuses a same-staff verification), both recorded with timestamps; COMPLETION IS REFUSED UNTIL VERIFIED; completion moves the unit to transfused. A wrong-patient start (unit issued to a different patient) is refused — wrong-unit transfusion is a life-threatening error. |
+| **reaction_reports** | Reaction reporting — `severity` CHECK (mild, moderate, severe), `symptoms` jsonb, `action_taken`, `status` CHECK (reported, reviewed, closed); one per transfusion (unique). |
+| **Tenant ownership** | Every table: `tenant_id NOT NULL`, `facility_id NOT NULL` (TENANT_FACILITY — blood work is facility-local). |
+| **Indexes** | Units by (status, expiry_at — the expiry sweep) and (donation); crossmatches by (patient, requested_at); transfusions by (patient, started_at) and (unit). |
+| **Audit** | The COMPLETE unit lifecycle (donation → processing → testing → storage → issue → transfusion → discard), compatibility results, dual verifications, reactions — facts and ids only; donor names/DOB and test-result details never in payloads. |
+| **Retention** | Life-critical class — unit traceability must survive the unit and the recipient (PRODUCT_REQUIREMENTS §6.12); never purged. |
+
+### 3.51 OT/ICU/blood RLS (all TENANT_FACILITY, FORCE-enabled)
+
+All 22 slice-20 tables are TENANT_FACILITY: SELECT/UPDATE/DELETE use `tenant_id = <tenant> AND (facility_id = <facility> OR <facility> IS NULL)`; INSERT with check (true) — the established, documented boundary (SECURITY.md §8, TENANCY.md §6.2). 22 tables × 4 policies = 88 policies (320 → 408); scoped matrix 81 → 103 tables (15 unscoped). Runtime role `swasthya_app` stays NOBYPASSRLS; FORCE binds the owner (Phase 1 hardening). Donor personal data is RLS-protected to the same standard as patient data.
+
 ---
 
 ## 4. Data Lifecycle: Retention, Archival, Purge

@@ -220,6 +220,11 @@ Every action below is classified by irreversibility × clinical/financial impact
 | Documentation completeness (signed encounters with allergies/orders recorded) | Record truth |
 | Result verification time (entry → verified) | Verification discipline |
 | Correction rate on verified results | Entry quality |
+| Missed ICU observation count (recording after the scheduled due time) | Observation-schedule compliance — a MISSED observation is an incident by design (ROADMAP Phase 16); every miss opens an icu_alert that must be acknowledged (who, when) |
+| ICU warning-score escalation acknowledgment time | Critical-care escalation speed — score escalations and threshold breaches open alerts that are refused completion until acknowledged |
+| Surgical safety-checklist completion rate | Checklist compliance — a case CANNOT close (ot:close) while any time-out/sign-out step is incomplete (DATABASE.md §3.48) |
+| Blood transfusion dual-verification time (start → verify) | Two-person verification discipline — the verifier MUST differ from the starter and completion waits for verification (DATABASE.md §3.50) |
+| Unit traceability completeness (donor → unit → recipient) | Blood-safety evidence — expired or untested units are never issuable; issue requires a compatible crossmatch |
 
 - **Incident reporting is blame-free and mandatory:** any safety concern (near-miss, wrong value shown, missed alert, wrong-patient scare) has a reporting path that is used without fear; a reported near-miss is a gift, not a problem (`MASTER_RULES.md` §11.6).
 - **Post-incident review** is blameless, with tracked actions; a safety finding without an owner is not closed.

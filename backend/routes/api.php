@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\AuditController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BedController;
 use App\Http\Controllers\Api\BillingController;
+use App\Http\Controllers\Api\BloodBankController;
 use App\Http\Controllers\Api\BranchController;
 use App\Http\Controllers\Api\ConsentController;
 use App\Http\Controllers\Api\CriticalValueEventController;
@@ -19,6 +20,7 @@ use App\Http\Controllers\Api\FinanceController;
 use App\Http\Controllers\Api\FollowUpController;
 use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\HrController;
+use App\Http\Controllers\Api\IcuController;
 use App\Http\Controllers\Api\InsurancePolicyController;
 use App\Http\Controllers\Api\InventoryController;
 use App\Http\Controllers\Api\IpdNursingController;
@@ -28,6 +30,7 @@ use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\MedicationController;
 use App\Http\Controllers\Api\MfaController;
 use App\Http\Controllers\Api\OrganizationController;
+use App\Http\Controllers\Api\OtController;
 use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\PatientContactController;
 use App\Http\Controllers\Api\PatientController;
@@ -750,4 +753,93 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
         ->middleware('authorize:assets:maintain');
     Route::post('assets/{asset}/iot-readings', [AssetController::class, 'storeIotReading'])
         ->middleware('authorize:assets:maintain');
+
+    // Phase 3 slice 20 — Operating Theatre (ROADMAP Phase 16, PRODUCT
+    // REQUIREMENTS §6.10, DATABASE.md §3.48): theatre scheduling with
+    // conflict detection, procedure records, team/anesthesia/events,
+    // structured safety checklists (compliance-gated closure), PACU
+    // recovery.
+    Route::get('theatres', [OtController::class, 'theatres'])
+        ->middleware('authorize:ot:schedule');
+    Route::post('theatres', [OtController::class, 'storeTheatre'])
+        ->middleware('authorize:ot:schedule');
+    Route::get('procedure-requests', [OtController::class, 'procedureRequests'])
+        ->middleware('authorize:ot:schedule');
+    Route::post('procedure-requests', [OtController::class, 'storeProcedureRequest'])
+        ->middleware('authorize:ot:schedule');
+    Route::post('procedure-requests/{procedureRequest}/schedule', [OtController::class, 'scheduleProcedureRequest'])
+        ->middleware('authorize:ot:schedule');
+    Route::post('procedure-requests/{procedureRequest}/cancel', [OtController::class, 'cancelProcedureRequest'])
+        ->middleware('authorize:ot:schedule');
+    Route::post('procedure-requests/{procedureRequest}/start', [OtController::class, 'startProcedure'])
+        ->middleware('authorize:ot:document');
+    Route::get('procedures/{procedure}', [OtController::class, 'showProcedure'])
+        ->middleware('authorize:ot:document');
+    Route::post('procedures/{procedure}/team', [OtController::class, 'addTeamMember'])
+        ->middleware('authorize:ot:document');
+    Route::post('procedures/{procedure}/anesthesia', [OtController::class, 'startAnesthesia'])
+        ->middleware('authorize:ot:document');
+    Route::post('procedures/{procedure}/events', [OtController::class, 'recordSurgicalEvent'])
+        ->middleware('authorize:ot:document');
+    Route::post('procedures/{procedure}/checklist/{item}/complete', [OtController::class, 'completeChecklistItem'])
+        ->middleware('authorize:ot:checklist');
+    Route::post('procedures/{procedure}/close', [OtController::class, 'closeProcedure'])
+        ->middleware('authorize:ot:close');
+    Route::post('procedures/{procedure}/recovery', [OtController::class, 'admitToRecovery'])
+        ->middleware('authorize:ot:document');
+    Route::post('recovery/{recoveryRecord}/discharge', [OtController::class, 'dischargeRecovery'])
+        ->middleware('authorize:ot:document');
+
+    // Phase 3 slice 20 — ICU / Critical Care (PRODUCT REQUIREMENTS §6.11,
+    // DATABASE.md §3.49): acuity-based bed assignment, high-frequency
+    // observations with COMPUTED warning scores, alerts that MUST be
+    // acknowledged (score escalations, threshold breaches, MISSED
+    // observations), critical-care documentation, step-down/discharge.
+    Route::get('icu-beds', [IcuController::class, 'icuBeds'])
+        ->middleware('authorize:icu:admit');
+    Route::post('icu-beds', [IcuController::class, 'storeIcuBed'])
+        ->middleware('authorize:icu:admit');
+    Route::post('icu-admissions', [IcuController::class, 'admitToIcu'])
+        ->middleware('authorize:icu:admit');
+    Route::get('icu-admissions/{icuAdmission}', [IcuController::class, 'showAdmission'])
+        ->middleware('authorize:icu:observe');
+    Route::post('icu-admissions/{icuAdmission}/observations', [IcuController::class, 'recordObservation'])
+        ->middleware('authorize:icu:observe');
+    Route::post('icu-alerts/{icuAlert}/acknowledge', [IcuController::class, 'acknowledgeAlert'])
+        ->middleware('authorize:icu:observe');
+    Route::post('icu-admissions/{icuAdmission}/notes', [IcuController::class, 'documentCare'])
+        ->middleware('authorize:icu:document');
+    Route::post('icu-admissions/{icuAdmission}/transfer', [IcuController::class, 'transferOut'])
+        ->middleware('authorize:icu:transfer');
+
+    // Phase 3 slice 20 — Blood Bank (PRODUCT REQUIREMENTS §6.12, DATABASE.md
+    // §3.50): donors, componentized units with expiry, testing, compatibility
+    // + crossmatch, issue (expired/untested never issuable), transfusion with
+    // DUAL verification, reaction reporting, discard.
+    Route::get('donors', [BloodBankController::class, 'donors'])
+        ->middleware('authorize:bloodbank:register_donor');
+    Route::post('donors', [BloodBankController::class, 'storeDonor'])
+        ->middleware('authorize:bloodbank:register_donor');
+    Route::post('donors/{donor}/donations', [BloodBankController::class, 'recordDonation'])
+        ->middleware('authorize:bloodbank:process');
+    Route::post('blood-units/{bloodUnit}/test', [BloodBankController::class, 'testBloodUnit'])
+        ->middleware('authorize:bloodbank:process');
+    Route::post('blood-units/{bloodUnit}/crossmatch', [BloodBankController::class, 'requestCrossmatch'])
+        ->middleware('authorize:bloodbank:issue');
+    Route::post('crossmatches/{crossmatch}/perform', [BloodBankController::class, 'performCrossmatch'])
+        ->middleware('authorize:bloodbank:issue');
+    Route::post('blood-units/{bloodUnit}/issue', [BloodBankController::class, 'issueBloodUnit'])
+        ->middleware('authorize:bloodbank:issue');
+    Route::post('transfusions', [BloodBankController::class, 'startTransfusion'])
+        ->middleware('authorize:bloodbank:transfuse');
+    Route::post('transfusions/{transfusion}/verify', [BloodBankController::class, 'verifyTransfusion'])
+        ->middleware('authorize:bloodbank:transfuse');
+    Route::post('transfusions/{transfusion}/complete', [BloodBankController::class, 'completeTransfusion'])
+        ->middleware('authorize:bloodbank:transfuse');
+    Route::post('transfusions/{transfusion}/stop', [BloodBankController::class, 'stopTransfusion'])
+        ->middleware('authorize:bloodbank:transfuse');
+    Route::post('transfusions/{transfusion}/reaction', [BloodBankController::class, 'reportReaction'])
+        ->middleware('authorize:bloodbank:transfuse');
+    Route::post('blood-units/{bloodUnit}/discard', [BloodBankController::class, 'discardBloodUnit'])
+        ->middleware('authorize:bloodbank:discard');
 });

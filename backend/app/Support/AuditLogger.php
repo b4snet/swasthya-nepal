@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\Admission;
+use App\Models\AnesthesiaRecord;
 use App\Models\Appointment;
 use App\Models\Asset;
 use App\Models\AssetCategory;
@@ -10,17 +11,28 @@ use App\Models\AssetTransfer;
 use App\Models\AttendanceRecord;
 use App\Models\AuditEvent;
 use App\Models\Bed;
+use App\Models\BloodUnit;
 use App\Models\Branch;
 use App\Models\Charge;
+use App\Models\ChecklistItem;
 use App\Models\ClinicalNote;
+use App\Models\CompatibilityResult;
+use App\Models\CriticalCareNote;
 use App\Models\CriticalValueEvent;
+use App\Models\Crossmatch;
 use App\Models\Department;
 use App\Models\Deposit;
 use App\Models\DepositAllocation;
+use App\Models\Donation;
+use App\Models\Donor;
 use App\Models\Encounter;
 use App\Models\ErEvent;
 use App\Models\ErRegistration;
 use App\Models\FollowUp;
+use App\Models\IcuAdmission;
+use App\Models\IcuAlert;
+use App\Models\IcuBed;
+use App\Models\IcuObservationSet;
 use App\Models\InsuranceClaim;
 use App\Models\InventoryItem;
 use App\Models\InventoryMovement;
@@ -41,6 +53,10 @@ use App\Models\PharmacyReturn;
 use App\Models\Position;
 use App\Models\Prescription;
 use App\Models\PrescriptionLine;
+use App\Models\Procedure;
+use App\Models\ProcedureRequest;
+use App\Models\ReactionReport;
+use App\Models\RecoveryRecord;
 use App\Models\RefundRequest;
 use App\Models\Room;
 use App\Models\Roster;
@@ -52,12 +68,17 @@ use App\Models\ShiftTemplate;
 use App\Models\Specimen;
 use App\Models\Staff;
 use App\Models\StockBatch;
+use App\Models\SurgicalEvent;
+use App\Models\SurgicalTeamMember;
+use App\Models\Theatre;
 use App\Models\TransferEvent;
+use App\Models\Transfusion;
 use App\Models\TriageAssignment;
 use App\Models\TriageScale;
 use App\Models\User;
 use App\Models\VitalObservation;
 use App\Models\Ward;
+use App\Models\WarningScore;
 use App\Models\WorkOrder;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
@@ -179,6 +200,35 @@ final class AuditLogger
         'maintenance_schedule' => MaintenanceSchedule::class,
         'work_order' => WorkOrder::class,
         'iot_reading' => IotReading::class,
+        // Phase 3 slice 20 — OT (PRODUCT_REQUIREMENTS §6.10): scheduling,
+        // procedures, team, anesthesia, events, checklists, recovery. All
+        // facility-scoped; surgical records are medico-legal documents.
+        'theatre' => Theatre::class,
+        'procedure_request' => ProcedureRequest::class,
+        'procedure' => Procedure::class,
+        'surgical_team_member' => SurgicalTeamMember::class,
+        'anesthesia_record' => AnesthesiaRecord::class,
+        'surgical_event' => SurgicalEvent::class,
+        'checklist_item' => ChecklistItem::class,
+        'recovery_record' => RecoveryRecord::class,
+        // Phase 3 slice 20 — ICU (PRODUCT_REQUIREMENTS §6.11): beds,
+        // admissions, observations, computed scores, alerts, documentation.
+        'icu_bed' => IcuBed::class,
+        'icu_admission' => IcuAdmission::class,
+        'icu_observation_set' => IcuObservationSet::class,
+        'warning_score' => WarningScore::class,
+        'icu_alert' => IcuAlert::class,
+        'critical_care_note' => CriticalCareNote::class,
+        // Phase 3 slice 20 — Blood Bank (PRODUCT_REQUIREMENTS §6.12):
+        // donors (PII-protected), donations, units, compatibility,
+        // crossmatch, transfusions (dual verification), reactions.
+        'donor' => Donor::class,
+        'donation' => Donation::class,
+        'blood_unit' => BloodUnit::class,
+        'compatibility_result' => CompatibilityResult::class,
+        'crossmatch' => Crossmatch::class,
+        'transfusion' => Transfusion::class,
+        'reaction_report' => ReactionReport::class,
     ];
 
     /**

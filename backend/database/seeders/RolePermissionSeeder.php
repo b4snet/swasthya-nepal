@@ -241,6 +241,32 @@ class RolePermissionSeeder extends Seeder
             'assets:transfer' => ['domain' => 'assets', 'description' => 'Transfer assets between locations (append-only history)'],
             'assets:maintain' => ['domain' => 'assets', 'description' => 'Manage maintenance schedules, work orders, and IoT-ready readings'],
             'assets:retire' => ['domain' => 'assets', 'description' => 'Retire assets (terminal lifecycle act)'],
+
+            // Phase 3 slice 20 — OT (ROADMAP Phase 16, PRODUCT_REQUIREMENTS
+            // §6.10): scheduling, procedure documentation, safety-checklist
+            // completion, and case closure (compliance-gated).
+            'ot:schedule' => ['domain' => 'ot', 'description' => 'Manage theatres and schedule procedure requests (conflict detection)'],
+            'ot:document' => ['domain' => 'ot', 'description' => 'Document procedures: team, anesthesia, events, recovery'],
+            'ot:checklist' => ['domain' => 'ot', 'description' => 'Complete surgical safety checklist steps (who, when)'],
+            'ot:close' => ['domain' => 'ot', 'description' => 'Close a case (requires checklist compliance)'],
+
+            // Phase 3 slice 20 — ICU (PRODUCT_REQUIREMENTS §6.11): admit
+            // with acuity-based assignment, observe (computed scores +
+            // escalation alerts), document, and transfer out.
+            'icu:admit' => ['domain' => 'icu', 'description' => 'Manage ICU beds and admit patients with acuity assignment'],
+            'icu:observe' => ['domain' => 'icu', 'description' => 'Record observations, compute warning scores, acknowledge alerts'],
+            'icu:document' => ['domain' => 'icu', 'description' => 'Document critical-care notes (goals, sedation, weaning, procedures)'],
+            'icu:transfer' => ['domain' => 'icu', 'description' => 'Step down / discharge from ICU with handover'],
+
+            // Phase 3 slice 20 — Blood Bank (PRODUCT_REQUIREMENTS §6.12):
+            // donors, processing/testing, issue (compatible crossmatch,
+            // never expired/untested), transfusion with dual verification,
+            // and discard.
+            'bloodbank:register_donor' => ['domain' => 'bloodbank', 'description' => 'Register blood donors (PII protected)'],
+            'bloodbank:process' => ['domain' => 'bloodbank', 'description' => 'Record donations, process components, and test units'],
+            'bloodbank:issue' => ['domain' => 'bloodbank', 'description' => 'Crossmatch, compatibility, and issue units'],
+            'bloodbank:transfuse' => ['domain' => 'bloodbank', 'description' => 'Start/verify (dual)/complete transfusions and report reactions'],
+            'bloodbank:discard' => ['domain' => 'bloodbank', 'description' => 'Discard units with reason (terminal)'],
         ];
     }
 
@@ -371,6 +397,13 @@ class RolePermissionSeeder extends Seeder
                     // tenant's HR and equipment surfaces).
                     'hr:employee', 'hr:roster', 'hr:attendance', 'hr:leave', 'hr:payroll_export',
                     'assets:register', 'assets:transfer', 'assets:maintain', 'assets:retire',
+                    // Phase 3 slice 20 — OT/ICU/Blood Bank (administer the
+                    // whole tenant's surgical, critical-care, and
+                    // transfusion surfaces).
+                    'ot:schedule', 'ot:document', 'ot:checklist', 'ot:close',
+                    'icu:admit', 'icu:observe', 'icu:document', 'icu:transfer',
+                    'bloodbank:register_donor', 'bloodbank:process', 'bloodbank:issue',
+                    'bloodbank:transfuse', 'bloodbank:discard',
                 ],
             ],
             'org_finance' => [
@@ -442,6 +475,13 @@ class RolePermissionSeeder extends Seeder
                     // facility's HR and equipment surfaces).
                     'hr:employee', 'hr:roster', 'hr:attendance', 'hr:leave', 'hr:payroll_export',
                     'assets:register', 'assets:transfer', 'assets:maintain', 'assets:retire',
+                    // Phase 3 slice 20 — OT/ICU/Blood Bank (administer the
+                    // facility's surgical, critical-care, and transfusion
+                    // surfaces).
+                    'ot:schedule', 'ot:document', 'ot:checklist', 'ot:close',
+                    'icu:admit', 'icu:observe', 'icu:document', 'icu:transfer',
+                    'bloodbank:register_donor', 'bloodbank:process', 'bloodbank:issue',
+                    'bloodbank:transfuse', 'bloodbank:discard',
                 ],
             ],
             'branch_manager' => [
@@ -527,6 +567,12 @@ class RolePermissionSeeder extends Seeder
                     // Phase 3 slice 16 — radiology: the referring clinician
                     // orders imaging and views released reports.
                     'radiology:view', 'radiology:order',
+                    // Phase 3 slice 20 — OT/ICU: the surgeon and intensivist
+                    // schedule/document/close surgical cases, admit and
+                    // observe ICU patients, and order blood.
+                    'ot:schedule', 'ot:document', 'ot:checklist', 'ot:close',
+                    'icu:admit', 'icu:observe', 'icu:document', 'icu:transfer',
+                    'bloodbank:issue', 'bloodbank:transfuse',
                 ],
             ],
             'nurse' => [
@@ -551,6 +597,13 @@ class RolePermissionSeeder extends Seeder
                     'er:view', 'triage:assign', 'er:document',
                     // Phase 3 slice 16 — radiology read visibility.
                     'radiology:view',
+                    // Phase 3 slice 20 — OT/ICU/Blood: the nurse completes
+                    // safety-checklist steps, documents OT, records ICU
+                    // observations (escalating alerts), and performs the
+                    // bedside dual verification of transfusions.
+                    'ot:document', 'ot:checklist',
+                    'icu:observe', 'icu:document',
+                    'bloodbank:transfuse',
                 ],
             ],
             'pharmacist' => [
@@ -576,6 +629,9 @@ class RolePermissionSeeder extends Seeder
                 'permissions' => [
                     'patient:view', 'patient:search',
                     'lab:view', 'lab:specimen', 'lab:process', 'lab:result_entry',
+                    // Phase 3 slice 20 — Blood Bank: the technician is the
+                    // phlebotomist and processor — donation and testing.
+                    'bloodbank:register_donor', 'bloodbank:process',
                 ],
             ],
             'lab_supervisor' => [

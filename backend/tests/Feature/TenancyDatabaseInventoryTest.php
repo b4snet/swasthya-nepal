@@ -8,7 +8,7 @@ use Illuminate\Support\Str;
  * PROGRAM PHASE 1 — systematic database-layer tenancy verification.
  *
  * Unlike the representative isolation suites (DatabaseRowLevelSecurityTest,
- * ClinicalIsolationTest, ...), this suite iterates the FULL set of 81
+ * ClinicalIsolationTest, ...), this suite iterates the FULL set of 103
  * tenant-owned tables: it seeds a complete two-tenant fixture chain and then
  * probes every table for cross-tenant SELECT/UPDATE/DELETE isolation as the
  * least-privilege `swasthya_app` role (NOBYPASSRLS) under transaction-local
@@ -18,7 +18,7 @@ use Illuminate\Support\Str;
  */
 
 /**
- * The 81 tables with RLS enabled (the documented scoped set).
+ * The 103 tables with RLS enabled (the documented scoped set).
  *
  * @var list<string>
  */
@@ -70,6 +70,18 @@ const RLS_SCOPED_TABLES = [
     'leave_types', 'leave_requests', 'payroll_exports',
     'asset_categories', 'assets', 'asset_transfers',
     'maintenance_schedules', 'work_orders', 'iot_readings',
+    // Phase 3 slice 20 — OT (theatres, procedure requests, procedures,
+    // team, anesthesia, events, checklists, recovery), ICU (beds,
+    // admissions, observations, scores, alerts, notes), and Blood Bank
+    // (donors, donations, units, compatibility, crossmatch, transfusions,
+    // reactions) — DATABASE.md §3.48–3.50.
+    'theatres', 'procedure_requests', 'procedures', 'surgical_team_members',
+    'anesthesia_records', 'surgical_events', 'checklist_templates',
+    'checklist_items', 'recovery_records',
+    'icu_beds', 'icu_admissions', 'icu_observation_sets', 'warning_scores',
+    'icu_alerts', 'critical_care_notes',
+    'donors', 'donations', 'blood_units', 'compatibility_results',
+    'crossmatches', 'transfusions', 'reaction_reports',
     // TENANT_ONLY
     'payers', 'mrn_counters', 'patient_identifiers', 'patient_contacts',
     'insurance_policies', 'patient_documents', 'consents',
@@ -472,6 +484,101 @@ function seedTenantChain(ConnectionInterface $c, string $tenantId, string $facil
     $c->insert('insert into iot_readings (id, tenant_id, facility_id, asset_id, reading_type, reading_value, read_at, source) values (?, ?, ?, ?, ?, ?, ?, ?)', [$iotReading, $tenantId, $facilityId, $asset, 'location', '{}', '2026-08-16 00:00:00+00', 'manual']);
     $ids['iot_readings'] = $iotReading;
 
+    // Phase 3 slice 20 — OT (theatres, procedure_requests, procedures,
+    // surgical_team_members, anesthesia_records, surgical_events,
+    // checklist_templates, checklist_items, recovery_records).
+    $theatre = (string) Str::uuid();
+    $c->insert('insert into theatres (id, tenant_id, facility_id, code, name, status) values (?, ?, ?, ?, ?, ?)', [$theatre, $tenantId, $facilityId, $u('ot'), 'Main Theatre', 'active']);
+    $ids['theatres'] = $theatre;
+
+    $procedureRequest = (string) Str::uuid();
+    $c->insert('insert into procedure_requests (id, tenant_id, facility_id, patient_id, requested_by_staff_id, procedure_name, priority, status, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?)', [$procedureRequest, $tenantId, $facilityId, $patient, $staff, 'Cholecystectomy', 'routine', 'scheduled', 0]);
+    $ids['procedure_requests'] = $procedureRequest;
+
+    $procedure = (string) Str::uuid();
+    $c->insert('insert into procedures (id, tenant_id, facility_id, procedure_request_id, patient_id, theatre_id, status, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?)', [$procedure, $tenantId, $facilityId, $procedureRequest, $patient, $theatre, 'in_progress', 0]);
+    $ids['procedures'] = $procedure;
+
+    $teamMember = (string) Str::uuid();
+    $c->insert('insert into surgical_team_members (id, tenant_id, facility_id, procedure_id, staff_id, role, time_in) values (?, ?, ?, ?, ?, ?, ?)', [$teamMember, $tenantId, $facilityId, $procedure, $staff, 'surgeon', '2026-08-16 09:00:00+00']);
+    $ids['surgical_team_members'] = $teamMember;
+
+    $anesthesia = (string) Str::uuid();
+    $c->insert('insert into anesthesia_records (id, tenant_id, facility_id, procedure_id, anesthetist_staff_id, anesthesia_type, started_at, status, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?)', [$anesthesia, $tenantId, $facilityId, $procedure, $staff, 'general', '2026-08-16 09:00:00+00', 'active', 0]);
+    $ids['anesthesia_records'] = $anesthesia;
+
+    $surgicalEvent = (string) Str::uuid();
+    $c->insert('insert into surgical_events (id, tenant_id, facility_id, procedure_id, event_type, occurred_at) values (?, ?, ?, ?, ?, ?)', [$surgicalEvent, $tenantId, $facilityId, $procedure, 'incision', '2026-08-16 09:05:00+00']);
+    $ids['surgical_events'] = $surgicalEvent;
+
+    $checklistTemplate = (string) Str::uuid();
+    $c->insert('insert into checklist_templates (id, tenant_id, facility_id, code, name, category, steps, status) values (?, ?, ?, ?, ?, ?, ?, ?)', [$checklistTemplate, $tenantId, $facilityId, $u('cl'), 'Time-out', 'time_out', '[{"key":"id_verified"}]', 'active']);
+    $ids['checklist_templates'] = $checklistTemplate;
+
+    $checklistItem = (string) Str::uuid();
+    $c->insert('insert into checklist_items (id, tenant_id, facility_id, procedure_id, checklist_template_id, step_key, step_label, sequence, category) values (?, ?, ?, ?, ?, ?, ?, ?, ?)', [$checklistItem, $tenantId, $facilityId, $procedure, $checklistTemplate, 'id_verified', 'Identity confirmed', 1, 'time_out']);
+    $ids['checklist_items'] = $checklistItem;
+
+    $recovery = (string) Str::uuid();
+    $c->insert('insert into recovery_records (id, tenant_id, facility_id, procedure_id, admitted_at, admitted_by_staff_id, observations, status, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?)', [$recovery, $tenantId, $facilityId, $procedure, '2026-08-16 11:00:00+00', $staff, '{}', 'in_recovery', 0]);
+    $ids['recovery_records'] = $recovery;
+
+    // Phase 3 slice 20 — ICU (icu_beds, icu_admissions,
+    // icu_observation_sets, warning_scores, icu_alerts, critical_care_notes).
+    $icuBed = (string) Str::uuid();
+    $c->insert('insert into icu_beds (id, tenant_id, facility_id, bed_code, status, acuity_supported, lock_version) values (?, ?, ?, ?, ?, ?, ?)', [$icuBed, $tenantId, $facilityId, $u('icu'), 'occupied', 'level_3', 0]);
+    $ids['icu_beds'] = $icuBed;
+
+    $icuAdmission = (string) Str::uuid();
+    $c->insert('insert into icu_admissions (id, tenant_id, facility_id, patient_id, icu_bed_id, source, acuity, observation_interval_minutes, next_observation_due_at, status, admitted_at, admitted_by_staff_id, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$icuAdmission, $tenantId, $facilityId, $patient, $icuBed, 'ot', 'level_3', 60, '2026-08-16 10:00:00+00', 'admitted', '2026-08-16 09:00:00+00', $staff, 0]);
+    $ids['icu_admissions'] = $icuAdmission;
+
+    $observation = (string) Str::uuid();
+    $c->insert('insert into icu_observation_sets (id, tenant_id, facility_id, icu_admission_id, observed_at, observed_by_staff_id, values) values (?, ?, ?, ?, ?, ?, ?)', [$observation, $tenantId, $facilityId, $icuAdmission, '2026-08-16 09:30:00+00', $staff, '{"hr": 72}']);
+    $ids['icu_observation_sets'] = $observation;
+
+    $warningScore = (string) Str::uuid();
+    $c->insert('insert into warning_scores (id, tenant_id, facility_id, icu_admission_id, observation_set_id, score_total, severity, breakdown, scale_version, computed_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$warningScore, $tenantId, $facilityId, $icuAdmission, $observation, 0, 'low', '{}', 'news-1', '2026-08-16 09:30:00+00']);
+    $ids['warning_scores'] = $warningScore;
+
+    $icuAlert = (string) Str::uuid();
+    $c->insert('insert into icu_alerts (id, tenant_id, facility_id, icu_admission_id, alert_type, severity, message, status) values (?, ?, ?, ?, ?, ?, ?, ?)', [$icuAlert, $tenantId, $facilityId, $icuAdmission, 'missed_observation', 'medium', 'Observation was late.', 'open']);
+    $ids['icu_alerts'] = $icuAlert;
+
+    $ccNote = (string) Str::uuid();
+    $c->insert('insert into critical_care_notes (id, tenant_id, facility_id, icu_admission_id, note_type, content, authored_at, authored_by_staff_id) values (?, ?, ?, ?, ?, ?, ?, ?)', [$ccNote, $tenantId, $facilityId, $icuAdmission, 'daily_goal', 'Goals.', '2026-08-16 09:00:00+00', $staff]);
+    $ids['critical_care_notes'] = $ccNote;
+
+    // Phase 3 slice 20 — Blood Bank (donors, donations, blood_units,
+    // compatibility_results, crossmatches, transfusions, reaction_reports).
+    $donor = (string) Str::uuid();
+    $c->insert('insert into donors (id, tenant_id, facility_id, donor_number, full_name, date_of_birth, status, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?)', [$donor, $tenantId, $facilityId, $u('dn'), 'Donor Name', '1980-01-01', 'active', 0]);
+    $ids['donors'] = $donor;
+
+    $donation = (string) Str::uuid();
+    $c->insert('insert into donations (id, tenant_id, facility_id, donor_id, donated_at, phlebotomist_staff_id, volume_ml, screening_result, status, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$donation, $tenantId, $facilityId, $donor, '2026-08-16 09:00:00+00', $staff, 450, 'eligible', 'processed', 0]);
+    $ids['donations'] = $donation;
+
+    $unit = (string) Str::uuid();
+    $c->insert('insert into blood_units (id, tenant_id, facility_id, donation_id, unit_number, component_type, blood_group, rh_factor, collected_at, expiry_at, tested, status, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$unit, $tenantId, $facilityId, $donation, $u('bu'), 'packed_cells', 'O', 'positive', '2026-08-16 09:00:00+00', '2026-09-20 00:00:00+00', false, 'available', 0]);
+    $ids['blood_units'] = $unit;
+
+    $compatibility = (string) Str::uuid();
+    $c->insert('insert into compatibility_results (id, tenant_id, facility_id, patient_id, patient_blood_group, abo_rh_compatible, antibody_screen, result, checked_at, checked_by_staff_id) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$compatibility, $tenantId, $facilityId, $patient, 'O', true, 'negative', 'compatible', '2026-08-16 09:30:00+00', $staff]);
+    $ids['compatibility_results'] = $compatibility;
+
+    $crossmatch = (string) Str::uuid();
+    $c->insert('insert into crossmatches (id, tenant_id, facility_id, blood_unit_id, patient_id, status, requested_at, requested_by_staff_id, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?)', [$crossmatch, $tenantId, $facilityId, $unit, $patient, 'compatible', '2026-08-16 09:30:00+00', $staff, 0]);
+    $ids['crossmatches'] = $crossmatch;
+
+    $transfusion = (string) Str::uuid();
+    $c->insert('insert into transfusions (id, tenant_id, facility_id, blood_unit_id, patient_id, crossmatch_id, started_at, started_by_staff_id, status, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$transfusion, $tenantId, $facilityId, $unit, $patient, $crossmatch, '2026-08-16 10:00:00+00', $staff, 'started', 0]);
+    $ids['transfusions'] = $transfusion;
+
+    $reaction = (string) Str::uuid();
+    $c->insert('insert into reaction_reports (id, tenant_id, facility_id, transfusion_id, occurred_at, severity, symptoms, status, reported_by_staff_id, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$reaction, $tenantId, $facilityId, $transfusion, '2026-08-16 10:15:00+00', 'mild', '[]', 'reported', $staff, 0]);
+    $ids['reaction_reports'] = $reaction;
+
     // Support sessions are owner-or-platform visible: insert with the chain
     // user as the owning context (user_id GUC).
     $session = (string) Str::uuid();
@@ -570,6 +677,28 @@ function chainUpdateColumns(): array
         'maintenance_schedules' => ['contract_ref', 'upd'],
         'work_orders' => ['description', 'upd'],
         'iot_readings' => ['source', 'device'],
+        'theatres' => ['name', 'upd'],
+        'procedure_requests' => ['priority', 'urgent'],
+        'procedures' => ['status', 'completed'],
+        'surgical_team_members' => ['time_out', '2026-08-16 12:00:00+00'],
+        'anesthesia_records' => ['status', 'completed'],
+        'surgical_events' => ['event_type', 'other'],
+        'checklist_templates' => ['name', 'upd'],
+        'checklist_items' => ['completed_at', '2026-08-16 12:00:00+00'],
+        'recovery_records' => ['status', 'discharged'],
+        'icu_beds' => ['status', 'out_of_service'],
+        'icu_admissions' => ['status', 'transferred'],
+        'icu_observation_sets' => ['notes', 'upd'],
+        'warning_scores' => ['severity', 'high'],
+        'icu_alerts' => ['status', 'acknowledged'],
+        'critical_care_notes' => ['note_type', 'other'],
+        'donors' => ['status', 'deferred'],
+        'donations' => ['status', 'discarded'],
+        'blood_units' => ['status', 'discarded'],
+        'compatibility_results' => ['notes', 'upd'],
+        'crossmatches' => ['status', 'released'],
+        'transfusions' => ['status', 'stopped'],
+        'reaction_reports' => ['status', 'reviewed'],
         'staff' => ['designation', 'upd'],
         'support_sessions' => ['reason', 'upd'],
         'token_counters' => ['last_token', '1'],
@@ -602,7 +731,7 @@ function inventoryTenants(ConnectionInterface $c): array
     return $t;
 }
 
-it('records the current RLS inventory: 81 scoped tables enabled + FORCED, 15 unscoped off', function () {
+it('records the current RLS inventory: 103 scoped tables enabled + FORCED, 15 unscoped off', function () {
     $rows = DB::connection('pgsql')->select(
         'select c.relname as table_name, c.relrowsecurity::text as enabled, c.relforcerowsecurity::text as forced
          from pg_class c
@@ -740,7 +869,7 @@ it('FORCE RLS binds a non-superuser table owner (defense-in-depth proof)', funct
     }
 });
 
-it('denies cross-tenant SELECT, UPDATE, and DELETE on all 81 tenant-owned tables — two-sided', function () {
+it('denies cross-tenant SELECT, UPDATE, and DELETE on all 103 tenant-owned tables — two-sided', function () {
     rlsTx(rlsConn(), function ($c): void {
         $t = inventoryTenants($c);
 
