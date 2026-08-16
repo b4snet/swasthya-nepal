@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AdmissionController;
 use App\Http\Controllers\Api\AppointmentController;
+use App\Http\Controllers\Api\AssetController;
 use App\Http\Controllers\Api\AuditController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BedController;
@@ -17,6 +18,7 @@ use App\Http\Controllers\Api\FacilitySettingsController;
 use App\Http\Controllers\Api\FinanceController;
 use App\Http\Controllers\Api\FollowUpController;
 use App\Http\Controllers\Api\HealthController;
+use App\Http\Controllers\Api\HrController;
 use App\Http\Controllers\Api\InsurancePolicyController;
 use App\Http\Controllers\Api\InventoryController;
 use App\Http\Controllers\Api\IpdNursingController;
@@ -664,4 +666,88 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
         ->middleware('authorize:er:document');
     Route::post('er/encounters/{encounter}/disposition', [ErController::class, 'disposition'])
         ->middleware('authorize:er:disposition');
+
+    // Phase 3 slice 19 — HR (ROADMAP Phase 15, PRODUCT_REQUIREMENTS §6.17,
+    // DATABASE.md §3.45): positions, shift templates, rosters (conflict
+    // detection), attendance with approved corrections, leave with balance
+    // tracking, and audited payroll-ready exports. Staff personal data is
+    // protected to the same standard as patient data.
+    Route::get('positions', [HrController::class, 'positions'])
+        ->middleware('authorize:hr:employee');
+    Route::post('positions', [HrController::class, 'storePosition'])
+        ->middleware('authorize:hr:employee');
+    Route::get('shift-templates', [HrController::class, 'shiftTemplates'])
+        ->middleware('authorize:hr:roster');
+    Route::post('shift-templates', [HrController::class, 'storeShiftTemplate'])
+        ->middleware('authorize:hr:roster');
+    Route::get('rosters', [HrController::class, 'rosters'])
+        ->middleware('authorize:hr:roster');
+    Route::post('rosters', [HrController::class, 'storeRoster'])
+        ->middleware('authorize:hr:roster');
+    Route::post('rosters/{roster}/confirm', [HrController::class, 'confirmRoster'])
+        ->middleware('authorize:hr:roster');
+    Route::get('attendance', [HrController::class, 'attendance'])
+        ->middleware('authorize:hr:attendance');
+    Route::post('attendance', [HrController::class, 'storeAttendance'])
+        ->middleware('authorize:hr:attendance');
+    Route::post('attendance/{attendanceRecord}/correction', [HrController::class, 'requestCorrection'])
+        ->middleware('authorize:hr:attendance');
+    Route::post('attendance/{attendanceRecord}/correction/approve', [HrController::class, 'approveCorrection'])
+        ->middleware('authorize:hr:attendance');
+    Route::post('attendance/{attendanceRecord}/correction/reject', [HrController::class, 'rejectCorrection'])
+        ->middleware('authorize:hr:attendance');
+    Route::get('leave-types', [HrController::class, 'leaveTypes'])
+        ->middleware('authorize:hr:leave');
+    Route::post('leave-types', [HrController::class, 'storeLeaveType'])
+        ->middleware('authorize:hr:leave');
+    Route::get('leave-requests', [HrController::class, 'leaveRequests'])
+        ->middleware('authorize:hr:leave');
+    Route::post('leave-requests', [HrController::class, 'storeLeaveRequest'])
+        ->middleware('authorize:hr:leave');
+    Route::post('leave-requests/{leaveRequest}/approve', [HrController::class, 'approveLeaveRequest'])
+        ->middleware('authorize:hr:leave');
+    Route::post('leave-requests/{leaveRequest}/reject', [HrController::class, 'rejectLeaveRequest'])
+        ->middleware('authorize:hr:leave');
+    Route::get('payroll-exports', [HrController::class, 'payrollExports'])
+        ->middleware('authorize:hr:payroll_export');
+    Route::post('payroll-exports', [HrController::class, 'generatePayrollExport'])
+        ->middleware('authorize:hr:payroll_export');
+
+    // Phase 3 slice 19 — Assets (ROADMAP Phase 15, PRODUCT_REQUIREMENTS
+    // §6.18, DATABASE.md §3.46): register + lifecycle (procured → deployed
+    // → under_repair → retired), append-only transfers, maintenance
+    // schedules, work orders with honest downtime, and the RFID/IoT-ready
+    // reading model.
+    Route::get('asset-categories', [AssetController::class, 'categories'])
+        ->middleware('authorize:assets:register');
+    Route::post('asset-categories', [AssetController::class, 'storeCategory'])
+        ->middleware('authorize:assets:register');
+    Route::get('assets', [AssetController::class, 'index'])
+        ->middleware('authorize:assets:register');
+    Route::post('assets', [AssetController::class, 'store'])
+        ->middleware('authorize:assets:register');
+    Route::post('assets/{asset}/deploy', [AssetController::class, 'deploy'])
+        ->middleware('authorize:assets:register');
+    Route::post('assets/{asset}/retire', [AssetController::class, 'retire'])
+        ->middleware('authorize:assets:retire');
+    Route::post('assets/{asset}/transfer', [AssetController::class, 'transfer'])
+        ->middleware('authorize:assets:transfer');
+    Route::get('assets/{asset}/transfers', [AssetController::class, 'transfers'])
+        ->middleware('authorize:assets:register');
+    Route::get('maintenance-schedules', [AssetController::class, 'maintenanceSchedules'])
+        ->middleware('authorize:assets:maintain');
+    Route::post('maintenance-schedules', [AssetController::class, 'storeMaintenanceSchedule'])
+        ->middleware('authorize:assets:maintain');
+    Route::get('work-orders', [AssetController::class, 'workOrders'])
+        ->middleware('authorize:assets:maintain');
+    Route::post('work-orders', [AssetController::class, 'openWorkOrder'])
+        ->middleware('authorize:assets:maintain');
+    Route::post('work-orders/{workOrder}/complete', [AssetController::class, 'completeWorkOrder'])
+        ->middleware('authorize:assets:maintain');
+    Route::post('work-orders/{workOrder}/cancel', [AssetController::class, 'cancelWorkOrder'])
+        ->middleware('authorize:assets:maintain');
+    Route::get('assets/{asset}/iot-readings', [AssetController::class, 'iotReadings'])
+        ->middleware('authorize:assets:maintain');
+    Route::post('assets/{asset}/iot-readings', [AssetController::class, 'storeIotReading'])
+        ->middleware('authorize:assets:maintain');
 });

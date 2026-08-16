@@ -986,6 +986,45 @@ Phase 3 slice 16 (ROADMAP Phase 11, PRODUCT_REQUIREMENTS §6.9, CLINICAL_SAFETY 
 | **Soft deletion** | No — removing a key is itself a state change and is audited |
 | **Retention** | Operational class; settings history lives in audit_events |
 
+### 3.45 HR (positions, shift_templates, rosters, attendance_records, leave_types, leave_requests, payroll_exports)
+
+> **Added in Phase 3 slice 19.** PRODUCT_REQUIREMENTS §6.17 defines the HR surface (employees, departments, positions, shifts, attendance, leave, payroll readiness); staff + departments already exist (§3.10/§3.8), so the slice adds the operational tables. Staff personal data is protected to the same standard as patient data (SECURITY.md §12): names, licenses, and free-text reasons are never in audit payloads, and every table is RLS-scoped like a clinical row.
+
+| Aspect | Design |
+|---|---|
+| **positions** | Position catalog within a department (`tenant_id`, `facility_id`, `department_id` composite FK). Soft-deletable; unique `(tenant_id, facility_id, code)` among live rows; a position with rostered staff cannot be deleted (RESTRICT). |
+| **shift_templates** | Shift definitions — `shift_type` CHECK (day, night, rotating), `starts_at`/`ends_at` time, `working_minutes` CHECK 1–1440. Soft-deletable; unique code per facility. Backs the rosters composite FK. |
+| **rosters** | Staff × shift × date assignment. One row per `(tenant_id, facility_id, staff_id, shift_template_id, roster_date)`; conflict detection (overlaps, rest rules — minimum 8h rest between consecutive shifts) is application-enforced in HrAssetsService; status CHECK (scheduled, confirmed, cancelled); CAS `lock_version`. |
+| **attendance_records** | One row per `(tenant_id, facility_id, staff_id, attendance_date)`. Clock-in/out or schedule-based; status CHECK (present, absent, late, leave); source CHECK (clock, schedule, manual). A CORRECTION is a separate approval flow: request (reason + PROPOSED clock times) → approve/reject — the record's actual clock times change ONLY on approval (CAS on correction_status + lock_version); a double approval affects zero rows. |
+| **leave_types** | Leave types with entitlements — `paid_days_per_year`, `carryover_days` (CHECK ≥ 0). Soft-deletable; unique code per facility. Balance is COMPUTED from approved requests against this entitlement at approval time (never a stored, stale figure). |
+| **leave_requests** | Staff request → approve/reject. `days_requested` CHECK > 0, `starts_on`/`ends_on` CHECK range. Approval is CAS-guarded (status + lock_version — exactly one winner) and refuses an over-entitlement approval (422) inside the same transaction; rejection consumes nothing. |
+| **payroll_exports** | The audited payroll-ready export record: WHO exported WHAT for WHICH period. `period_start`/`period_end` CHECK range, `row_count`, `format` CHECK (payroll_ready, csv), `payload_hash` (sha256 of the delivered payload), `exported_at`, `exported_by_staff_id` (composite FK). The payload is delivered once at generation time, never re-served from the DB. |
+| **Tenant ownership** | Every table: `tenant_id NOT NULL`, `facility_id NOT NULL` (all TENANT_FACILITY tier — HR operations are facility-local). |
+| **Indexes** | Attendance unique per (staff, date); rosters unique per (staff, shift, date); leave requests indexed by (staff, starts_on); payroll exports by (facility, period). |
+| **Audit** | Position/shift/roster/attendance/leave/payroll-export actions — facts and ids only; free-text reasons and names never reach payloads (proven). |
+| **Retention** | Identity class (staff-linked) — kept while any relationship exists; HR rows reference staff with RESTRICT. |
+
+### 3.46 Assets (asset_categories, assets, asset_transfers, maintenance_schedules, work_orders, iot_readings)
+
+> **Added in Phase 3 slice 19.** PRODUCT_REQUIREMENTS §6.18 defines the asset surface (register, maintenance, lifecycle, RFID/IoT readiness); locations already exist (§3.9) and become the asset-location anchor. The acceptance criterion "downtime tracking honest" is structural: an asset with an OPEN downtime work order is under_repair — a machine listed as available while down is a planning hazard.
+
+| Aspect | Design |
+|---|---|
+| **asset_categories** | Equipment categories (imaging, monitoring…). Soft-deletable; unique code per facility; a category with assets cannot be deleted (RESTRICT). |
+| **assets** | The register. `category_id` (composite FK), `serial_number`/`rfid_tag`/`barcode` (partial unique per facility), `current_location_id` (composite FK to locations), `purchase_value_minor` CHECK ≥ 0, `purchase_date`, `warranty_until`. Explicit lifecycle `lifecycle_status` CHECK (procured, deployed, under_repair, retired) — transitions are CAS-guarded (status + lock_version); retired is terminal. |
+| **asset_transfers** | Append-only location history — `from_location_id`/`to_location_id` (composite FKs to locations), `transferred_at`, `transferred_by_staff_id`, `reason`. NEVER edited or deleted: the history is the audit trail and survives the equipment's life. |
+| **maintenance_schedules** | Scheduled maintenance — `schedule_type` CHECK (preventive, contract, certification), `frequency_days` CHECK > 0, `next_due_date`, `last_completed_at`, `contract_ref`. Completing a linked work order advances `last_completed_at`/`next_due_date`. |
+| **work_orders** | Maintenance work — `work_order_number` unique per tenant, status CHECK (open, in_progress, completed, cancelled), `opened_at`/`opened_by_staff_id`/`completed_at`/`completed_by_staff_id`, honest downtime (`downtime_started_at`/`downtime_ended_at`, CHECK end > start when both present), `description`, `certification_ref` (provable maintenance). An asset with an OPEN downtime order is under_repair; completing/cancelling returns it to deployed. Transitions CAS-guarded. |
+| **iot_readings** | The RFID/IoT-ready data model — `reading_type` CHECK (location, condition, usage), `reading_value` jsonb, `tag_id`, `read_at`, `source` CHECK (rfid, device, manual). Append-only; DEVICE integration arrives in Phase 3 with a real integration — manual readings exercise the model end to end, nothing is faked. |
+| **Tenant ownership** | Every table: `tenant_id NOT NULL`, `facility_id NOT NULL` (all TENANT_FACILITY tier — equipment is facility-local). |
+| **Indexes** | Assets by (facility, lifecycle_status); serial/RFID/barcode partial uniques; transfers by (asset, transferred_at); schedules by (asset, next_due_date); work orders by (asset, status); readings by (asset, read_at). |
+| **Audit** | Register/deploy/transfer/retire/maintenance/work-order/reading actions — facts and ids only; free-text descriptions and reasons never reach payloads (proven). |
+| **Retention** | Operational class; asset history must survive the equipment's life (append-only transfers, provable certifications). |
+
+### 3.47 HR/assets RLS (all TENANT_FACILITY, FORCE-enabled)
+
+All 13 slice-19 tables are TENANT_FACILITY: SELECT/UPDATE/DELETE use `tenant_id = <tenant> AND (facility_id = <facility> OR <facility> IS NULL)`; INSERT with check (true) — the established, documented boundary (SECURITY.md §8, TENANCY.md §6.2). 13 tables × 4 policies = 52 policies (268 → 320); scoped matrix 68 → 81 tables (15 unscoped). Runtime role `swasthya_app` stays NOBYPASSRLS; FORCE binds the owner (Phase 1 hardening). Staff personal data is RLS-protected to the same standard as patient data.
+
 ---
 
 ## 4. Data Lifecycle: Retention, Archival, Purge

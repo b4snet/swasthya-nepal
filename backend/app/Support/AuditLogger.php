@@ -4,6 +4,10 @@ namespace App\Support;
 
 use App\Models\Admission;
 use App\Models\Appointment;
+use App\Models\Asset;
+use App\Models\AssetCategory;
+use App\Models\AssetTransfer;
+use App\Models\AttendanceRecord;
 use App\Models\AuditEvent;
 use App\Models\Bed;
 use App\Models\Branch;
@@ -21,22 +25,30 @@ use App\Models\InsuranceClaim;
 use App\Models\InventoryItem;
 use App\Models\InventoryMovement;
 use App\Models\Invoice;
+use App\Models\IotReading;
 use App\Models\LabOrder;
 use App\Models\LabTest;
+use App\Models\LeaveRequest;
+use App\Models\LeaveType;
 use App\Models\Location;
+use App\Models\MaintenanceSchedule;
 use App\Models\MarEntry;
 use App\Models\Medication;
 use App\Models\NursingNote;
 use App\Models\Payment;
+use App\Models\PayrollExport;
 use App\Models\PharmacyReturn;
+use App\Models\Position;
 use App\Models\Prescription;
 use App\Models\PrescriptionLine;
 use App\Models\RefundRequest;
 use App\Models\Room;
+use App\Models\Roster;
 use App\Models\ScheduleException;
 use App\Models\ScheduleTemplate;
 use App\Models\Service;
 use App\Models\Settlement;
+use App\Models\ShiftTemplate;
 use App\Models\Specimen;
 use App\Models\Staff;
 use App\Models\StockBatch;
@@ -46,6 +58,7 @@ use App\Models\TriageScale;
 use App\Models\User;
 use App\Models\VitalObservation;
 use App\Models\Ward;
+use App\Models\WorkOrder;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -150,6 +163,22 @@ final class AuditLogger
         'study' => Study::class,
         'radiology_report' => RadiologyReport::class,
         'image_reference' => ImageReference::class,
+        // Phase 3 slice 19 — HR (positions, shifts, rosters, attendance,
+        // leave, payroll exports) and Assets (categories, assets, transfers,
+        // maintenance, work orders, IoT-ready readings). All facility-scoped.
+        'position' => Position::class,
+        'shift_template' => ShiftTemplate::class,
+        'roster' => Roster::class,
+        'attendance_record' => AttendanceRecord::class,
+        'leave_type' => LeaveType::class,
+        'leave_request' => LeaveRequest::class,
+        'payroll_export' => PayrollExport::class,
+        'asset_category' => AssetCategory::class,
+        'asset' => Asset::class,
+        'asset_transfer' => AssetTransfer::class,
+        'maintenance_schedule' => MaintenanceSchedule::class,
+        'work_order' => WorkOrder::class,
+        'iot_reading' => IotReading::class,
     ];
 
     /**

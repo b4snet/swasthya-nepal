@@ -8,7 +8,7 @@ use Illuminate\Support\Str;
  * PROGRAM PHASE 1 — systematic database-layer tenancy verification.
  *
  * Unlike the representative isolation suites (DatabaseRowLevelSecurityTest,
- * ClinicalIsolationTest, ...), this suite iterates the FULL set of 68
+ * ClinicalIsolationTest, ...), this suite iterates the FULL set of 81
  * tenant-owned tables: it seeds a complete two-tenant fixture chain and then
  * probes every table for cross-tenant SELECT/UPDATE/DELETE isolation as the
  * least-privilege `swasthya_app` role (NOBYPASSRLS) under transaction-local
@@ -18,7 +18,7 @@ use Illuminate\Support\Str;
  */
 
 /**
- * The 68 tables with RLS enabled (the documented scoped set).
+ * The 81 tables with RLS enabled (the documented scoped set).
  *
  * @var list<string>
  */
@@ -62,6 +62,14 @@ const RLS_SCOPED_TABLES = [
     'er_registrations', 'triage_scales', 'triage_assignments', 'er_events',
     // Phase 3 slice 10 — follow-up reminders (TENANT tier, §3.37).
     'notifications',
+    // Phase 3 slice 19 — HR (positions, shift templates, rosters,
+    // attendance, leave types + requests, payroll exports) and Assets
+    // (asset categories, assets, transfers, maintenance schedules, work
+    // orders, iot readings) — DATABASE.md §3.45–3.47.
+    'positions', 'shift_templates', 'rosters', 'attendance_records',
+    'leave_types', 'leave_requests', 'payroll_exports',
+    'asset_categories', 'assets', 'asset_transfers',
+    'maintenance_schedules', 'work_orders', 'iot_readings',
     // TENANT_ONLY
     'payers', 'mrn_counters', 'patient_identifiers', 'patient_contacts',
     'insurance_policies', 'patient_documents', 'consents',
@@ -411,6 +419,59 @@ function seedTenantChain(ConnectionInterface $c, string $tenantId, string $facil
     $c->insert('insert into audit_events (id, tenant_id, facility_id, occurred_at, actor_type, action, resource_type, payload, correlation_id, prev_hash, event_hash) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$audit, $tenantId, $facilityId, '2026-08-15 00:00:00+00', 'user', 'chain.seeded', 'test', '{}', (string) Str::uuid(), null, hash('sha256', (string) Str::uuid())]);
     $ids['audit_events'] = $audit;
 
+    // Phase 3 slice 19 — HR + Assets chain rows (DATABASE.md §3.45–3.47).
+    $position = (string) Str::uuid();
+    $c->insert('insert into positions (id, tenant_id, facility_id, department_id, code, name, status) values (?, ?, ?, ?, ?, ?, ?)', [$position, $tenantId, $facilityId, $department, $u('pos'), 'Chain Position', 'active']);
+    $ids['positions'] = $position;
+
+    $shiftTemplate = (string) Str::uuid();
+    $c->insert('insert into shift_templates (id, tenant_id, facility_id, department_id, code, name, shift_type, starts_at, ends_at, working_minutes, status) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$shiftTemplate, $tenantId, $facilityId, $department, $u('shift'), 'Day Shift', 'day', '08:00', '16:00', 480, 'active']);
+    $ids['shift_templates'] = $shiftTemplate;
+
+    $roster = (string) Str::uuid();
+    $c->insert('insert into rosters (id, tenant_id, facility_id, staff_id, shift_template_id, roster_date, status, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?)', [$roster, $tenantId, $facilityId, $staff, $shiftTemplate, '2026-08-16', 'scheduled', 0]);
+    $ids['rosters'] = $roster;
+
+    $attendance = (string) Str::uuid();
+    $c->insert('insert into attendance_records (id, tenant_id, facility_id, staff_id, attendance_date, status, source, correction_status, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?)', [$attendance, $tenantId, $facilityId, $staff, '2026-08-16', 'present', 'clock', 'none', 0]);
+    $ids['attendance_records'] = $attendance;
+
+    $leaveType = (string) Str::uuid();
+    $c->insert('insert into leave_types (id, tenant_id, facility_id, code, name, paid_days_per_year, carryover_days, status) values (?, ?, ?, ?, ?, ?, ?, ?)', [$leaveType, $tenantId, $facilityId, $u('lv'), 'Annual Leave', 30, 5, 'active']);
+    $ids['leave_types'] = $leaveType;
+
+    $leaveRequest = (string) Str::uuid();
+    $c->insert('insert into leave_requests (id, tenant_id, facility_id, staff_id, leave_type_id, starts_on, ends_on, days_requested, status, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$leaveRequest, $tenantId, $facilityId, $staff, $leaveType, '2026-08-20', '2026-08-22', 3, 'pending', 0]);
+    $ids['leave_requests'] = $leaveRequest;
+
+    $payrollExport = (string) Str::uuid();
+    $c->insert('insert into payroll_exports (id, tenant_id, facility_id, period_start, period_end, row_count, format, payload_hash, exported_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?)', [$payrollExport, $tenantId, $facilityId, '2026-08-01', '2026-08-31', 0, 'payroll_ready', 'hash', '2026-08-16 00:00:00+00']);
+    $ids['payroll_exports'] = $payrollExport;
+
+    $assetCategory = (string) Str::uuid();
+    $c->insert('insert into asset_categories (id, tenant_id, facility_id, code, name, status) values (?, ?, ?, ?, ?, ?)', [$assetCategory, $tenantId, $facilityId, $u('acat'), 'Imaging', 'active']);
+    $ids['asset_categories'] = $assetCategory;
+
+    $asset = (string) Str::uuid();
+    $c->insert('insert into assets (id, tenant_id, facility_id, category_id, name, lifecycle_status, status, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?)', [$asset, $tenantId, $facilityId, $assetCategory, 'MRI Scanner', 'procured', 'active', 0]);
+    $ids['assets'] = $asset;
+
+    $assetTransfer = (string) Str::uuid();
+    $c->insert('insert into asset_transfers (id, tenant_id, facility_id, asset_id, to_location_id, transferred_at) values (?, ?, ?, ?, ?, ?)', [$assetTransfer, $tenantId, $facilityId, $asset, $location, '2026-08-16 00:00:00+00']);
+    $ids['asset_transfers'] = $assetTransfer;
+
+    $maintenance = (string) Str::uuid();
+    $c->insert('insert into maintenance_schedules (id, tenant_id, facility_id, asset_id, schedule_type, frequency_days, next_due_date, status, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?)', [$maintenance, $tenantId, $facilityId, $asset, 'preventive', 90, '2026-11-01', 'active', 0]);
+    $ids['maintenance_schedules'] = $maintenance;
+
+    $workOrder = (string) Str::uuid();
+    $c->insert('insert into work_orders (id, tenant_id, facility_id, asset_id, work_order_number, status, opened_at, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?)', [$workOrder, $tenantId, $facilityId, $asset, $u('wo'), 'open', '2026-08-16 00:00:00+00', 0]);
+    $ids['work_orders'] = $workOrder;
+
+    $iotReading = (string) Str::uuid();
+    $c->insert('insert into iot_readings (id, tenant_id, facility_id, asset_id, reading_type, reading_value, read_at, source) values (?, ?, ?, ?, ?, ?, ?, ?)', [$iotReading, $tenantId, $facilityId, $asset, 'location', '{}', '2026-08-16 00:00:00+00', 'manual']);
+    $ids['iot_readings'] = $iotReading;
+
     // Support sessions are owner-or-platform visible: insert with the chain
     // user as the owning context (user_id GUC).
     $session = (string) Str::uuid();
@@ -478,7 +539,9 @@ function chainUpdateColumns(): array
         'payers' => ['code', 'upd'],
         'payment_allocations' => ['amount_minor', '1'],
         'payments' => ['provider_ref', 'upd'],
+        'payroll_exports' => ['format', 'csv'],
         'pharmacy_returns' => ['reason_note', 'upd'],
+        'positions' => ['name', 'upd'],
         'notifications' => ['status', 'delivered'],
         'transfer_events' => ['reason', 'upd'],
         'nursing_notes' => ['status', 'signed'],
@@ -496,6 +559,17 @@ function chainUpdateColumns(): array
         'schedule_exceptions' => ['status', 'cancelled'],
         'schedule_templates' => ['capacity', '2'],
         'services' => ['code', 'upd'],
+        'shift_templates' => ['name', 'upd'],
+        'rosters' => ['notes', 'upd'],
+        'attendance_records' => ['status', 'late'],
+        'leave_types' => ['name', 'upd'],
+        'leave_requests' => ['decision_notes', 'upd'],
+        'asset_categories' => ['name', 'upd'],
+        'assets' => ['name', 'upd'],
+        'asset_transfers' => ['reason', 'upd'],
+        'maintenance_schedules' => ['contract_ref', 'upd'],
+        'work_orders' => ['description', 'upd'],
+        'iot_readings' => ['source', 'device'],
         'staff' => ['designation', 'upd'],
         'support_sessions' => ['reason', 'upd'],
         'token_counters' => ['last_token', '1'],
@@ -528,7 +602,7 @@ function inventoryTenants(ConnectionInterface $c): array
     return $t;
 }
 
-it('records the current RLS inventory: 68 scoped tables enabled + FORCED, 15 unscoped off', function () {
+it('records the current RLS inventory: 81 scoped tables enabled + FORCED, 15 unscoped off', function () {
     $rows = DB::connection('pgsql')->select(
         'select c.relname as table_name, c.relrowsecurity::text as enabled, c.relforcerowsecurity::text as forced
          from pg_class c
@@ -666,7 +740,7 @@ it('FORCE RLS binds a non-superuser table owner (defense-in-depth proof)', funct
     }
 });
 
-it('denies cross-tenant SELECT, UPDATE, and DELETE on all 68 tenant-owned tables — two-sided', function () {
+it('denies cross-tenant SELECT, UPDATE, and DELETE on all 81 tenant-owned tables — two-sided', function () {
     rlsTx(rlsConn(), function ($c): void {
         $t = inventoryTenants($c);
 

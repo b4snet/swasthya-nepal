@@ -220,6 +220,27 @@ class RolePermissionSeeder extends Seeder
             'er:document' => ['domain' => 'er', 'description' => 'Append time-stamped events to the ER record'],
             'er:disposition' => ['domain' => 'er', 'description' => 'Dispose of an ER visit (admit to IPD / transfer / discharge) and triage overrides'],
             'er:manage' => ['domain' => 'er', 'description' => 'Configure the facility triage scales (the acuity catalog)'],
+
+            // Phase 3 slice 19 — HR (ROADMAP Phase 15, PRODUCT_REQUIREMENTS
+            // §6.17): positions, shift templates + rosters, attendance with
+            // approved corrections, leave with balance tracking, and audited
+            // payroll-ready exports. HR is org-scoped; staff personal data
+            // is protected to the same standard as patient data.
+            'hr:employee' => ['domain' => 'hr', 'description' => 'Manage the employee/position catalog within scope'],
+            'hr:roster' => ['domain' => 'hr', 'description' => 'Manage shift templates and rosters (conflict detection)'],
+            'hr:attendance' => ['domain' => 'hr', 'description' => 'Record attendance and approve corrections'],
+            'hr:leave' => ['domain' => 'hr', 'description' => 'Manage leave types and approve/reject leave requests'],
+            'hr:payroll_export' => ['domain' => 'hr', 'description' => 'Generate audited payroll-ready exports'],
+
+            // Phase 3 slice 19 — Assets (ROADMAP Phase 15, PRODUCT_REQUIREMENTS
+            // §6.18): register, transfer, maintain, and retire equipment.
+            // Register covers the register + categories + deploy; retirement
+            // is its own terminal act; maintenance covers schedules, work
+            // orders, and IoT-ready readings.
+            'assets:register' => ['domain' => 'assets', 'description' => 'Register assets, categories, and deploy equipment'],
+            'assets:transfer' => ['domain' => 'assets', 'description' => 'Transfer assets between locations (append-only history)'],
+            'assets:maintain' => ['domain' => 'assets', 'description' => 'Manage maintenance schedules, work orders, and IoT-ready readings'],
+            'assets:retire' => ['domain' => 'assets', 'description' => 'Retire assets (terminal lifecycle act)'],
         ];
     }
 
@@ -346,6 +367,10 @@ class RolePermissionSeeder extends Seeder
                     // tenant's radiology surface).
                     'radiology:view', 'radiology:order', 'radiology:schedule',
                     'radiology:perform', 'radiology:report', 'radiology:verify', 'radiology:manage',
+                    // Phase 3 slice 19 — HR and Assets (administer the whole
+                    // tenant's HR and equipment surfaces).
+                    'hr:employee', 'hr:roster', 'hr:attendance', 'hr:leave', 'hr:payroll_export',
+                    'assets:register', 'assets:transfer', 'assets:maintain', 'assets:retire',
                 ],
             ],
             'org_finance' => [
@@ -413,6 +438,10 @@ class RolePermissionSeeder extends Seeder
                     // radiology surface).
                     'radiology:view', 'radiology:order', 'radiology:schedule',
                     'radiology:perform', 'radiology:report', 'radiology:verify', 'radiology:manage',
+                    // Phase 3 slice 19 — HR and Assets (administer the
+                    // facility's HR and equipment surfaces).
+                    'hr:employee', 'hr:roster', 'hr:attendance', 'hr:leave', 'hr:payroll_export',
+                    'assets:register', 'assets:transfer', 'assets:maintain', 'assets:retire',
                 ],
             ],
             'branch_manager' => [

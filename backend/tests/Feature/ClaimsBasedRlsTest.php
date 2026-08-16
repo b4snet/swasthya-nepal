@@ -29,7 +29,7 @@ it('re-keys every RLS policy to the claims helpers (244 policies, zero GUC refer
         SQL
     )[0];
 
-    expect((int) $policies->total)->toBe(268)
+    expect((int) $policies->total)->toBe(320)
         ->and((int) $policies->not_claims)->toBe(0)
         ->and((int) $policies->still_guc)->toBe(0);
 
@@ -73,7 +73,11 @@ it('keeps the RLS matrix intact: 62 scoped on, 15 off, none on-without-policies'
     // +1 since slice 17: stock_batches.
     // +5 since slice 18: deposits, deposit_allocations, settlements,
     // claims, claim_lines.
-    expect((int) $matrix->rls_on)->toBe(68)
+    // +13 since slice 19: positions, shift_templates, rosters,
+    // attendance_records, leave_types, leave_requests, payroll_exports,
+    // asset_categories, assets, asset_transfers, maintenance_schedules,
+    // work_orders, iot_readings.
+    expect((int) $matrix->rls_on)->toBe(81)
         ->and((int) $matrix->rls_off)->toBe(15)
         ->and((int) $matrix->on_without_policies)->toBe(0);
 });
@@ -788,6 +792,79 @@ it('isolates the finance surface from claims (deposits, allocations, settlements
         claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
         expect($c->selectOne('select remaining_minor from deposits where id = ?', [$deposit])->remaining_minor)->toBe(4000)
             ->and($c->selectOne('select status from claims where id = ?', [$claim])->status)->toBe('draft');
+    });
+});
+
+it('isolates the HR and Assets surface from claims (13 tables, TENANT_FACILITY — §3.45–3.47)', function () {
+    rlsTx(rlsConn(), function ($c): void {
+        $t = claimsTenants($c);
+        $department = (string) Str::uuid();
+        $staff = (string) Str::uuid();
+        $position = (string) Str::uuid();
+        $shiftTemplate = (string) Str::uuid();
+        $roster = (string) Str::uuid();
+        $attendance = (string) Str::uuid();
+        $leaveType = (string) Str::uuid();
+        $leaveRequest = (string) Str::uuid();
+        $payrollExport = (string) Str::uuid();
+        $assetCategory = (string) Str::uuid();
+        $asset = (string) Str::uuid();
+        $location = (string) Str::uuid();
+        $assetTransfer = (string) Str::uuid();
+        $maintenance = (string) Str::uuid();
+        $workOrder = (string) Str::uuid();
+        $iotReading = (string) Str::uuid();
+
+        // Full chain in tenant A (RLS policies apply on every row).
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
+        $c->insert('insert into departments (id, tenant_id, facility_id, name, code, status) values (?, ?, ?, ?, ?, ?)', [$department, $t['tenantA'], $t['facilityA'], 'HR', 'hr', 'active']);
+        $c->insert('insert into staff (id, tenant_id, facility_id, department_id, employee_code, full_name, designation, status) values (?, ?, ?, ?, ?, ?, ?, ?)', [$staff, $t['tenantA'], $t['facilityA'], $department, 'EMP-HR', 'HR Staff', 'Officer', 'active']);
+        $c->insert('insert into positions (id, tenant_id, facility_id, department_id, code, name, status) values (?, ?, ?, ?, ?, ?, ?)', [$position, $t['tenantA'], $t['facilityA'], $department, 'POS-HR', 'HR Officer', 'active']);
+        $c->insert('insert into shift_templates (id, tenant_id, facility_id, code, name, shift_type, starts_at, ends_at, working_minutes, status) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$shiftTemplate, $t['tenantA'], $t['facilityA'], 'SHIFT-D', 'Day', 'day', '08:00', '16:00', 480, 'active']);
+        $c->insert('insert into rosters (id, tenant_id, facility_id, staff_id, shift_template_id, roster_date, status, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?)', [$roster, $t['tenantA'], $t['facilityA'], $staff, $shiftTemplate, '2026-08-16', 'scheduled', 0]);
+        $c->insert('insert into attendance_records (id, tenant_id, facility_id, staff_id, attendance_date, status, source, correction_status, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?)', [$attendance, $t['tenantA'], $t['facilityA'], $staff, '2026-08-16', 'present', 'clock', 'none', 0]);
+        $c->insert('insert into leave_types (id, tenant_id, facility_id, code, name, paid_days_per_year, carryover_days, status) values (?, ?, ?, ?, ?, ?, ?, ?)', [$leaveType, $t['tenantA'], $t['facilityA'], 'LV-A', 'Annual', 30, 5, 'active']);
+        $c->insert('insert into leave_requests (id, tenant_id, facility_id, staff_id, leave_type_id, starts_on, ends_on, days_requested, status, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$leaveRequest, $t['tenantA'], $t['facilityA'], $staff, $leaveType, '2026-08-20', '2026-08-22', 3, 'pending', 0]);
+        $c->insert('insert into payroll_exports (id, tenant_id, facility_id, period_start, period_end, row_count, format, payload_hash, exported_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?)', [$payrollExport, $t['tenantA'], $t['facilityA'], '2026-08-01', '2026-08-31', 0, 'payroll_ready', 'hash', '2026-08-16 00:00:00+00']);
+        $c->insert('insert into asset_categories (id, tenant_id, facility_id, code, name, status) values (?, ?, ?, ?, ?, ?)', [$assetCategory, $t['tenantA'], $t['facilityA'], 'AST-IMG', 'Imaging', 'active']);
+        $c->insert('insert into assets (id, tenant_id, facility_id, category_id, name, lifecycle_status, status, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?)', [$asset, $t['tenantA'], $t['facilityA'], $assetCategory, 'MRI-1', 'procured', 'active', 0]);
+        $c->insert('insert into locations (id, tenant_id, facility_id, name, code, type, status) values (?, ?, ?, ?, ?, ?, ?)', [$location, $t['tenantA'], $t['facilityA'], 'Store', 'store-1', 'store', 'active']);
+        $c->insert('insert into asset_transfers (id, tenant_id, facility_id, asset_id, to_location_id, transferred_at) values (?, ?, ?, ?, ?, ?)', [$assetTransfer, $t['tenantA'], $t['facilityA'], $asset, $location, '2026-08-16 00:00:00+00']);
+        $c->insert('insert into maintenance_schedules (id, tenant_id, facility_id, asset_id, schedule_type, frequency_days, next_due_date, status, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?)', [$maintenance, $t['tenantA'], $t['facilityA'], $asset, 'preventive', 90, '2026-11-01', 'active', 0]);
+        $c->insert('insert into work_orders (id, tenant_id, facility_id, asset_id, work_order_number, status, opened_at, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?)', [$workOrder, $t['tenantA'], $t['facilityA'], $asset, 'WO-HR-1', 'open', '2026-08-16 00:00:00+00', 0]);
+        $c->insert('insert into iot_readings (id, tenant_id, facility_id, asset_id, reading_type, reading_value, read_at, source) values (?, ?, ?, ?, ?, ?, ?, ?)', [$iotReading, $t['tenantA'], $t['facilityA'], $asset, 'location', '{}', '2026-08-16 00:00:00+00', 'manual']);
+
+        // Own tenant+facility claims → visible.
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
+        expect($c->selectOne('select id from attendance_records where id = ?', [$attendance]))->not->toBeNull()
+            ->and($c->selectOne('select id from assets where id = ?', [$asset]))->not->toBeNull()
+            ->and($c->selectOne('select id from iot_readings where id = ?', [$iotReading]))->not->toBeNull();
+
+        // Another tenant → invisible; update/delete affect zero rows.
+        claimsSet($c, ['app_tenant_id' => $t['tenantB'], 'app_facility_id' => $t['facilityB']]);
+        expect($c->selectOne('select id from positions where id = ?', [$position]))->toBeNull()
+            ->and($c->selectOne('select id from assets where id = ?', [$asset]))->toBeNull()
+            ->and($c->update('update attendance_records set status = ? where id = ?', ['late', $attendance]))->toBe(0)
+            ->and($c->update('update assets set lifecycle_status = ? where id = ?', ['retired', $asset]))->toBe(0)
+            ->and($c->delete('delete from work_orders where id = ?', [$workOrder]))->toBe(0)
+            ->and($c->delete('delete from iot_readings where id = ?', [$iotReading]))->toBe(0);
+
+        // Same tenant, a different facility → invisible (TENANT_FACILITY).
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityB']]);
+        expect($c->selectOne('select id from rosters where id = ?', [$roster]))->toBeNull()
+            ->and($c->selectOne('select id from payroll_exports where id = ?', [$payrollExport]))->toBeNull()
+            ->and($c->selectOne('select id from leave_requests where id = ?', [$leaveRequest]))->toBeNull();
+
+        // Org-wide claims (no facility) → the tenant's HR/asset rows are seen.
+        claimsSet($c, ['app_tenant_id' => $t['tenantA']]);
+        expect($c->selectOne('select id from assets where id = ?', [$asset]))->not->toBeNull()
+            ->and($c->selectOne('select id from attendance_records where id = ?', [$attendance]))->not->toBeNull();
+
+        // The rows are untouched by every attack above.
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
+        expect($c->selectOne('select status from attendance_records where id = ?', [$attendance])->status)->toBe('present')
+            ->and($c->selectOne('select lifecycle_status from assets where id = ?', [$asset])->lifecycle_status)->toBe('procured')
+            ->and($c->selectOne('select status from work_orders where id = ?', [$workOrder])->status)->toBe('open');
     });
 });
 
