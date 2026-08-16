@@ -457,6 +457,12 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
         ->middleware('authorize:followup:view');
     Route::post('follow-ups/{followUp}/book', [FollowUpController::class, 'book'])
         ->middleware('authorize:followup:manage');
+    // Phase 3 slice 9 — appointment auto-creation from a follow-up plan: the
+    // plan BECOMES the booking (the appointment is created from the plan and
+    // linked in one atomic step) instead of linking a separately-booked
+    // appointment.
+    Route::post('follow-ups/{followUp}/auto-book', [FollowUpController::class, 'autoBook'])
+        ->middleware('authorize:followup:manage');
     Route::post('follow-ups/{followUp}/cancel', [FollowUpController::class, 'cancel'])
         ->middleware('authorize:followup:manage');
     Route::post('follow-ups/{followUp}/complete', [FollowUpController::class, 'complete'])

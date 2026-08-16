@@ -17,6 +17,7 @@ use App\Support\AuditLogger;
 use App\Support\Envelope;
 use App\Support\ErrorCodes;
 use App\Support\TenantContext;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -171,6 +172,112 @@ final class FollowUpController extends Controller
         );
 
         return Envelope::success(data: self::present($followUp->fresh()), request: $request);
+    }
+
+    /**
+     * POST /follow-ups/{followUp}/auto-book — the plan BECOMES the booking:
+     * the appointment is created from the follow-up plan (patient, provider,
+     * facility, planned time) and linked to it in one atomic step — no
+     * separately-booked appointment needed (PRODUCT_REQUIREMENTS §6.7,
+     * DATABASE.md §3.17a). The appointment type follows the plan
+     * (return_visit → follow_up, teleconsult → teleconsult); the slot races
+     * on the provider-start unique index, so two plans for the same provider
+     * and start can never both book.
+     */
+    public function autoBook(Request $request, FollowUp $followUp): JsonResponse
+    {
+        AccessCheck::scoped($followUp, write: true);
+
+        $context = TenantContext::current();
+
+        try {
+            [$appointment, $followUp] = DB::transaction(function () use ($followUp, $context): array {
+                // Lock the plan: concurrent auto-books of the SAME follow-up
+                // serialize here — the loser reads status booked and gets a 409.
+                $locked = FollowUp::query()
+                    ->where('tenant_id', $followUp->tenant_id)
+                    ->where('id', $followUp->getKey())
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($locked === null) {
+                    throw new ApiException(ErrorCodes::NOT_FOUND, 'Follow-up not found.', 404);
+                }
+
+                $this->guardStatus($locked, [FollowUp::STATUS_PLANNED], 'auto-booked');
+
+                $startsAt = $locked->planned_at;
+
+                $appointment = Appointment::query()->create([
+                    'tenant_id' => $locked->tenant_id,
+                    'facility_id' => $locked->facility_id,
+                    'patient_id' => $locked->patient_id,
+                    'provider_staff_id' => $locked->provider_staff_id,
+                    'service_id' => null,
+                    'appointment_type' => $locked->follow_up_type === FollowUp::TYPE_TELECONSULT
+                        ? Appointment::TYPE_TELECONSULT
+                        : Appointment::TYPE_FOLLOW_UP,
+                    'starts_at' => $startsAt,
+                    // The plan carries no duration; the canonical 15-minute
+                    // consultation window (the schedule slot default).
+                    'ends_at' => $startsAt->copy()->addMinutes(15),
+                    'status' => Appointment::STATUS_BOOKED,
+                    'source' => Appointment::SOURCE_FOLLOW_UP,
+                    'lock_version' => 0,
+                    'created_by' => $context->user?->getKey(),
+                ]);
+
+                $this->applyTransition($locked, [FollowUp::STATUS_PLANNED], [
+                    'status' => FollowUp::STATUS_BOOKED,
+                    'booked_appointment_id' => $appointment->getKey(),
+                ], $context);
+
+                return [$appointment, $locked->fresh()];
+            });
+        } catch (QueryException $e) {
+            if (str_contains($e->getMessage(), 'uq_appointments_tenant_provider_start')) {
+                return Envelope::error(
+                    ErrorCodes::CONFLICT,
+                    'This provider already has an appointment at the planned time — the follow-up was not booked.',
+                    409,
+                    request: $request,
+                );
+            }
+
+            throw $e;
+        }
+
+        $this->audit->record(
+            'appointment.booked',
+            'appointment',
+            $appointment->getKey(),
+            ['patientId' => $appointment->patient_id, 'providerStaffId' => $appointment->provider_staff_id, 'startsAt' => $appointment->starts_at?->toIso8601String(), 'source' => Appointment::SOURCE_FOLLOW_UP],
+            $request,
+        );
+
+        $this->audit->record(
+            'follow_up.booked',
+            'follow_up',
+            $followUp->getKey(),
+            ['patientId' => $followUp->patient_id, 'encounterId' => $followUp->encounter_id, 'appointmentId' => $appointment->getKey()],
+            $request,
+        );
+
+        return Envelope::success(data: [
+            'followUp' => self::present($followUp),
+            'appointment' => [
+                'id' => $appointment->getKey(),
+                'facilityId' => $appointment->facility_id,
+                'patientId' => $appointment->patient_id,
+                'providerStaffId' => $appointment->provider_staff_id,
+                'appointmentType' => $appointment->appointment_type,
+                'startsAt' => $appointment->starts_at?->toIso8601String(),
+                'endsAt' => $appointment->ends_at?->toIso8601String(),
+                'status' => $appointment->status,
+                'source' => $appointment->source,
+                'lockVersion' => $appointment->lock_version,
+            ],
+        ], request: $request);
     }
 
     /**

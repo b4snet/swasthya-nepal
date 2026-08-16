@@ -432,7 +432,7 @@ erDiagram
 | **Purpose** | The booking itself: patient × provider × schedule occurrence × slot. Backs queues, tokens, check-in, cancellation, rescheduling. |
 | **Primary key** | `id uuid` |
 | **Tenant ownership** | Tenant-scoped: `tenant_id NOT NULL`, `facility_id NOT NULL`, `branch_id NULL`. |
-| **Important fields** | `tenant_id`, `facility_id`, `branch_id`, `patient_id uuid NOT NULL`, `provider_staff_id uuid NOT NULL`, `schedule_occurrence_id uuid NOT NULL`, `appointment_type text` (opd, follow_up, procedure, teleconsult), `starts_at timestamptz NOT NULL`, `ends_at timestamptz NOT NULL`, `status text` (booked, checked_in, in_consultation, completed, cancelled, no_show), `cancel_reason text NULL`, `token_no int NULL`, `queue_id uuid NULL`, `source text` (counter, portal, walk_in), `lock_version bigint`, `idempotency_key_id uuid NULL` |
+| **Important fields** | `tenant_id`, `facility_id`, `branch_id`, `patient_id uuid NOT NULL`, `provider_staff_id uuid NOT NULL`, `schedule_occurrence_id uuid NOT NULL`, `appointment_type text` (opd, follow_up, procedure, teleconsult), `starts_at timestamptz NOT NULL`, `ends_at timestamptz NOT NULL`, `status text` (booked, checked_in, in_consultation, completed, cancelled, no_show), `cancel_reason text NULL`, `token_no int NULL`, `queue_id uuid NULL`, `source text` (counter, portal, walk_in, follow_up — auto-created from a follow-up plan, slice 9), `lock_version bigint`, `idempotency_key_id uuid NULL` |
 | **Relationships** | N–1 `patients`; N–1 `staff` (provider); N–1 schedule occurrences; 1–0..1 `encounters` (converted visit) |
 | **Indexes** | `(tenant_id, provider_staff_id, starts_at)`; `(tenant_id, patient_id, starts_at)`; `(tenant_id, facility_id, status, starts_at)`; unique partial `(tenant_id, schedule_occurrence_id, starts_at) WHERE status IN ('booked','checked_in','in_consultation')` — slot double-booking guard |
 | **Uniqueness** | One live booking per slot; token sequence uniqueness handled by the queue (row-locked issuance) |
@@ -477,7 +477,7 @@ erDiagram
 
 ### 3.17a follow_ups
 
-> **Implemented with Phase 3 slice 4.** A planned return visit or teleconsult linked to the encounter that generated it (`PRODUCT_REQUIREMENTS` §6.7). Lifecycle: planned → booked (linked to a real appointment of the same patient/facility) → completed, or cancelled with a reason. Every transition is a compare-and-swap on `(status, lock_version)`.
+> **Implemented with Phase 3 slice 4; auto-creation added with Phase 3 slice 9.** A planned return visit or teleconsult linked to the encounter that generated it (`PRODUCT_REQUIREMENTS` §6.7). Lifecycle: planned → booked (linked to a real appointment of the same patient/facility) → completed, or cancelled with a reason. Every transition is a compare-and-swap on `(status, lock_version)`. Since slice 9 the plan can also be **auto-booked**: the appointment is created from the plan itself (patient, provider, facility, `planned_at`, type `follow_up`/`teleconsult`, `source='follow_up'`, 15-minute canonical window) and linked to it in one atomic transaction — no separately-booked appointment needed. The provider-start unique index makes two plans for the same provider and start mutually exclusive (409).
 
 | Aspect | Design |
 |---|---|

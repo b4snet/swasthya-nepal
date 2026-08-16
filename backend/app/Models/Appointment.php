@@ -25,6 +25,14 @@ class Appointment extends Model
     /** @use HasFactory<AppointmentFactory> */
     use HasFactory, HasUuid;
 
+    public const TYPE_OPD = 'opd';
+
+    public const TYPE_FOLLOW_UP = 'follow_up';
+
+    public const TYPE_PROCEDURE = 'procedure';
+
+    public const TYPE_TELECONSULT = 'teleconsult';
+
     public const STATUS_BOOKED = 'booked';
 
     public const STATUS_CHECKED_IN = 'checked_in';
@@ -42,6 +50,8 @@ class Appointment extends Model
     public const SOURCE_PORTAL = 'portal';
 
     public const SOURCE_WALK_IN = 'walk_in';
+
+    public const SOURCE_FOLLOW_UP = 'follow_up';
 
     /**
      * @var list<string>
