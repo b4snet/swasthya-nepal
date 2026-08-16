@@ -136,6 +136,13 @@ class RolePermissionSeeder extends Seeder
             'pharmacy:dispense' => ['domain' => 'pharmacy', 'description' => 'Verify and dispense prescriptions (stock deduction, audited)'],
             'pharmacy:stock' => ['domain' => 'pharmacy', 'description' => 'Manage pharmacy inventory (receipts and adjustments)'],
 
+            // Phase 3 slice 8 — pharmacy returns & reversals
+            // (PRODUCT_REQUIREMENTS §6.7): the pharmacist reverses a dispensed
+            // line — reason captured, stock restored, refund path opened.
+            // Like dispensing, this is the pharmacist's clinical act, so the
+            // permission is granted to the pharmacist role only.
+            'pharmacy:return' => ['domain' => 'pharmacy', 'description' => 'Return or reverse a dispensed prescription line (stock restoration, audited)'],
+
             // Phase 3 slice 4 — discharge & follow-up (PRODUCT_REQUIREMENTS
             // §6.7): planned return visits linked to the encounter.
             'followup:view' => ['domain' => 'followup', 'description' => 'View follow-up plans within scope'],
@@ -420,9 +427,12 @@ class RolePermissionSeeder extends Seeder
                 // Phase 5 — minimal patient visibility for dispensing;
                 // Phase 3 slice 3 — the full dispensing surface: verify,
                 // dispense (stock deduction), and stock management.
+                // Phase 3 slice 8 — returns/reversals (the pharmacist's
+                // clinical act, like dispensing).
                 'permissions' => [
                     'patient:view', 'patient:search',
                     'pharmacy:view', 'pharmacy:dispense', 'pharmacy:stock',
+                    'pharmacy:return',
                 ],
             ],
             'lab_technician' => [

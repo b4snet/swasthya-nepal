@@ -18,7 +18,7 @@ use Illuminate\Support\Str;
  */
 
 /**
- * The 46 tables with RLS enabled (the documented scoped set).
+ * The 47 tables with RLS enabled (the documented scoped set).
  *
  * @var list<string>
  */
@@ -33,6 +33,8 @@ const RLS_SCOPED_TABLES = [
     'lab_tests', 'lab_orders', 'lab_order_items',
     // Phase 3 slice 3 — pharmacy dispensing & inventory.
     'inventory_items', 'inventory_movements',
+    // Phase 3 slice 8 — pharmacy returns & reversals.
+    'pharmacy_returns',
     // Phase 3 slice 4 — discharge & follow-up.
     'follow_ups',
     // Phase 3 slice 5 — billing refunds & adjustments.
@@ -270,6 +272,12 @@ function seedTenantChain(ConnectionInterface $c, string $tenantId, string $facil
     $c->insert('insert into critical_value_events (id, tenant_id, facility_id, lab_order_item_id, patient_id, encounter_id, target_staff_id, status, detected_by_staff_id, detected_at, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$criticalEvent, $tenantId, $facilityId, $labItem, $patient, $encounter, $staff, 'triggered', $staff, '2026-08-15 12:45:00+00', 0]);
     $ids['critical_value_events'] = $criticalEvent;
 
+    // Phase 3 slice 8 — pharmacy return chained to the dispensed line and
+    // the posted charge above.
+    $pharmacyReturn = (string) Str::uuid();
+    $c->insert('insert into pharmacy_returns (id, tenant_id, facility_id, prescription_line_id, prescription_id, charge_id, quantity_minor, reason_code, reason_note, returned_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$pharmacyReturn, $tenantId, $facilityId, $line, $prescription, $charge, 1, 'patient_return', 'Chain return', '2026-08-15 13:00:00+00']);
+    $ids['pharmacy_returns'] = $pharmacyReturn;
+
     $audit = (string) Str::uuid();
     $c->insert('insert into audit_events (id, tenant_id, facility_id, occurred_at, actor_type, action, resource_type, payload, correlation_id, prev_hash, event_hash) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$audit, $tenantId, $facilityId, '2026-08-15 00:00:00+00', 'user', 'chain.seeded', 'test', '{}', (string) Str::uuid(), null, hash('sha256', (string) Str::uuid())]);
     $ids['audit_events'] = $audit;
@@ -329,6 +337,7 @@ function chainUpdateColumns(): array
         'payers' => ['code', 'upd'],
         'payment_allocations' => ['amount_minor', '1'],
         'payments' => ['provider_ref', 'upd'],
+        'pharmacy_returns' => ['reason_note', 'upd'],
         'prescription_lines' => ['instructions', 'upd'],
         'prescriptions' => ['notes', 'upd'],
         'role_assignments' => ['granted_by', '00000000-0000-0000-0000-000000000001'],
@@ -369,7 +378,7 @@ function inventoryTenants(ConnectionInterface $c): array
     return $t;
 }
 
-it('records the current RLS inventory: 46 scoped tables enabled + FORCED, 15 unscoped off', function () {
+it('records the current RLS inventory: 47 scoped tables enabled + FORCED, 15 unscoped off', function () {
     $rows = DB::connection('pgsql')->select(
         'select c.relname as table_name, c.relrowsecurity::text as enabled, c.relforcerowsecurity::text as forced
          from pg_class c
@@ -507,7 +516,7 @@ it('FORCE RLS binds a non-superuser table owner (defense-in-depth proof)', funct
     }
 });
 
-it('denies cross-tenant SELECT, UPDATE, and DELETE on all 46 tenant-owned tables — two-sided', function () {
+it('denies cross-tenant SELECT, UPDATE, and DELETE on all 47 tenant-owned tables — two-sided', function () {
     rlsTx(rlsConn(), function ($c): void {
         $t = inventoryTenants($c);
 

@@ -21,6 +21,7 @@ use App\Models\LabTest;
 use App\Models\Location;
 use App\Models\Medication;
 use App\Models\Payment;
+use App\Models\PharmacyReturn;
 use App\Models\Prescription;
 use App\Models\RefundRequest;
 use App\Models\Room;
@@ -94,6 +95,8 @@ final class AuditLogger
         // Phase 3 slice 3 — pharmacy inventory ledger.
         'inventory_item' => InventoryItem::class,
         'inventory_movement' => InventoryMovement::class,
+        // Phase 3 slice 8 — pharmacy returns & reversals.
+        'pharmacy_return' => PharmacyReturn::class,
         // Phase 3 slice 4 — discharge & follow-up.
         'follow_up' => FollowUp::class,
         // Phase 3 slice 5 — billing refunds & adjustments.

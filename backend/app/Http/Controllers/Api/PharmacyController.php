@@ -167,6 +167,8 @@ final class PharmacyController extends Controller
                     'source_type' => Charge::SOURCE_PRESCRIPTION,
                     'encounter_id' => $encounter->getKey(),
                     'prescription_id' => $prescription->getKey(),
+                    // The line linkage a return traces back to (slice 8).
+                    'prescription_line_id' => $line->getKey(),
                     'description' => $medication->generic_name.' ('.$medication->strength.') × '.$quantity,
                     'amount_minor' => $medication->price_minor * $quantity,
                     'currency' => $medication->currency,

@@ -31,6 +31,7 @@ use App\Http\Controllers\Api\PatientIdentifierController;
 use App\Http\Controllers\Api\PayerController;
 use App\Http\Controllers\Api\PermissionController;
 use App\Http\Controllers\Api\PharmacyController;
+use App\Http\Controllers\Api\PharmacyReturnController;
 use App\Http\Controllers\Api\PlatformAssignmentController;
 use App\Http\Controllers\Api\PlatformSupportController;
 use App\Http\Controllers\Api\RefundController;
@@ -435,6 +436,14 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
         ->middleware('authorize:pharmacy:dispense');
     Route::post('prescriptions/{prescription}/dispense', [PharmacyController::class, 'dispense'])
         ->middleware('authorize:pharmacy:dispense');
+
+    // Phase 3 slice 8 — pharmacy returns & reversals (PRODUCT_REQUIREMENTS
+    // §6.7): a pharmacist reverses a dispensed line — reason captured, stock
+    // restored, reversal recorded, and the refund path opened against the
+    // linked posted charge (billing approval remains the separate financial
+    // gate).
+    Route::post('prescription-lines/{prescriptionLine}/return', [PharmacyReturnController::class, 'store'])
+        ->middleware('authorize:pharmacy:return');
 
     // Phase 3 slice 4 — discharge & follow-up (PRODUCT_REQUIREMENTS §6.7):
     // clinical close of the visit + planned return visits linked to it.

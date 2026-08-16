@@ -23,6 +23,8 @@ class PrescriptionLine extends Model
 
     public const STATUS_CANCELLED = 'cancelled';
 
+    public const STATUS_REVERSED = 'reversed';
+
     /**
      * @var list<string>
      */

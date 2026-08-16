@@ -24,6 +24,8 @@ class InventoryMovement extends Model
 
     public const TYPE_DISPENSE = 'dispense';
 
+    public const TYPE_RETURN = 'return';
+
     /**
      * @var list<string>
      */

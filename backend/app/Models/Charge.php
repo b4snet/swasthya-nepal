@@ -40,6 +40,7 @@ class Charge extends Model
         'source_type',
         'encounter_id',
         'prescription_id',
+        'prescription_line_id',
         'description',
         'amount_minor',
         'currency',
