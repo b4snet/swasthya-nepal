@@ -133,6 +133,19 @@ class RolePermissionSeeder extends Seeder
             'lab:acknowledge' => ['domain' => 'lab', 'description' => 'Acknowledge a critical/panic laboratory value (the ordering clinician)'],
             'lab:escalate' => ['domain' => 'lab', 'description' => 'Escalate an unacknowledged critical/panic laboratory value (supervisor)'],
 
+            // Phase 3 slice 16 — Radiology (PRODUCT_REQUIREMENTS §6.9,
+            // CLINICAL_SAFETY §8). Report verification is a distinct
+            // permission from drafting (entry ≠ verification, same
+            // discipline as lab) and the different-staff guard is enforced
+            // in the service.
+            'radiology:view' => ['domain' => 'radiology', 'description' => 'View radiology orders, studies, reports, and the modality catalog within scope'],
+            'radiology:order' => ['domain' => 'radiology', 'description' => 'Order imaging studies from an encounter'],
+            'radiology:schedule' => ['domain' => 'radiology', 'description' => 'Schedule studies on modalities (modality capacity and slots)'],
+            'radiology:perform' => ['domain' => 'radiology', 'description' => 'Perform imaging studies (radiographer)'],
+            'radiology:report' => ['domain' => 'radiology', 'description' => 'Draft and amend radiology reports (entry, never verification)'],
+            'radiology:verify' => ['domain' => 'radiology', 'description' => 'Verify radiology reports before release (distinct from drafting)'],
+            'radiology:manage' => ['domain' => 'radiology', 'description' => 'Manage the modality catalog and radiology configuration'],
+
             // Phase 3 slice 3 — pharmacy dispensing & inventory
             // (PRODUCT_REQUIREMENTS §6.9). Verification and dispensing are
             // the same pharmacist workflow (unlike lab's entry ≠
@@ -313,6 +326,10 @@ class RolePermissionSeeder extends Seeder
                     'admission:view', 'admission:create', 'admission:discharge',
                     'admission:transfer', 'nursing:document', 'mar:administer',
                     'er:view', 'er:register', 'triage:assign', 'er:document', 'er:disposition', 'er:manage',
+                    // Phase 3 slice 16 — radiology (administer the whole
+                    // tenant's radiology surface).
+                    'radiology:view', 'radiology:order', 'radiology:schedule',
+                    'radiology:perform', 'radiology:report', 'radiology:verify', 'radiology:manage',
                 ],
             ],
             'org_finance' => [
@@ -368,6 +385,10 @@ class RolePermissionSeeder extends Seeder
                     'admission:view', 'admission:create', 'admission:discharge',
                     'admission:transfer', 'nursing:document', 'mar:administer',
                     'er:view', 'er:register', 'triage:assign', 'er:document', 'er:disposition', 'er:manage',
+                    // Phase 3 slice 16 — radiology (administer the facility's
+                    // radiology surface).
+                    'radiology:view', 'radiology:order', 'radiology:schedule',
+                    'radiology:perform', 'radiology:report', 'radiology:verify', 'radiology:manage',
                 ],
             ],
             'branch_manager' => [
@@ -389,6 +410,8 @@ class RolePermissionSeeder extends Seeder
                     'encounter:view', 'medication:view', 'billing:view',
                     'admission:view',
                     'er:view',
+                    // Phase 3 slice 16 — radiology read visibility.
+                    'radiology:view',
                 ],
             ],
             'receptionist' => [
@@ -444,6 +467,9 @@ class RolePermissionSeeder extends Seeder
                     // Phase 3 slice 14 — ER: the doctor triages (overrides
                     // require er:disposition), documents events, and disposes.
                     'er:view', 'triage:assign', 'er:document', 'er:disposition',
+                    // Phase 3 slice 16 — radiology: the referring clinician
+                    // orders imaging and views released reports.
+                    'radiology:view', 'radiology:order',
                 ],
             ],
             'nurse' => [
@@ -466,6 +492,8 @@ class RolePermissionSeeder extends Seeder
                     // events; clinical authority (disposition/overrides)
                     // remains with the doctor.
                     'er:view', 'triage:assign', 'er:document',
+                    // Phase 3 slice 16 — radiology read visibility.
+                    'radiology:view',
                 ],
             ],
             'pharmacist' => [
@@ -501,6 +529,31 @@ class RolePermissionSeeder extends Seeder
                 'permissions' => [
                     'patient:view', 'patient:search',
                     'lab:view', 'lab:verify', 'lab:report', 'lab:escalate', 'lab:correct',
+                ],
+            ],
+            // Phase 3 slice 16 — Radiology roles (PRODUCT_REQUIREMENTS §6.9
+            // users: radiographer, radiologist).
+            'radiographer' => [
+                'name' => 'Radiographer',
+                'scope_type' => 'facility',
+                // The imaging performer: schedules fall to the radiology
+                // receptionist (radiology:schedule is granted to the
+                // radiographer too — the department's scheduling act).
+                'permissions' => [
+                    'patient:view', 'patient:search',
+                    'radiology:view', 'radiology:schedule', 'radiology:perform',
+                ],
+            ],
+            'radiologist' => [
+                'name' => 'Radiologist',
+                'scope_type' => 'facility',
+                // The report writer: drafts and amends reports
+                // (radiology:report), and — as a DIFFERENT radiologist —
+                // verifies another's report (radiology:verify, entry ≠
+                // verification).
+                'permissions' => [
+                    'patient:view', 'patient:search',
+                    'radiology:view', 'radiology:report', 'radiology:verify',
                 ],
             ],
         ];

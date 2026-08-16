@@ -128,6 +128,12 @@ final class AuditLogger
         'triage_scale' => TriageScale::class,
         'triage_assignment' => TriageAssignment::class,
         'er_event' => ErEvent::class,
+        // Phase 3 slice 16 — Radiology: modality catalog, studies, reports,
+        // and DICOM references.
+        'modality' => Modality::class,
+        'study' => Study::class,
+        'radiology_report' => RadiologyReport::class,
+        'image_reference' => ImageReference::class,
     ];
 
     /**

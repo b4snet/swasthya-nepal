@@ -185,7 +185,7 @@ flowchart LR
 |---|---|---|
 | **FHIR** | **Design** | The R4 projection layer and contract-tested fixtures are specified; export/import readiness. No live FHIR endpoint exists or is claimed. |
 | **HL7** | **Design → readiness layer implemented** | The ORU^R01 parser (`Hl7Message`/`Hl7Segment`/`OruR01Parser`) and mapper (`OruResultMapper`) are implemented and contract-tested against fixtures (`backend/tests/Fixtures/hl7/`, `Hl7MessageTest`, `OruResultMapperTest`). This is the mapping/readiness layer only — no live HL7 connection exists; inbound transport (inbox, dedup, webhook signature verification) and LIS integration remain `future`. |
-| **DICOM** | **Design** | Reference-level readiness (study UIDs, accession, image refs) specified; the platform is not a PACS and does not claim DICOM viewing or storage. |
+| **DICOM** | **Design → readiness layer implemented** | The reference model is implemented: `studies` + `image_references` carry study/series/SOP instance UIDs and PACS URLs (references only, never pixels), the composite FK is the no-dangling guarantee, and the radiology report surface is contract-tested (RadiologyWorkflowTest). DICOM MWL worklists and any live PACS connection remain `future`; the platform is not a PACS and does not claim DICOM viewing or storage. |
 | **PACS** | **Future** | Depends on a hospital's PACS vendor; DICOM reference readiness is the enabler. No PACS is connected or claimed. |
 | **LIS** | **Future** | Depends on a hospital's instruments/LIS; HL7-ready adapters are the enabler. No analyzer is connected or claimed. |
 | **RIS** | **Future** | Depends on a hospital's RIS; the radiology order/study model is the interface. No RIS is connected or claimed. |

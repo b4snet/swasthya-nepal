@@ -36,6 +36,7 @@ use App\Http\Controllers\Api\PharmacyController;
 use App\Http\Controllers\Api\PharmacyReturnController;
 use App\Http\Controllers\Api\PlatformAssignmentController;
 use App\Http\Controllers\Api\PlatformSupportController;
+use App\Http\Controllers\Api\RadiologyController;
 use App\Http\Controllers\Api\RefundController;
 use App\Http\Controllers\Api\RoleAssignmentController;
 use App\Http\Controllers\Api\RoleController;
@@ -446,6 +447,40 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
         ->middleware('authorize:lab:acknowledge');
     Route::post('critical-value-events/{criticalValueEvent}/escalate', [CriticalValueEventController::class, 'escalate'])
         ->middleware('authorize:lab:escalate');
+
+    // Phase 3 slice 16 — Radiology (PRODUCT_REQUIREMENTS §6.9,
+    // CLINICAL_SAFETY §8): order imaging from an encounter, run the
+    // radiology worklist, manage the modality catalog, walk the study state
+    // machine (ordered → scheduled → performed → reported), draft/verify/
+    // amend reports, and attach DICOM references to performed studies.
+    Route::post('encounters/{encounter}/radiology-orders', [RadiologyController::class, 'storeOrder'])
+        ->middleware('authorize:radiology:order');
+    Route::get('radiology/queue', [RadiologyController::class, 'queue'])
+        ->middleware('authorize:radiology:view');
+    Route::get('radiology/modalities', [RadiologyController::class, 'modalities'])
+        ->middleware('authorize:radiology:view');
+    Route::post('radiology/modalities', [RadiologyController::class, 'storeModality'])
+        ->middleware('authorize:radiology:manage');
+    Route::patch('radiology/modalities/{modality}', [RadiologyController::class, 'updateModality'])
+        ->middleware('authorize:radiology:manage');
+    Route::get('studies/{study}', [RadiologyController::class, 'showStudy'])
+        ->middleware('authorize:radiology:view');
+    Route::post('studies/{study}/schedule', [RadiologyController::class, 'schedule'])
+        ->middleware('authorize:radiology:schedule');
+    Route::post('studies/{study}/perform', [RadiologyController::class, 'perform'])
+        ->middleware('authorize:radiology:perform');
+    Route::post('studies/{study}/cancel', [RadiologyController::class, 'cancelStudy'])
+        ->middleware('authorize:radiology:schedule');
+    Route::post('studies/{study}/report', [RadiologyController::class, 'draftReport'])
+        ->middleware('authorize:radiology:report');
+    Route::post('studies/{study}/image-references', [RadiologyController::class, 'addImageReferences'])
+        ->middleware('authorize:radiology:report');
+    Route::post('radiology-reports/{report}/verify', [RadiologyController::class, 'verifyReport'])
+        ->middleware('authorize:radiology:verify');
+    Route::post('radiology-reports/{report}/amend', [RadiologyController::class, 'amendReport'])
+        ->middleware('authorize:radiology:report');
+    Route::get('patients/{patient}/radiology-reports', [RadiologyController::class, 'forPatient'])
+        ->middleware('authorize:radiology:view');
 
     // Billing and payments.
     // Phase 3 slice 3 — pharmacy dispensing & inventory

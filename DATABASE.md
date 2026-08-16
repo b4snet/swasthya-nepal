@@ -727,22 +727,26 @@ Phase 3 slice 15 (ROADMAP Phase 10, PRODUCT_REQUIREMENTS §6.8, CLINICAL_SAFETY 
 | **Retention** | Clinical class |
 | **HL7/LIS readiness** | ORU^R01 parser + result mapper implemented and fixture-tested (INTEROPERABILITY.md §HL7) — the inbound shape (test code, value, unit, reference range, criticality from abnormal flags) is mapped but NOT yet wired to a live LIS/analyzer; unmatchable messages will quarantine to a review queue (future). |
 
-### 3.29 radiology (studies, radiology_reports) — planned, NOT yet implemented
+### 3.29 radiology (modalities, studies, radiology_reports, image_references)
 
-> Radiology orders currently run on the SHARED lab order surface (§3.28): a `lab_tests` row with `category = 'radiology'` is ordered and reported through `lab_orders`/`lab_order_items`. The modality scheduling, study records, and preliminary/final report tables below are the documented later-phase plan.
+Phase 3 slice 16 (ROADMAP Phase 11, PRODUCT_REQUIREMENTS §6.9, CLINICAL_SAFETY §8): the four tables that complete the documented Radiology workflow — the modality catalog, the study record (the imaging lifecycle on the SHARED order surface), the preliminary/final report chain with amendments, and the DICOM/PACS reference table.
+
+> Radiology orders run on the SHARED lab order surface (§3.28): a `lab_tests` row with `category = 'radiology'` is ordered through `lab_orders`/`lab_order_items`, and a `studies` row is created with the order (one study per order — partial unique `uq_studies_tenant_order`). Modality scheduling, study records, and the preliminary/final report tables below are the implemented Phase 3 slice 16 surface.
 
 | Aspect | Design |
 |---|---|
-| **Purpose** | Imaging studies and reports: order scheduling, modality performance, report drafting/verification, DICOM/PACS references. Two tables. |
-| **Primary key** | `studies.id`, `radiology_reports.id` (uuid) |
-| **Tenant ownership** | Tenant-scoped: `tenant_id NOT NULL`, `facility_id NOT NULL`. |
-| **Important fields** | Studies: `tenant_id`, `facility_id`, `order_id uuid NOT NULL`, `modality text` (xray, usg, ct, mri), `scheduled_at`, `performed_at`, `status text` (scheduled, performed, reported, cancelled), `dicom_refs jsonb` (study instance UIDs, image refs — never the pixels). Reports: `tenant_id`, `study_id uuid NOT NULL`, `report_type text` (preliminary, final, addendum), `content text`, `reported_by uuid`, `reported_at`, `verified_by uuid NULL`, `verified_at timestamptz NULL`, `status text` (draft, preliminary, final, amended), `parent_report_id uuid NULL` |
-| **Relationships** | Studies N–1 `orders`; reports N–1 `studies`; amendment chain self-references |
-| **Indexes** | `(tenant_id, order_id)`; `(tenant_id, modality, scheduled_at)`; reports: `(tenant_id, study_id)` |
-| **Uniqueness** | One study per order (where order-driven); one active final report per study |
-| **Audit** | Order → schedule → perform → report → verify transitions; prelim/final timing; amendments; report reads |
-| **Soft deletion** | No |
+| **Purpose** | Imaging studies and reports: order scheduling, modality performance, report drafting/verification, DICOM/PACS references — with PACS readiness (references, never pixels). Four tables. |
+| **Primary key** | `modalities.id`, `studies.id`, `radiology_reports.id`, `image_references.id` (uuid) |
+| **Tenant ownership** | TENANT_FACILITY tier: `tenant_id NOT NULL`, `facility_id NOT NULL`; RLS on + FORCED (companion migration `2026_08_16_230100`). |
+| **Important fields** | Modalities (catalog): `code varchar(50)`, `name`, `modality_type` (xray/usg/ct/mri/fluoroscopy/mammography/other), `daily_capacity`, `status` (active/inactive/down — `down` documents modality downtime), SoftDeletes, `lock_version`. Studies: `lab_order_id NOT NULL` (the shared order surface), `modality_id NULL`, `status` (ordered → scheduled → performed → reported; cancelled terminal), `ordered_at/scheduled_at/performed_at`, `performed_by_staff_id NULL`, `cancel_reason NULL` (CHECK: required when cancelled), `preparation_instructions NULL`, `lock_version`. Reports: `study_id NOT NULL`, `report_type` (preliminary/final/addendum), `status` (draft → preliminary → final; amended supersedes), `content`, `impression NULL`, `critical_findings NULL` (captured, NOT auto-escalated — see slice scope), `reported_by_staff_id/reported_at`, `verified_by_staff_id/verified_at NULL` (CHECK: verified_at requires verified_by), `parent_report_id NULL` (amendment chain), `lock_version`. Image refs: `study_id NOT NULL`, `reference_type` (dicom_study_instance_uid / dicom_series_instance_uid / dicom_sop_instance_uid / pacs_url), `reference_value` — references only, never pixels. |
+| **Relationships** | Modalities 1–N studies; studies N–1 `lab_orders` (composite `(tenant_id, lab_order_id)` — the study can never dangle); reports N–1 studies; amendment chain self-references via `parent_report_id` (composite `(tenant_id, parent_report_id)`); image refs N–1 studies (composite `(tenant_id, study_id)` — a reference can only exist against a study in the same tenant, the no-dangling guarantee) |
+| **Indexes** | `uq_modalities_tenant_facility_code` (partial, active); `uq_modalities_tenant_id` + `uq_modalities_tenant_facility` (FK backing); `uq_studies_tenant_order` (one study per order); `uq_studies_tenant_id` (FK backing); `uq_studies_tenant_modality_scheduled`; `idx_studies_tenant_facility_status`; `uq_radiology_reports_tenant_id` (FK backing); **`uq_radiology_reports_tenant_study_final` (partial — exactly one ACTIVE final per study)**; `idx_radiology_reports_tenant_study`; `idx_image_references_tenant_study` + `_tenant_value` |
+| **Uniqueness** | One modality code per (tenant, facility) while active; one study per order; one active final report per study |
+| **State machine** | Study: `ordered → scheduled → performed → reported` (CAS on `(status, lock_version)`; a concurrent actor affects 0 rows and gets 409 — no double-schedule/perform; `cancelled` is terminal with a reason). Report: `draft → preliminary|final` — verification is a distinct audited act by a DIFFERENT radiologist (entry ≠ verification, same discipline as lab); a verified FINAL releases the study to `reported` (preliminary does not); an amendment supersedes the final (`amended`, preserved) and creates a NEW draft with `parent_report_id` that must be re-verified — the study moves back to `performed` until the amended final is verified (reported is only ever achieved by a verified final). |
+| **Audit** | `radiology_order.created`, `modality.created/.updated`, `radiology_study.scheduled/.performed/.cancelled`, `radiology_report.drafted/.verified/.amended`, `radiology_study.image_references` — facts only (ids, timestamps, counts), NEVER report content, impressions, or critical-findings text (PHI) |
+| **Soft deletion** | Modalities soft-delete (catalog); studies/reports/references never delete |
 | **Retention** | Clinical class |
+| **Later-phase plan** | Critical-findings escalation (radiology analogue of `critical_value_events` — the `critical_findings` text is captured but never auto-escalated in this slice), DICOM MWL worklists and live PACS connections (INTEROPERABILITY.md §DICOM — the reference model is the enabler), report turnaround monitoring |
 
 ### 3.30 pharmacy (dispensings)
 

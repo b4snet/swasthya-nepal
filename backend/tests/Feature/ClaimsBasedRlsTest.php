@@ -17,7 +17,7 @@ use Illuminate\Support\Str;
  * exercised end-to-end. Every test runs in a transaction on the app-role
  * connection and rolls back in all paths: no fixtures leak.
  */
-it('re-keys every RLS policy to the claims helpers (228 policies, zero GUC references)', function () {
+it('re-keys every RLS policy to the claims helpers (244 policies, zero GUC references)', function () {
     $policies = DB::connection('pgsql')->select(
         <<<'SQL'
         select count(*) as total,
@@ -29,7 +29,7 @@ it('re-keys every RLS policy to the claims helpers (228 policies, zero GUC refer
         SQL
     )[0];
 
-    expect((int) $policies->total)->toBe(228)
+    expect((int) $policies->total)->toBe(244)
         ->and((int) $policies->not_claims)->toBe(0)
         ->and((int) $policies->still_guc)->toBe(0);
 
@@ -45,7 +45,7 @@ it('re-keys every RLS policy to the claims helpers (228 policies, zero GUC refer
     ]);
 });
 
-it('keeps the RLS matrix intact: 58 scoped on, 15 off, none on-without-policies', function () {
+it('keeps the RLS matrix intact: 62 scoped on, 15 off, none on-without-policies', function () {
     $matrix = DB::connection('pgsql')->selectOne(
         <<<'SQL'
         select count(*) filter (where relrowsecurity) as rls_on,
@@ -59,7 +59,7 @@ it('keeps the RLS matrix intact: 58 scoped on, 15 off, none on-without-policies'
         SQL
     );
 
-    // 73 tables total: 58 tenant-scoped (RLS on, FORCE on) + 15 off. The 15
+    // 77 tables total: 62 tenant-scoped (RLS on, FORCE on) + 15 off. The 15
     // are the framework/identity/public tables: users, roles, permissions,
     // role_permissions, organizations (tenant root — no tenant column to scope
     // by), migrations, jobs, job_batches, failed_jobs, cache, cache_locks,
@@ -70,7 +70,7 @@ it('keeps the RLS matrix intact: 58 scoped on, 15 off, none on-without-policies'
     // +4 since slice 14: er_registrations, triage_scales, triage_assignments,
     // er_events.
     // +2 since slice 15: specimens, lab_result_versions.
-    expect((int) $matrix->rls_on)->toBe(58)
+    expect((int) $matrix->rls_on)->toBe(62)
         ->and((int) $matrix->rls_off)->toBe(15)
         ->and((int) $matrix->on_without_policies)->toBe(0);
 });
@@ -544,6 +544,80 @@ it('isolates specimens and corrected result versions from claims (tenant, facili
         claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
         expect($c->selectOne('select status from specimens where id = ?', [$specimen])->status)->toBe('collected')
             ->and($c->selectOne('select result_value from lab_result_versions where id = ?', [$version])->result_value)->toBe('7.2');
+    });
+});
+
+it('isolates the Radiology surface from claims end to end (tenant, facility, mutation immunity)', function () {
+    rlsTx(rlsConn(), function ($c): void {
+        $t = claimsTenants($c);
+        $department = (string) Str::uuid();
+        $staff = (string) Str::uuid();
+        $patient = (string) Str::uuid();
+        $encounter = (string) Str::uuid();
+        $labTest = (string) Str::uuid();
+        $labOrder = (string) Str::uuid();
+        $modality = (string) Str::uuid();
+        $study = (string) Str::uuid();
+        $report = (string) Str::uuid();
+        $imageRef = (string) Str::uuid();
+
+        // Full chain in tenant A: staff → patient → encounter → radiology
+        // order (category='radiology') → study → report / image reference
+        // (RLS applies on every row).
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
+        $c->insert('insert into departments (id, tenant_id, facility_id, name, code, status) values (?, ?, ?, ?, ?, ?)', [$department, $t['tenantA'], $t['facilityA'], 'Radiology', 'rad', 'active']);
+        $c->insert('insert into staff (id, tenant_id, facility_id, department_id, employee_code, full_name, designation, status) values (?, ?, ?, ?, ?, ?, ?, ?)', [$staff, $t['tenantA'], $t['facilityA'], $department, 'EMP-RAD', 'Radiology Staff', 'Radiologist', 'active']);
+        $c->insert('insert into patients (id, tenant_id, facility_id, mrn, full_name, date_of_birth, sex, status) values (?, ?, ?, ?, ?, ?, ?, ?)', [$patient, $t['tenantA'], $t['facilityA'], 'MRN-RAD', 'Radiology Patient', '1990-01-01', 'female', 'active']);
+        $c->insert('insert into encounters (id, tenant_id, facility_id, patient_id, provider_staff_id, type, status, started_at) values (?, ?, ?, ?, ?, ?, ?, ?)', [$encounter, $t['tenantA'], $t['facilityA'], $patient, $staff, 'opd', 'open', '2026-08-16 09:00:00+00']);
+        $c->insert('insert into lab_tests (id, tenant_id, facility_id, code, name, category, status) values (?, ?, ?, ?, ?, ?, ?)', [$labTest, $t['tenantA'], $t['facilityA'], 'RAD-CXR', 'Chest X-Ray', 'radiology', 'active']);
+        $c->insert('insert into lab_orders (id, tenant_id, facility_id, patient_id, encounter_id, ordered_by_staff_id, priority, status, ordered_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?)', [$labOrder, $t['tenantA'], $t['facilityA'], $patient, $encounter, $staff, 'routine', 'ordered', '2026-08-16 09:10:00+00']);
+        $c->insert('insert into modalities (id, tenant_id, facility_id, code, name, modality_type, daily_capacity, status, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?)', [$modality, $t['tenantA'], $t['facilityA'], 'XR-1', 'X-Ray Room 1', 'xray', 20, 'active', 0]);
+        $c->insert('insert into studies (id, tenant_id, facility_id, lab_order_id, modality_id, status, ordered_at, scheduled_at, performed_at, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$study, $t['tenantA'], $t['facilityA'], $labOrder, $modality, 'performed', '2026-08-16 09:15:00+00', '2026-08-16 10:00:00+00', '2026-08-16 10:30:00+00', 0]);
+        $c->insert('insert into radiology_reports (id, tenant_id, facility_id, study_id, report_type, status, content, reported_by_staff_id, reported_at, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$report, $t['tenantA'], $t['facilityA'], $study, 'final', 'final', 'Normal film.', $staff, '2026-08-16 11:00:00+00', 0]);
+        $c->insert('insert into image_references (id, tenant_id, facility_id, study_id, reference_type, reference_value) values (?, ?, ?, ?, ?, ?)', [$imageRef, $t['tenantA'], $t['facilityA'], $study, 'dicom_study_instance_uid', '1.2.826.0.1.3680043.8.498.777777777']);
+
+        // Own tenant+facility claims → visible.
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
+        expect($c->selectOne('select id from modalities where id = ?', [$modality]))->not->toBeNull()
+            ->and($c->selectOne('select id from studies where id = ?', [$study]))->not->toBeNull()
+            ->and($c->selectOne('select id from radiology_reports where id = ?', [$report]))->not->toBeNull()
+            ->and($c->selectOne('select id from image_references where id = ?', [$imageRef]))->not->toBeNull();
+
+        // Another tenant → invisible; update/delete affect zero rows.
+        claimsSet($c, ['app_tenant_id' => $t['tenantB'], 'app_facility_id' => $t['facilityB']]);
+        expect($c->selectOne('select id from modalities where id = ?', [$modality]))->toBeNull()
+            ->and($c->update('update modalities set status = ? where id = ?', ['down', $modality]))->toBe(0)
+            ->and($c->delete('delete from modalities where id = ?', [$modality]))->toBe(0)
+            ->and($c->selectOne('select id from studies where id = ?', [$study]))->toBeNull()
+            ->and($c->update('update studies set status = ? where id = ?', ['cancelled', $study]))->toBe(0)
+            ->and($c->delete('delete from studies where id = ?', [$study]))->toBe(0)
+            ->and($c->selectOne('select id from radiology_reports where id = ?', [$report]))->toBeNull()
+            ->and($c->update('update radiology_reports set content = ? where id = ?', ['pwned', $report]))->toBe(0)
+            ->and($c->delete('delete from radiology_reports where id = ?', [$report]))->toBe(0)
+            ->and($c->selectOne('select id from image_references where id = ?', [$imageRef]))->toBeNull()
+            ->and($c->update('update image_references set reference_value = ? where id = ?', ['pwned', $imageRef]))->toBe(0)
+            ->and($c->delete('delete from image_references where id = ?', [$imageRef]))->toBe(0);
+
+        // Same tenant, a different facility → invisible (TENANT_FACILITY tier).
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityB']]);
+        expect($c->selectOne('select id from modalities where id = ?', [$modality]))->toBeNull()
+            ->and($c->selectOne('select id from studies where id = ?', [$study]))->toBeNull()
+            ->and($c->selectOne('select id from radiology_reports where id = ?', [$report]))->toBeNull()
+            ->and($c->selectOne('select id from image_references where id = ?', [$imageRef]))->toBeNull();
+
+        // Org-wide claims (no facility) → sees the tenant's rows.
+        claimsSet($c, ['app_tenant_id' => $t['tenantA']]);
+        expect($c->selectOne('select id from modalities where id = ?', [$modality]))->not->toBeNull()
+            ->and($c->selectOne('select id from studies where id = ?', [$study]))->not->toBeNull()
+            ->and($c->selectOne('select id from radiology_reports where id = ?', [$report]))->not->toBeNull()
+            ->and($c->selectOne('select id from image_references where id = ?', [$imageRef]))->not->toBeNull();
+
+        // The rows are untouched by every attack above.
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
+        expect($c->selectOne('select status from modalities where id = ?', [$modality])->status)->toBe('active')
+            ->and($c->selectOne('select status from studies where id = ?', [$study])->status)->toBe('performed')
+            ->and($c->selectOne('select content from radiology_reports where id = ?', [$report])->content)->toBe('Normal film.')
+            ->and($c->selectOne('select reference_value from image_references where id = ?', [$imageRef])->reference_value)->toBe('1.2.826.0.1.3680043.8.498.777777777');
     });
 });
 

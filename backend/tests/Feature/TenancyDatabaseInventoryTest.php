@@ -8,7 +8,7 @@ use Illuminate\Support\Str;
  * PROGRAM PHASE 1 — systematic database-layer tenancy verification.
  *
  * Unlike the representative isolation suites (DatabaseRowLevelSecurityTest,
- * ClinicalIsolationTest, ...), this suite iterates the FULL set of 58
+ * ClinicalIsolationTest, ...), this suite iterates the FULL set of 62
  * tenant-owned tables: it seeds a complete two-tenant fixture chain and then
  * probes every table for cross-tenant SELECT/UPDATE/DELETE isolation as the
  * least-privilege `swasthya_app` role (NOBYPASSRLS) under transaction-local
@@ -18,7 +18,7 @@ use Illuminate\Support\Str;
  */
 
 /**
- * The 58 tables with RLS enabled (the documented scoped set).
+ * The 62 tables with RLS enabled (the documented scoped set).
  *
  * @var list<string>
  */
@@ -33,6 +33,9 @@ const RLS_SCOPED_TABLES = [
     'lab_tests', 'lab_orders', 'lab_order_items',
     // Phase 3 slice 15 — specimen custody + corrected result versions.
     'specimens', 'lab_result_versions',
+    // Phase 3 slice 16 — Radiology: modality catalog, studies, reports,
+    // and DICOM references.
+    'modalities', 'studies', 'radiology_reports', 'image_references',
     // Phase 3 slice 3 — pharmacy dispensing & inventory.
     'inventory_items', 'inventory_movements',
     // Phase 3 slice 8 — pharmacy returns & reversals.
@@ -264,6 +267,24 @@ function seedTenantChain(ConnectionInterface $c, string $tenantId, string $facil
     $c->insert('insert into lab_result_versions (id, tenant_id, facility_id, lab_order_item_id, version_no, result_value, result_unit, reference_range, entered_by_staff_id, entered_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$resultVersion, $tenantId, $facilityId, $labItem, 1, '7.2', 'x10^9/L', '4.0-11.0', $staff, '2026-08-15 11:45:00+00']);
     $ids['lab_result_versions'] = $resultVersion;
 
+    // Phase 3 slice 16 — Radiology: a modality, the study chained to the
+    // lab order above, a report on the study, and a DICOM image reference.
+    $modality = (string) Str::uuid();
+    $c->insert('insert into modalities (id, tenant_id, facility_id, code, name, modality_type, daily_capacity, status, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?)', [$modality, $tenantId, $facilityId, $u('mod'), 'X-Ray Room 1', 'xray', 20, 'active', 0]);
+    $ids['modalities'] = $modality;
+
+    $study = (string) Str::uuid();
+    $c->insert('insert into studies (id, tenant_id, facility_id, lab_order_id, modality_id, status, ordered_at, scheduled_at, performed_at, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$study, $tenantId, $facilityId, $labOrder, $modality, 'performed', '2026-08-15 11:50:00+00', '2026-08-15 12:00:00+00', '2026-08-15 12:30:00+00', 0]);
+    $ids['studies'] = $study;
+
+    $radiologyReport = (string) Str::uuid();
+    $c->insert('insert into radiology_reports (id, tenant_id, facility_id, study_id, report_type, status, content, reported_by_staff_id, reported_at, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$radiologyReport, $tenantId, $facilityId, $study, 'final', 'final', 'Normal film.', $staff, '2026-08-15 12:45:00+00', 0]);
+    $ids['radiology_reports'] = $radiologyReport;
+
+    $imageReference = (string) Str::uuid();
+    $c->insert('insert into image_references (id, tenant_id, facility_id, study_id, reference_type, reference_value) values (?, ?, ?, ?, ?, ?)', [$imageReference, $tenantId, $facilityId, $study, 'dicom_study_instance_uid', '1.2.826.0.1.3680043.8.498.123456789']);
+    $ids['image_references'] = $imageReference;
+
     // Phase 3 slice 3 — pharmacy inventory (inventory_items →
     // inventory_movements, chained to the medication above).
     $inventoryItem = (string) Str::uuid();
@@ -398,6 +419,10 @@ function chainUpdateColumns(): array
         'lab_orders' => ['clinical_indication', 'upd'],
         'specimens' => ['container', 'upd'],
         'lab_result_versions' => ['result_unit', 'upd'],
+        'modalities' => ['name', 'upd'],
+        'studies' => ['status', 'scheduled'],
+        'radiology_reports' => ['status', 'amended'],
+        'image_references' => ['description', 'upd'],
         'lab_tests' => ['method', 'upd'],
         'locations' => ['code', 'upd'],
         'medications' => ['brand_name', 'upd'],
@@ -460,7 +485,7 @@ function inventoryTenants(ConnectionInterface $c): array
     return $t;
 }
 
-it('records the current RLS inventory: 58 scoped tables enabled + FORCED, 15 unscoped off', function () {
+it('records the current RLS inventory: 62 scoped tables enabled + FORCED, 15 unscoped off', function () {
     $rows = DB::connection('pgsql')->select(
         'select c.relname as table_name, c.relrowsecurity::text as enabled, c.relforcerowsecurity::text as forced
          from pg_class c
@@ -598,7 +623,7 @@ it('FORCE RLS binds a non-superuser table owner (defense-in-depth proof)', funct
     }
 });
 
-it('denies cross-tenant SELECT, UPDATE, and DELETE on all 58 tenant-owned tables — two-sided', function () {
+it('denies cross-tenant SELECT, UPDATE, and DELETE on all 62 tenant-owned tables — two-sided', function () {
     rlsTx(rlsConn(), function ($c): void {
         $t = inventoryTenants($c);
 
