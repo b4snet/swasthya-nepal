@@ -290,6 +290,13 @@ class RolePermissionSeeder extends Seeder
             // truth), the egress allowlist (SSRF guard), and OAuth2 partners.
             'integration:view' => ['domain' => 'interop', 'description' => 'View the integration registry, egress allowlist, and partners'],
             'integration:manage' => ['domain' => 'interop', 'description' => 'Register integrations, record measured status, manage the egress allowlist and OAuth2 partners'],
+            // Phase 3 slice 24 — Telehealth (PRODUCT_REQUIREMENTS §6.20):
+            // virtual consultations in the same schedule/queue model.
+            // telehealth:record is deliberately SEPARATE and restricted —
+            // recording is explicit, consent-bound, and policy-bound.
+            'telehealth:schedule' => ['domain' => 'telehealth', 'description' => 'Schedule teleconsults from teleconsult appointments and cancel scheduled ones'],
+            'telehealth:conduct' => ['domain' => 'telehealth', 'description' => 'Run the virtual consultation: ready, start (consent gate), video sessions, fallback, complete'],
+            'telehealth:record' => ['domain' => 'telehealth', 'description' => 'Start/stop an explicit recording (facility policy + patient consent also required)'],
         ];
     }
 
@@ -440,6 +447,9 @@ class RolePermissionSeeder extends Seeder
                     'portal:manage',
                     // Phase 3 slice 23 — Interoperability readiness.
                     'integration:view', 'integration:manage',
+                    // Phase 3 slice 24 — Telehealth: the org admin
+                    // administers the whole telehealth surface.
+                    'telehealth:schedule', 'telehealth:conduct', 'telehealth:record',
                 ],
             ],
             'org_finance' => [
@@ -534,6 +544,11 @@ class RolePermissionSeeder extends Seeder
                     'portal:manage',
                     // Phase 3 slice 23 — Interoperability readiness.
                     'integration:view', 'integration:manage',
+                    // Phase 3 slice 24 — Telehealth: the hospital admin
+                    // schedules and conducts virtual consultations and may
+                    // start explicit recordings (policy + consent still
+                    // gate the actual recording).
+                    'telehealth:schedule', 'telehealth:conduct', 'telehealth:record',
                 ],
             ],
             'branch_manager' => [
@@ -581,6 +596,10 @@ class RolePermissionSeeder extends Seeder
                     // Phase 3 slice 14 — ER front desk: minimal-data
                     // registration and the triage-priority queue.
                     'er:view', 'er:register',
+                    // Phase 3 slice 24 — Telehealth: the front desk
+                    // schedules teleconsults (conduct stays with the
+                    // clinician; recording is never a front-desk action).
+                    'telehealth:schedule',
                 ],
             ],
             'billing_clerk' => [
@@ -628,6 +647,11 @@ class RolePermissionSeeder extends Seeder
                     'ot:schedule', 'ot:document', 'ot:checklist', 'ot:close',
                     'icu:admit', 'icu:observe', 'icu:document', 'icu:transfer',
                     'bloodbank:issue', 'bloodbank:transfuse',
+                    // Phase 3 slice 24 — Telehealth: the doctor schedules
+                    // and conducts virtual consultations. telehealth:record
+                    // is deliberately NOT granted — recording is a separate
+                    // restricted permission (PRODUCT_REQUIREMENTS §6.20).
+                    'telehealth:schedule', 'telehealth:conduct',
                 ],
             ],
             'nurse' => [

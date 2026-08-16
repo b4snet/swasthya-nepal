@@ -53,6 +53,7 @@ use App\Http\Controllers\Api\RoomController;
 use App\Http\Controllers\Api\ScheduleController;
 use App\Http\Controllers\Api\ServiceController;
 use App\Http\Controllers\Api\StaffController;
+use App\Http\Controllers\Api\TelehealthController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\WardController;
 use App\Http\Middleware\ResolvePartnerContext;
@@ -929,6 +930,35 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
         ->middleware('authorize:integration:manage');
     Route::post('interop/partners/{partner}/revoke', [InteropController::class, 'revokePartner'])
         ->middleware('authorize:integration:manage');
+
+    // Phase 3 slice 24 — Telehealth (ROADMAP Phase 19, PRODUCT_REQUIREMENTS
+    // §6.20): virtual consultations in the SAME schedule/queue model, a
+    // consent-gated secure video session (metadata only), an EXPLICIT
+    // policy+consent-bound recording decision, a documented connectivity
+    // fallback, and the shared Encounter (TYPE_TELECONSULT) for notes,
+    // diagnoses, prescriptions, and sign-off at the SAME standard as OPD.
+    Route::post('telehealth/schedule', [TelehealthController::class, 'schedule'])
+        ->middleware('authorize:telehealth:schedule');
+    Route::get('telehealth/teleconsults', [TelehealthController::class, 'index'])
+        ->middleware('authorize:telehealth:conduct');
+    Route::get('telehealth/teleconsults/{teleconsult}', [TelehealthController::class, 'show'])
+        ->middleware('authorize:telehealth:conduct');
+    Route::post('telehealth/teleconsults/{teleconsult}/ready', [TelehealthController::class, 'markReady'])
+        ->middleware('authorize:telehealth:conduct');
+    Route::post('telehealth/teleconsults/{teleconsult}/start', [TelehealthController::class, 'start'])
+        ->middleware('authorize:telehealth:conduct');
+    Route::post('telehealth/teleconsults/{teleconsult}/video-sessions', [TelehealthController::class, 'openVideoSession'])
+        ->middleware('authorize:telehealth:conduct');
+    Route::post('telehealth/video-sessions/{videoSession}/end', [TelehealthController::class, 'endVideoSession'])
+        ->middleware('authorize:telehealth:conduct');
+    Route::post('telehealth/video-sessions/{videoSession}/fail', [TelehealthController::class, 'failVideoSession'])
+        ->middleware('authorize:telehealth:conduct');
+    Route::post('telehealth/video-sessions/{videoSession}/recording', [TelehealthController::class, 'recording'])
+        ->middleware('authorize:telehealth:record');
+    Route::post('telehealth/teleconsults/{teleconsult}/complete', [TelehealthController::class, 'complete'])
+        ->middleware('authorize:telehealth:conduct');
+    Route::post('telehealth/teleconsults/{teleconsult}/cancel', [TelehealthController::class, 'cancel'])
+        ->middleware('authorize:telehealth:schedule');
 });
 
 // Patient Portal — portal-authenticated surface (Phase 3 slice 22,

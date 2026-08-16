@@ -15,10 +15,13 @@ use Illuminate\Support\Str;
  * claims. It also records the current RLS inventory (enabled/forced/policies)
  * and the deliberately permissive INSERT boundary, so any change to the
  * policy matrix becomes a visible, reviewed regression.
+ *
+ * The 120-table set is the RLS-on matrix (ClaimsBasedRlsTest asserts 120
+ * scoped + 15 unscoped); the 120 here must match it exactly.
  */
 
 /**
- * The 113 tables with RLS enabled (the documented scoped set).
+ * The 120 tables with RLS enabled (the documented scoped set).
  *
  * @var list<string>
  */
@@ -95,6 +98,10 @@ const RLS_SCOPED_TABLES = [
     // events, the egress allowlist, and the OAuth2 partner/token pair.
     'integrations', 'integration_events', 'egress_allowlist',
     'oauth_partners', 'oauth_partner_tokens',
+    // Phase 3 slice 24 — Telehealth (DATABASE.md §3.55,
+    // PRODUCT_REQUIREMENTS §6.20): the virtual-consultation record and its
+    // secure video-session metadata (consent-gated, recording-policy-bound).
+    'teleconsults', 'video_sessions',
     // TENANT_ONLY
     'payers', 'mrn_counters', 'patient_identifiers', 'patient_contacts',
     'insurance_policies', 'patient_documents', 'consents',
@@ -664,6 +671,21 @@ function seedTenantChain(ConnectionInterface $c, string $tenantId, string $facil
     $c->insert('insert into oauth_partner_tokens (id, tenant_id, oauth_partner_id, token_hash, scopes, expires_at, revoked_at, last_used_at, created_at, updated_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$partnerToken, $tenantId, $partner, hash('sha256', $partnerToken), '["fhir:Patient"]', '2026-08-17 12:00:00+00', null, null, '2026-08-16 12:00:00+00', '2026-08-16 12:00:00+00']);
     $ids['oauth_partner_tokens'] = $partnerToken;
 
+    // Phase 3 slice 24 — Telehealth (teleconsults, video_sessions —
+    // DATABASE.md §3.55). A teleconsult is booked through the SAME schedule
+    // model as OPD: a teleconsult appointment → teleconsult → video session
+    // (metadata only, consent-gated, recording-policy-bound).
+    $teleconsultAppointment = (string) Str::uuid();
+    $c->insert('insert into appointments (id, tenant_id, facility_id, patient_id, provider_staff_id, service_id, appointment_type, starts_at, ends_at, status, source, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$teleconsultAppointment, $tenantId, $facilityId, $patient, $staff, $service, 'teleconsult', '2026-08-16 15:00:00+00', '2026-08-16 15:30:00+00', 'booked', 'counter', 0]);
+
+    $teleconsult = (string) Str::uuid();
+    $c->insert('insert into teleconsults (id, tenant_id, facility_id, appointment_id, patient_id, provider_staff_id, status, scheduled_at, starts_at, ends_at, fallback_mode, fallback_reason, created_by_staff_id, updated_by_staff_id, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$teleconsult, $tenantId, $facilityId, $teleconsultAppointment, $patient, $staff, 'scheduled', '2026-08-16 15:00:00+00', '2026-08-16 15:00:00+00', '2026-08-16 15:30:00+00', null, null, $staff, $staff, 0]);
+    $ids['teleconsults'] = $teleconsult;
+
+    $videoSession = (string) Str::uuid();
+    $c->insert('insert into video_sessions (id, tenant_id, facility_id, teleconsult_id, status, started_at, ended_at, provider_session_ref, participant_type, recording_requested, recording_consent_verified, recording_started_at, recording_ended_at, recording_storage_ref, failure_reason, created_by_staff_id, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$videoSession, $tenantId, $facilityId, $teleconsult, 'ended', '2026-08-16 15:05:00+00', '2026-08-16 15:25:00+00', 'chain-room', 'provider', false, false, null, null, null, null, $staff, 0]);
+    $ids['video_sessions'] = $videoSession;
+
     // Support sessions are owner-or-platform visible: insert with the chain
     // user as the owning context (user_id GUC).
     $session = (string) Str::uuid();
@@ -737,6 +759,8 @@ function chainUpdateColumns(): array
         'egress_allowlist' => ['is_active', 'false'],
         'oauth_partners' => ['status', 'revoked'],
         'oauth_partner_tokens' => ['revoked_at', '2026-08-16 13:00:00+00'],
+        'teleconsults' => ['fallback_mode', 'phone'],
+        'video_sessions' => ['participant_type', 'patient'],
         'payment_allocations' => ['amount_minor', '1'],
         'payments' => ['provider_ref', 'upd'],
         'payroll_exports' => ['format', 'csv'],
@@ -831,7 +855,7 @@ function inventoryTenants(ConnectionInterface $c): array
     return $t;
 }
 
-it('records the current RLS inventory: 113 scoped tables enabled + FORCED, 15 unscoped off', function () {
+it('records the current RLS inventory: 120 scoped tables enabled + FORCED, 15 unscoped off', function () {
     $rows = DB::connection('pgsql')->select(
         'select c.relname as table_name, c.relrowsecurity::text as enabled, c.relforcerowsecurity::text as forced
          from pg_class c
@@ -969,7 +993,7 @@ it('FORCE RLS binds a non-superuser table owner (defense-in-depth proof)', funct
     }
 });
 
-it('denies cross-tenant SELECT, UPDATE, and DELETE on all 113 tenant-owned tables — two-sided', function () {
+it('denies cross-tenant SELECT, UPDATE, and DELETE on all 120 tenant-owned tables — two-sided', function () {
     rlsTx(rlsConn(), function ($c): void {
         $t = inventoryTenants($c);
 

@@ -85,12 +85,14 @@ use App\Models\Staff;
 use App\Models\StockBatch;
 use App\Models\SurgicalEvent;
 use App\Models\SurgicalTeamMember;
+use App\Models\Teleconsult;
 use App\Models\Theatre;
 use App\Models\TransferEvent;
 use App\Models\Transfusion;
 use App\Models\TriageAssignment;
 use App\Models\TriageScale;
 use App\Models\User;
+use App\Models\VideoSession;
 use App\Models\VitalObservation;
 use App\Models\Ward;
 use App\Models\WarningScore;
@@ -273,6 +275,13 @@ final class AuditLogger
         'egress_destination' => EgressDestination::class,
         'oauth_partner' => OauthPartner::class,
         'oauth_partner_token' => OauthPartnerToken::class,
+        // Phase 3 slice 24 — Telehealth (PRODUCT_REQUIREMENTS §6.20):
+        // virtual consultations and their secure video sessions. Payloads
+        // carry facts only — ids, statuses, mediums, timestamps — never
+        // clinical content or PHI (a session audit records WHAT was opened,
+        // not its media).
+        'teleconsult' => Teleconsult::class,
+        'video_session' => VideoSession::class,
     ];
 
     /**

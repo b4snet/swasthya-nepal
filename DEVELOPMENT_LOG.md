@@ -1770,3 +1770,44 @@ ent schedule → 409 with zero rows changed; cross-tenant isolation — read 404
 | Tracked-secret scan | 0 matches (remaining hits are pre-existing non-secret column-name/script matches) |
 
 **Remaining risks.** Real adapter implementations (LIS/PACS/national) are explicitly OUT of scope and never claimed — the registry records readiness truthfully; live FHIR/HL7 endpoints depend on real partners; the reporting replica wiring remains a deployment-phase task; the egress allowlist and webhook verification are the guards a future adapter must pass.
+
+---
+
+## Phase 3 — Slice 24: Telehealth (ROADMAP Phase 19, PRODUCT_REQUIREMENTS §6.20)
+
+**Date:** 2026-08-17
+
+**Objective.** Virtual consultations integrated with the SAME record, not a separate product (CLINICAL_SAFETY.md §7): a teleconsult is booked through the SAME schedule/queue model as OPD (`appointment_type = 'teleconsult'`), then conducted over a secure video session with an EXPLICIT, consent-bound recording decision and a documented connectivity-failure fallback. The shared `Encounter` (`type = 'teleconsult'`) is created at start and documented/signed to the SAME standard as OPD. No new dependencies; monolith preserved.
+
+**Files created.**
+- Migrations: `2026_08_17_310000_create_telehealth_tables.php` (teleconsults + video_sessions — video sessions are METADATA ONLY: provider room ref / storage ref, never pixels or media), `2026_08_17_310100_enable_telehealth_row_level_security.php` (2 × 4 = 8 policies, RLS + FORCE, TENANT_FACILITY tier)
+- Models: `Teleconsult`, `VideoSession` (+ 2 factories)
+- Service: `TelehealthService` — the full state machine (scheduled → ready → in_progress → completed; cancelled / failed side branches), the CONSENT GATE (ACTIVE telehealth consent covering the medium before start), the RECORDING POLICY (facility `telehealth.recording_policy` setting — default disabled — + separate `telehealth:record` permission + patient consent when required), CAS on every transition, the documented fallback (phone / in_person / reschedule — never a silent drop), and duplicate-schedule 409 via partial unique
+- Requests: `Telehealth/ScheduleTeleconsultRequest`, `StartTeleconsultRequest`, `OpenVideoSessionRequest`, `FailVideoSessionRequest`, `RecordingRequest`
+- Controller: `TelehealthController` (`authorize:telehealth:schedule` for schedule/cancel; `authorize:telehealth:conduct` for ready/start/video-sessions/end/fail/complete; `authorize:telehealth:record` — separate and restricted — for explicit recording start/stop)
+- Test: `TelehealthTest`
+
+**Files modified.** `routes/api.php` (telehealth group in the tenant group), `RolePermissionSeeder` (3 permissions: `telehealth:schedule` — org_admin/hospital_admin/receptionist; `telehealth:conduct` — org_admin/hospital_admin/doctor; `telehealth:record` — org_admin/hospital_admin only), `AuditLogger` (teleconsult + video_session resource types, `telehealth.*` actions), `ClaimsBasedRlsTest` (468 → 476 policies, matrix 118 → 120), `TenancyDatabaseInventoryTest` (+2 tables in the scoped set + chain seed + update probes; 113 → 120 counts), `DATABASE.md` (§3.55), this log.
+
+**Migrations.** Two, applied to the disposable test DB (`swasthya_test`) and dev DB (`swasthya`). No real/staging Supabase touched.
+
+**Tests.**
+- New `TelehealthTest` — **18 tests / 114 assertions**: schedule from a teleconsult appointment + duplicate 409; refuse a non-teleconsult appointment; schedule denied without `telehealth:schedule`; authentication required on the whole surface; the full happy path (schedule → ready → consent-gated start → video session → OPD-standard note/sign → complete → session end) with every audit event; the consent gate (no active telehealth consent → 403, no encounter created, no state change); consent scope must cover the medium (phone fallback needs phone consent); connectivity failure with a documented fallback (session failed + teleconsult failed + fallback mode, never silent); invalid fallback mode rejected; recording gated by default-disabled policy (doctor without `telehealth:record` denied outright; admin with the permission refused with `recordingAllowed: false`, consult unaffected); recording allowed only when policy + consent + permission all pass (idempotent stop — one audit event); recording consent required under `consent_required` policy; complete refused before the encounter is signed; cancel + double-cancel 409; invalid transitions (start before ready, complete before in_progress); **tenant + facility isolation** (cross-tenant read 404 / write 403 — the established convention; sibling-facility invisible); video-session metadata PHI-safe (audit payloads fact-only, storage refs are references); **CAS concurrency** (two simultaneous starts — exactly one winner, one encounter)
+- ClaimsBasedRlsTest: telehealth RLS proof via matrix; 468 → 476 policies, matrix 118 → 120
+- TenancyDatabaseInventoryTest: +2 tables in the scoped set + chain seed + update probes; 120-table two-sided cross-tenant sweep green
+
+**Gate results (all green).**
+| Gate | Result |
+|---|---|
+| TelehealthTest (new) | **18 passed / 114 assertions** |
+| RLS suites (ClaimsBased + Inventory) | **34 passed / 2,366 assertions** (476 policies, 120-table sweep, FORCE intact, swasthya_app NOBYPASSRLS) |
+| Full backend Pest | **717 passed / 9,625 assertions** (Slice-23 baseline 699/9,432 → **+18/+193**) |
+| Node harness | **855 / 855** (unchanged — Laravel-only slice) |
+| Frontend Vitest | **26 passed** + tsc clean |
+| Harness TypeScript | PASS |
+| Pint | PASS (716 files, no fixes needed this run) |
+| `git diff --check` | CLEAN |
+| Debug-marker / artifact sweep | CLEAN (probe files removed during debugging) |
+| Tracked-secret scan | 0 matches in Slice-24 files |
+
+**Remaining risks.** The video/relay integration is provider-agnostic by design (`provider_session_ref` / `recording_storage_ref` are adapter-boundary references) — a real WebRTC/SFU vendor is a later-phase deployment decision, never simulated as a live call; the reporting replica wiring remains a deployment-phase task.
