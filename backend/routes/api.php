@@ -410,6 +410,31 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
     Route::post('lab-orders/{labOrder}/report', [LabOrderController::class, 'report'])
         ->middleware('authorize:lab:report');
 
+    // Phase 3 slice 15 — specimen custody (PRODUCT_REQUIREMENTS §6.8):
+    // collection mints per-tenant accession numbers and advances the order;
+    // accession → processing → completed | rejected records WHO/WHEN at each
+    // custody step (the medico-legal specimen chain).
+    Route::post('lab-orders/{labOrder}/specimens', [LabOrderController::class, 'collectSpecimens'])
+        ->middleware('authorize:lab:specimen');
+    Route::post('specimens/{specimen}/accession', [LabOrderController::class, 'accession'])
+        ->middleware('authorize:lab:specimen');
+    Route::post('specimens/{specimen}/process', [LabOrderController::class, 'processSpecimen'])
+        ->middleware('authorize:lab:process');
+    Route::post('specimens/{specimen}/complete', [LabOrderController::class, 'completeSpecimen'])
+        ->middleware('authorize:lab:process');
+    Route::post('specimens/{specimen}/reject', [LabOrderController::class, 'rejectSpecimen'])
+        ->middleware('authorize:lab:process');
+
+    // Phase 3 slice 15 — corrected result versions (CLINICAL_SAFETY §7): a
+    // reported (immutable) order is opened for correction by the lab quality
+    // gate (lab:correct), the corrected value is entered as version N+1
+    // (lab:result_entry — the original always remains visible), and the
+    // existing verify/report endpoints re-run the release discipline.
+    Route::post('lab-orders/{labOrder}/correct', [LabOrderController::class, 'initiateCorrection'])
+        ->middleware('authorize:lab:correct');
+    Route::post('lab-orders/{labOrder}/corrected-results', [LabOrderController::class, 'enterCorrectedResults'])
+        ->middleware('authorize:lab:result_entry');
+
     // Phase 3 slice 7 — laboratory critical-value escalation
     // (PRODUCT_REQUIREMENTS §6.8 workflow 6, CLINICAL_SAFETY §7): a critical
     // result flagged at entry triggers an event targeted at the ordering

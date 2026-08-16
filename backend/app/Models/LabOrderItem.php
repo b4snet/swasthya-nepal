@@ -7,6 +7,7 @@ use Database\Factories\LabOrderItemFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * One ordered test within a lab order (DATABASE.md §3.27). Carries the
@@ -65,5 +66,16 @@ class LabOrderItem extends Model
     public function test(): BelongsTo
     {
         return $this->belongsTo(LabTest::class, 'lab_test_id');
+    }
+
+    /**
+     * The append-only result version history (oldest first) — the original
+     * always remains visible alongside later corrections (CLINICAL_SAFETY §7).
+     *
+     * @return HasMany<LabResultVersion, $this>
+     */
+    public function resultVersions(): HasMany
+    {
+        return $this->hasMany(LabResultVersion::class, 'lab_order_item_id')->orderBy('version_no');
     }
 }

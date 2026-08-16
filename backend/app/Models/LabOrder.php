@@ -38,6 +38,8 @@ class LabOrder extends Model
 
     public const STATUS_REPORTED = 'reported';
 
+    public const STATUS_CORRECTING = 'correcting';
+
     public const PRIORITY_ROUTINE = 'routine';
 
     public const PRIORITY_URGENT = 'urgent';
@@ -80,6 +82,7 @@ class LabOrder extends Model
             'processing_at' => 'datetime',
             'verified_at' => 'datetime',
             'reported_at' => 'datetime',
+            'correcting_at' => 'datetime',
             'lock_version' => 'integer',
         ];
     }
@@ -114,5 +117,13 @@ class LabOrder extends Model
     public function items(): HasMany
     {
         return $this->hasMany(LabOrderItem::class, 'lab_order_id');
+    }
+
+    /**
+     * @return HasMany<Specimen, $this>
+     */
+    public function specimens(): HasMany
+    {
+        return $this->hasMany(Specimen::class, 'lab_order_id');
     }
 }

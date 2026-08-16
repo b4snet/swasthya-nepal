@@ -117,6 +117,11 @@ class RolePermissionSeeder extends Seeder
             'lab:result_entry' => ['domain' => 'lab', 'description' => 'Enter laboratory results (entry, never verification)'],
             'lab:verify' => ['domain' => 'lab', 'description' => 'Verify laboratory results before release (distinct from entry)'],
             'lab:report' => ['domain' => 'lab', 'description' => 'Release final laboratory/radiology reports'],
+            // Phase 3 slice 15 — corrected result versions (CLINICAL_SAFETY
+            // §7): opening a reported (immutable) order for correction is the
+            // lab quality gate — granted with lab:report authority, never to
+            // the entry technician.
+            'lab:correct' => ['domain' => 'lab', 'description' => 'Open a correction on a reported laboratory order (captured reason, new audited versions)'],
             'lab:manage' => ['domain' => 'lab', 'description' => 'Manage the lab/radiology test catalog'],
 
             // Phase 3 slice 7 — critical/panic value escalation
@@ -300,7 +305,7 @@ class RolePermissionSeeder extends Seeder
                     'encounter:prescribe', 'encounter:sign',
                     'medication:view', 'medication:manage',
                     'lab:view', 'lab:order', 'lab:manage',
-                    'lab:acknowledge', 'lab:escalate',
+                    'lab:acknowledge', 'lab:escalate', 'lab:correct',
                     'pharmacy:view', 'pharmacy:stock',
                     'followup:view', 'followup:manage',
                     'billing:view', 'billing:invoice', 'billing:collect',
@@ -346,7 +351,7 @@ class RolePermissionSeeder extends Seeder
                     'consent:view', 'consent:manage',
                     'document:view', 'document:manage',
                     'payer:view', 'payer:manage',
-                    'lab:view', 'lab:manage', 'lab:acknowledge', 'lab:escalate',
+                    'lab:view', 'lab:manage', 'lab:acknowledge', 'lab:escalate', 'lab:correct',
                     // Phase 6/7 — manages their facility's front desk and
                     // clinical workflows.
                     'schedule:view', 'schedule:manage',
@@ -354,6 +359,7 @@ class RolePermissionSeeder extends Seeder
                     'queue:view',
                     'encounter:view', 'encounter:create', 'encounter:document',
                     'encounter:prescribe', 'encounter:sign',
+
                     'medication:view', 'medication:manage',
                     'pharmacy:view', 'pharmacy:stock',
                     'followup:view', 'followup:manage',
@@ -494,7 +500,7 @@ class RolePermissionSeeder extends Seeder
                 // quality gate AFTER entry (entry ≠ verification).
                 'permissions' => [
                     'patient:view', 'patient:search',
-                    'lab:view', 'lab:verify', 'lab:report', 'lab:escalate',
+                    'lab:view', 'lab:verify', 'lab:report', 'lab:escalate', 'lab:correct',
                 ],
             ],
         ];

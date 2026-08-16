@@ -184,7 +184,7 @@ flowchart LR
 | System | Readiness | What "ready" means here |
 |---|---|---|
 | **FHIR** | **Design** | The R4 projection layer and contract-tested fixtures are specified; export/import readiness. No live FHIR endpoint exists or is claimed. |
-| **HL7** | **Design** | ADT/ORU message mappers specified and fixture-tested in design; the platform is ready to connect when a hospital's LIS/ADT system exists. No live HL7 connection exists. |
+| **HL7** | **Design → readiness layer implemented** | The ORU^R01 parser (`Hl7Message`/`Hl7Segment`/`OruR01Parser`) and mapper (`OruResultMapper`) are implemented and contract-tested against fixtures (`backend/tests/Fixtures/hl7/`, `Hl7MessageTest`, `OruResultMapperTest`). This is the mapping/readiness layer only — no live HL7 connection exists; inbound transport (inbox, dedup, webhook signature verification) and LIS integration remain `future`. |
 | **DICOM** | **Design** | Reference-level readiness (study UIDs, accession, image refs) specified; the platform is not a PACS and does not claim DICOM viewing or storage. |
 | **PACS** | **Future** | Depends on a hospital's PACS vendor; DICOM reference readiness is the enabler. No PACS is connected or claimed. |
 | **LIS** | **Future** | Depends on a hospital's instruments/LIS; HL7-ready adapters are the enabler. No analyzer is connected or claimed. |

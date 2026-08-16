@@ -1,0 +1,7 @@
+MSH|^~\&|SwasthyaLIS|LAB3|SWASTHYA|HOSP|20260816100000||ORU^R01|MSG-0003|P|2.3.1
+PID|1||MRN-1003||Brown^Bob||19771210|M
+OBR|1|ORD-1003|ACC-260816-GHI789|LFT^Liver Function Test^L|||||||||||blood||||||||||F
+OBX|1|NM|ALT^Alanine Aminotransferase^L||45|U/L|7-40|H|||F|||20260816100000
+OBX|2|NM|AST^Aspartate Aminotransferase^L||30|U/L|10-35|N|||F|||20260816100000
+OBR|2|ORD-1004|ACC-260816-JKL012|LIP^Lipid Profile^L|||||||||||blood||||||||||F
+OBX|1|NM|LDL^LDL Cholesterol^L||180|mg/dL|0-130|H|||F|||20260816100000

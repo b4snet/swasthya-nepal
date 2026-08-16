@@ -8,7 +8,7 @@ use Illuminate\Support\Str;
  * PROGRAM PHASE 1 — systematic database-layer tenancy verification.
  *
  * Unlike the representative isolation suites (DatabaseRowLevelSecurityTest,
- * ClinicalIsolationTest, ...), this suite iterates the FULL set of 56
+ * ClinicalIsolationTest, ...), this suite iterates the FULL set of 58
  * tenant-owned tables: it seeds a complete two-tenant fixture chain and then
  * probes every table for cross-tenant SELECT/UPDATE/DELETE isolation as the
  * least-privilege `swasthya_app` role (NOBYPASSRLS) under transaction-local
@@ -18,7 +18,7 @@ use Illuminate\Support\Str;
  */
 
 /**
- * The 56 tables with RLS enabled (the documented scoped set).
+ * The 58 tables with RLS enabled (the documented scoped set).
  *
  * @var list<string>
  */
@@ -31,6 +31,8 @@ const RLS_SCOPED_TABLES = [
     'medications', 'charges', 'invoices', 'payments', 'branches', 'patients',
     // Phase 3 slice 2 — laboratory & radiology order lifecycle.
     'lab_tests', 'lab_orders', 'lab_order_items',
+    // Phase 3 slice 15 — specimen custody + corrected result versions.
+    'specimens', 'lab_result_versions',
     // Phase 3 slice 3 — pharmacy dispensing & inventory.
     'inventory_items', 'inventory_movements',
     // Phase 3 slice 8 — pharmacy returns & reversals.
@@ -252,6 +254,16 @@ function seedTenantChain(ConnectionInterface $c, string $tenantId, string $facil
     $c->insert('insert into lab_order_items (id, tenant_id, facility_id, lab_order_id, lab_test_id) values (?, ?, ?, ?, ?)', [$labItem, $tenantId, $facilityId, $labOrder, $labTest]);
     $ids['lab_order_items'] = $labItem;
 
+    // Phase 3 slice 15 — specimen custody chain + the append-only corrected
+    // result version, both chained to the lab order item above.
+    $specimen = (string) Str::uuid();
+    $c->insert('insert into specimens (id, tenant_id, facility_id, lab_order_id, accession_number, specimen_type, status, collected_by_staff_id, collected_at, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$specimen, $tenantId, $facilityId, $labOrder, $u('acc'), 'blood', 'collected', $staff, '2026-08-15 11:40:00+00', 0]);
+    $ids['specimens'] = $specimen;
+
+    $resultVersion = (string) Str::uuid();
+    $c->insert('insert into lab_result_versions (id, tenant_id, facility_id, lab_order_item_id, version_no, result_value, result_unit, reference_range, entered_by_staff_id, entered_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$resultVersion, $tenantId, $facilityId, $labItem, 1, '7.2', 'x10^9/L', '4.0-11.0', $staff, '2026-08-15 11:45:00+00']);
+    $ids['lab_result_versions'] = $resultVersion;
+
     // Phase 3 slice 3 — pharmacy inventory (inventory_items →
     // inventory_movements, chained to the medication above).
     $inventoryItem = (string) Str::uuid();
@@ -384,6 +396,8 @@ function chainUpdateColumns(): array
         'inventory_movements' => ['reason', 'upd'],
         'lab_order_items' => ['result_unit', 'upd'],
         'lab_orders' => ['clinical_indication', 'upd'],
+        'specimens' => ['container', 'upd'],
+        'lab_result_versions' => ['result_unit', 'upd'],
         'lab_tests' => ['method', 'upd'],
         'locations' => ['code', 'upd'],
         'medications' => ['brand_name', 'upd'],
@@ -446,7 +460,7 @@ function inventoryTenants(ConnectionInterface $c): array
     return $t;
 }
 
-it('records the current RLS inventory: 56 scoped tables enabled + FORCED, 15 unscoped off', function () {
+it('records the current RLS inventory: 58 scoped tables enabled + FORCED, 15 unscoped off', function () {
     $rows = DB::connection('pgsql')->select(
         'select c.relname as table_name, c.relrowsecurity::text as enabled, c.relforcerowsecurity::text as forced
          from pg_class c
@@ -584,7 +598,7 @@ it('FORCE RLS binds a non-superuser table owner (defense-in-depth proof)', funct
     }
 });
 
-it('denies cross-tenant SELECT, UPDATE, and DELETE on all 56 tenant-owned tables — two-sided', function () {
+it('denies cross-tenant SELECT, UPDATE, and DELETE on all 58 tenant-owned tables — two-sided', function () {
     rlsTx(rlsConn(), function ($c): void {
         $t = inventoryTenants($c);
 

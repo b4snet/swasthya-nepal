@@ -32,6 +32,7 @@ use App\Models\Room;
 use App\Models\ScheduleException;
 use App\Models\ScheduleTemplate;
 use App\Models\Service;
+use App\Models\Specimen;
 use App\Models\Staff;
 use App\Models\TransferEvent;
 use App\Models\TriageAssignment;
@@ -113,6 +114,9 @@ final class AuditLogger
         'admission' => Admission::class,
         // Phase 3 slice 7 — laboratory critical-value escalation.
         'critical_value_event' => CriticalValueEvent::class,
+        // Phase 3 slice 15 — specimen custody (collection → … → completed /
+        // rejected, WHO/WHEN at every step).
+        'specimen' => Specimen::class,
         // Phase 3 slice 13 — the remaining documented IPD workflow:
         // audited transfers, nursing notes, MAR, and vital observations.
         'transfer_event' => TransferEvent::class,

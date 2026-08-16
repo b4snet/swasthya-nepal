@@ -17,7 +17,7 @@ use Illuminate\Support\Str;
  * exercised end-to-end. Every test runs in a transaction on the app-role
  * connection and rolls back in all paths: no fixtures leak.
  */
-it('re-keys every RLS policy to the claims helpers (220 policies, zero GUC references)', function () {
+it('re-keys every RLS policy to the claims helpers (228 policies, zero GUC references)', function () {
     $policies = DB::connection('pgsql')->select(
         <<<'SQL'
         select count(*) as total,
@@ -29,7 +29,7 @@ it('re-keys every RLS policy to the claims helpers (220 policies, zero GUC refer
         SQL
     )[0];
 
-    expect((int) $policies->total)->toBe(220)
+    expect((int) $policies->total)->toBe(228)
         ->and((int) $policies->not_claims)->toBe(0)
         ->and((int) $policies->still_guc)->toBe(0);
 
@@ -45,7 +45,7 @@ it('re-keys every RLS policy to the claims helpers (220 policies, zero GUC refer
     ]);
 });
 
-it('keeps the RLS matrix intact: 56 scoped on, 15 off, none on-without-policies', function () {
+it('keeps the RLS matrix intact: 58 scoped on, 15 off, none on-without-policies', function () {
     $matrix = DB::connection('pgsql')->selectOne(
         <<<'SQL'
         select count(*) filter (where relrowsecurity) as rls_on,
@@ -59,7 +59,7 @@ it('keeps the RLS matrix intact: 56 scoped on, 15 off, none on-without-policies'
         SQL
     );
 
-    // 71 tables total: 56 tenant-scoped (RLS on, FORCE on) + 15 off. The 15
+    // 73 tables total: 58 tenant-scoped (RLS on, FORCE on) + 15 off. The 15
     // are the framework/identity/public tables: users, roles, permissions,
     // role_permissions, organizations (tenant root — no tenant column to scope
     // by), migrations, jobs, job_batches, failed_jobs, cache, cache_locks,
@@ -69,7 +69,8 @@ it('keeps the RLS matrix intact: 56 scoped on, 15 off, none on-without-policies'
     // vital_observations.
     // +4 since slice 14: er_registrations, triage_scales, triage_assignments,
     // er_events.
-    expect((int) $matrix->rls_on)->toBe(56)
+    // +2 since slice 15: specimens, lab_result_versions.
+    expect((int) $matrix->rls_on)->toBe(58)
         ->and((int) $matrix->rls_off)->toBe(15)
         ->and((int) $matrix->on_without_policies)->toBe(0);
 });
@@ -486,6 +487,63 @@ it('isolates the Emergency surface from claims end to end (tenant, facility, mut
             ->and($c->selectOne('select name from triage_scales where id = ?', [$scale])->name)->toBe('Resuscitation')
             ->and($c->selectOne('select level from triage_assignments where id = ?', [$assignment])->level)->toBe(1)
             ->and($c->selectOne('select event_type from er_events where id = ?', [$event])->event_type)->toBe('registered');
+    });
+});
+
+it('isolates specimens and corrected result versions from claims (tenant, facility, mutation immunity)', function () {
+    rlsTx(rlsConn(), function ($c): void {
+        $t = claimsTenants($c);
+        $department = (string) Str::uuid();
+        $staff = (string) Str::uuid();
+        $patient = (string) Str::uuid();
+        $encounter = (string) Str::uuid();
+        $labTest = (string) Str::uuid();
+        $labOrder = (string) Str::uuid();
+        $labItem = (string) Str::uuid();
+        $specimen = (string) Str::uuid();
+        $version = (string) Str::uuid();
+
+        // Full chain in tenant A: staff → patient → encounter → lab order →
+        // item → specimen / result version (RLS applies on every row).
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
+        $c->insert('insert into departments (id, tenant_id, facility_id, name, code, status) values (?, ?, ?, ?, ?, ?)', [$department, $t['tenantA'], $t['facilityA'], 'Lab', 'lab', 'active']);
+        $c->insert('insert into staff (id, tenant_id, facility_id, department_id, employee_code, full_name, designation, status) values (?, ?, ?, ?, ?, ?, ?, ?)', [$staff, $t['tenantA'], $t['facilityA'], $department, 'EMP-SPC', 'Specimen Staff', 'Technician', 'active']);
+        $c->insert('insert into patients (id, tenant_id, facility_id, mrn, full_name, date_of_birth, sex, status) values (?, ?, ?, ?, ?, ?, ?, ?)', [$patient, $t['tenantA'], $t['facilityA'], 'MRN-SPC', 'Specimen Patient', '1990-01-01', 'female', 'active']);
+        $c->insert('insert into encounters (id, tenant_id, facility_id, patient_id, provider_staff_id, type, status, started_at) values (?, ?, ?, ?, ?, ?, ?, ?)', [$encounter, $t['tenantA'], $t['facilityA'], $patient, $staff, 'opd', 'open', '2026-08-16 09:00:00+00']);
+        $c->insert('insert into lab_tests (id, tenant_id, facility_id, code, name, category, status) values (?, ?, ?, ?, ?, ?, ?)', [$labTest, $t['tenantA'], $t['facilityA'], 'SPC', 'Specimen Test', 'laboratory', 'active']);
+        $c->insert('insert into lab_orders (id, tenant_id, facility_id, patient_id, encounter_id, ordered_by_staff_id, priority, status, ordered_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?)', [$labOrder, $t['tenantA'], $t['facilityA'], $patient, $encounter, $staff, 'routine', 'collected', '2026-08-16 09:10:00+00']);
+        $c->insert('insert into lab_order_items (id, tenant_id, facility_id, lab_order_id, lab_test_id, result_value) values (?, ?, ?, ?, ?, ?)', [$labItem, $t['tenantA'], $t['facilityA'], $labOrder, $labTest, '7.2']);
+        $c->insert('insert into specimens (id, tenant_id, facility_id, lab_order_id, accession_number, specimen_type, status, collected_by_staff_id, collected_at, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$specimen, $t['tenantA'], $t['facilityA'], $labOrder, 'ACC-CLAIMS-1', 'blood', 'collected', $staff, '2026-08-16 09:20:00+00', 0]);
+        $c->insert('insert into lab_result_versions (id, tenant_id, facility_id, lab_order_item_id, version_no, result_value, result_unit, entered_by_staff_id, entered_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?)', [$version, $t['tenantA'], $t['facilityA'], $labItem, 1, '7.2', 'x10^9/L', $staff, '2026-08-16 09:30:00+00']);
+
+        // Own tenant+facility claims → visible.
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
+        expect($c->selectOne('select id from specimens where id = ?', [$specimen]))->not->toBeNull()
+            ->and($c->selectOne('select id from lab_result_versions where id = ?', [$version]))->not->toBeNull();
+
+        // Another tenant → invisible; update/delete affect zero rows.
+        claimsSet($c, ['app_tenant_id' => $t['tenantB'], 'app_facility_id' => $t['facilityB']]);
+        expect($c->selectOne('select id from specimens where id = ?', [$specimen]))->toBeNull()
+            ->and($c->update('update specimens set status = ? where id = ?', ['processing', $specimen]))->toBe(0)
+            ->and($c->delete('delete from specimens where id = ?', [$specimen]))->toBe(0)
+            ->and($c->selectOne('select id from lab_result_versions where id = ?', [$version]))->toBeNull()
+            ->and($c->update('update lab_result_versions set result_value = ? where id = ?', ['pwned', $version]))->toBe(0)
+            ->and($c->delete('delete from lab_result_versions where id = ?', [$version]))->toBe(0);
+
+        // Same tenant, a different facility → invisible (TENANT_FACILITY tier).
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityB']]);
+        expect($c->selectOne('select id from specimens where id = ?', [$specimen]))->toBeNull()
+            ->and($c->selectOne('select id from lab_result_versions where id = ?', [$version]))->toBeNull();
+
+        // Org-wide claims (no facility) → sees the tenant's rows.
+        claimsSet($c, ['app_tenant_id' => $t['tenantA']]);
+        expect($c->selectOne('select id from specimens where id = ?', [$specimen]))->not->toBeNull()
+            ->and($c->selectOne('select id from lab_result_versions where id = ?', [$version]))->not->toBeNull();
+
+        // The rows are untouched by every attack above.
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
+        expect($c->selectOne('select status from specimens where id = ?', [$specimen])->status)->toBe('collected')
+            ->and($c->selectOne('select result_value from lab_result_versions where id = ?', [$version])->result_value)->toBe('7.2');
     });
 });
 
