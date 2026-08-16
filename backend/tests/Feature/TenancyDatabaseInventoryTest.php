@@ -8,7 +8,7 @@ use Illuminate\Support\Str;
  * PROGRAM PHASE 1 — systematic database-layer tenancy verification.
  *
  * Unlike the representative isolation suites (DatabaseRowLevelSecurityTest,
- * ClinicalIsolationTest, ...), this suite iterates the FULL set of 52
+ * ClinicalIsolationTest, ...), this suite iterates the FULL set of 56
  * tenant-owned tables: it seeds a complete two-tenant fixture chain and then
  * probes every table for cross-tenant SELECT/UPDATE/DELETE isolation as the
  * least-privilege `swasthya_app` role (NOBYPASSRLS) under transaction-local
@@ -18,7 +18,7 @@ use Illuminate\Support\Str;
  */
 
 /**
- * The 52 tables with RLS enabled (the documented scoped set).
+ * The 56 tables with RLS enabled (the documented scoped set).
  *
  * @var list<string>
  */
@@ -46,6 +46,9 @@ const RLS_SCOPED_TABLES = [
     // Phase 3 slice 13 — the remaining documented IPD workflow: audited
     // transfers, nursing notes, MAR administration, vital observations.
     'transfer_events', 'nursing_notes', 'mar_entries', 'vital_observations',
+    // Phase 3 slice 14 — Emergency: minimal-data registration, configurable
+    // triage, time-stamped ER events.
+    'er_registrations', 'triage_scales', 'triage_assignments', 'er_events',
     // Phase 3 slice 10 — follow-up reminders (TENANT tier, §3.37).
     'notifications',
     // TENANT_ONLY
@@ -312,6 +315,28 @@ function seedTenantChain(ConnectionInterface $c, string $tenantId, string $facil
     $c->insert('insert into vital_observations (id, tenant_id, facility_id, admission_id, encounter_id, patient_id, type, value, measured_at, measured_by) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$vital, $tenantId, $facilityId, $admission, $encounter, $patient, 'bp', '{"systolic": 120, "diastolic": 80}', '2026-08-15 13:45:00+00', $staff]);
     $ids['vital_observations'] = $vital;
 
+    // Phase 3 slice 14 — Emergency: registration, triage scale, triage
+    // assignment, and the ER event log chained to the ER encounter. A fresh
+    // ER encounter is created (the chain's main encounter is opd).
+    $erEncounter = (string) Str::uuid();
+    $c->insert('insert into encounters (id, tenant_id, facility_id, patient_id, provider_staff_id, type, status, started_at, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?)', [$erEncounter, $tenantId, $facilityId, $patient, $staff, 'er', 'open', '2026-08-15 13:00:00+00', 0]);
+
+    $erRegistration = (string) Str::uuid();
+    $c->insert('insert into er_registrations (id, tenant_id, facility_id, patient_id, encounter_id, registered_by, registered_at, is_unidentified) values (?, ?, ?, ?, ?, ?, ?, ?)', [$erRegistration, $tenantId, $facilityId, $patient, $erEncounter, $staff, '2026-08-15 13:05:00+00', true]);
+    $ids['er_registrations'] = $erRegistration;
+
+    $triageScale = (string) Str::uuid();
+    $c->insert('insert into triage_scales (id, tenant_id, facility_id, code, name, level, color, reassessment_minutes, is_default, status, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$triageScale, $tenantId, $facilityId, 'L1', 'Resuscitation', 1, 'red', 5, true, 'active', 0]);
+    $ids['triage_scales'] = $triageScale;
+
+    $triageAssignment = (string) Str::uuid();
+    $c->insert('insert into triage_assignments (id, tenant_id, facility_id, encounter_id, patient_id, triage_scale_id, level, color, assessed_by_staff_id, assessed_at, is_override, status, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$triageAssignment, $tenantId, $facilityId, $erEncounter, $patient, $triageScale, 1, 'red', $staff, '2026-08-15 13:10:00+00', false, 'active', 0]);
+    $ids['triage_assignments'] = $triageAssignment;
+
+    $erEvent = (string) Str::uuid();
+    $c->insert('insert into er_events (id, tenant_id, facility_id, encounter_id, patient_id, event_type, occurred_at, actor_staff_id) values (?, ?, ?, ?, ?, ?, ?, ?)', [$erEvent, $tenantId, $facilityId, $erEncounter, $patient, 'registered', '2026-08-15 13:05:00+00', $staff]);
+    $ids['er_events'] = $erEvent;
+
     $audit = (string) Str::uuid();
     $c->insert('insert into audit_events (id, tenant_id, facility_id, occurred_at, actor_type, action, resource_type, payload, correlation_id, prev_hash, event_hash) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$audit, $tenantId, $facilityId, '2026-08-15 00:00:00+00', 'user', 'chain.seeded', 'test', '{}', (string) Str::uuid(), null, hash('sha256', (string) Str::uuid())]);
     $ids['audit_events'] = $audit;
@@ -377,6 +402,10 @@ function chainUpdateColumns(): array
         'nursing_notes' => ['status', 'signed'],
         'mar_entries' => ['status', 'given'],
         'vital_observations' => ['type', 'temp'],
+        'er_registrations' => ['is_unidentified', 'true'],
+        'triage_scales' => ['name', 'upd'],
+        'triage_assignments' => ['level', '5'],
+        'er_events' => ['event_type', 'other'],
         'prescription_lines' => ['instructions', 'upd'],
         'prescriptions' => ['notes', 'upd'],
         'role_assignments' => ['granted_by', '00000000-0000-0000-0000-000000000001'],
@@ -417,7 +446,7 @@ function inventoryTenants(ConnectionInterface $c): array
     return $t;
 }
 
-it('records the current RLS inventory: 52 scoped tables enabled + FORCED, 15 unscoped off', function () {
+it('records the current RLS inventory: 56 scoped tables enabled + FORCED, 15 unscoped off', function () {
     $rows = DB::connection('pgsql')->select(
         'select c.relname as table_name, c.relrowsecurity::text as enabled, c.relforcerowsecurity::text as forced
          from pg_class c
@@ -555,7 +584,7 @@ it('FORCE RLS binds a non-superuser table owner (defense-in-depth proof)', funct
     }
 });
 
-it('denies cross-tenant SELECT, UPDATE, and DELETE on all 52 tenant-owned tables — two-sided', function () {
+it('denies cross-tenant SELECT, UPDATE, and DELETE on all 56 tenant-owned tables — two-sided', function () {
     rlsTx(rlsConn(), function ($c): void {
         $t = inventoryTenants($c);
 

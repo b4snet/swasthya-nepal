@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\ConsentController;
 use App\Http\Controllers\Api\CriticalValueEventController;
 use App\Http\Controllers\Api\DepartmentController;
 use App\Http\Controllers\Api\EncounterController;
+use App\Http\Controllers\Api\ErController;
 use App\Http\Controllers\Api\FacilityController;
 use App\Http\Controllers\Api\FacilitySettingsController;
 use App\Http\Controllers\Api\FollowUpController;
@@ -538,4 +539,29 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
         ->middleware('authorize:nursing:document');
     Route::get('admissions/{admission}/vitals', [IpdNursingController::class, 'indexVitals'])
         ->middleware('authorize:admission:view');
+
+    // Phase 3 slice 14 — Emergency (ROADMAP Phase 9, PRODUCT_REQUIREMENTS
+    // §6.6): minimal-data registration, configurable triage, time-stamped
+    // ER events, and audited admit/transfer/discharge disposition. The
+    // triage level IS the queue priority.
+    Route::post('er/registrations', [ErController::class, 'storeRegistration'])
+        ->middleware('authorize:er:register');
+    Route::get('er/queue', [ErController::class, 'queue'])
+        ->middleware('authorize:er:view');
+
+    Route::get('organizations/{organization}/er/triage-scales', [ErController::class, 'indexScales'])
+        ->middleware('authorize:er:view');
+    Route::post('organizations/{organization}/er/triage-scales', [ErController::class, 'storeScale'])
+        ->middleware('authorize:er:manage');
+    Route::patch('er/triage-scales/{triageScale}', [ErController::class, 'updateScale'])
+        ->middleware('authorize:er:manage');
+
+    Route::post('er/encounters/{encounter}/triage', [ErController::class, 'assignTriage'])
+        ->middleware('authorize:triage:assign');
+    Route::get('er/encounters/{encounter}/events', [ErController::class, 'indexEvents'])
+        ->middleware('authorize:er:view');
+    Route::post('er/encounters/{encounter}/events', [ErController::class, 'storeEvent'])
+        ->middleware('authorize:er:document');
+    Route::post('er/encounters/{encounter}/disposition', [ErController::class, 'disposition'])
+        ->middleware('authorize:er:disposition');
 });

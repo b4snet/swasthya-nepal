@@ -12,6 +12,8 @@ use App\Models\ClinicalNote;
 use App\Models\CriticalValueEvent;
 use App\Models\Department;
 use App\Models\Encounter;
+use App\Models\ErEvent;
+use App\Models\ErRegistration;
 use App\Models\FollowUp;
 use App\Models\InventoryItem;
 use App\Models\InventoryMovement;
@@ -32,6 +34,8 @@ use App\Models\ScheduleTemplate;
 use App\Models\Service;
 use App\Models\Staff;
 use App\Models\TransferEvent;
+use App\Models\TriageAssignment;
+use App\Models\TriageScale;
 use App\Models\User;
 use App\Models\VitalObservation;
 use App\Models\Ward;
@@ -115,6 +119,11 @@ final class AuditLogger
         'nursing_note' => NursingNote::class,
         'mar_entry' => MarEntry::class,
         'vital_observation' => VitalObservation::class,
+        // Phase 3 slice 14 — Emergency: registration, triage, events.
+        'er_registration' => ErRegistration::class,
+        'triage_scale' => TriageScale::class,
+        'triage_assignment' => TriageAssignment::class,
+        'er_event' => ErEvent::class,
     ];
 
     /**

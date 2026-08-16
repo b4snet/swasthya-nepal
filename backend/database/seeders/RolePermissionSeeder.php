@@ -178,6 +178,17 @@ class RolePermissionSeeder extends Seeder
             'admission:transfer' => ['domain' => 'admission', 'description' => 'Transfer an inpatient between beds or wards (audited, doctor-authorized)'],
             'nursing:document' => ['domain' => 'nursing', 'description' => 'Record and sign nursing notes and vital observations within scope'],
             'mar:administer' => ['domain' => 'mar', 'description' => 'Schedule and record medication administration on the MAR (identity-confirmed)'],
+
+            // Phase 3 slice 14 — Emergency (ROADMAP Phase 9,
+            // PRODUCT_REQUIREMENTS §6.6): minimal-data registration,
+            // configurable triage, time-stamped ER events, and audited
+            // admit/transfer/discharge disposition.
+            'er:view' => ['domain' => 'er', 'description' => 'View the ER queue, registrations, triage, and event log within scope'],
+            'er:register' => ['domain' => 'er', 'description' => 'Register a patient in the emergency department (minimal-data, possibly unidentified)'],
+            'triage:assign' => ['domain' => 'er', 'description' => 'Assign or reassess the triage acuity level of an ER patient'],
+            'er:document' => ['domain' => 'er', 'description' => 'Append time-stamped events to the ER record'],
+            'er:disposition' => ['domain' => 'er', 'description' => 'Dispose of an ER visit (admit to IPD / transfer / discharge) and triage overrides'],
+            'er:manage' => ['domain' => 'er', 'description' => 'Configure the facility triage scales (the acuity catalog)'],
         ];
     }
 
@@ -246,6 +257,7 @@ class RolePermissionSeeder extends Seeder
                     'schedule:view', 'appointment:view', 'queue:view',
                     'encounter:view', 'medication:view', 'pharmacy:view', 'followup:view', 'billing:view',
                     'admission:view',
+                    'er:view',
                 ],
             ],
             'org_admin' => [
@@ -295,6 +307,7 @@ class RolePermissionSeeder extends Seeder
                     'billing:refund', 'billing:refund-approve',
                     'admission:view', 'admission:create', 'admission:discharge',
                     'admission:transfer', 'nursing:document', 'mar:administer',
+                    'er:view', 'er:register', 'triage:assign', 'er:document', 'er:disposition', 'er:manage',
                 ],
             ],
             'org_finance' => [
@@ -348,6 +361,7 @@ class RolePermissionSeeder extends Seeder
                     'billing:refund', 'billing:refund-approve',
                     'admission:view', 'admission:create', 'admission:discharge',
                     'admission:transfer', 'nursing:document', 'mar:administer',
+                    'er:view', 'er:register', 'triage:assign', 'er:document', 'er:disposition', 'er:manage',
                 ],
             ],
             'branch_manager' => [
@@ -368,6 +382,7 @@ class RolePermissionSeeder extends Seeder
                     'schedule:view', 'appointment:view', 'queue:view',
                     'encounter:view', 'medication:view', 'billing:view',
                     'admission:view',
+                    'er:view',
                 ],
             ],
             'receptionist' => [
@@ -386,6 +401,9 @@ class RolePermissionSeeder extends Seeder
                     'schedule:view',
                     'appointment:view', 'appointment:book', 'appointment:checkin', 'appointment:cancel',
                     'queue:view',
+                    // Phase 3 slice 14 — ER front desk: minimal-data
+                    // registration and the triage-priority queue.
+                    'er:view', 'er:register',
                 ],
             ],
             'billing_clerk' => [
@@ -417,6 +435,9 @@ class RolePermissionSeeder extends Seeder
                     'lab:view', 'lab:order', 'lab:acknowledge',
                     'admission:view', 'admission:create', 'admission:discharge',
                     'admission:transfer',
+                    // Phase 3 slice 14 — ER: the doctor triages (overrides
+                    // require er:disposition), documents events, and disposes.
+                    'er:view', 'triage:assign', 'er:document', 'er:disposition',
                 ],
             ],
             'nurse' => [
@@ -435,6 +456,10 @@ class RolePermissionSeeder extends Seeder
                     // Phase 3 slice 13 — the nurse's IPD acts: nursing
                     // documentation (notes + vitals) and MAR administration.
                     'nursing:document', 'mar:administer',
+                    // Phase 3 slice 14 — ER: nurses triage and document
+                    // events; clinical authority (disposition/overrides)
+                    // remains with the doctor.
+                    'er:view', 'triage:assign', 'er:document',
                 ],
             ],
             'pharmacist' => [

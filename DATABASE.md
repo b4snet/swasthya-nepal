@@ -492,6 +492,30 @@ erDiagram
 | **Soft deletion** | No — cancellation is a status with a reason, never a delete |
 | **Retention** | Clinical class |
 
+### 3.17b emergency (er_registrations, triage_scales, triage_assignments, er_events)
+
+> **Implemented with Phase 3 slice 14** (ROADMAP Phase 9, PRODUCT_REQUIREMENTS §6.6). The Emergency surface reuses the clinical spine — an ER visit is an `encounters` row with `type='er'`, and ER admission reuses the IPD bed-claim path with `admission_type='emergency'` — plus four ER-specific tables (TENANT_FACILITY tier, RLS on + FORCED via companion migration `2026_08_16_210100` — 204 → 220 policies, scoped matrix 52 → 56):
+>
+> - **er_registrations** — minimal-data registration (speed over completeness): a full patient record is created with the facts at hand; an **unidentified** patient (no name) gets the documented placeholder (`full_name='Unidentified'`), `sex='unknown'`, and `estimated_age` (or the sentinel DOB `1900-01-01`); identity is later resolved through the existing controlled patient-merge. One registration per encounter (`uq_er_registrations_tenant_encounter`).
+> - **triage_scales** — the configurable acuity catalog (tenant+facility scoped, e.g. the 5-level emergency scale): `level` is the priority ordinal (1 = most urgent), `color`, `reassessment_minutes` (the reassessment interval), `is_default`, `status` active/inactive; one `code` per (tenant, facility); CAS-updated, never deleted while triage history references it (RESTRICT).
+> - **triage_assignments** — one **ACTIVE** assessment per ER encounter (partial unique `(tenant_id, encounter_id) WHERE status='active'` — the DB backstop against concurrent double-triage); a reassessment CAS-supersedes the active row and becomes the new active (history preserved); `level`/`color` are **snapshotted** from the scale at assessment so later catalog edits never rewrite triage history; an OVERRIDE (clinical authority) carries its reason (`chk_triage_assignments_override`).
+> - **er_events** — the append-only, time-stamped medico-legal ER log (`arrived`, `registered`, `triaged`, `reassessed`, `seen_by_doctor`, `treatment_started`, `lab_ordered`, `medication_administered`, `procedure`, `observation_started`, `disposition`, `transferred_out`, `discharged`, `other`). Immutable — no UPDATE/DELETE path exists; indexed by `(tenant_id, encounter_id, occurred_at)` and `(tenant_id, patient_id, occurred_at)`.
+>
+> **Queue**: `GET er/queue` returns the facility's open ER encounters ordered by triage priority (level asc, untriaged last, oldest registration first) — the triage level IS the queue priority. **Disposition** (`POST er/encounters/{encounter}/disposition`): `admitted` claims a bed through the SAME CAS bed-claim as IPD (`admission_type='emergency'`, encounter stays open) — no double-booking; `referred` (transfer out, documentation in the event), `home` (discharge with instructions), and `deceased` close the encounter. Permissions: `er:view`, `er:register` (front desk — receptionist/admin; never clinical roles), `triage:assign` (nurse/doctor/admin), `er:document` (clinical), `er:disposition` (clinical authority — doctor/admin; also required for triage overrides), `er:manage` (scale configuration — admin). Audit (`er.registered`, `triage_scale.created/.updated`, `triage.assigned/.overridden`, `er.event`, `er.disposition`) carries facts and ids only — presenting complaints, event notes, and override reasons are PHI and never reach audit payloads.
+
+| Aspect | Design |
+|---|---|
+| **Purpose** | Emergency department registration, triage, and the medico-legal event timeline. Four tables. |
+| **Primary key** | `er_registrations.id`, `triage_scales.id`, `triage_assignments.id`, `er_events.id` (all uuid) |
+| **Tenant ownership** | TENANT_FACILITY tier: `tenant_id NOT NULL`, `facility_id NOT NULL` on all four; RLS on + FORCED. |
+| **Important fields** | Registrations: `patient_id`, `encounter_id` (both NOT NULL, composite-FK), `registered_by`, `registered_at timestamptz`, `presenting_complaint NULL`, `estimated_age NULL` (CHECK 0–150), `is_unidentified boolean`, `completed_at/completed_by NULL` (demographics completed later). Scales: `code`, `name`, `level` (CHECK 1–10), `color NULL`, `reassessment_minutes NULL` (CHECK 5–1440), `is_default`, `status`, `lock_version`. Assignments: `encounter_id`, `patient_id`, `triage_scale_id`, `level`/`color` snapshots, `assessed_by_staff_id`, `assessed_at timestamptz`, `is_override`, `override_reason NULL`, `status` (active/superseded), `lock_version`. Events: `event_type` (CHECK enum), `notes NULL`, `occurred_at timestamptz NOT NULL`, `actor_staff_id NULL` |
+| **Relationships** | N–1 `facilities`; N–1 `patients`/`encounters` (composite FKs); assignments N–1 `triage_scales`; N–1 `staff` (registered_by/assessed_by/actor) |
+| **Indexes** | Registrations: `(tenant_id, registered_at)`, unique `(tenant_id, encounter_id)`; scales: unique `(tenant_id, facility_id, code)`, `uq_triage_scales_tenant_id` (backs the assignments FK); assignments: unique partial `(tenant_id, encounter_id) WHERE status='active'`, `(tenant_id, encounter_id, assessed_at)`; events: `(tenant_id, encounter_id, occurred_at)`, `(tenant_id, patient_id, occurred_at)` |
+| **Uniqueness** | One registration per encounter; one ACTIVE triage per encounter; one scale code per (tenant, facility) |
+| **Audit** | Registration, scale create/update, triage assign/override/reassess, every event, and disposition — facts only, never complaint/note/reason text or patient names |
+| **Soft deletion** | No (scales soft-inactivate) |
+| **Retention** | Clinical class |
+
 ### 3.18 diagnoses
 
 > **Implemented with Phase 7.** Typed (provisional/differential/final), coded where available (ICD-10 readiness), `is_primary`, status lifecycle (active → resolved/ruled_out in later phases).

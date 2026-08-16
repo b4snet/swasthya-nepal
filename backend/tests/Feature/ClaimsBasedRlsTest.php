@@ -17,7 +17,7 @@ use Illuminate\Support\Str;
  * exercised end-to-end. Every test runs in a transaction on the app-role
  * connection and rolls back in all paths: no fixtures leak.
  */
-it('re-keys every RLS policy to the claims helpers (204 policies, zero GUC references)', function () {
+it('re-keys every RLS policy to the claims helpers (220 policies, zero GUC references)', function () {
     $policies = DB::connection('pgsql')->select(
         <<<'SQL'
         select count(*) as total,
@@ -29,7 +29,7 @@ it('re-keys every RLS policy to the claims helpers (204 policies, zero GUC refer
         SQL
     )[0];
 
-    expect((int) $policies->total)->toBe(204)
+    expect((int) $policies->total)->toBe(220)
         ->and((int) $policies->not_claims)->toBe(0)
         ->and((int) $policies->still_guc)->toBe(0);
 
@@ -45,7 +45,7 @@ it('re-keys every RLS policy to the claims helpers (204 policies, zero GUC refer
     ]);
 });
 
-it('keeps the RLS matrix intact: 52 scoped on, 15 off, none on-without-policies', function () {
+it('keeps the RLS matrix intact: 56 scoped on, 15 off, none on-without-policies', function () {
     $matrix = DB::connection('pgsql')->selectOne(
         <<<'SQL'
         select count(*) filter (where relrowsecurity) as rls_on,
@@ -59,7 +59,7 @@ it('keeps the RLS matrix intact: 52 scoped on, 15 off, none on-without-policies'
         SQL
     );
 
-    // 67 tables total: 52 tenant-scoped (RLS on, FORCE on) + 15 off. The 15
+    // 71 tables total: 56 tenant-scoped (RLS on, FORCE on) + 15 off. The 15
     // are the framework/identity/public tables: users, roles, permissions,
     // role_permissions, organizations (tenant root — no tenant column to scope
     // by), migrations, jobs, job_batches, failed_jobs, cache, cache_locks,
@@ -67,7 +67,9 @@ it('keeps the RLS matrix intact: 52 scoped on, 15 off, none on-without-policies'
     // password_reset_tokens (the last three are pre-tenant public-route flows).
     // +4 since slice 13: transfer_events, nursing_notes, mar_entries,
     // vital_observations.
-    expect((int) $matrix->rls_on)->toBe(52)
+    // +4 since slice 14: er_registrations, triage_scales, triage_assignments,
+    // er_events.
+    expect((int) $matrix->rls_on)->toBe(56)
         ->and((int) $matrix->rls_off)->toBe(15)
         ->and((int) $matrix->on_without_policies)->toBe(0);
 });
@@ -415,6 +417,75 @@ it('isolates the IPD nursing surface from claims end to end (tenant, facility, m
             ->and($c->selectOne('select status from mar_entries where id = ?', [$marEntry])->status)->toBe('scheduled')
             ->and($c->selectOne('select type from vital_observations where id = ?', [$vital])->type)->toBe('bp')
             ->and($c->selectOne('select reason from transfer_events where id = ?', [$transferEvent])->reason)->toBe('Moved');
+    });
+});
+
+it('isolates the Emergency surface from claims end to end (tenant, facility, mutation immunity)', function () {
+    rlsTx(rlsConn(), function ($c): void {
+        $t = claimsTenants($c);
+        $department = (string) Str::uuid();
+        $staff = (string) Str::uuid();
+        $patient = (string) Str::uuid();
+        $encounter = (string) Str::uuid();
+        $registration = (string) Str::uuid();
+        $scale = (string) Str::uuid();
+        $assignment = (string) Str::uuid();
+        $event = (string) Str::uuid();
+
+        // Full chain in tenant A: staff → patient → ER encounter →
+        // registration / triage scale → triage assignment → ER event
+        // (RLS on every row).
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
+        $c->insert('insert into departments (id, tenant_id, facility_id, name, code, status) values (?, ?, ?, ?, ?, ?)', [$department, $t['tenantA'], $t['facilityA'], 'ER', 'er', 'active']);
+        $c->insert('insert into staff (id, tenant_id, facility_id, department_id, employee_code, full_name, designation, status) values (?, ?, ?, ?, ?, ?, ?, ?)', [$staff, $t['tenantA'], $t['facilityA'], $department, 'EMP-ER', 'ER Nurse', 'Staff Nurse', 'active']);
+        $c->insert('insert into patients (id, tenant_id, facility_id, mrn, full_name, date_of_birth, sex, status) values (?, ?, ?, ?, ?, ?, ?, ?)', [$patient, $t['tenantA'], $t['facilityA'], 'MRN-ER', 'ER Patient', '1990-01-01', 'unknown', 'active']);
+        $c->insert('insert into encounters (id, tenant_id, facility_id, patient_id, provider_staff_id, type, status, started_at) values (?, ?, ?, ?, ?, ?, ?, ?)', [$encounter, $t['tenantA'], $t['facilityA'], $patient, $staff, 'er', 'open', '2026-08-16 09:00:00+00']);
+        $c->insert('insert into er_registrations (id, tenant_id, facility_id, patient_id, encounter_id, registered_by, registered_at, is_unidentified) values (?, ?, ?, ?, ?, ?, ?, ?)', [$registration, $t['tenantA'], $t['facilityA'], $patient, $encounter, $staff, '2026-08-16 09:05:00+00', true]);
+        $c->insert('insert into triage_scales (id, tenant_id, facility_id, code, name, level, color, reassessment_minutes, is_default, status, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$scale, $t['tenantA'], $t['facilityA'], 'L1', 'Resuscitation', 1, 'red', 5, true, 'active', 0]);
+        $c->insert('insert into triage_assignments (id, tenant_id, facility_id, encounter_id, patient_id, triage_scale_id, level, color, assessed_by_staff_id, assessed_at, is_override, status, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$assignment, $t['tenantA'], $t['facilityA'], $encounter, $patient, $scale, 1, 'red', $staff, '2026-08-16 09:10:00+00', false, 'active', 0]);
+        $c->insert('insert into er_events (id, tenant_id, facility_id, encounter_id, patient_id, event_type, occurred_at, actor_staff_id) values (?, ?, ?, ?, ?, ?, ?, ?)', [$event, $t['tenantA'], $t['facilityA'], $encounter, $patient, 'registered', '2026-08-16 09:05:00+00', $staff]);
+
+        // Own tenant+facility claims → visible.
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
+        expect($c->selectOne('select id from er_registrations where id = ?', [$registration]))->not->toBeNull()
+            ->and($c->selectOne('select id from triage_scales where id = ?', [$scale]))->not->toBeNull()
+            ->and($c->selectOne('select id from triage_assignments where id = ?', [$assignment]))->not->toBeNull()
+            ->and($c->selectOne('select id from er_events where id = ?', [$event]))->not->toBeNull();
+
+        // Another tenant → invisible; update/delete affect zero rows.
+        claimsSet($c, ['app_tenant_id' => $t['tenantB'], 'app_facility_id' => $t['facilityB']]);
+        expect($c->selectOne('select id from er_registrations where id = ?', [$registration]))->toBeNull()
+            ->and($c->update('update er_registrations set presenting_complaint = ? where id = ?', ['pwned', $registration]))->toBe(0)
+            ->and($c->delete('delete from er_registrations where id = ?', [$registration]))->toBe(0)
+            ->and($c->selectOne('select id from triage_scales where id = ?', [$scale]))->toBeNull()
+            ->and($c->update('update triage_scales set name = ? where id = ?', ['pwned', $scale]))->toBe(0)
+            ->and($c->delete('delete from triage_scales where id = ?', [$scale]))->toBe(0)
+            ->and($c->selectOne('select id from triage_assignments where id = ?', [$assignment]))->toBeNull()
+            ->and($c->update('update triage_assignments set level = ? where id = ?', [5, $assignment]))->toBe(0)
+            ->and($c->delete('delete from triage_assignments where id = ?', [$assignment]))->toBe(0)
+            ->and($c->selectOne('select id from er_events where id = ?', [$event]))->toBeNull()
+            ->and($c->update('update er_events set event_type = ? where id = ?', ['other', $event]))->toBe(0)
+            ->and($c->delete('delete from er_events where id = ?', [$event]))->toBe(0);
+
+        // Same tenant, a different facility → invisible (TENANT_FACILITY tier).
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityB']]);
+        expect($c->selectOne('select id from er_registrations where id = ?', [$registration]))->toBeNull()
+            ->and($c->selectOne('select id from triage_assignments where id = ?', [$assignment]))->toBeNull()
+            ->and($c->selectOne('select id from er_events where id = ?', [$event]))->toBeNull();
+
+        // Org-wide claims (no facility) → sees the tenant's ER rows.
+        claimsSet($c, ['app_tenant_id' => $t['tenantA']]);
+        expect($c->selectOne('select id from er_registrations where id = ?', [$registration]))->not->toBeNull()
+            ->and($c->selectOne('select id from triage_scales where id = ?', [$scale]))->not->toBeNull()
+            ->and($c->selectOne('select id from triage_assignments where id = ?', [$assignment]))->not->toBeNull()
+            ->and($c->selectOne('select id from er_events where id = ?', [$event]))->not->toBeNull();
+
+        // The rows are untouched by every attack above.
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
+        expect($c->selectOne('select is_unidentified from er_registrations where id = ?', [$registration])->is_unidentified)->toBeTrue()
+            ->and($c->selectOne('select name from triage_scales where id = ?', [$scale])->name)->toBe('Resuscitation')
+            ->and($c->selectOne('select level from triage_assignments where id = ?', [$assignment])->level)->toBe(1)
+            ->and($c->selectOne('select event_type from er_events where id = ?', [$event])->event_type)->toBe('registered');
     });
 });
 

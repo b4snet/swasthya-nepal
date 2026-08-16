@@ -30,6 +30,14 @@ class Patient extends Model
 
     public const STATUS_ARCHIVED = 'archived';
 
+    public const SEX_MALE = 'male';
+
+    public const SEX_FEMALE = 'female';
+
+    public const SEX_OTHER = 'other';
+
+    public const SEX_UNKNOWN = 'unknown';
+
     /**
      * @var list<string>
      */
