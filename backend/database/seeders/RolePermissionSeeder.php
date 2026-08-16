@@ -267,6 +267,18 @@ class RolePermissionSeeder extends Seeder
             'bloodbank:issue' => ['domain' => 'bloodbank', 'description' => 'Crossmatch, compatibility, and issue units'],
             'bloodbank:transfuse' => ['domain' => 'bloodbank', 'description' => 'Start/verify (dual)/complete transfusions and report reactions'],
             'bloodbank:discard' => ['domain' => 'bloodbank', 'description' => 'Discard units with reason (terminal)'],
+
+            // Phase 3 slice 21 — Analytics and Reporting (ROADMAP Phase 17,
+            // PRODUCT REQUIREMENTS §6.19): observed-data dashboards, versioned
+            // metric definitions, scheduled replica-fed reports, audited
+            // exports. Finance and clinical analytics stay behind their own
+            // role grants (org_finance sees reports, not definition
+            // management).
+            'analytics:view' => ['domain' => 'analytics', 'description' => 'View KPI definitions, dashboards, and metric snapshots within scope'],
+            'analytics:manage' => ['domain' => 'analytics', 'description' => 'Define and version KPIs, compose dashboards, refresh snapshots'],
+            'reports:run' => ['domain' => 'analytics', 'description' => 'Run report templates on the reporting connection'],
+            'reports:schedule' => ['domain' => 'analytics', 'description' => 'Schedule reports on cron expressions'],
+            'reports:export' => ['domain' => 'analytics', 'description' => 'Export report runs (audited, fingerprint checksum)'],
         ];
     }
 
@@ -404,6 +416,11 @@ class RolePermissionSeeder extends Seeder
                     'icu:admit', 'icu:observe', 'icu:document', 'icu:transfer',
                     'bloodbank:register_donor', 'bloodbank:process', 'bloodbank:issue',
                     'bloodbank:transfuse', 'bloodbank:discard',
+                    // Phase 3 slice 21 — Analytics and Reporting: the org
+                    // admin and hospital admin administer the whole analytics
+                    // surface (definitions, dashboards, reports, exports).
+                    'analytics:view', 'analytics:manage',
+                    'reports:run', 'reports:schedule', 'reports:export',
                 ],
             ],
             'org_finance' => [
@@ -420,6 +437,11 @@ class RolePermissionSeeder extends Seeder
                     'billing:view',
                     'billing:reconcile',
                     'insurance:claim', 'insurance:settle',
+                    // Phase 3 slice 21 — the finance officer sees financial
+                    // analytics and RUNS reports; exports (reports:export)
+                    // and definition management (analytics:manage) stay with
+                    // admins — every export is admin-gated and audited.
+                    'analytics:view', 'reports:run',
                 ],
             ],
             'hospital_admin' => [
@@ -482,6 +504,11 @@ class RolePermissionSeeder extends Seeder
                     'icu:admit', 'icu:observe', 'icu:document', 'icu:transfer',
                     'bloodbank:register_donor', 'bloodbank:process', 'bloodbank:issue',
                     'bloodbank:transfuse', 'bloodbank:discard',
+                    // Phase 3 slice 21 — Analytics and Reporting: the org
+                    // admin and hospital admin administer the whole analytics
+                    // surface (definitions, dashboards, reports, exports).
+                    'analytics:view', 'analytics:manage',
+                    'reports:run', 'reports:schedule', 'reports:export',
                 ],
             ],
             'branch_manager' => [
@@ -505,6 +532,9 @@ class RolePermissionSeeder extends Seeder
                     'er:view',
                     // Phase 3 slice 16 — radiology read visibility.
                     'radiology:view',
+                    // Phase 3 slice 21 — operational dashboard visibility for
+                    // the branch manager (curated, role-gated dashboards).
+                    'analytics:view',
                 ],
             ],
             'receptionist' => [

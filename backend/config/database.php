@@ -50,6 +50,28 @@ return [
             'sslmode' => env('DB_SSLMODE', 'prefer'),
         ],
 
+        // The REPORTING connection — the analytics/read-replica path
+        // (ROADMAP Phase 17, DATABASE.md §3.51): metric snapshots and
+        // report runs execute here so reporting load never degrades the
+        // transactional write path. In production REPORTING_DB_* point at a
+        // read replica; locally they default to the same database so the
+        // reporting path is exercised end to end (simulated replica).
+        'reporting' => [
+            'driver' => 'pgsql',
+            'url' => env('REPORTING_DB_URL'),
+            'host' => env('REPORTING_DB_HOST', env('DB_HOST', '127.0.0.1')),
+            'port' => env('REPORTING_DB_PORT', env('DB_PORT', '5432')),
+            'database' => env('REPORTING_DB_DATABASE', env('DB_DATABASE', 'swasthya')),
+            'username' => env('REPORTING_DB_USERNAME', env('DB_USERNAME', 'swasthya')),
+            'password' => env('REPORTING_DB_PASSWORD', env('DB_PASSWORD', '')),
+            'charset' => env('DB_CHARSET', 'utf8'),
+            'timezone' => env('DB_TIMEZONE', 'UTC'),
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'search_path' => 'public',
+            'sslmode' => env('DB_SSLMODE', 'prefer'),
+        ],
+
         // The RLS verification connection: connects as the least-privilege
         // APPLICATION role (swasthya_app — no BYPASSRLS, no ownership) so the
         // database-level tenancy tests prove the policies actually filter,

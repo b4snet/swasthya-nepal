@@ -187,6 +187,8 @@ Per logical queue (`high`, `default`, `notifications`, `reports`, `integrations`
 
 The drill-down path from any dashboard is: **number → chart → trace → log line → audit event** (Section 16). A dashboard that cannot be drilled into is a screenshot.
 
+**In-product analytics dashboards (Phase 3 slice 21, ROADMAP Phase 17, DATABASE.md §3.51):** the *product's* operational/financial/clinical dashboards are separate from this observability surface but follow the same discipline — metric definitions are VERSIONED (one ACTIVE version per code, `kpi_definitions`), every number is a `metric_snapshot` computed from the observed source tables at generation time (never fabricated — MASTER_RULES.md P.15), and the in-product drill-down is **number → snapshot → access-controlled source data**, with every report run and export audited (facts only — MASTER_RULES.md §19.3). Reporting reads execute on the dedicated `reporting` read-replica connection so product dashboards never degrade transactional paths — the same guarantee this section makes for platform dashboards.
+
 ---
 
 ## 16. Incident Investigation

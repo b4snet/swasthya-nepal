@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AdmissionController;
+use App\Http\Controllers\Api\AnalyticsController;
 use App\Http\Controllers\Api\AppointmentController;
 use App\Http\Controllers\Api\AssetController;
 use App\Http\Controllers\Api\AuditController;
@@ -842,4 +843,42 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
         ->middleware('authorize:bloodbank:transfuse');
     Route::post('blood-units/{bloodUnit}/discard', [BloodBankController::class, 'discardBloodUnit'])
         ->middleware('authorize:bloodbank:discard');
+
+    // Phase 3 slice 21 — Analytics and Reporting (ROADMAP Phase 17, PRODUCT
+    // REQUIREMENTS §6.19, DATABASE.md §3.51): versioned metric definitions,
+    // observed-only metric snapshots, curated dashboards with drill-down,
+    // and scheduled replica-fed reports. analytics:view gates the read
+    // surfaces; analytics:manage gates definitions/dashboards; reports:run
+    // gates executions; reports:schedule gates schedules; reports:export
+    // gates audited exports (MASTER_RULES.md §19.3).
+    Route::get('analytics/kpi-definitions', [AnalyticsController::class, 'indexKpiDefinitions'])
+        ->middleware('authorize:analytics:view');
+    Route::post('analytics/kpi-definitions', [AnalyticsController::class, 'storeKpiDefinition'])
+        ->middleware('authorize:analytics:manage');
+    Route::post('analytics/kpi-definitions/{kpi}/supersede', [AnalyticsController::class, 'supersedeKpi'])
+        ->middleware('authorize:analytics:manage');
+    Route::get('analytics/metrics/{kpi}', [AnalyticsController::class, 'showMetrics'])
+        ->middleware('authorize:analytics:view');
+    Route::post('analytics/snapshots/refresh', [AnalyticsController::class, 'refreshMetrics'])
+        ->middleware('authorize:analytics:manage');
+    Route::post('analytics/dashboards', [AnalyticsController::class, 'storeDashboard'])
+        ->middleware('authorize:analytics:manage');
+    Route::get('analytics/dashboards/{dashboard}', [AnalyticsController::class, 'showDashboard'])
+        ->middleware('authorize:analytics:view');
+    Route::post('analytics/dashboards/{dashboard}/kpis', [AnalyticsController::class, 'addDashboardKpi'])
+        ->middleware('authorize:analytics:manage');
+    Route::get('analytics/report-templates', [AnalyticsController::class, 'indexReportTemplates'])
+        ->middleware('authorize:reports:run');
+    Route::post('analytics/report-templates', [AnalyticsController::class, 'storeReportTemplate'])
+        ->middleware('authorize:reports:run');
+    Route::get('analytics/report-schedules', [AnalyticsController::class, 'indexReportSchedules'])
+        ->middleware('authorize:reports:schedule');
+    Route::post('analytics/report-schedules', [AnalyticsController::class, 'storeReportSchedule'])
+        ->middleware('authorize:reports:schedule');
+    Route::get('analytics/report-runs', [AnalyticsController::class, 'indexReportRuns'])
+        ->middleware('authorize:reports:run');
+    Route::post('analytics/reports/run', [AnalyticsController::class, 'runReport'])
+        ->middleware('authorize:reports:run');
+    Route::post('analytics/reports/export', [AnalyticsController::class, 'exportReport'])
+        ->middleware('authorize:reports:export');
 });

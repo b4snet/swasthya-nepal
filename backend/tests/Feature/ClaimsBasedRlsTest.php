@@ -17,7 +17,7 @@ use Illuminate\Support\Str;
  * exercised end-to-end. Every test runs in a transaction on the app-role
  * connection and rolls back in all paths: no fixtures leak.
  */
-it('re-keys every RLS policy to the claims helpers (408 policies, zero GUC references)', function () {
+it('re-keys every RLS policy to the claims helpers (436 policies, zero GUC references)', function () {
     $policies = DB::connection('pgsql')->select(
         <<<'SQL'
         select count(*) as total,
@@ -29,7 +29,7 @@ it('re-keys every RLS policy to the claims helpers (408 policies, zero GUC refer
         SQL
     )[0];
 
-    expect((int) $policies->total)->toBe(408)
+    expect((int) $policies->total)->toBe(436)
         ->and((int) $policies->not_claims)->toBe(0)
         ->and((int) $policies->still_guc)->toBe(0);
 
@@ -83,7 +83,7 @@ it('keeps the RLS matrix intact: 62 scoped on, 15 off, none on-without-policies'
     // icu_observation_sets, warning_scores, icu_alerts, critical_care_notes,
     // donors, donations, blood_units, compatibility_results, crossmatches,
     // transfusions, reaction_reports.
-    expect((int) $matrix->rls_on)->toBe(103)
+    expect((int) $matrix->rls_on)->toBe(110)
         ->and((int) $matrix->rls_off)->toBe(15)
         ->and((int) $matrix->on_without_policies)->toBe(0);
 });
@@ -973,6 +973,69 @@ it('isolates the OT, ICU, and Blood Bank surface from claims (22 tables, TENANT_
             ->and($c->selectOne('select status from icu_alerts where id = ?', [$icuAlert])->status)->toBe('open')
             ->and($c->selectOne('select status from blood_units where id = ?', [$unit])->status)->toBe('available')
             ->and($c->selectOne('select status from transfusions where id = ?', [$transfusion])->status)->toBe('started');
+    });
+});
+
+it('isolates the Analytics and Reporting surface from claims (7 tables, TENANT_FACILITY — §3.51)', function () {
+    rlsTx(rlsConn(), function ($c): void {
+        $t = claimsTenants($c);
+        $department = (string) Str::uuid();
+        $staff = (string) Str::uuid();
+        $kpi = (string) Str::uuid();
+        $snapshot = (string) Str::uuid();
+        $dashboard = (string) Str::uuid();
+        $dashboardKpi = (string) Str::uuid();
+        $reportTemplate = (string) Str::uuid();
+        $reportSchedule = (string) Str::uuid();
+        $reportRun = (string) Str::uuid();
+
+        // Full chain in tenant A (RLS policies apply on every row).
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
+        $c->insert('insert into departments (id, tenant_id, facility_id, name, code, status) values (?, ?, ?, ?, ?, ?)', [$department, $t['tenantA'], $t['facilityA'], 'Analytics', 'anlt', 'active']);
+        $c->insert('insert into staff (id, tenant_id, facility_id, department_id, employee_code, full_name, designation, status) values (?, ?, ?, ?, ?, ?, ?, ?)', [$staff, $t['tenantA'], $t['facilityA'], $department, 'EMP-A1', 'Analytics Staff', 'Analyst', 'active']);
+        $c->insert('insert into kpi_definitions (id, tenant_id, facility_id, code, name, domain, source_table, date_column, filter, aggregation, version, status, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$kpi, $t['tenantA'], $t['facilityA'], 'registrations', 'Registrations', 'operational', 'patients', 'created_at', '{}', 'count', 1, 'active', 0]);
+        $c->insert('insert into metric_snapshots (id, tenant_id, facility_id, kpi_definition_id, period_start, period_end, value, dimension, row_count, generated_at, generated_by_staff_id, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$snapshot, $t['tenantA'], $t['facilityA'], $kpi, '2026-08-16 00:00:00+00', '2026-08-16 23:59:59+00', 2, '{}', 2, '2026-08-16 12:00:00+00', $staff, 0]);
+        $c->insert('insert into dashboards (id, tenant_id, facility_id, code, name, role_gate, is_active, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?)', [$dashboard, $t['tenantA'], $t['facilityA'], 'ops', 'Operations', '["hospital_admin"]', true, 0]);
+        $c->insert('insert into dashboard_kpis (id, tenant_id, facility_id, dashboard_id, kpi_definition_id, position, is_active) values (?, ?, ?, ?, ?, ?, ?)', [$dashboardKpi, $t['tenantA'], $t['facilityA'], $dashboard, $kpi, 1, true]);
+        $c->insert('insert into report_templates (id, tenant_id, facility_id, code, name, category, scope, parameter_schema, query, is_active, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$reportTemplate, $t['tenantA'], $t['facilityA'], 'rpt', 'Registrations report', 'operational', 'facility', '{}', '{"source_table":"patients","filter":{},"date_column":"created_at","period":"last_7_days"}', true, 0]);
+        $c->insert('insert into report_schedules (id, tenant_id, facility_id, template_id, cron_expression, enabled, created_by_staff_id, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?)', [$reportSchedule, $t['tenantA'], $t['facilityA'], $reportTemplate, '0 6 * * *', true, $staff, 0]);
+        $c->insert('insert into report_runs (id, tenant_id, facility_id, template_id, schedule_id, requested_by_staff_id, status, run_at, row_count, is_export, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$reportRun, $t['tenantA'], $t['facilityA'], $reportTemplate, $reportSchedule, $staff, 'completed', '2026-08-16 12:00:00+00', 2, false, 0]);
+
+        // Own tenant+facility claims → visible.
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
+        expect($c->selectOne('select id from kpi_definitions where id = ?', [$kpi]))->not->toBeNull()
+            ->and($c->selectOne('select id from metric_snapshots where id = ?', [$snapshot]))->not->toBeNull()
+            ->and($c->selectOne('select id from dashboards where id = ?', [$dashboard]))->not->toBeNull()
+            ->and($c->selectOne('select id from report_templates where id = ?', [$reportTemplate]))->not->toBeNull()
+            ->and($c->selectOne('select id from report_runs where id = ?', [$reportRun]))->not->toBeNull();
+
+        // Another tenant → invisible; update/delete affect zero rows.
+        claimsSet($c, ['app_tenant_id' => $t['tenantB'], 'app_facility_id' => $t['facilityB']]);
+        expect($c->selectOne('select id from kpi_definitions where id = ?', [$kpi]))->toBeNull()
+            ->and($c->selectOne('select id from dashboard_kpis where id = ?', [$dashboardKpi]))->toBeNull()
+            ->and($c->selectOne('select id from report_schedules where id = ?', [$reportSchedule]))->toBeNull()
+            ->and($c->update('update kpi_definitions set name = ? where id = ?', ['Pwned', $kpi]))->toBe(0)
+            ->and($c->update('update metric_snapshots set value = ? where id = ?', [999, $snapshot]))->toBe(0)
+            ->and($c->delete('delete from report_runs where id = ?', [$reportRun]))->toBe(0)
+            ->and($c->delete('delete from dashboards where id = ?', [$dashboard]))->toBe(0);
+
+        // Same tenant, a different facility → invisible (TENANT_FACILITY).
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityB']]);
+        expect($c->selectOne('select id from report_templates where id = ?', [$reportTemplate]))->toBeNull()
+            ->and($c->selectOne('select id from report_runs where id = ?', [$reportRun]))->toBeNull()
+            ->and($c->selectOne('select id from metric_snapshots where id = ?', [$snapshot]))->toBeNull();
+
+        // Org-wide claims (no facility) → the tenant's analytics rows are seen.
+        claimsSet($c, ['app_tenant_id' => $t['tenantA']]);
+        expect($c->selectOne('select id from kpi_definitions where id = ?', [$kpi]))->not->toBeNull()
+            ->and($c->selectOne('select id from report_schedules where id = ?', [$reportSchedule]))->not->toBeNull()
+            ->and($c->selectOne('select id from dashboard_kpis where id = ?', [$dashboardKpi]))->not->toBeNull();
+
+        // The rows are untouched by every attack above.
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
+        expect($c->selectOne('select name from kpi_definitions where id = ?', [$kpi])->name)->toBe('Registrations')
+            ->and((float) $c->selectOne('select value from metric_snapshots where id = ?', [$snapshot])->value)->toBe(2.0)
+            ->and($c->selectOne('select status from report_runs where id = ?', [$reportRun])->status)->toBe('completed');
     });
 });
 

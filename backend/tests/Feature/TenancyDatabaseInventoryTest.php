@@ -18,7 +18,7 @@ use Illuminate\Support\Str;
  */
 
 /**
- * The 103 tables with RLS enabled (the documented scoped set).
+ * The 110 tables with RLS enabled (the documented scoped set).
  *
  * @var list<string>
  */
@@ -82,6 +82,11 @@ const RLS_SCOPED_TABLES = [
     'icu_alerts', 'critical_care_notes',
     'donors', 'donations', 'blood_units', 'compatibility_results',
     'crossmatches', 'transfusions', 'reaction_reports',
+    // Phase 3 slice 21 — Analytics and Reporting (DATABASE.md §3.51):
+    // versioned KPI definitions, observed metric snapshots, dashboards +
+    // composition, and the audited report template/schedule/run surface.
+    'kpi_definitions', 'metric_snapshots', 'dashboards', 'dashboard_kpis',
+    'report_templates', 'report_schedules', 'report_runs',
     // TENANT_ONLY
     'payers', 'mrn_counters', 'patient_identifiers', 'patient_contacts',
     'insurance_policies', 'patient_documents', 'consents',
@@ -579,6 +584,38 @@ function seedTenantChain(ConnectionInterface $c, string $tenantId, string $facil
     $c->insert('insert into reaction_reports (id, tenant_id, facility_id, transfusion_id, occurred_at, severity, symptoms, status, reported_by_staff_id, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$reaction, $tenantId, $facilityId, $transfusion, '2026-08-16 10:15:00+00', 'mild', '[]', 'reported', $staff, 0]);
     $ids['reaction_reports'] = $reaction;
 
+    // Phase 3 slice 21 — Analytics and Reporting (kpi_definitions,
+    // metric_snapshots, dashboards, dashboard_kpis, report_templates,
+    // report_schedules, report_runs — DATABASE.md §3.51). Aggregate rows
+    // contain counts/values only, never PHI, but are tenant-scoped data.
+    $kpi = (string) Str::uuid();
+    $c->insert('insert into kpi_definitions (id, tenant_id, facility_id, code, name, domain, source_table, date_column, filter, aggregation, version, status, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$kpi, $tenantId, $facilityId, $u('kpi'), 'Registrations', 'operational', 'patients', 'created_at', '{}', 'count', 1, 'active', 0]);
+    $ids['kpi_definitions'] = $kpi;
+
+    $snapshot = (string) Str::uuid();
+    $c->insert('insert into metric_snapshots (id, tenant_id, facility_id, kpi_definition_id, period_start, period_end, value, dimension, row_count, generated_at, generated_by_staff_id, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$snapshot, $tenantId, $facilityId, $kpi, '2026-08-16 00:00:00+00', '2026-08-16 23:59:59+00', 1, '{}', 1, '2026-08-16 12:00:00+00', $staff, 0]);
+    $ids['metric_snapshots'] = $snapshot;
+
+    $dashboard = (string) Str::uuid();
+    $c->insert('insert into dashboards (id, tenant_id, facility_id, code, name, role_gate, is_active, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?)', [$dashboard, $tenantId, $facilityId, $u('dash'), 'Operations', '["hospital_admin"]', true, 0]);
+    $ids['dashboards'] = $dashboard;
+
+    $dashboardKpi = (string) Str::uuid();
+    $c->insert('insert into dashboard_kpis (id, tenant_id, facility_id, dashboard_id, kpi_definition_id, position, is_active) values (?, ?, ?, ?, ?, ?, ?)', [$dashboardKpi, $tenantId, $facilityId, $dashboard, $kpi, 1, true]);
+    $ids['dashboard_kpis'] = $dashboardKpi;
+
+    $reportTemplate = (string) Str::uuid();
+    $c->insert('insert into report_templates (id, tenant_id, facility_id, code, name, category, scope, parameter_schema, query, is_active, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$reportTemplate, $tenantId, $facilityId, $u('rpt'), 'Registrations report', 'operational', 'facility', '{}', '{"source_table":"patients","filter":{},"date_column":"created_at","period":"last_7_days"}', true, 0]);
+    $ids['report_templates'] = $reportTemplate;
+
+    $reportSchedule = (string) Str::uuid();
+    $c->insert('insert into report_schedules (id, tenant_id, facility_id, template_id, cron_expression, enabled, last_run_at, next_run_at, created_by_staff_id, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$reportSchedule, $tenantId, $facilityId, $reportTemplate, '0 6 * * *', true, null, null, $staff, 0]);
+    $ids['report_schedules'] = $reportSchedule;
+
+    $reportRun = (string) Str::uuid();
+    $c->insert('insert into report_runs (id, tenant_id, facility_id, template_id, schedule_id, requested_by_staff_id, status, run_at, completed_at, row_count, is_export, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$reportRun, $tenantId, $facilityId, $reportTemplate, $reportSchedule, $staff, 'completed', '2026-08-16 12:00:00+00', '2026-08-16 12:00:01+00', 3, false, 0]);
+    $ids['report_runs'] = $reportRun;
+
     // Support sessions are owner-or-platform visible: insert with the chain
     // user as the owning context (user_id GUC).
     $session = (string) Str::uuid();
@@ -699,6 +736,13 @@ function chainUpdateColumns(): array
         'crossmatches' => ['status', 'released'],
         'transfusions' => ['status', 'stopped'],
         'reaction_reports' => ['status', 'reviewed'],
+        'kpi_definitions' => ['name', 'upd'],
+        'metric_snapshots' => ['value', '1'],
+        'dashboards' => ['name', 'upd'],
+        'dashboard_kpis' => ['position', '2'],
+        'report_templates' => ['name', 'upd'],
+        'report_schedules' => ['cron_expression', '0 12 * * *'],
+        'report_runs' => ['status', 'failed'],
         'staff' => ['designation', 'upd'],
         'support_sessions' => ['reason', 'upd'],
         'token_counters' => ['last_token', '1'],
@@ -731,7 +775,7 @@ function inventoryTenants(ConnectionInterface $c): array
     return $t;
 }
 
-it('records the current RLS inventory: 103 scoped tables enabled + FORCED, 15 unscoped off', function () {
+it('records the current RLS inventory: 110 scoped tables enabled + FORCED, 15 unscoped off', function () {
     $rows = DB::connection('pgsql')->select(
         'select c.relname as table_name, c.relrowsecurity::text as enabled, c.relforcerowsecurity::text as forced
          from pg_class c
@@ -869,7 +913,7 @@ it('FORCE RLS binds a non-superuser table owner (defense-in-depth proof)', funct
     }
 });
 
-it('denies cross-tenant SELECT, UPDATE, and DELETE on all 103 tenant-owned tables — two-sided', function () {
+it('denies cross-tenant SELECT, UPDATE, and DELETE on all 110 tenant-owned tables — two-sided', function () {
     rlsTx(rlsConn(), function ($c): void {
         $t = inventoryTenants($c);
 

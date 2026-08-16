@@ -20,6 +20,8 @@ use App\Models\CompatibilityResult;
 use App\Models\CriticalCareNote;
 use App\Models\CriticalValueEvent;
 use App\Models\Crossmatch;
+use App\Models\Dashboard;
+use App\Models\DashboardKpi;
 use App\Models\Department;
 use App\Models\Deposit;
 use App\Models\DepositAllocation;
@@ -38,6 +40,7 @@ use App\Models\InventoryItem;
 use App\Models\InventoryMovement;
 use App\Models\Invoice;
 use App\Models\IotReading;
+use App\Models\KpiDefinition;
 use App\Models\LabOrder;
 use App\Models\LabTest;
 use App\Models\LeaveRequest;
@@ -46,6 +49,7 @@ use App\Models\Location;
 use App\Models\MaintenanceSchedule;
 use App\Models\MarEntry;
 use App\Models\Medication;
+use App\Models\MetricSnapshot;
 use App\Models\NursingNote;
 use App\Models\Payment;
 use App\Models\PayrollExport;
@@ -58,6 +62,9 @@ use App\Models\ProcedureRequest;
 use App\Models\ReactionReport;
 use App\Models\RecoveryRecord;
 use App\Models\RefundRequest;
+use App\Models\ReportRun;
+use App\Models\ReportSchedule;
+use App\Models\ReportTemplate;
 use App\Models\Room;
 use App\Models\Roster;
 use App\Models\ScheduleException;
@@ -229,6 +236,18 @@ final class AuditLogger
         'crossmatch' => Crossmatch::class,
         'transfusion' => Transfusion::class,
         'reaction_report' => ReactionReport::class,
+        // Phase 3 slice 21 — Analytics and Reporting (PRODUCT REQUIREMENTS
+        // §6.19, DATABASE.md §3.51): versioned KPI definitions, observed
+        // snapshots, dashboards, and the audited report/export surface.
+        // Payloads carry facts only — ids, versions, counts, timestamps,
+        // formats — never PHI or row contents.
+        'kpi_definition' => KpiDefinition::class,
+        'metric_snapshot' => MetricSnapshot::class,
+        'dashboard' => Dashboard::class,
+        'dashboard_kpi' => DashboardKpi::class,
+        'report_template' => ReportTemplate::class,
+        'report_schedule' => ReportSchedule::class,
+        'report_run' => ReportRun::class,
     ];
 
     /**

@@ -1648,3 +1648,42 @@ ent schedule → 409 with zero rows changed; cross-tenant isolation — read 404
 | Tracked-secret scan | 0 matches |
 
 **Remaining risks.** Real DICOM/device/barcode integration is not faked (Phase 3 readiness only); ICU bedside offline sync and ventilator feeds are future integration (PRODUCT_REQUIREMENTS §6.11 "queued sync with reconciliation" is designed for, not implemented); blood-bank barcode unit tagging is a future integration; PACU observations are a JSON snapshot (structured PACU observation tables are future work if metrics demand).
+---
+
+## Phase 3 — Slice 21: Analytics and Reporting (ROADMAP Phase 17)
+
+**Date:** 2026-08-16
+
+**Objective.** Operational dashboards, financial/clinical analytics, scheduled replica-fed reports, and executive dashboards — from OBSERVED data only (MASTER_RULES.md P.15: no fabricated metrics). Versioned KPI definitions ("a changing KPI is not a KPI"), idempotent metric snapshots computed from the real source tables at generation time, curated dashboards with a drill-down path, and an audited report/export surface executing on the dedicated `reporting` read-replica connection. No new dependencies; monolith preserved.
+
+**Files created.**
+- Migrations: `2026_08_16_280000_create_analytics_tables.php` (7 tables), `2026_08_16_280100_enable_analytics_row_level_security.php` (7 × 4 policies, RLS + FORCE)
+- Models: `KpiDefinition`, `MetricSnapshot`, `Dashboard`, `DashboardKpi`, `ReportTemplate`, `ReportSchedule`, `ReportRun` (+ 7 factories)
+- Service: `AnalyticsService` — whitelisted source/date/filter/sum columns per source (an unlisted column is never read), observed-only snapshot computation on the `reporting` connection, CAS supersede, idempotent refresh (savepoint-guarded), one-run-per-due-schedule CAS
+- Requests: `Analytics/*` (8), Controller: `AnalyticsController`, routes (15) under `authorize:analytics:view|manage|reports:run|schedule|export`
+- Test: `AnalyticsTest`
+
+**Files modified.** `config/database.php` (new `reporting` connection — `REPORTING_DB_*` envs point at a read replica in production; simulated replica locally), `routes/api.php`, `RolePermissionSeeder` (5 new permissions: analytics:view/manage, reports:run/schedule/export — org_admin + hospital_admin hold all; org_finance holds view+run; branch_manager holds view), `AuditLogger` (7 new resource types), `ClaimsBasedRlsTest`, `TenancyDatabaseInventoryTest`, `DATABASE.md` (§3.52), `OBSERVABILITY.md` (§15), this log.
+
+**Migrations.** Two, applied to the disposable test DB (`swasthya_test`) and dev DB (`swasthya`). No real/staging Supabase touched.
+
+**Tests.**
+- New `AnalyticsTest` — **13 tests / 103 assertions**: 401/403 gating; versioned definition creation (v1 active) + duplicate active code 409 + finance can view but not define; unwhitelisted source/column/filter rejected 422; supersede v1→v2 with CAS (stale supersede 409, never double-created); OBSERVED-data proof (snapshot value EQUALS real source count; out-of-window rows excluded; idempotent refresh → one snapshot per period); point-in-time occupancy + sum aggregation over integer money; dashboard composition + drill-down (number → latest snapshot); report run on the reporting connection with row counts; scheduled reports executed exactly once per due window (CAS) with invalid-cron rejected at creation; audited exports with sha256 fingerprint checksum and no PHI on the run row; cross-tenant/cross-facility isolation (404, no existence leak, empty lists); concurrent refresh → single snapshot (DB partial unique); PHI-safe audit payloads (fact keys only)
+- ClaimsBasedRlsTest: +1 proof (7-table analytics claims isolation), 408 → 436 policies, matrix 103 → 110
+- TenancyDatabaseInventoryTest: +7 tables in the scoped set + chain seed + update probes; 103 → 110 counts
+
+**Gate results (all green).**
+| Gate | Result |
+|---|---|
+| AnalyticsTest (new) | **13 passed / 103 assertions** |
+| RLS suites (ClaimsBased + Inventory) | **33 passed / 2,177 assertions** (436 policies, 110-table sweep, FORCE intact) |
+| Full backend Pest | **659 passed / 8,975 assertions** (Slice-20 baseline 645/8,657 → **+14/+318**) |
+| Node harness | **855 / 855** (unchanged — Laravel-only slice) |
+| Frontend Vitest | **26 passed** + tsc clean |
+| Harness TypeScript | PASS |
+| Pint | PASS (661 files) |
+| `git diff --check` | CLEAN |
+| Debug-marker / artifact sweep | CLEAN |
+| Tracked-secret scan | 0 matches |
+
+**Remaining risks.** Financial/clinical analytics breadth (more sources/dimensions via the same whitelist) and executive dashboards per role are Phase 2/3 per PRODUCT_REQUIREMENTS §6.19; patient-level drill-down stays access-controlled like clinical data; AI forecasting is Phase 3 and never fabricated; the `reporting` connection is a simulated replica locally (real read-replica wiring is a deployment-phase task — `REPORTING_DB_*` envs).
