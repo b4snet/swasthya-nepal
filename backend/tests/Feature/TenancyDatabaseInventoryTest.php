@@ -8,7 +8,7 @@ use Illuminate\Support\Str;
  * PROGRAM PHASE 1 — systematic database-layer tenancy verification.
  *
  * Unlike the representative isolation suites (DatabaseRowLevelSecurityTest,
- * ClinicalIsolationTest, ...), this suite iterates the FULL set of 44
+ * ClinicalIsolationTest, ...), this suite iterates the FULL set of 48
  * tenant-owned tables: it seeds a complete two-tenant fixture chain and then
  * probes every table for cross-tenant SELECT/UPDATE/DELETE isolation as the
  * least-privilege `swasthya_app` role (NOBYPASSRLS) under transaction-local
@@ -18,7 +18,7 @@ use Illuminate\Support\Str;
  */
 
 /**
- * The 47 tables with RLS enabled (the documented scoped set).
+ * The 48 tables with RLS enabled (the documented scoped set).
  *
  * @var list<string>
  */
@@ -43,6 +43,8 @@ const RLS_SCOPED_TABLES = [
     'admissions',
     // Phase 3 slice 7 — laboratory critical-value escalation.
     'critical_value_events',
+    // Phase 3 slice 10 — follow-up reminders (TENANT tier, §3.37).
+    'notifications',
     // TENANT_ONLY
     'payers', 'mrn_counters', 'patient_identifiers', 'patient_contacts',
     'insurance_policies', 'patient_documents', 'consents',
@@ -54,7 +56,7 @@ const RLS_SCOPED_TABLES = [
 ];
 
 /**
- * The 13 tables deliberately NOT RLS-scoped (identity/root/framework).
+ * The 15 tables deliberately NOT RLS-scoped (identity/root/framework).
  *
  * @var list<string>
  */
@@ -278,6 +280,12 @@ function seedTenantChain(ConnectionInterface $c, string $tenantId, string $facil
     $c->insert('insert into pharmacy_returns (id, tenant_id, facility_id, prescription_line_id, prescription_id, charge_id, quantity_minor, reason_code, reason_note, returned_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$pharmacyReturn, $tenantId, $facilityId, $line, $prescription, $charge, 1, 'patient_return', 'Chain return', '2026-08-15 13:00:00+00']);
     $ids['pharmacy_returns'] = $pharmacyReturn;
 
+    // Phase 3 slice 10 — follow-up reminder chained to the plan above (TENANT
+    // tier: tenant_id only, no facility_id — §3.37).
+    $notification = (string) Str::uuid();
+    $c->insert('insert into notifications (id, tenant_id, patient_id, follow_up_id, type, channel, payload, status, sensitive, created_at, updated_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$notification, $tenantId, $patient, $followUp, 'appointment_reminder', 'in_app', '{}', 'sent', true, '2026-08-15 13:15:00+00', '2026-08-15 13:15:00+00']);
+    $ids['notifications'] = $notification;
+
     $audit = (string) Str::uuid();
     $c->insert('insert into audit_events (id, tenant_id, facility_id, occurred_at, actor_type, action, resource_type, payload, correlation_id, prev_hash, event_hash) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$audit, $tenantId, $facilityId, '2026-08-15 00:00:00+00', 'user', 'chain.seeded', 'test', '{}', (string) Str::uuid(), null, hash('sha256', (string) Str::uuid())]);
     $ids['audit_events'] = $audit;
@@ -338,6 +346,7 @@ function chainUpdateColumns(): array
         'payment_allocations' => ['amount_minor', '1'],
         'payments' => ['provider_ref', 'upd'],
         'pharmacy_returns' => ['reason_note', 'upd'],
+        'notifications' => ['status', 'delivered'],
         'prescription_lines' => ['instructions', 'upd'],
         'prescriptions' => ['notes', 'upd'],
         'role_assignments' => ['granted_by', '00000000-0000-0000-0000-000000000001'],
@@ -378,7 +387,7 @@ function inventoryTenants(ConnectionInterface $c): array
     return $t;
 }
 
-it('records the current RLS inventory: 47 scoped tables enabled + FORCED, 15 unscoped off', function () {
+it('records the current RLS inventory: 48 scoped tables enabled + FORCED, 15 unscoped off', function () {
     $rows = DB::connection('pgsql')->select(
         'select c.relname as table_name, c.relrowsecurity::text as enabled, c.relforcerowsecurity::text as forced
          from pg_class c
@@ -516,7 +525,7 @@ it('FORCE RLS binds a non-superuser table owner (defense-in-depth proof)', funct
     }
 });
 
-it('denies cross-tenant SELECT, UPDATE, and DELETE on all 47 tenant-owned tables — two-sided', function () {
+it('denies cross-tenant SELECT, UPDATE, and DELETE on all 48 tenant-owned tables — two-sided', function () {
     rlsTx(rlsConn(), function ($c): void {
         $t = inventoryTenants($c);
 

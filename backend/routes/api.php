@@ -467,6 +467,12 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
         ->middleware('authorize:followup:manage');
     Route::post('follow-ups/{followUp}/complete', [FollowUpController::class, 'complete'])
         ->middleware('authorize:followup:manage');
+    // Phase 3 slice 10 — follow-up reminders: trigger (idempotent) and read
+    // the plan's in-app reminder (PRODUCT_REQUIREMENTS §5.4, DATABASE.md §3.37).
+    Route::post('follow-ups/{followUp}/remind', [FollowUpController::class, 'remind'])
+        ->middleware('authorize:followup:manage');
+    Route::get('follow-ups/{followUp}/reminder', [FollowUpController::class, 'reminder'])
+        ->middleware('authorize:followup:view');
 
     Route::get('invoices/{invoice}', [BillingController::class, 'showInvoice'])
         ->middleware('authorize:billing:view');

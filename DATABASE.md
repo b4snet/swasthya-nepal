@@ -477,7 +477,7 @@ erDiagram
 
 ### 3.17a follow_ups
 
-> **Implemented with Phase 3 slice 4; auto-creation added with Phase 3 slice 9.** A planned return visit or teleconsult linked to the encounter that generated it (`PRODUCT_REQUIREMENTS` §6.7). Lifecycle: planned → booked (linked to a real appointment of the same patient/facility) → completed, or cancelled with a reason. Every transition is a compare-and-swap on `(status, lock_version)`. Since slice 9 the plan can also be **auto-booked**: the appointment is created from the plan itself (patient, provider, facility, `planned_at`, type `follow_up`/`teleconsult`, `source='follow_up'`, 15-minute canonical window) and linked to it in one atomic transaction — no separately-booked appointment needed. The provider-start unique index makes two plans for the same provider and start mutually exclusive (409).
+> **Implemented with Phase 3 slice 4; auto-creation added with Phase 3 slice 9; in-app reminders added with Phase 3 slice 10.** A planned return visit or teleconsult linked to the encounter that generated it (`PRODUCT_REQUIREMENTS` §6.7). Lifecycle: planned → booked (linked to a real appointment of the same patient/facility) → completed, or cancelled with a reason. Every transition is a compare-and-swap on `(status, lock_version)`. Since slice 9 the plan can also be **auto-booked**: the appointment is created from the plan itself (patient, provider, facility, `planned_at`, type `follow_up`/`teleconsult`, `source='follow_up'`, 15-minute canonical window) and linked to it in one atomic transaction — no separately-booked appointment needed. The provider-start unique index makes two plans for the same provider and start mutually exclusive (409). Since slice 10 a planned follow-up carries **one in-app reminder** (`notifications`, §3.37): created atomically with the plan, surfaced to the care team via `GET /follow-ups/{followUp}/reminder`, re-triggerable idempotently via `POST /follow-ups/{followUp}/remind` (partial unique `(tenant_id, follow_up_id)` — replays and concurrent triggers never duplicate, never re-audit).
 
 | Aspect | Design |
 |---|---|
@@ -800,6 +800,8 @@ erDiagram
 | **Retention** | Audit class (compliance-driven); partitioned for archive-by-detach |
 
 ### 3.37 notifications (notifications, notification_templates, delivery_attempts)
+
+> **Partially implemented with Phase 3 slice 10 — in-app channel only.** The `notifications` table exists exactly as designed below (TENANT tier, RLS enabled + FORCED); the slice's workflow is follow-up reminders: one `appointment_reminder` notification per follow-up plan (typed `follow_up_id` FK + partial unique one-per-plan). Email/SMS/push channels, `notification_templates`, `delivery_attempts`, `notification_preference`, template-driven dispatch, and provider integrations remain the documented later-phase surface (`PRODUCT_REQUIREMENTS` §5.4) — nothing is sent outside the app yet, and no fake channels exist.
 
 | Aspect | Design |
 |---|---|

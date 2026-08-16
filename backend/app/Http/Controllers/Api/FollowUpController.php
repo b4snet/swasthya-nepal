@@ -10,6 +10,7 @@ use App\Http\Requests\FollowUp\StoreFollowUpRequest;
 use App\Models\Appointment;
 use App\Models\Encounter;
 use App\Models\FollowUp;
+use App\Models\Notification;
 use App\Models\Patient;
 use App\Models\Staff;
 use App\Support\AccessCheck;
@@ -72,19 +73,39 @@ final class FollowUpController extends Controller
             }
         }
 
-        $followUp = FollowUp::query()->create([
-            'tenant_id' => $encounter->tenant_id,
-            'facility_id' => $encounter->facility_id,
-            'patient_id' => $encounter->patient_id,
-            'encounter_id' => $encounter->getKey(),
-            'provider_staff_id' => $providerStaffId,
-            'follow_up_type' => $request->validated('followUpType'),
-            'planned_at' => $request->date('plannedAt'),
-            'reason' => $request->validated('reason'),
-            'status' => FollowUp::STATUS_PLANNED,
-            'lock_version' => 0,
-            'created_by' => $context->user?->getKey(),
-        ]);
+        // The plan and its in-app reminder are created atomically: a planned
+        // follow-up ALWAYS carries its reminder (no silent automation —
+        // CLINICAL_SAFETY §0.8/§11 — the reminder surfaces in-app via GET
+        // follow-ups/{followUp}/reminder).
+        $followUp = DB::transaction(function () use ($encounter, $providerStaffId, $request, $context): FollowUp {
+            $followUp = FollowUp::query()->create([
+                'tenant_id' => $encounter->tenant_id,
+                'facility_id' => $encounter->facility_id,
+                'patient_id' => $encounter->patient_id,
+                'encounter_id' => $encounter->getKey(),
+                'provider_staff_id' => $providerStaffId,
+                'follow_up_type' => $request->validated('followUpType'),
+                'planned_at' => $request->date('plannedAt'),
+                'reason' => $request->validated('reason'),
+                'status' => FollowUp::STATUS_PLANNED,
+                'lock_version' => 0,
+                'created_by' => $context->user?->getKey(),
+            ]);
+
+            [$reminder, $created] = $this->createReminder($followUp);
+
+            if ($created) {
+                $this->audit->record(
+                    'follow_up.reminder_created',
+                    'follow_up',
+                    $followUp->getKey(),
+                    ['patientId' => $followUp->patient_id, 'followUpId' => $followUp->getKey(), 'plannedAt' => $followUp->planned_at?->toIso8601String(), 'channel' => Notification::CHANNEL_IN_APP],
+                    $request,
+                );
+            }
+
+            return $followUp;
+        });
 
         $this->audit->record(
             'follow_up.planned',
@@ -331,7 +352,125 @@ final class FollowUpController extends Controller
         return Envelope::success(data: self::present($followUp->fresh()), request: $request);
     }
 
+    /**
+     * POST /follow-ups/{followUp}/remind — (re)trigger the in-app reminder
+     * for the follow-up's patient (PRODUCT_REQUIREMENTS §5.4: module owners
+     * trigger domain notifications). Idempotent: a plan carries ONE reminder
+     * (partial unique (tenant_id, follow_up_id)); a replay returns the
+     * existing reminder without duplicating it or re-auditing.
+     */
+    public function remind(Request $request, FollowUp $followUp): JsonResponse
+    {
+        AccessCheck::scoped($followUp, write: true);
+        $this->guardStatus($followUp, [FollowUp::STATUS_PLANNED, FollowUp::STATUS_BOOKED], 'reminded');
+
+        [$reminder, $created] = $this->createReminder($followUp);
+
+        if ($created) {
+            $this->audit->record(
+                'follow_up.reminder_created',
+                'follow_up',
+                $followUp->getKey(),
+                ['patientId' => $followUp->patient_id, 'followUpId' => $followUp->getKey(), 'plannedAt' => $followUp->planned_at?->toIso8601String(), 'channel' => Notification::CHANNEL_IN_APP],
+                $request,
+            );
+        }
+
+        return Envelope::success(data: self::presentNotification($reminder), request: $request);
+    }
+
+    /**
+     * GET /follow-ups/{followUp}/reminder — the care team's in-app view of
+     * the plan's reminder (the surfaced automation, CLINICAL_SAFETY §0.8).
+     */
+    public function reminder(Request $request, FollowUp $followUp): JsonResponse
+    {
+        AccessCheck::scoped($followUp, write: false);
+
+        $reminder = Notification::query()
+            ->where('tenant_id', $followUp->tenant_id)
+            ->where('follow_up_id', $followUp->getKey())
+            ->first();
+
+        if ($reminder === null) {
+            throw new ApiException(ErrorCodes::NOT_FOUND, 'No reminder has been created for this follow-up.', 404);
+        }
+
+        return Envelope::success(data: self::presentNotification($reminder), request: $request);
+    }
+
     /* ------------------------------------------------------------------ */
+
+    /**
+     * Create the follow-up's in-app reminder, returning [reminder, created].
+     *
+     * Idempotent and race-safe: the partial unique (tenant_id, follow_up_id)
+     * makes a concurrent second insert a database-level no-op — the loser
+     * catches the unique violation and returns the winner's row. Audit is
+     * emitted by the caller ONLY when a reminder is actually created, so an
+     * idempotent replay never fabricates an audit event.
+     *
+     * @return array{0: Notification, 1: bool}
+     */
+    private function createReminder(FollowUp $followUp): array
+    {
+        $existing = Notification::query()
+            ->where('tenant_id', $followUp->tenant_id)
+            ->where('follow_up_id', $followUp->getKey())
+            ->first();
+
+        if ($existing !== null) {
+            return [$existing, false];
+        }
+
+        try {
+            $reminder = Notification::query()->create([
+                'tenant_id' => $followUp->tenant_id,
+                'patient_id' => $followUp->patient_id,
+                'follow_up_id' => $followUp->getKey(),
+                'type' => Notification::TYPE_APPOINTMENT_REMINDER,
+                'channel' => Notification::CHANNEL_IN_APP,
+                'payload' => [
+                    'followUpId' => $followUp->getKey(),
+                    'plannedAt' => $followUp->planned_at?->toIso8601String(),
+                ],
+                'status' => Notification::STATUS_SENT,
+                'sensitive' => true,
+            ]);
+
+            return [$reminder, true];
+        } catch (QueryException $e) {
+            if (str_contains($e->getMessage(), 'uq_notifications_tenant_follow_up')) {
+                return [
+                    Notification::query()
+                        ->where('tenant_id', $followUp->tenant_id)
+                        ->where('follow_up_id', $followUp->getKey())
+                        ->firstOrFail(),
+                    false,
+                ];
+            }
+
+            throw $e;
+        }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function presentNotification(Notification $notification): array
+    {
+        return [
+            'id' => $notification->getKey(),
+            'followUpId' => $notification->follow_up_id,
+            'patientId' => $notification->patient_id,
+            'type' => $notification->type,
+            'channel' => $notification->channel,
+            'status' => $notification->status,
+            'sensitive' => $notification->sensitive,
+            'payload' => $notification->payload,
+            'createdAt' => $notification->created_at?->toIso8601String(),
+        ];
+    }
 
     private function guardStatus(FollowUp $followUp, array $expected, string $gerund): void
     {
