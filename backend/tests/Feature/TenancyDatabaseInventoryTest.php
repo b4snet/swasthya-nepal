@@ -45,6 +45,9 @@ const RLS_SCOPED_TABLES = [
     'stock_batches',
     // Phase 3 slice 8 — pharmacy returns & reversals.
     'pharmacy_returns',
+    // Phase 3 — standalone dispensing records (dispensing without a
+    // prescription; §3.30).
+    'dispensings',
     // Phase 3 slice 4 — discharge & follow-up.
     'follow_ups',
     // Phase 3 slice 5 — billing refunds & adjustments.
@@ -404,6 +407,14 @@ function seedTenantChain(ConnectionInterface $c, string $tenantId, string $facil
     $pharmacyReturn = (string) Str::uuid();
     $c->insert('insert into pharmacy_returns (id, tenant_id, facility_id, prescription_line_id, prescription_id, charge_id, quantity_minor, reason_code, reason_note, returned_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$pharmacyReturn, $tenantId, $facilityId, $line, $prescription, $charge, 1, 'patient_return', 'Chain return', '2026-08-15 13:00:00+00']);
     $ids['pharmacy_returns'] = $pharmacyReturn;
+
+    // Phase 3 — standalone dispensing chained to the batch, patient, item,
+    // and staff above (dispensing without a prescription); the posted
+    // dispensing charge carries dispensing_id.
+    $dispensing = (string) Str::uuid();
+    $c->insert('insert into dispensings (id, tenant_id, facility_id, patient_id, medication_id, inventory_item_id, stock_batch_id, batch_number, batch_expires_at, quantity_minor, status, dispensed_by_staff_id, dispensed_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$dispensing, $tenantId, $facilityId, $patient, $medication, $inventoryItem, $batch, 'B-CHAIN', '2026-12-31', 1, 'dispensed', $staff, '2026-08-15 13:05:00+00']);
+    $ids['dispensings'] = $dispensing;
+    $c->update('update charges set dispensing_id = ? where id = ?', [$dispensing, $charge]);
 
     // Phase 3 slice 10 — follow-up reminder chained to the plan above (TENANT
     // tier: tenant_id only, no facility_id — §3.37).
@@ -821,6 +832,7 @@ function chainUpdateColumns(): array
         'payments' => ['provider_ref', 'upd'],
         'payroll_exports' => ['format', 'csv'],
         'pharmacy_returns' => ['reason_note', 'upd'],
+        'dispensings' => ['batch_number', 'upd'],
         'positions' => ['name', 'upd'],
         'notifications' => ['status', 'delivered'],
         'transfer_events' => ['reason', 'upd'],

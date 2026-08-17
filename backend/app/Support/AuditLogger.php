@@ -29,6 +29,7 @@ use App\Models\DashboardKpi;
 use App\Models\Department;
 use App\Models\Deposit;
 use App\Models\DepositAllocation;
+use App\Models\Dispensing;
 use App\Models\Donation;
 use App\Models\Donor;
 use App\Models\EgressDestination;
@@ -173,6 +174,8 @@ final class AuditLogger
         'prescription_line' => PrescriptionLine::class,
         // Phase 3 slice 8 — pharmacy returns & reversals.
         'pharmacy_return' => PharmacyReturn::class,
+        // Phase 3 — standalone dispensing records.
+        'dispensing' => Dispensing::class,
         // Phase 3 slice 4 — discharge & follow-up.
         'follow_up' => FollowUp::class,
         // Phase 3 slice 5 — billing refunds & adjustments.

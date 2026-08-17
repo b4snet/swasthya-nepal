@@ -26,6 +26,8 @@ class Charge extends Model
 
     public const SOURCE_MANUAL = 'manual';
 
+    public const SOURCE_DISPENSING = 'dispensing';
+
     public const STATUS_POSTED = 'posted';
 
     public const STATUS_VOIDED = 'voided';
@@ -41,6 +43,7 @@ class Charge extends Model
         'encounter_id',
         'prescription_id',
         'prescription_line_id',
+        'dispensing_id',
         'description',
         'amount_minor',
         'currency',

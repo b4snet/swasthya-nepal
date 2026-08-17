@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Exceptions\ApiException;
+use App\Models\InventoryItem;
 use App\Models\PrescriptionLine;
 use App\Models\StockBatch;
 use App\Support\ErrorCodes;
@@ -113,6 +114,35 @@ final class PharmacyService
             throw new ApiException(
                 ErrorCodes::CONFLICT,
                 'The batch was concurrently modified, depleted, or expired; refresh and retry.',
+                409,
+            );
+        }
+    }
+
+    /**
+     * Deduct from the aggregate shelf with the same CAS discipline as the
+     * batch deduction. Shared by prescription dispensing and the standalone
+     * dispensing surface — the ledger remains the single stock truth, and a
+     * stale/concurrent actor affects zero rows (409).
+     */
+    public function deductShelf(InventoryItem $item, int $quantity, ?string $userId): void
+    {
+        $updated = DB::table('inventory_items')
+            ->where('tenant_id', $item->tenant_id)
+            ->where('id', $item->getKey())
+            ->where('lock_version', $item->lock_version)
+            ->where('quantity_on_hand', '>=', $quantity)
+            ->update([
+                'quantity_on_hand' => DB::raw('quantity_on_hand - '.$quantity),
+                'lock_version' => DB::raw('lock_version + 1'),
+                'updated_by' => $userId,
+                'updated_at' => now(),
+            ]);
+
+        if ($updated !== 1) {
+            throw new ApiException(
+                ErrorCodes::CONFLICT,
+                'Insufficient stock or the shelf was concurrently modified; refresh and retry.',
                 409,
             );
         }

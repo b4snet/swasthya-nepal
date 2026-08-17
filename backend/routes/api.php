@@ -56,6 +56,7 @@ use App\Http\Controllers\Api\RpmController;
 use App\Http\Controllers\Api\ScheduleController;
 use App\Http\Controllers\Api\ServiceController;
 use App\Http\Controllers\Api\StaffController;
+use App\Http\Controllers\Api\StandaloneDispensingController;
 use App\Http\Controllers\Api\TelehealthController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\WardController;
@@ -534,6 +535,12 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
     Route::post('prescriptions/{prescription}/verify', [PharmacyController::class, 'verify'])
         ->middleware('authorize:pharmacy:dispense');
     Route::post('prescriptions/{prescription}/dispense', [PharmacyController::class, 'dispense'])
+        ->middleware('authorize:pharmacy:dispense');
+
+    // Phase 3 — STANDALONE dispensing records (PRODUCT_REQUIREMENTS §6.7
+    // `dispensing` entity): a pharmacist dispenses a medication directly to
+    // a patient with NO prescription — same batch/shelf CAS + posted charge.
+    Route::post('dispensings', [StandaloneDispensingController::class, 'store'])
         ->middleware('authorize:pharmacy:dispense');
 
     // Phase 3 slice 8 — pharmacy returns & reversals (PRODUCT_REQUIREMENTS

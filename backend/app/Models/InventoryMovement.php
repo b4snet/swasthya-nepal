@@ -40,6 +40,9 @@ class InventoryMovement extends Model
         // Phase 3 slice 17 — the batch every movement touched (batch-level
         // ledger traceability for expiry-safe dispensing).
         'stock_batch_id',
+        // Phase 3 — the standalone dispensing record a movement belongs to
+        // (dispensing without a prescription; no prescription_line_id).
+        'dispensing_id',
         'occurred_at',
         'created_by',
     ];

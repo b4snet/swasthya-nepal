@@ -17,7 +17,7 @@ use Illuminate\Support\Str;
  * exercised end-to-end. Every test runs in a transaction on the app-role
  * connection and rolls back in all paths: no fixtures leak.
  */
-it('re-keys every RLS policy to the claims helpers (508 policies, zero GUC references)', function () {
+it('re-keys every RLS policy to the claims helpers (512 policies, zero GUC references)', function () {
     $policies = DB::connection('pgsql')->select(
         <<<'SQL'
         select count(*) as total,
@@ -29,7 +29,7 @@ it('re-keys every RLS policy to the claims helpers (508 policies, zero GUC refer
         SQL
     )[0];
 
-    expect((int) $policies->total)->toBe(508)
+    expect((int) $policies->total)->toBe(512)
         ->and((int) $policies->not_claims)->toBe(0)
         ->and((int) $policies->still_guc)->toBe(0);
 
@@ -91,7 +91,8 @@ it('keeps the RLS matrix intact: 62 scoped on, 15 off, none on-without-policies'
     // +3 since slice 25: rpm_devices, rpm_readings, rpm_alerts.
     // +5 since phase 21: cdss_rules, patient_allergies, cdss_check_results,
     // ai_features, ai_drafts.
-    expect((int) $matrix->rls_on)->toBe(128)
+    // +1 since the standalone-dispensing slice: dispensings.
+    expect((int) $matrix->rls_on)->toBe(129)
         ->and((int) $matrix->rls_off)->toBe(15)
         ->and((int) $matrix->on_without_policies)->toBe(0);
 });
@@ -740,6 +741,54 @@ it('isolates pharmacy returns from claims end to end (tenant, facility, mutation
         // The row is untouched by every attack above.
         claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
         expect($c->selectOne('select reason_code from pharmacy_returns where id = ?', [$pharmacyReturn])->reason_code)->toBe('patient_return');
+    });
+});
+
+it('isolates standalone dispensings from claims end to end (tenant, facility, mutation immunity)', function () {
+    rlsTx(rlsConn(), function ($c): void {
+        $t = claimsTenants($c);
+        $department = (string) Str::uuid();
+        $staff = (string) Str::uuid();
+        $patient = (string) Str::uuid();
+        $medication = (string) Str::uuid();
+        $item = (string) Str::uuid();
+        $batch = (string) Str::uuid();
+        $dispensing = (string) Str::uuid();
+        $charge = (string) Str::uuid();
+
+        // Full chain in tenant A: staff → patient → medication → inventory
+        // item → batch → standalone dispensing → posted dispensing charge.
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
+        $c->insert('insert into departments (id, tenant_id, facility_id, name, code, status) values (?, ?, ?, ?, ?, ?)', [$department, $t['tenantA'], $t['facilityA'], 'Pharmacy', 'pharmacy', 'active']);
+        $c->insert('insert into staff (id, tenant_id, facility_id, department_id, employee_code, full_name, designation, status) values (?, ?, ?, ?, ?, ?, ?, ?)', [$staff, $t['tenantA'], $t['facilityA'], $department, 'EMP-DSP', 'Dispense Staff', 'Pharmacist', 'active']);
+        $c->insert('insert into patients (id, tenant_id, facility_id, mrn, full_name, date_of_birth, sex, status) values (?, ?, ?, ?, ?, ?, ?, ?)', [$patient, $t['tenantA'], $t['facilityA'], 'MRN-DSP', 'Dispense Patient', '1990-01-01', 'female', 'active']);
+        $c->insert('insert into medications (id, tenant_id, facility_id, code, generic_name, strength, form, unit, price_minor, currency, is_controlled, status) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$medication, $t['tenantA'], $t['facilityA'], 'OTCM', 'OTC Med', '500mg', 'tablet', 'tab', 500, 'NPR', false, 'active']);
+        $c->insert('insert into inventory_items (id, tenant_id, facility_id, medication_id, quantity_on_hand, reorder_level, lock_version) values (?, ?, ?, ?, ?, ?, ?)', [$item, $t['tenantA'], $t['facilityA'], $medication, 100, 10, 0]);
+        $c->insert('insert into stock_batches (id, tenant_id, facility_id, inventory_item_id, medication_id, batch_number, expiry_date, quantity_received, quantity_remaining, status, controlled_dispense_requires_dual, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$batch, $t['tenantA'], $t['facilityA'], $item, $medication, 'B-DSP', '2026-12-31', 100, 100, 'available', false, 0]);
+        $c->insert('insert into dispensings (id, tenant_id, facility_id, patient_id, medication_id, inventory_item_id, stock_batch_id, batch_number, batch_expires_at, quantity_minor, status, dispensed_by_staff_id, dispensed_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$dispensing, $t['tenantA'], $t['facilityA'], $patient, $medication, $item, $batch, 'B-DSP', '2026-12-31', 1, 'dispensed', $staff, '2026-08-15 13:05:00+00']);
+        $c->insert('insert into charges (id, tenant_id, facility_id, patient_id, source_type, dispensing_id, description, amount_minor, currency, tax_rate_bps, status, charged_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$charge, $t['tenantA'], $t['facilityA'], $patient, 'dispensing', $dispensing, 'OTC Med (500mg) × 1', 500, 'NPR', 0, 'posted', '2026-08-15 13:06:00+00']);
+
+        // Own tenant+facility claims → visible.
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
+        expect($c->selectOne('select id from dispensings where id = ?', [$dispensing]))->not->toBeNull();
+
+        // Another tenant → invisible; update/delete affect zero rows.
+        claimsSet($c, ['app_tenant_id' => $t['tenantB'], 'app_facility_id' => $t['facilityB']]);
+        expect($c->selectOne('select id from dispensings where id = ?', [$dispensing]))->toBeNull()
+            ->and($c->update('update dispensings set batch_number = ? where id = ?', ['pwned', $dispensing]))->toBe(0)
+            ->and($c->delete('delete from dispensings where id = ?', [$dispensing]))->toBe(0);
+
+        // Same tenant, a different facility → invisible (TENANT_FACILITY tier).
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityB']]);
+        expect($c->selectOne('select id from dispensings where id = ?', [$dispensing]))->toBeNull();
+
+        // Org-wide claims (no facility) → sees the tenant's dispensings.
+        claimsSet($c, ['app_tenant_id' => $t['tenantA']]);
+        expect($c->selectOne('select id from dispensings where id = ?', [$dispensing]))->not->toBeNull();
+
+        // The row is untouched by every attack above.
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
+        expect($c->selectOne('select batch_number from dispensings where id = ?', [$dispensing])->batch_number)->toBe('B-DSP');
     });
 });
 
