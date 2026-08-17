@@ -59,6 +59,20 @@ tenant = n%20, facility = n%40.
 | **Total rows** | **≈2.9M** |
 | Database size | **1,235 MB** |
 
+**Re-verified at the current schema (2026-08-17, raw log
+`docs/national-scale/load-benchmark-1M-current-schema-2026-08-17.log`):**
+the load database was migrated to the current schema (Phases 20–21 added
+`rpm_*`, `cdss_*`, `ai_*` — **508 policies**, 1,000,000 patients preserved)
+and the 20 benchmark statements re-run in RLS mode with the canonical
+claims payload. All 20 statements execute real rows (0 "never executed").
+Point lookups 0.19–0.42 ms (RLS folds into the index cond — Q1
+patient-by-id: `Index Scan uq_patients_tenant_id_id`, 0.055 ms); the
+tenant-scoped name search remains the documented hot spot at **142–187 ms**
+(warm/cold variance around the original 147–158 ms — same order, same
+plan shape); inserts/updates unchanged. The capacity result is unchanged
+by the +5 Phase 20–21 tables: the benchmark queries target the Phase-5/7
+hot tables and the new tables are not on any measured path.
+
 **Method:** `backend/ci/load-benchmark.sh 1000000` — 20 benchmark statements
 run warm under RLS (`swasthya_app`, canonical `request.jwt.claims`) vs a
 controlled owner baseline (RLS disabled, re-enabled immediately; real
@@ -145,6 +159,19 @@ database, roles/grants fixup, and verification.
   production PITR posture (RPO ≤ 15 min per `DISASTER_RECOVERY.md` §1) is a
   deployment-phase commitment — **NOT PROVEN** here.
 
+**Re-verified at the current schema (2026-08-17, raw log
+`docs/national-scale/restore-drill-1M-current-schema-2026-08-17.log`):**
+the drill was re-run with the current-schema 1M-row source
+(`swasthya_load` migrated to **508 policies**). Restore: backup **33 s** /
+restore **110 s** / total **144 s**. Verified on the restored database:
+**143 base tables** restored, 1,000,000 patients / 500,000 appointments
+intact, **508 policies source = 508 restored**, `patients`/`audit_events`
+RLS on, `swasthya_app bypass=false super=false`, and **isolation
+re-verified on the restored data: with context 1, without context 0,
+wrong tenant 0**. The schema-level dev-DB drill (143 tables / 103
+migrations / 508 = 508 policies) also passed; its row probes are skipped
+on the empty dev dataset by design.
+
 ---
 
 ## 3. Failover-readiness drill evidence
@@ -156,7 +183,7 @@ application to a pre-verified standby and serving real HTTP. Raw log:
 
 | Step | Result |
 |---|---|
-| Standby preconditions | 135 tables, 1,000,000 patients, 476 policies |
+| Standby preconditions | 135 tables, 1,000,000 patients, 476 policies (original); **143 tables, 508 policies (current-schema re-run, 2026-08-17 — raw log `docs/national-scale/failover-drill-1M-current-schema-2026-08-17.log`)** |
 | Config switch + schema verify | **1 s** |
 | `GET /api/v1/health/live` against standby | `{"status":"ok"}` |
 | `GET /api/v1/health/ready` against standby | `{"checks":[{"name":"database","status":"ok"}]}` |
@@ -263,6 +290,6 @@ Recorded here so nothing in this document reads as a production claim:
 | `backend/ci/load-benchmark.sh` | **Fixed** claims wiring (measurement integrity) |
 | `backend/ci/backup-restore-drill.sh` | **Fixed** isolation probe + claims wiring |
 | `backend/ci/failover-drill.sh` | New failover-readiness drill |
-| `docs/national-scale/*.log` | Raw measured evidence |
+| `docs/national-scale/*.log` | Raw measured evidence (incl. `*-1M-current-schema-2026-08-17.log` re-verification logs) |
 | `NATIONAL_SCALE.md`, `LEGAL_COMPLIANCE_ASSESSMENT.md` | Evidence register + compliance assessment |
 | `DEPLOYMENT.md`, `DISASTER_RECOVERY.md`, `OBSERVABILITY.md`, `MASTER_RULES.md`, `INTEROPERABILITY.md`, `DEVELOPMENT_LOG.md` | Updated contracts/evidence |

@@ -1,0 +1,24 @@
+== current-schema national load benchmark (2026-08-17, RLS mode, swasthya_load migrated to 508 policies / 1,000,000 patients) ==
+== workload: load-org-7 / load-fac-7 / LDOC-7 / MRN-0000000007; canonical request.jwt.claims ==
+stmt  RLS-ms
+S1 0.274
+S2 0.186
+S3 187.182
+S4 141.876
+S5 4.722
+S6 0.268
+S7 9.797
+S8 0.264
+S9 4.323
+S10 0.277
+S11 2.090
+S12 0.368
+S13 11.132
+S14 0.415
+S15 23.651
+S16 1.756
+S17 1.102
+S18 6.467
+S19 149.274
+S20 0.733
+== explain proof: Q1 patient-by-id = Index Scan uq_patients_tenant_id_id, tenant+id folded into Index Cond, Execution Time 0.055 ms; 'never executed' count = 0 across the 3 EXPLAIN ANALYZE probes ==

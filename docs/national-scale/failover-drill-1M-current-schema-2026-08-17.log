@@ -1,0 +1,19 @@
+[1m== 0/5 standby preconditions (swasthya_restore_load_p22) ==[0m
+standby swasthya_restore_load_p22: 143 tables, 1000000 patients, 508 policies
+[1m== 1/5 simulate primary loss — switch the app config to the standby ==[0m
+config switch + schema verification: 1s
+[1m== 2/5 serve real HTTP against the standby and probe readiness ==[0m
+live:  {"data":{"status":"ok","time":"2026-08-17T10:06:28+00:00"},"meta":{"context":{"tenantId":null,"facilityId":null,"branchId":null,"timezone":"UTC"}},"links":{}}
+ready: {"data":{"status":"ok","checks":[{"name":"database","status":"ok"}],"time":"2026-08-17T10:06:28+00:00"},"meta":{"context":{"tenantId":null,"facilityId":null,"branchId":null,"timezone":"UTC"}},"links":{}}
+[1m== 3/5 RLS isolation on the standby (swasthya_app, canonical claims) ==[0m
+tenant=73f831a9-d406-4b47-9b92-7821f5bb3ccf facility=ef377af4-8e92-4dff-a333-6ec8117515d4 patient=37f36fbc-57c4-40bf-85a7-240fb9307f2f
+-- with context (should be 1)
+with-context count: 1
+-- wrong tenant (should be 0)
+wrong-tenant count: 0
+[1m== 4/5 record measurements ==[0m
+switch-over (config + schema verify): 1s
+readiness probe against standby: ok
+FAILOVER DRILL COMPLETE — application serves from standby; RLS intact.
+NOTE: single-environment proof. Production multi-region cutover requires real
+infrastructure and the annual failover exercise (DISASTER_RECOVERY.md §13).

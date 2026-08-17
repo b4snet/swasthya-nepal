@@ -1,0 +1,44 @@
+[1m== 1/5 backup swasthya_load -> storage/app/backup-drill/swasthya-20260817-154807.dump ==[0m
+backup start: 1786960987  end: 1786961020  duration: 33s  size: 152333711 bytes
+[1m== 2/5 create clean restore database swasthya_restore_load_p22 ==[0m
+created swasthya_restore_load_p22
+[1m== 3/5 restore ==[0m
+restore start: 1786961021  end: 1786961131  duration: 110s
+[1m== 4/5 recreate cluster-level role + grants (NOT preserved by pg_dump) ==[0m
+ALTER DEFAULT PRIVILEGES
+roles + grants re-applied (roles.sql + grants.sql)
+[1m== 5/5 VERIFY the restored database ==[0m
+-- schema: table count
+143
+-- migrations table
+103
+-- data (patients, appointments, audit events)
+1000000 patients / 500000 appointments / 0 audit events
+-- RLS: enabled tables with policies (source vs restored)
+508
+508
+-- RLS enabled on patients / audit_events
+audit_events rls=true
+patients rls=true
+-- role configuration after restore
+swasthya_app bypass=false super=false
+-- audit records present
+== RLS isolation re-verified on the RESTORED database (as swasthya_app) ==
+tenant=73f831a9-d406-4b47-9b92-7821f5bb3ccf facility=ef377af4-8e92-4dff-a333-6ec8117515d4 patient=37f36fbc-57c4-40bf-85a7-240fb9307f2f
+-- swasthya_app WITH context sees the patient (should be 1)
+BEGIN
+{"app_user_id" : "", "app_tenant_id" : "73f831a9-d406-4b47-9b92-7821f5bb3ccf", "app_facility_id" : "ef377af4-8e92-4dff-a333-6ec8117515d4", "app_branch_id" : "", "app_is_platform" : "false"}
+1
+COMMIT
+-- swasthya_app WITHOUT context (safe failure, should be 0)
+0
+-- swasthya_app WRONG tenant cannot read (should be 0)
+BEGIN
+{"app_user_id" : "", "app_tenant_id" : "74c57806-2321-48ab-9ac3-0dd132ae250f", "app_facility_id" : "", "app_branch_id" : "", "app_is_platform" : "false"}
+0
+COMMIT
+== RPO / RTO ==
+backup duration: 33s | restore duration: 110s | total drill: 144s
+RPO (as configured): interval since last backup (dev: on-demand, no WAL archiving)
+RTO (measured, this environment): 110s + role re-creation
+DRILL COMPLETE — restore verified.

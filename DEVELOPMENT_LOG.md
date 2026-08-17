@@ -1838,7 +1838,13 @@ ent schedule → 409 with zero rows changed; cross-tenant isolation — read 404
 
 **Remaining risks (deployment-phase, NOT PROVEN).** production-scale SLO verification; WAL/PITR production posture; real multi-region cutover (annual failover drill); legal/compliance assessment; live national integrations (none specified); page-content-level Nepali localization beyond the shell/login.
 
-**Baseline note.** Phases 20 (RPM) and 21 (CDSS/AI) were requested but never implemented (no code, no commits) — Phase 22 proceeded per the authoritative instruction; the roadmap's "all prior phases" dependency is partially unmet and is flagged in the STOP report.
+**Baseline note (now closed).** Phases 20 (RPM) and 21 (CDSS/AI) were requested but not yet implemented when Phase 22 ran — the roadmap's "all prior phases" dependency was partially unmet and flagged here. Both are now implemented and committed on `main` (`095ef33` Phase 20, `183981f` Phase 21) with all gates green, so the dependency flag is **closed**.
+
+**Current-schema re-verification (2026-08-17, after Phases 20–21).** The recorded Phase-22 measurements predated Phases 20–21 (476 policies / 135 tables). The 1M-row load database was migrated to the current schema (**508 policies**, 1,000,000 patients / 500,000 appointments preserved) and all drills re-run against it — raw logs `docs/national-scale/{load-benchmark,restore-drill,failover-drill}-1M-current-schema-2026-08-17.log`:
+- **Load:** all 20 benchmark statements execute real rows (0 "never executed"); point lookups 0.19–0.42 ms (Q1 `Index Scan uq_patients_tenant_id_id`, 0.055 ms — RLS folds into the index cond); tenant-scoped name search remains the documented hot spot at **142–187 ms** (same order/plan shape as the original 147–158 ms); the +5 Phase 20–21 tables are not on any measured path — capacity result unchanged.
+- **Restore drill:** backup **33 s** / restore **110 s** / total **144 s**; **143 base tables** restored, 1M patients / 500k appointments intact, **508 = 508 policies**, `patients`/`audit_events` RLS on, `swasthya_app bypass=false super=false`, **isolation re-verified on restored data: with context 1 / without 0 / wrong tenant 0**. Schema-level dev-DB drill (143 tables / 103 migrations / 508 = 508) also passed (row probes skipped on empty dev data by design).
+- **Failover drill:** standby preconditions **143 tables / 1,000,000 patients / 508 policies**; config switch 1 s; `health/live` + `health/ready` (database check ok) served from the standby; RLS on standby 1/0/0.
+- **Full gates at current schema:** backend **776 passed / 10,141 assertions**, Node harness 855/855, Vitest 32/32, both TypeScript gates PASS, Pint PASS (762 files), `git diff --check` CLEAN, debug/artifact sweep CLEAN, tracked-secret scan 0 matches.
 
 ## Phase 20 — RPM: Device Readings & Human-Mediated Alerts (2026-08-17)
 
