@@ -26,6 +26,7 @@ on:
     paths:
       - 'backend/**'
       - 'frontend/**'
+  workflow_dispatch:
 
 concurrency:
   group: backend-ci-${{ github.ref }}
