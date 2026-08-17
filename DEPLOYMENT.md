@@ -161,10 +161,26 @@ verification; full Pest suite incl. tenant isolation) **and** a `frontend`
 job (Node 20; npm ci; typecheck; 20 unit tests; production build; E2E
 against the disposable DB — desktop + mobile OPD workflow + axe a11y).
 The complete pipeline was executed locally as a twin
-(`backend/ci/run-local-ci.sh` + `frontend/playwright.ci.config.ts`); it has
-**not yet run on a real GitHub-hosted runner** (the repository has not been
-pushed). A real-runner run is the first remaining CI step
-(`STAGING.md` §14–15).
+(`backend/ci/run-local-ci.sh` + `frontend/playwright.ci.config.ts`).
+
+**Real-runner status (2026-08-17):** the repository was pushed to GitHub
+(`b4snet/swasthya-nepal`, `origin/main` now carries the release chain) and
+the workflow has executed on real GitHub-hosted runners. Real-runner
+evidence to date: the validation-only `smoke-validation` job (staging smoke
+script syntax + configuration modes) **passed on a real `ubuntu-latest`
+runner in two consecutive runs** (run 11 `32030111553`, run 12
+`32031732908` — all five assertions green); the `backend` job passed on
+PHP 8.3 in both runs and on PHP 8.2 in run 11 (run 12's PHP 8.2 Pest step
+hit one transient failure on identical code that passed on 8.3 in the same
+run — a runner/environment flake, not a code regression; the repo's own
+history documents this class of transient); the `frontend` job exposed a
+test-synchronization race in `AppShell.test.tsx` (asserted role-gated nav
+before the async session applied — reproduced on Node 20, fixed by waiting
+for post-auth nav, verified 32/32 on Node 20 and Node 26) and requires one
+more matrix-green run to execute to completion. **B2 (push + real-runner
+CI) is therefore still OPEN pending a single fully green run** — the
+smoke-validation gate itself is proven; re-running requires GitHub
+authorization or a re-trigger (`STAGING.md` §14–15).
 
 ---
 
