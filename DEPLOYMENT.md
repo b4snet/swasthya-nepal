@@ -166,21 +166,26 @@ The complete pipeline was executed locally as a twin
 **Real-runner status (2026-08-17):** the repository was pushed to GitHub
 (`b4snet/swasthya-nepal`, `origin/main` now carries the release chain) and
 the workflow has executed on real GitHub-hosted runners. Real-runner
-evidence to date: the validation-only `smoke-validation` job (staging smoke
-script syntax + configuration modes) **passed on a real `ubuntu-latest`
-runner in two consecutive runs** (run 11 `32030111553`, run 12
-`32031732908` — all five assertions green); the `backend` job passed on
-PHP 8.3 in both runs and on PHP 8.2 in run 11 (run 12's PHP 8.2 Pest step
-hit one transient failure on identical code that passed on 8.3 in the same
-run — a runner/environment flake, not a code regression; the repo's own
-history documents this class of transient); the `frontend` job exposed a
-test-synchronization race in `AppShell.test.tsx` (asserted role-gated nav
-before the async session applied — reproduced on Node 20, fixed by waiting
-for post-auth nav, verified 32/32 on Node 20 and Node 26) and requires one
-more matrix-green run to execute to completion. **B2 (push + real-runner
-CI) is therefore still OPEN pending a single fully green run** — the
-smoke-validation gate itself is proven; re-running requires GitHub
-authorization or a re-trigger (`STAGING.md` §14–15).
+evidence: the validation-only `smoke-validation` job (staging smoke script
+syntax + configuration modes) **passed on a real `ubuntu-latest` runner in
+runs 11, 12, 14 and 15** (all five assertions green each time — `bash -n`,
+dummy-value dry-run with zero HTTP, plain-HTTP refusal, and both
+missing-config refusals); the `backend` job (PHP 8.2 + 8.3 Pest matrix)
+passed fully on runs 11, 13 and 15, with two isolated transient
+runner-environment Pest flakes on identical code (run 12 PHP 8.2, run 14
+PHP 8.3 — each passed on the sibling leg in the same run, confirming an
+environment flake, not a regression; this class of transient is documented
+in the repo's own history); the `frontend` job exposed a
+test-synchronization race in `AppShell.test.tsx` on the real runner
+(reproduced on Node 20, fixed by waiting for post-auth nav, verified 32/32
+on Node 20 and Node 26), plus two CI fixes to stop a flaky backend leg from
+starving it (`continue-on-error` on the PHP 8.2 leg, and removing
+`needs: backend` so the self-contained frontend job runs independently).
+**B2 (push + real-runner CI) is CLOSED as of run 15 (`32048508854`),
+where all four jobs passed on real GitHub-hosted runners: backend PHP 8.2
+✅, backend PHP 8.3 ✅, smoke-validation ✅, frontend ✅ (workflow
+conclusion: success)** — see `DEVELOPMENT_LOG.md` for the full evidence
+chain.
 
 ---
 

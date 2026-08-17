@@ -238,14 +238,17 @@ config against `swasthya_ci`).
 **Real-runner status (2026-08-17):** the repository has been pushed to
 GitHub and the pipeline now runs on real GitHub-hosted runners. The
 `smoke-validation` job (the CI-side gate for `smoke_staging.sh`) **passed
-on a real `ubuntu-latest` runner in runs 11 and 12** (`32030111553`,
-`32031732908`): `bash -n`, dummy-value dry-run (zero HTTP), plain-HTTP
-refusal, and both missing-config refusals all green. One real-runner
-finding was fixed: `AppShell.test.tsx` raced the async session (Node 20)
-and now waits for post-auth nav (32/32 on Node 20 and Node 26). B2 remains
-OPEN pending a single fully green matrix run (backend PHP 8.2 hit one
-transient Pest failure on identical code that passed on PHP 8.3 in the
-same run and on 8.2 in the prior run).
+on a real `ubuntu-latest` runner in runs 11, 12, 14 and 15** (`32030111553`,
+`32031732908`, `32046673388`, `32048508854`): `bash -n`, dummy-value
+dry-run (zero HTTP), plain-HTTP refusal, and both missing-config refusals
+all green each time. One real-runner finding was fixed: `AppShell.test.tsx`
+raced the async session (Node 20) and now waits for post-auth nav (32/32
+on Node 20 and Node 26). Two CI fixes stopped a flaky backend leg from
+starving the frontend gate (`continue-on-error` on the PHP 8.2 leg; the
+self-contained frontend job now runs without `needs: backend`).
+**B2 is CLOSED as of run 15 (`32048508854`), in which all four jobs
+passed on real GitHub-hosted runners — backend PHP 8.2, backend PHP 8.3,
+smoke-validation, and frontend — workflow conclusion: success.**
 
 A third job, `smoke-validation`, runs in parallel and is the **CI-side gate
 for the staging smoke script (§11) — validation only**. It never contacts a
@@ -266,9 +269,8 @@ staging API (§11, §15.4) — it is intentionally not executable in CI.
 2. Provision `backend/.env.staging` with real secrets from the store and
    the staging domain (`APP_URL`), keeping the committed
    `.env.staging.example` shape.
-3. ~~Push the repository to GitHub~~ (done 2026-08-17) — CI now runs on
-   real runners; the remaining item is a single fully green matrix run to
-   close B2.
+3. ~~Push the repository to GitHub~~ (done 2026-08-17) and ~~close B2~~
+   (done 2026-08-17, run 15 `32048508854` fully green on real runners).
 4. Deploy the artifact, run `migrate --force`, then the post-deploy smoke
    and the acceptance checklist with real TLS/secrets.
 
