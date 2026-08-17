@@ -172,6 +172,45 @@ final class InventoryController extends Controller
     }
 
     /**
+     * GET /inventory-items/{inventoryItem}/batches — batch/expiry
+     * visibility for one inventory item (ROADMAP Phase 12 acceptance:
+     * "expiring/expired batches visible and never issuable"; PRODUCT_
+     * REQUIREMENTS §6.7 "expiring-stock handling must be visible to staff").
+     *
+     * Returns every batch of the item — available, depleted, and
+     * quarantined — ordered soonest expiry first (the urgent stock at the
+     * top), each with its expiry status (`valid` / `expiring_soon` /
+     * `expired`), days to expiry (negative when expired), per-batch stock,
+     * and the controlled-substance flag. Expiry status is date-derived
+     * presentation only — the dispensing CAS remains the hard expiry gate.
+     * The endpoint is read-only: it mutates nothing and records no audit
+     * (matching the inventory index).
+     */
+    public function batches(InventoryItem $inventoryItem, Request $request): JsonResponse
+    {
+        AccessCheck::scoped($inventoryItem, write: false);
+
+        $context = TenantContext::current();
+
+        $query = StockBatch::query()
+            ->where('tenant_id', $inventoryItem->tenant_id)
+            ->where('inventory_item_id', $inventoryItem->getKey());
+
+        // Facility-scoped principals see exactly their facility's batches
+        // (the item is facility-scoped already; this mirrors the index).
+        if (! $context->isPlatform && $context->facilityId() !== null) {
+            $query->where('facility_id', $context->facilityId());
+        }
+
+        $batches = $query->orderBy('expiry_date')->orderBy('created_at')->get();
+
+        return Envelope::success(
+            data: $batches->map(fn (StockBatch $batch): array => $this->presentBatch($batch))->values(),
+            request: $request,
+        );
+    }
+
+    /**
      * POST /inventory-items/{inventoryItem}/adjust — a signed stock
      * adjustment with a mandatory reason. CAS on (quantity, lock_version):
      * concurrent adjustments cannot drive stock negative or double-apply.
@@ -223,6 +262,26 @@ final class InventoryController extends Controller
         );
 
         return Envelope::success(data: $this->present($inventoryItem->fresh('medication:id,generic_name,brand_name,strength,form,unit,is_controlled,price_minor,currency')), request: $request);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function presentBatch(StockBatch $batch): array
+    {
+        return [
+            'id' => $batch->getKey(),
+            'inventoryItemId' => $batch->inventory_item_id,
+            'medicationId' => $batch->medication_id,
+            'batchNumber' => $batch->batch_number,
+            'expiryDate' => $batch->expiry_date?->toDateString(),
+            'quantityReceived' => $batch->quantity_received,
+            'quantityRemaining' => $batch->quantity_remaining,
+            'status' => $batch->status,
+            'controlledDispenseRequiresDual' => $batch->controlled_dispense_requires_dual,
+            'expiryStatus' => $batch->expiryStatus(),
+            'daysToExpiry' => $batch->daysToExpiry(),
+        ];
     }
 
     /**

@@ -523,6 +523,8 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
     // check → dispense → inventory deduction → billing.
     Route::get('organizations/{organization}/inventory', [InventoryController::class, 'index'])
         ->middleware('authorize:pharmacy:view');
+    Route::get('inventory-items/{inventoryItem}/batches', [InventoryController::class, 'batches'])
+        ->middleware('authorize:pharmacy:view');
     Route::post('organizations/{organization}/inventory', [InventoryController::class, 'store'])
         ->middleware('authorize:pharmacy:stock');
     Route::post('inventory-items/{inventoryItem}/adjust', [InventoryController::class, 'adjust'])

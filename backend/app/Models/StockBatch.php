@@ -36,6 +36,26 @@ class StockBatch extends Model
     public const STATUS_QUARANTINED = 'quarantined';
 
     /**
+     * Expiry visibility (ROADMAP Phase 12 acceptance: "expiring/expired
+     * batches visible and never issuable"). `expiring_soon` is the
+     * presentation window — the batch's own expiry_date is the only hard
+     * gate; this label never blocks or permits dispensing (the CAS expiry
+     * guard uses the actual date).
+     */
+    public const EXPIRY_STATUS_VALID = 'valid';
+
+    public const EXPIRY_STATUS_EXPIRING_SOON = 'expiring_soon';
+
+    public const EXPIRY_STATUS_EXPIRED = 'expired';
+
+    /**
+     * The visibility window before expiry that flags a batch as
+     * `expiring_soon` (90 days, a documented presentation constant — not a
+     * dispensing rule).
+     */
+    public const EXPIRING_SOON_DAYS = 90;
+
+    /**
      * @var list<string>
      */
     protected $fillable = [
@@ -66,6 +86,42 @@ class StockBatch extends Model
             'controlled_dispense_requires_dual' => 'boolean',
             'lock_version' => 'integer',
         ];
+    }
+
+    /**
+     * Date-derived expiry status: `expired` (expiry_date before today),
+     * `expiring_soon` (today .. today + EXPIRING_SOON_DAYS), else `valid`.
+     * Pure presentation facts — never a dispensing gate.
+     */
+    public function expiryStatus(): string
+    {
+        if ($this->expiry_date === null) {
+            return self::EXPIRY_STATUS_VALID;
+        }
+
+        $today = now()->startOfDay();
+
+        if ($this->expiry_date->lt($today)) {
+            return self::EXPIRY_STATUS_EXPIRED;
+        }
+
+        if ($this->expiry_date->lte($today->copy()->addDays(self::EXPIRING_SOON_DAYS))) {
+            return self::EXPIRY_STATUS_EXPIRING_SOON;
+        }
+
+        return self::EXPIRY_STATUS_VALID;
+    }
+
+    /**
+     * Whole days until expiry; negative when the batch is already expired.
+     */
+    public function daysToExpiry(): int
+    {
+        if ($this->expiry_date === null) {
+            return 0;
+        }
+
+        return (int) now()->startOfDay()->diffInDays($this->expiry_date->copy()->startOfDay(), false);
     }
 
     /**
