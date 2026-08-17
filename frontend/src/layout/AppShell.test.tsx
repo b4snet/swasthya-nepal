@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 import { AuthProvider } from '../auth/AuthProvider';
@@ -56,6 +56,16 @@ async function renderShell(roles: string[]) {
     </MemoryRouter>,
   );
   await screen.findAllByRole('link', { name: 'Dashboard' });
+
+  // The session is applied asynchronously (refresh fetch -> auth state ->
+  // tenant roles). Dashboard is ungated and renders even during auth
+  // 'loading', so waiting only for it races the role-gated assertions below.
+  // Wait until the post-auth nav is computed (any role-gated destination is
+  // present) before returning; every test in this file asserts a gated link.
+  await waitFor(() => {
+    const gated = ['Queue', 'Billing', 'Audit'].some((name) => screen.queryAllByRole('link', { name }).length > 0);
+    expect(gated).toBe(true);
+  });
 }
 
 const count = (name: string) => screen.queryAllByRole('link', { name }).length;
