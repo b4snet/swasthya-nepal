@@ -17,7 +17,7 @@ use Illuminate\Support\Str;
  * exercised end-to-end. Every test runs in a transaction on the app-role
  * connection and rolls back in all paths: no fixtures leak.
  */
-it('re-keys every RLS policy to the claims helpers (488 policies, zero GUC references)', function () {
+it('re-keys every RLS policy to the claims helpers (508 policies, zero GUC references)', function () {
     $policies = DB::connection('pgsql')->select(
         <<<'SQL'
         select count(*) as total,
@@ -29,7 +29,7 @@ it('re-keys every RLS policy to the claims helpers (488 policies, zero GUC refer
         SQL
     )[0];
 
-    expect((int) $policies->total)->toBe(488)
+    expect((int) $policies->total)->toBe(508)
         ->and((int) $policies->not_claims)->toBe(0)
         ->and((int) $policies->still_guc)->toBe(0);
 
@@ -89,7 +89,9 @@ it('keeps the RLS matrix intact: 62 scoped on, 15 off, none on-without-policies'
     // oauth_partners, oauth_partner_tokens.
     // +2 since slice 24: teleconsults, video_sessions.
     // +3 since slice 25: rpm_devices, rpm_readings, rpm_alerts.
-    expect((int) $matrix->rls_on)->toBe(123)
+    // +5 since phase 21: cdss_rules, patient_allergies, cdss_check_results,
+    // ai_features, ai_drafts.
+    expect((int) $matrix->rls_on)->toBe(128)
         ->and((int) $matrix->rls_off)->toBe(15)
         ->and((int) $matrix->on_without_policies)->toBe(0);
 });

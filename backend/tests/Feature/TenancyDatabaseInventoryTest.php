@@ -16,12 +16,12 @@ use Illuminate\Support\Str;
  * and the deliberately permissive INSERT boundary, so any change to the
  * policy matrix becomes a visible, reviewed regression.
  *
- * The 123-table set is the RLS-on matrix (ClaimsBasedRlsTest asserts 123
- * scoped + 15 unscoped); the 123 here must match it exactly.
+ * The 128-table set is the RLS-on matrix (ClaimsBasedRlsTest asserts 128
+ * scoped + 15 unscoped); the 128 here must match it exactly.
  */
 
 /**
- * The 123 tables with RLS enabled (the documented scoped set).
+ * The 128 tables with RLS enabled (the documented scoped set).
  *
  * @var list<string>
  */
@@ -106,6 +106,11 @@ const RLS_SCOPED_TABLES = [
     // adapters, validated/labeled readings (append-only), and
     // human-mediated threshold alerts.
     'rpm_devices', 'rpm_readings', 'rpm_alerts',
+    // Phase 21 — CDSS/AI (DATABASE.md §3.57, AI_RULES.md §19): the versioned
+    // knowledge base, documented patient allergies, persisted check results,
+    // the AI feature registry, and grounded assistive drafts (sign-off-only).
+    'cdss_rules', 'patient_allergies', 'cdss_check_results',
+    'ai_features', 'ai_drafts',
     // TENANT_ONLY
     'payers', 'mrn_counters', 'patient_identifiers', 'patient_contacts',
     'insurance_policies', 'patient_documents', 'consents',
@@ -705,6 +710,30 @@ function seedTenantChain(ConnectionInterface $c, string $tenantId, string $facil
     $c->insert('insert into rpm_alerts (id, tenant_id, facility_id, patient_id, device_id, reading_id, alert_type, parameter, threshold_value, observed_value, severity, status, acknowledged_by, acknowledged_at, acknowledged_note, resolved_by, resolved_at, created_by, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$rpmAlert, $tenantId, $facilityId, $patient, $rpmDevice, $rpmReading, 'threshold_high', 'value', '{"high": 120}', '{"value": 140}', 'medium', 'open', null, null, null, null, null, null, 0]);
     $ids['rpm_alerts'] = $rpmAlert;
 
+    // Phase 21 — CDSS/AI (DATABASE.md §3.57, AI_RULES.md §19): one versioned
+    // KB rule, one documented allergy, one open check result, one registered
+    // AI feature (kill switch off), and one draft awaiting sign-off. No
+    // clinical PHI in these rows — all synthetic.
+    $cdssRule = (string) Str::uuid();
+    $c->insert('insert into cdss_rules (id, tenant_id, facility_id, rule_type, code, name, severity, spec, version, status, lock_version, created_by, updated_by) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$cdssRule, $tenantId, $facilityId, 'interaction', 'CHAIN-INT-1', 'Chain interaction', 'major', '{"medication_a_id": null, "medication_b_id": null}', 1, 'active', 0, $staff, null]);
+    $ids['cdss_rules'] = $cdssRule;
+
+    $allergy = (string) Str::uuid();
+    $c->insert('insert into patient_allergies (id, tenant_id, facility_id, patient_id, allergen, allergen_class, severity, reaction, status, lock_version, recorded_by) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$allergy, $tenantId, $facilityId, $patient, 'Penicillin', 'penicillin', 'moderate', 'Rash', 'active', 0, $staff]);
+    $ids['patient_allergies'] = $allergy;
+
+    $checkResult = (string) Str::uuid();
+    $c->insert('insert into cdss_check_results (id, tenant_id, facility_id, patient_id, alert_type, rule_code, rule_version, severity, message, triggering_facts, status, lock_version, created_by) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$checkResult, $tenantId, $facilityId, $patient, 'allergy', 'CHAIN-ALL-1', 1, 'major', 'Chain allergy alert.', '{"allergen_class": "penicillin"}', 'open', 0, $staff]);
+    $ids['cdss_check_results'] = $checkResult;
+
+    $aiFeature = (string) Str::uuid();
+    $c->insert('insert into ai_features (id, tenant_id, facility_id, function, name, tier, owner_staff_id, model_id, model_version, purpose, non_goals, min_inputs, output_schema, confidence_threshold, fallback_mode, enabled, model_approved, evaluation_ref, review_cadence, audit_class, status, lock_version, created_by, updated_by) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$aiFeature, $tenantId, $facilityId, 'documentation_draft', 'Chain draft', 2, $staff, 'note-draft-v3', '2026-07-15', 'Draft notes.', null, '[]', '{}', null, 'manual', false, false, null, 'quarterly', 'ai.draft', 'registered', 0, $staff, null]);
+    $ids['ai_features'] = $aiFeature;
+
+    $aiDraft = (string) Str::uuid();
+    $c->insert('insert into ai_drafts (id, tenant_id, facility_id, patient_id, encounter_id, function, tier, model_id, model_version, source_refs, output, confidence, status, signer_staff_id, signed_at, correlation_id, lock_version, created_by) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$aiDraft, $tenantId, $facilityId, $patient, null, 'documentation_draft', 2, 'note-draft-v3', '2026-07-15', '[]', 'Chain draft output.', null, 'draft', null, null, null, 0, $staff]);
+    $ids['ai_drafts'] = $aiDraft;
+
     // Support sessions are owner-or-platform visible: insert with the chain
     // user as the owning context (user_id GUC).
     $session = (string) Str::uuid();
@@ -783,6 +812,11 @@ function chainUpdateColumns(): array
         'rpm_devices' => ['status', 'disabled'],
         'rpm_readings' => ['validation_status', 'validated'],
         'rpm_alerts' => ['status', 'resolved'],
+        'cdss_rules' => ['status', 'superseded'],
+        'patient_allergies' => ['reaction', 'upd'],
+        'cdss_check_results' => ['status', 'overridden'],
+        'ai_features' => ['status', 'retired'],
+        'ai_drafts' => ['status', 'withdrawn'],
         'payment_allocations' => ['amount_minor', '1'],
         'payments' => ['provider_ref', 'upd'],
         'payroll_exports' => ['format', 'csv'],
@@ -877,7 +911,7 @@ function inventoryTenants(ConnectionInterface $c): array
     return $t;
 }
 
-it('records the current RLS inventory: 123 scoped tables enabled + FORCED, 15 unscoped off', function () {
+it('records the current RLS inventory: 128 scoped tables enabled + FORCED, 15 unscoped off', function () {
     $rows = DB::connection('pgsql')->select(
         'select c.relname as table_name, c.relrowsecurity::text as enabled, c.relforcerowsecurity::text as forced
          from pg_class c
@@ -1015,7 +1049,7 @@ it('FORCE RLS binds a non-superuser table owner (defense-in-depth proof)', funct
     }
 });
 
-it('denies cross-tenant SELECT, UPDATE, and DELETE on all 123 tenant-owned tables — two-sided', function () {
+it('denies cross-tenant SELECT, UPDATE, and DELETE on all 128 tenant-owned tables — two-sided', function () {
     rlsTx(rlsConn(), function ($c): void {
         $t = inventoryTenants($c);
 

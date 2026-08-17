@@ -305,6 +305,20 @@ class RolePermissionSeeder extends Seeder
             'rpm:manage' => ['domain' => 'rpm', 'description' => 'Enroll devices (consent-gated), activate and disable them'],
             'rpm:ingest' => ['domain' => 'rpm', 'description' => 'Ingest device readings (batch, idempotent, validated and labeled)'],
             'rpm:acknowledge' => ['domain' => 'rpm', 'description' => 'Acknowledge and resolve RPM alerts (human-mediated escalation)'],
+            // Phase 21 — CDSS (ROADMAP Phase 21, CLINICAL_SAFETY.md §6, §9):
+            // view the versioned knowledge base + run checks; manage = curate
+            // the knowledge base (store/activate versions) and record
+            // audited overrides.
+            'cdss:view' => ['domain' => 'cdss', 'description' => 'View the CDSS knowledge base, run knowledge checks, and evaluate pathways'],
+            'cdss:manage' => ['domain' => 'cdss', 'description' => 'Curate the versioned CDSS knowledge base and record audited overrides'],
+            // Phase 21 — Governed assistive AI (AI_RULES.md §1–§19):
+            // ai:invoke uses registered, enabled, approved features; ai:sign
+            // is the clinician's accountable sign-off (draft → record).
+            // ai:manage = registry, activation, and kill switches.
+            'ai:view' => ['domain' => 'ai', 'description' => 'View the AI feature registry'],
+            'ai:manage' => ['domain' => 'ai', 'description' => 'Register AI features, activate them (evidence-gated), and toggle kill switches'],
+            'ai:invoke' => ['domain' => 'ai', 'description' => 'Invoke registered, enabled, approved AI features and create assistive drafts'],
+            'ai:sign' => ['domain' => 'ai', 'description' => 'Clinician sign-off of AI-assistive drafts (the accountable review act)'],
         ];
     }
 
@@ -462,6 +476,10 @@ class RolePermissionSeeder extends Seeder
                     // whole remote-monitoring surface, including the
                     // machine ingestion path.
                     'rpm:view', 'rpm:manage', 'rpm:ingest', 'rpm:acknowledge',
+                    // Phase 21 — CDSS/AI: the org admin curates the org's
+                    // knowledge base and governs the AI registry across
+                    // facilities.
+                    'cdss:view', 'cdss:manage', 'ai:view', 'ai:manage',
                 ],
             ],
             'org_finance' => [
@@ -564,6 +582,11 @@ class RolePermissionSeeder extends Seeder
                     // Phase 3 slice 25 — RPM: the hospital admin manages
                     // remote monitoring for their facility.
                     'rpm:view', 'rpm:manage', 'rpm:ingest', 'rpm:acknowledge',
+                    // Phase 21 — CDSS/AI: the hospital admin curates the
+                    // facility's knowledge base and governs the AI registry
+                    // (activation evidence-gated; kill switches always
+                    // available).
+                    'cdss:view', 'cdss:manage', 'ai:view', 'ai:manage',
                 ],
             ],
             'branch_manager' => [
@@ -675,6 +698,12 @@ class RolePermissionSeeder extends Seeder
                     // and acknowledges/resolves alerts (the clinical act).
                     // Device enrollment stays with nursing/administration.
                     'rpm:view', 'rpm:acknowledge',
+                    // Phase 21 — CDSS/AI: the doctor runs knowledge checks,
+                    // evaluates pathways, invokes registered AI features,
+                    // and SIGNS drafts (the accountable clinician act).
+                    // Knowledge-base curation and kill switches stay with
+                    // administration.
+                    'cdss:view', 'ai:view', 'ai:invoke', 'ai:sign',
                 ],
             ],
             'nurse' => [
@@ -710,6 +739,10 @@ class RolePermissionSeeder extends Seeder
                     // home monitoring (consent-gated), views readings, and
                     // acknowledges/resolves alerts at the bedside.
                     'rpm:view', 'rpm:manage', 'rpm:acknowledge',
+                    // Phase 21 — CDSS/AI: the nurse sees knowledge checks
+                    // and may invoke assistive features, but cannot sign
+                    // drafts (sign-off is the clinician's act).
+                    'cdss:view', 'ai:view', 'ai:invoke',
                 ],
             ],
             'pharmacist' => [
@@ -724,6 +757,10 @@ class RolePermissionSeeder extends Seeder
                     'patient:view', 'patient:search',
                     'pharmacy:view', 'pharmacy:dispense', 'pharmacy:stock',
                     'pharmacy:return',
+                    // Phase 21 — CDSS: the pharmacist sees knowledge checks
+                    // during dispensing (DDI/allergy/dose alerts) and the
+                    // AI registry; curation and sign-off stay elsewhere.
+                    'cdss:view', 'ai:view',
                 ],
             ],
             'lab_technician' => [

@@ -3,6 +3,8 @@
 namespace App\Support;
 
 use App\Models\Admission;
+use App\Models\AiDraft;
+use App\Models\AiFeature;
 use App\Models\AnesthesiaRecord;
 use App\Models\Appointment;
 use App\Models\Asset;
@@ -13,6 +15,8 @@ use App\Models\AuditEvent;
 use App\Models\Bed;
 use App\Models\BloodUnit;
 use App\Models\Branch;
+use App\Models\CdssCheckResult;
+use App\Models\CdssRule;
 use App\Models\Charge;
 use App\Models\ChecklistItem;
 use App\Models\ClinicalNote;
@@ -291,6 +295,19 @@ final class AuditLogger
         'rpm_device' => RpmDevice::class,
         'rpm_reading' => RpmReading::class,
         'rpm_alert' => RpmAlert::class,
+        // Phase 21 — CDSS (ROADMAP Phase 21): the versioned knowledge base
+        // and persisted check results. Payloads carry ids, codes, versions,
+        // severities, and counts — never patient names or free-text alert
+        // messages (those are clinical PHI on the check-result row, not in
+        // the audit trail).
+        'cdss_rule' => CdssRule::class,
+        'cdss_check_result' => CdssCheckResult::class,
+        // Phase 21 — Governed assistive AI (AI_RULES.md §11): registry
+        // entries and drafts. Payloads carry ids, function, tier, model
+        // id/version, and status — never draft text, prompts, or outputs
+        // (OBSERVABILITY.md §17 never-log rules).
+        'ai_feature' => AiFeature::class,
+        'ai_draft' => AiDraft::class,
     ];
 
     /**

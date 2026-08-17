@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AdmissionController;
+use App\Http\Controllers\Api\AiController;
 use App\Http\Controllers\Api\AnalyticsController;
 use App\Http\Controllers\Api\AppointmentController;
 use App\Http\Controllers\Api\AssetController;
@@ -10,6 +11,7 @@ use App\Http\Controllers\Api\BedController;
 use App\Http\Controllers\Api\BillingController;
 use App\Http\Controllers\Api\BloodBankController;
 use App\Http\Controllers\Api\BranchController;
+use App\Http\Controllers\Api\CdssController;
 use App\Http\Controllers\Api\ConsentController;
 use App\Http\Controllers\Api\CriticalValueEventController;
 use App\Http\Controllers\Api\DepartmentController;
@@ -982,6 +984,42 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
         ->middleware('authorize:rpm:acknowledge');
     Route::post('rpm/alerts/{rpmAlert}/resolve', [RpmController::class, 'resolve'])
         ->middleware('authorize:rpm:acknowledge');
+
+    // Phase 21 — CDSS (ROADMAP Phase 21, CLINICAL_SAFETY.md §6, §9): the
+    // versioned knowledge base (rules never edited in place — activation
+    // supersedes), the knowledge checks (allergy/DDI/dose — fail open,
+    // loudly), audited overrides, and advisory pathway suggestions.
+    Route::get('cdss/rules', [CdssController::class, 'index'])
+        ->middleware('authorize:cdss:view');
+    Route::post('cdss/rules', [CdssController::class, 'store'])
+        ->middleware('authorize:cdss:manage');
+    Route::post('cdss/rules/{cdssRule}/activate', [CdssController::class, 'activate'])
+        ->middleware('authorize:cdss:manage');
+    Route::post('cdss/checks/prescription', [CdssController::class, 'checkPrescription'])
+        ->middleware('authorize:cdss:view');
+    Route::post('cdss/checks/{cdssCheckResult}/override', [CdssController::class, 'override'])
+        ->middleware('authorize:cdss:manage');
+    Route::post('cdss/pathways/{cdssRule}/evaluate', [CdssController::class, 'evaluatePathway'])
+        ->middleware('authorize:cdss:view');
+
+    // Phase 21 — Governed assistive AI (AI_RULES.md §1–§19): registry,
+    // kill switches, gated invocation, and drafts that reach a record only
+    // after clinician sign-off. No autonomous action path; degradation is
+    // loud; no data to unapproved models.
+    Route::get('ai/features', [AiController::class, 'index'])
+        ->middleware('authorize:ai:view');
+    Route::post('ai/features', [AiController::class, 'store'])
+        ->middleware('authorize:ai:manage');
+    Route::post('ai/features/{aiFeature}/activate', [AiController::class, 'activate'])
+        ->middleware('authorize:ai:manage');
+    Route::patch('ai/features/{aiFeature}/switch', [AiController::class, 'switch'])
+        ->middleware('authorize:ai:manage');
+    Route::post('ai/features/{aiFeature}/invoke', [AiController::class, 'invoke'])
+        ->middleware('authorize:ai:invoke');
+    Route::post('ai/drafts', [AiController::class, 'createDraft'])
+        ->middleware('authorize:ai:invoke');
+    Route::post('ai/drafts/{aiDraft}/sign', [AiController::class, 'sign'])
+        ->middleware('authorize:ai:sign');
 });
 
 // Patient Portal — portal-authenticated surface (Phase 3 slice 22,
