@@ -67,6 +67,7 @@ flowchart TB
 - **Production mirror:** same topology shape, same image, same config class, same migration path — only data is synthetic and scale is smaller.
 - **Deployments:** every merge to `main` deploys to staging automatically (the staging run *is* the promotion check); release candidates are deployed to staging explicitly before production.
 - **What runs on staging:** the nightly full suite (E2E, responsive, a11y, performance, load), DAST scans, the upgrade-path migration test, and every release candidate's soak.
+- **Post-deploy smoke:** every staging deploy runs `backend/smoke_staging.sh` (health, auth + tenant context, the OPD chain, RPM, CDSS fail-open, the AI fail-closed boundary, cross-tenant isolation, audit reachability) against the deployed API before promotion — fail-closed, PHI/secret-safe, complementing the browser E2E (`STAGING.md` §11).
 - **Synthetic data with volume profiles:** factories generate production-like row volumes (peak-day registrations, appointments, charges) so load tests and performance budgets are meaningful — never a copy of production rows (`MASTER_RULES.md` §28.5).
 
 ---

@@ -151,10 +151,24 @@ instance to receive traffic.
 2. `php artisan migrate --force` runs **before** the new app version serves
    traffic (expand → migrate → contract; `DEPLOYMENT.md` §9).
 3. New app instance passes `/ready`, joins the LB; old instance drains.
-4. Post-deploy smoke: the staging smoke script walks patient → appointment
-   → check-in → queue → encounter → note → diagnosis → prescription → sign
-   → invoice → payment → audit against staging (`backend/smoke_staging.sh`
-   pattern, with staging env values).
+4. Post-deploy smoke: run the staging smoke verification script
+   (`backend/smoke_staging.sh`) against the deployed API. It walks the full
+   documented staging smoke surface over HTTPS: health, login + tenant
+   context for the fixture actors, the OPD chain (patient → appointment →
+   check-in → queue → encounter → note → diagnosis → prescription → sign →
+   invoice → payment → audit), RPM (consent → device enroll → activate →
+   ingest → alert → acknowledge), the CDSS knowledge check (fail-open),
+   the AI fail-closed/degraded boundary (no approved model, no egress),
+   and two-sided cross-tenant isolation (read 404 / write safe-denial /
+   victim row untouched). Environment (all values, never hard-coded):
+   `STAGING_BASE_URL` (required, https:// or loopback), `STAGING_FIXTURE_PASSWORD`
+   (required), optional `STAGING_EMAIL_ADMIN_A` / `STAGING_EMAIL_DOCTOR_A` /
+   `STAGING_EMAIL_NURSE_A` / `STAGING_EMAIL_ADMIN_B` (defaults are the
+   documented fixture logins); `SMOKE_DRY_RUN=1` validates the environment
+   without any HTTP request. Exit 0 = all steps passed, 1 = a smoke step
+   failed (non-PHI diagnostic), 2 = usage error. The script never prints
+   credentials, tokens, bodies, or PHI, and complements — never replaces —
+   the browser E2E (`frontend/playwright.staging.config.ts`).
 5. Nightly: full test suite, RLS suite, load benchmark (`ci/load-benchmark.sh`),
    backup/restore drill (`ci/backup-restore-drill.sh`).
 
@@ -188,9 +202,11 @@ workstation. Full evidence in `STAGING_DEPLOYMENT_REPORT.md`; short form:
 - **Fixture** — `StagingFixtureSeeder` (`database/seeders/`), a
   reproducible synthetic two-tenant fixture (smoke-group A / apex-care B)
   with the full OPD shape the E2E needs (org → facility → department →
-  users → staff → service → schedule template → formulary). Refuses
-  `APP_ENV=production`. The dev fixture was hand-provisioned; this closes
-  the reproducibility gap.
+  users → staff → service → schedule template → formulary) plus a
+  staff-bound NURSE account (`smoke.nurse@two.test`) for the RPM
+  device-enrollment smoke step (enrollment requires a staff-linked role
+  with `rpm:manage`). Refuses `APP_ENV=production`. The dev fixture was
+  hand-provisioned; this closes the reproducibility gap.
 - **Backend** — `APP_ENV=staging` reads `backend/.env.staging` and serves
   on port 58998. `health/live` and `health/ready` verified green.
 - **Frontend E2E against staging** — `frontend/playwright.staging.config.ts`

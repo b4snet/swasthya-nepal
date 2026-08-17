@@ -55,11 +55,16 @@ class StagingFixtureSeeder extends Seeder
             'facility' => ['name' => 'Smoke Central', 'code' => 'smoke-central'],
             'department' => ['name' => 'General OPD', 'code' => 'general-opd'],
             'staff' => ['full_name' => 'Dr Smoke', 'employee_code' => 'DOC-001', 'designation' => 'General Physician'],
+            // The RPM smoke surface (backend/smoke_staging.sh) enrolls devices
+            // as the NURSE — device enrollment requires a staff-bound account
+            // with rpm:manage (nurse is the documented enrollment role).
+            'nurse' => ['full_name' => 'Nurse Smoke', 'employee_code' => 'NUR-001', 'designation' => 'Staff Nurse'],
             'assignments' => [
                 ['email' => 'smoke.super@two.test', 'role' => 'superadmin', 'scope' => 'platform'],
                 ['email' => 'smoke.admin@two.test', 'role' => 'org_admin', 'scope' => 'organization'],
                 ['email' => 'smoke.hadmin@two.test', 'role' => 'hospital_admin', 'scope' => 'facility'],
                 ['email' => 'smoke.doctor@two.test', 'role' => 'doctor', 'scope' => 'facility'],
+                ['email' => 'smoke.nurse@two.test', 'role' => 'nurse', 'scope' => 'facility'],
             ],
         ], $password);
 
@@ -88,6 +93,7 @@ class StagingFixtureSeeder extends Seeder
      *     facility: array{name: string, code: string},
      *     department: array{name: string, code: string},
      *     staff: array{full_name: string, employee_code: string, designation: string},
+     *     nurse?: array{full_name: string, employee_code: string, designation: string}|null,
      *     assignments: list<array{email: string, role: string, scope: string}>
      * }  $shape
      */
@@ -166,6 +172,25 @@ class StagingFixtureSeeder extends Seeder
                 'status' => Staff::STATUS_ACTIVE,
             ]
         );
+
+        // The RPM device-enrollment identity belongs to the NURSE login
+        // account (nurse = the documented enrollment role, rpm:manage).
+        // Keyed by employee code so re-seeding updates the link.
+        if (isset($shape['nurse']) && is_array($shape['nurse'])) {
+            $nurseEmail = collect($shape['assignments'])->firstWhere('role', 'nurse')['email'] ?? null;
+            if ($nurseEmail !== null && isset($users[$nurseEmail])) {
+                Staff::updateOrCreate(
+                    ['tenant_id' => $org->id, 'facility_id' => $facility->id, 'employee_code' => $shape['nurse']['employee_code']],
+                    [
+                        'department_id' => $department->id,
+                        'user_id' => $users[$nurseEmail]->id,
+                        'full_name' => $shape['nurse']['full_name'],
+                        'designation' => $shape['nurse']['designation'],
+                        'status' => Staff::STATUS_ACTIVE,
+                    ]
+                );
+            }
+        }
 
         $service = Service::updateOrCreate(
             ['tenant_id' => $org->id, 'facility_id' => $facility->id, 'code' => 'opd-consult'],
