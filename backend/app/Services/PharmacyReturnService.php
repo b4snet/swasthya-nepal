@@ -15,28 +15,41 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Pharmacy return/reversal (DATABASE.md §3.30, PRODUCT_REQUIREMENTS §6.7):
- * a pharmacist reverses a dispensed line in ONE atomic transaction.
+ * a pharmacist returns part or all of a dispensed line in ONE atomic
+ * transaction.
  *
- *   dispensed line → line reversed + stock restored (ledger) + reversal
- *   record + refund request opened against the linked posted charge.
+ *   dispensed line → returned_quantity_minor advanced + stock restored
+ *   (ledger) + reversal record + refund request opened against the linked
+ *   posted charge.
  *
  *  - The line row is locked (SELECT … FOR UPDATE), so concurrent returns
- *    serialize: the loser reads status 'reversed' and gets a CONFLICT. The
- *    unique (tenant_id, prescription_line_id) index on pharmacy_returns is
- *    the database backstop — a line can never be returned twice.
+ *    serialize: the loser re-reads the advanced returned_quantity_minor and
+ *    either completes a smaller return or is refused with CONFLICT. The
+ *    CAS on (status, returned_quantity_minor) makes a stale actor affect
+ *    zero rows, and the CHECK (returned_quantity_minor <= quantity_minor)
+ *    is the database backstop — over-return is impossible.
+ *  - A PARTIAL return keeps the line 'dispensed' (its history is not fully
+ *    reversed); the line flips to 'reversed' only when the FULL dispensed
+ *    quantity has been returned.
  *  - Stock restoration is a CAS on (quantity_on_hand, lock_version) and the
  *    ledger records the positive 'return' movement — the mirror of the
- *    negative 'dispense' movement.
+ *    negative 'dispense' movement — for EXACTLY the returned quantity.
  *  - The posted charge is NEVER mutated (immutable financial rows,
- *    MASTER_RULES §37.3): the refund path opens through a refund_requests
- *    row (requested → approved by the billing approver), preserving the
- *    financial gate from slice 5.
+ *    MASTER_RULES §37.3): each return opens its OWN refund request for
+ *    exactly `unit price × returned quantity` (unit price is exact integer
+ *    minor units = amount_minor / dispensed quantity, since the charge is
+ *    price × quantity). The refund layer's refundable check (amount − Σ
+ *    approved) and the approval-time charge-row lock already prevent
+ *    over-refund across multiple partial requests.
  */
 final class PharmacyReturnService
 {
     /**
-     * Reverse a dispensed prescription line.
+     * Return part or all of a dispensed prescription line.
      *
+     * @param  int|null  $quantity  the quantity to return; NULL returns the
+     *                              FULL remaining returnable quantity (the
+     *                              backward-compatible whole-line default).
      * @return array{return: PharmacyReturn, refundRequest: RefundRequest}
      */
     public function reverseLine(
@@ -46,8 +59,9 @@ final class PharmacyReturnService
         ?string $reasonNote,
         ?string $returnedByStaffId,
         ?string $userId,
+        ?int $quantity = null,
     ): array {
-        return DB::transaction(function () use ($tenantId, $lineId, $reasonCode, $reasonNote, $returnedByStaffId, $userId): array {
+        return DB::transaction(function () use ($tenantId, $lineId, $reasonCode, $reasonNote, $returnedByStaffId, $userId, $quantity): array {
             // Lock the line: concurrent returns serialize here.
             $line = PrescriptionLine::query()
                 ->where('tenant_id', $tenantId)
@@ -80,11 +94,32 @@ final class PharmacyReturnService
                 throw new ApiException(ErrorCodes::CONFLICT, 'The line references a medication that no longer exists; it cannot be returned.', 409);
             }
 
-            $quantity = max(1, (int) ($line->quantity_minor ?? 1));
+            $dispensedQuantity = max(1, (int) ($line->quantity_minor ?? 1));
+            $returnedSoFar = (int) ($line->returned_quantity_minor ?? 0);
+            $remaining = $dispensedQuantity - $returnedSoFar;
+
+            if ($remaining <= 0) {
+                throw new ApiException(ErrorCodes::CONFLICT, 'This line has already been fully returned.', 409);
+            }
+
+            $returnQuantity = $quantity ?? $remaining;
+
+            if ($returnQuantity < 1) {
+                throw new ApiException(ErrorCodes::VALIDATION_ERROR, 'The returned quantity must be at least 1.', 422);
+            }
+
+            if ($returnQuantity > $remaining) {
+                throw new ApiException(
+                    ErrorCodes::VALIDATION_ERROR,
+                    sprintf('Return of %d exceeds the remaining returnable quantity of %d.', $returnQuantity, $remaining),
+                    422,
+                );
+            }
+
             $facilityId = $encounter->facility_id;
 
             // The exact posted charge created for this line at dispensing
-            // (charges carry prescription_line_id from this slice forward).
+            // (charges carry prescription_line_id from slice 8 forward).
             $charge = Charge::query()
                 ->where('tenant_id', $tenantId)
                 ->where('prescription_line_id', $line->getKey())
@@ -96,9 +131,9 @@ final class PharmacyReturnService
             }
 
             // Restore stock: CAS on the same shelf the dispense deducted
-            // from. Phase 3 slice 17 — when the line was dispensed from a
-            // batch, the batch is restored FIRST (the exact lot returns);
-            // the aggregate shelf restore still applies (ledger truth).
+            // from. When the line was dispensed from a batch, the batch is
+            // restored FIRST (the exact lot returns); the aggregate shelf
+            // restore still applies (ledger truth).
             $item = InventoryItem::query()
                 ->where('tenant_id', $tenantId)
                 ->where('facility_id', $facilityId)
@@ -127,7 +162,7 @@ final class PharmacyReturnService
                     ->where('status', StockBatch::STATUS_AVAILABLE)
                     ->where('lock_version', $batch->lock_version)
                     ->update([
-                        'quantity_remaining' => DB::raw('quantity_remaining + '.$quantity),
+                        'quantity_remaining' => DB::raw('quantity_remaining + '.$returnQuantity),
                         'lock_version' => DB::raw('lock_version + 1'),
                         'updated_by' => $userId,
                         'updated_at' => now(),
@@ -143,7 +178,7 @@ final class PharmacyReturnService
                 ->where('id', $item->getKey())
                 ->where('lock_version', $item->lock_version)
                 ->update([
-                    'quantity_on_hand' => DB::raw('quantity_on_hand + '.$quantity),
+                    'quantity_on_hand' => DB::raw('quantity_on_hand + '.$returnQuantity),
                     'lock_version' => DB::raw('lock_version + 1'),
                     'updated_by' => $userId,
                     'updated_at' => now(),
@@ -158,7 +193,7 @@ final class PharmacyReturnService
                 'facility_id' => $facilityId,
                 'inventory_item_id' => $item->getKey(),
                 'movement_type' => InventoryMovement::TYPE_RETURN,
-                'quantity_delta' => $quantity,
+                'quantity_delta' => $returnQuantity,
                 'reason' => $medication->generic_name.' return',
                 'prescription_line_id' => $line->getKey(),
                 // Phase 3 slice 17 — the exact lot restored.
@@ -167,14 +202,20 @@ final class PharmacyReturnService
                 'created_by' => $userId,
             ]);
 
-            // Line state: dispensed → reversed (CAS on status — a concurrent
-            // return reads 'reversed' and can never advance it again).
+            // Advance the line's returned accounting (CAS on the snapshot):
+            // a stale concurrent returner affects zero rows and gets a
+            // LOCK_CONFLICT. The line flips to 'reversed' only when the FULL
+            // dispensed quantity has been returned — a partial return keeps
+            // it 'dispensed' (its dispense history stays visible).
+            $fullyReturned = ($returnedSoFar + $returnQuantity) >= $dispensedQuantity;
             $lineAdvanced = DB::table('prescription_lines')
                 ->where('tenant_id', $tenantId)
                 ->where('id', $line->getKey())
                 ->where('status', PrescriptionLine::STATUS_DISPENSED)
+                ->where('returned_quantity_minor', $returnedSoFar)
                 ->update([
-                    'status' => PrescriptionLine::STATUS_REVERSED,
+                    'returned_quantity_minor' => DB::raw('returned_quantity_minor + '.$returnQuantity),
+                    'status' => $fullyReturned ? PrescriptionLine::STATUS_REVERSED : PrescriptionLine::STATUS_DISPENSED,
                     'updated_at' => now(),
                 ]);
 
@@ -182,14 +223,14 @@ final class PharmacyReturnService
                 throw new ApiException(ErrorCodes::LOCK_CONFLICT, 'This line was changed by another return. Reload and retry.', 409);
             }
 
-            // The immutable reversal record.
+            // The immutable reversal record — one per return event.
             $pharmacyReturn = PharmacyReturn::query()->create([
                 'tenant_id' => $tenantId,
                 'facility_id' => $facilityId,
                 'prescription_line_id' => $line->getKey(),
                 'prescription_id' => $prescription->getKey(),
                 'charge_id' => $charge->getKey(),
-                'quantity_minor' => $quantity,
+                'quantity_minor' => $returnQuantity,
                 'reason_code' => $reasonCode,
                 'reason_note' => $reasonNote,
                 'returned_by' => $returnedByStaffId,
@@ -198,15 +239,20 @@ final class PharmacyReturnService
             ]);
 
             // The refund path: open a billing refund REQUEST against the
-            // linked charge (the charge itself stays immutable). Approval is
-            // the billing approver's separate, segregation-of-duties-gated
-            // action — no money moves here.
+            // linked charge for EXACTLY this return's money value (unit price
+            // × returned quantity — unit price is exact integer minor units
+            // because the charge is price × quantity). The charge itself
+            // stays immutable; approval is the billing approver's separate,
+            // segregation-of-duties-gated action — no money moves here.
+            $unitPrice = (int) ($charge->amount_minor / $dispensedQuantity);
+            $refundAmount = $unitPrice * $returnQuantity;
+
             $refundRequest = RefundRequest::query()->create([
                 'tenant_id' => $tenantId,
                 'facility_id' => $facilityId,
                 'patient_id' => $charge->patient_id,
                 'charge_id' => $charge->getKey(),
-                'amount_minor' => $charge->amount_minor,
+                'amount_minor' => $refundAmount,
                 'reason_code' => RefundRequest::REASON_PATIENT_REQUEST,
                 'reason_note' => null,
                 'status' => RefundRequest::STATUS_REQUESTED,

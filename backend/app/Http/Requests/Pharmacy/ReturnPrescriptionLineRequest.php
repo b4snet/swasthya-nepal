@@ -7,12 +7,15 @@ use App\Models\PharmacyReturn;
 use Illuminate\Validation\Rule;
 
 /**
- * POST prescription-lines/{line}/return — reverse a dispensed line. The
- * returned quantity is the line's dispensed quantity (a full-line reversal —
- * the charge is one price × quantity per line, so partial returns cannot be
- * expressed without splitting the charge). reasonCode is a structured code;
- * reasonNote is free text that may contain PHI and therefore never reaches
- * audit payloads.
+ * POST prescription-lines/{line}/return — return part or all of a dispensed
+ * line. `quantityMinor` is OPTIONAL: when absent, the FULL remaining
+ * returnable quantity is returned (the slice-8 whole-line behavior — a
+ * backward-compatible default). When present, it must be > 0 (zero/negative
+ * is rejected here) and the service re-checks it against the line's
+ * remaining returnable quantity under the row lock (an over-return is
+ * refused there with CONFLICT, never here — the remaining quantity is
+ * state). reasonCode is a structured code; reasonNote is free text that may
+ * contain PHI and therefore never reaches audit payloads.
  */
 class ReturnPrescriptionLineRequest extends ApiRequest
 {
@@ -31,6 +34,7 @@ class ReturnPrescriptionLineRequest extends ApiRequest
                 PharmacyReturn::REASON_OTHER,
             ])],
             'reasonNote' => ['nullable', 'string', 'max:1000'],
+            'quantityMinor' => ['nullable', 'integer', 'min:1'],
         ];
     }
 }

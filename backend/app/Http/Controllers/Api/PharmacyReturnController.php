@@ -55,6 +55,9 @@ final class PharmacyReturnController extends Controller
             $request->validated('reasonNote'),
             $pharmacist->getKey(),
             $context->user?->getKey(),
+            // Optional partial quantity (absent → the full remaining
+            // returnable quantity, the backward-compatible default).
+            $request->validated('quantityMinor'),
         );
 
         $this->audit->record(
@@ -67,6 +70,7 @@ final class PharmacyReturnController extends Controller
                 'chargeId' => $result['return']->charge_id,
                 'refundRequestId' => $result['refundRequest']->getKey(),
                 'quantityMinor' => $result['return']->quantity_minor,
+                'returnedSoFarMinor' => (int) $prescriptionLine->fresh()->returned_quantity_minor,
                 'reasonCode' => $result['return']->reason_code,
                 'returnedByStaffId' => $result['return']->returned_by,
             ],

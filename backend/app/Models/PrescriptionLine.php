@@ -37,6 +37,9 @@ class PrescriptionLine extends Model
         'frequency',
         'duration',
         'quantity_minor',
+        // How much of the dispensed quantity has been returned (partial-quantity
+        // returns: a line is fully returned when returned == quantity_minor).
+        'returned_quantity_minor',
         'instructions',
         'status',
         'line_no',
@@ -60,6 +63,7 @@ class PrescriptionLine extends Model
     {
         return [
             'quantity_minor' => 'integer',
+            'returned_quantity_minor' => 'integer',
             'line_no' => 'integer',
             'dispensed_at' => 'datetime',
             // Phase 3 slice 17 — batch expiry + dual-verification stamps.
