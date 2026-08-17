@@ -121,6 +121,7 @@ Per logical queue (`high`, `default`, `notifications`, `reports`, `integrations`
 - **SLOs on critical journeys** (login, patient lookup, booking, billing) with error budgets; **burn-rate alerts** fire before the budget is exhausted (`MASTER_RULES.md` §20.4).
 - **Slow-request capture:** sampled slow requests carry their trace, so "the booking call is slow" decomposes into "the availability query took 400 ms" from the dashboard alone.
 - **Load-test baselines:** CI load tests record latency envelopes (peak-hour OPD rush, ER spikes — `TESTING_STRATEGY.md` §3.13); production latency trending against baseline is a capacity signal, not a mystery.
+- **Phase 22 measured baseline (2026-08-17, 1M patients / ~2.9M rows on the reference cluster):** point lookups 0.2–0.8 ms, provider-day schedule 0.27 ms, inserts ~0.3–0.5 ms, update ~3.3 ms, delete ~86 ms (WITH CHECK re-eval), tenant-scoped name search **147–158 ms (documented hot spot)** — all under RLS with canonical claims; error rate 0 (`NATIONAL_SCALE.md` §1). Production SLO targets and burn-rate budgets remain a deployment-phase commitment — these envelopes are the trend baseline, not a production claim.
 
 ---
 

@@ -50,9 +50,13 @@ DAY=$(PGPASSWORD="$OWNER_PW" "$PSQL" -h "$HOST" -p "$PORT" -U "$OWNER" -d "$DB" 
 
 VARS=(-v tid="$TID" -v fid="$FID" -v sid="$SID" -v pid="$PID" -v aid="$AID" -v iid="$IID" -v day="$DAY")
 
-echo "== benchmark: RLS mode (swasthya_app, GUCs set) =="
+echo "== benchmark: RLS mode (swasthya_app, request.jwt.claims set) =="
+# Phase 22 fix: policies read request.jwt.claims (rekey 2026_08_13_100200),
+# NOT the legacy app.* GUCs. Setting the legacy GUCs silently produced
+# zero-row plans ("Index Scan ... never executed") — an invalid measurement.
+# The payload mirrors AuthClaims::fromContext exactly (TENANCY.md §7).
 PGPASSWORD="$APP_ROLE_PW" "$PSQL" -h "$HOST" -p "$PORT" -U swasthya_app -d "$DB" "${VARS[@]}" \
-  -c "begin; select set_config('app.tenant_id', '$TID', true); select set_config('app.facility_id', '$FID', true); select set_config('app.user_id', '$TID', true); select set_config('app.is_platform', 'false', true);" \
+  -c "begin; select set_config('request.jwt.claims', json_build_object('app_user_id','$SID','app_tenant_id','$TID','app_facility_id','$FID','app_branch_id','','app_is_platform','false')::text, true);" \
   -f ci/load-benchmark.sql -c "commit;" 2>&1 | tee /tmp/bench_rls.txt | grep -E "Time:" > /tmp/bench_rls_times.txt || true
 
 echo "== benchmark: baseline (owner, RLS disabled) =="
@@ -88,10 +92,7 @@ echo
 echo "== EXPLAIN ANALYZE (RLS mode) — Q1 patient-by-id, Q2 name search, Q6 provider day =="
 PGPASSWORD="$APP_ROLE_PW" "$PSQL" -h "$HOST" -p "$PORT" -U swasthya_app -d "$DB" "${VARS[@]}" -c "
   begin;
-  select set_config('app.tenant_id', '$TID', true);
-  select set_config('app.facility_id', '$FID', true);
-  select set_config('app.user_id', '$TID', true);
-  select set_config('app.is_platform', 'false', true);
+  select set_config('request.jwt.claims', json_build_object('app_user_id','$SID','app_tenant_id','$TID','app_facility_id','$FID','app_branch_id','','app_is_platform','false')::text, true);
   explain (analyze, buffers, costs off) select full_name, mrn from patients where id='$PID' and tenant_id='$TID';
   explain (analyze, buffers, costs off) select id, full_name from patients where tenant_id='$TID' and full_name ilike 'Load Patient 77%' order by full_name limit 20;
   explain (analyze, buffers, costs off) select id, status from appointments where tenant_id='$TID' and provider_staff_id='$SID' and starts_at >= '$DAY' and starts_at < '$DAY'::timestamptz + interval '1 day';

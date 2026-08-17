@@ -99,6 +99,7 @@ flowchart TB
 - **Network:** private subnets for data plane; the database is reachable only from the app tier and the audited bastion (`SECURITY.md` §14, §28); egress for integrations through a controlled proxy/allowlist (`SECURITY.md` §22).
 - **Secrets:** injected from the secrets store at runtime (Section 7); nothing sensitive in the image, the pipeline, or `.env` files.
 - **Regions:** production runs multi-AZ; a second-region backup copy exists; multi-region active operation is a documented future step, not today's shape (`ARCHITECTURE.md` §28.8).
+- **Phase 22 failover readiness (2026-08-17):** `backend/ci/failover-drill.sh` proves in the disposable environment that the stateless app serves from a pre-verified standby database with RLS intact (switch-over ~1 s, `health/ready` database check ok, isolation probes 1/0/0 — `NATIONAL_SCALE.md` §3). **This is single-environment readiness, not a production cutover claim:** WAL promotion, read-replica routing, DNS/edge switch, and health-gated traffic shift remain the annual failover exercise on real infrastructure (`DISASTER_RECOVERY.md` §13) — **NOT PROVEN** at production scale.
 
 ---
 

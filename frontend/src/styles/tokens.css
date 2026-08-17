@@ -37,6 +37,16 @@
   --font-body: 'Public Sans', 'Noto Sans Devanagari', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-display: 'Manrope', 'Noto Sans Devanagari', var(--font-body);
   --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
+}
+
+/* Phase 22 localization — Devanagari rendering: when the interface language
+   is Nepali (html lang="ne"), Devanagari-capable faces take first place so
+   conjuncts/ligatures (e.g. क्ष, त्र, ज्ञ) render correctly across platforms.
+   Proven by the I18nProvider test (lang attribute + this rule). */
+html[lang='ne'] {
+  --font-body: 'Noto Sans Devanagari', 'Public Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Noto Sans Devanagari', 'Manrope', var(--font-body);
+}
 
   --fs-display: 34px;
   --lh-display: 40px;

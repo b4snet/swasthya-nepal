@@ -1,0 +1,162 @@
+== seeding 1000000 patients (synthetic, disposable) ==
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "role_assignments"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "locations"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "wards"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "rooms"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "facility_settings"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "payers"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "mrn_counters"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "patient_identifiers"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "patient_contacts"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "insurance_policies"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "patient_documents"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "consents"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "patient_timeline_entries"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "schedule_templates"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "schedule_exceptions"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "token_counters"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "clinical_notes"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "branches"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "support_sessions"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "lab_tests"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "lab_orders"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "inventory_items"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "inventory_movements"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "follow_ups"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "refund_requests"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "admissions"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "critical_value_events"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "pharmacy_returns"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "notifications"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "transfer_events"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "nursing_notes"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "mar_entries"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "vital_observations"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "er_registrations"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "triage_scales"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "triage_assignments"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "er_events"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "specimens"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "lab_result_versions"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "modalities"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "studies"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "radiology_reports"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "stock_batches"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "deposits"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "deposit_allocations"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "settlements"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "claims"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "claim_lines"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "positions"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "shift_templates"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "rosters"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "attendance_records"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "leave_types"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "leave_requests"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "payroll_exports"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "asset_categories"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "theatres"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "procedure_requests"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "procedures"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "surgical_team_members"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "anesthesia_records"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "surgical_events"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "checklist_templates"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "checklist_items"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "recovery_records"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "icu_beds"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "icu_admissions"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "icu_observation_sets"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "icu_alerts"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "critical_care_notes"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "donors"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "donations"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "blood_units"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "compatibility_results"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "crossmatches"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "transfusions"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "reaction_reports"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "kpi_definitions"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "metric_snapshots"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "dashboards"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "report_templates"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "report_schedules"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "report_runs"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "portal_accounts"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "portal_sessions"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "portal_access_grants"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "integrations"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "oauth_partners"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "teleconsults"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "video_sessions"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "beds"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "lab_order_items"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "image_references"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "assets"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "asset_transfers"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "warning_scores"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "dashboard_kpis"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "integration_events"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "egress_allowlist"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "oauth_partner_tokens"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "maintenance_schedules"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "work_orders"
+psql:ci/load-seed.sql:30: NOTICE:  truncate cascades to table "iot_readings"
+
+== benchmark: RLS mode (swasthya_app, request.jwt.claims set) ==
+== benchmark: baseline (owner, RLS disabled) ==
+== re-enabling row-level security ==
+
+== EXPLAIN ANALYZE (RLS mode) — Q1 patient-by-id, Q2 name search, Q6 provider day ==
+                                                                                                                                                                           QUERY PLAN                                                                                                                                                                           
+ Result (actual time=0.025..0.026 rows=1 loops=1)
+   One-Time Filter: ((NULLIF(COALESCE(((NULLIF(current_setting('request.jwt.claims'::text, true), ''::text))::json ->> 'app_tenant_id'::text), ''::text), ''::text))::uuid = '6aa2cd2c-5be2-49d2-83bc-68bb91dfb651'::uuid)
+   ->  Index Scan using uq_patients_tenant_id_id on patients (actual time=0.020..0.020 rows=1 loops=1)
+         Index Cond: ((tenant_id = '6aa2cd2c-5be2-49d2-83bc-68bb91dfb651'::uuid) AND (id = 'd90fdd8a-682a-49dd-8874-93cdedbefa5b'::uuid))
+         Filter: ((facility_id = (NULLIF(COALESCE(((NULLIF(current_setting('request.jwt.claims'::text, true), ''::text))::json ->> 'app_facility_id'::text), ''::text), ''::text))::uuid) OR ((NULLIF(COALESCE(((NULLIF(current_setting('request.jwt.claims'::text, true), ''::text))::json ->> 'app_facility_id'::text), ''::text), ''::text))::uuid IS NULL))
+ Planning Time: 3.515 ms
+ Execution Time: 0.058 ms
+                                                                                                                                                                                                            QUERY PLAN                                                                                                                                                                                                             
+ Limit (actual time=154.129..154.132 rows=20 loops=1)
+   ->  Sort (actual time=154.128..154.129 rows=20 loops=1)
+         ->  Result (actual time=9.835..153.923 rows=277 loops=1)
+               One-Time Filter: ((NULLIF(COALESCE(((NULLIF(current_setting('request.jwt.claims'::text, true), ''::text))::json ->> 'app_tenant_id'::text), ''::text), ''::text))::uuid = '6aa2cd2c-5be2-49d2-83bc-68bb91dfb651'::uuid)
+               ->  Bitmap Heap Scan on patients (actual time=9.830..153.897 rows=277 loops=1)
+                     Filter: (((facility_id = (NULLIF(COALESCE(((NULLIF(current_setting('request.jwt.claims'::text, true), ''::text))::json ->> 'app_facility_id'::text), ''::text), ''::text))::uuid) OR ((NULLIF(COALESCE(((NULLIF(current_setting('request.jwt.claims'::text, true), ''::text))::json ->> 'app_facility_id'::text), ''::text), ''::text))::uuid IS NULL)) AND ((full_name)::text ~~* 'Load Patient 77%'::text))
+                     Rows Removed by Filter: 49723
+                     ->  Bitmap Index Scan on idx_patients_tenant_facility (actual time=0.695..0.695 rows=50008 loops=1)
+                           Index Cond: (tenant_id = '6aa2cd2c-5be2-49d2-83bc-68bb91dfb651'::uuid)
+ Planning Time: 0.225 ms
+ Execution Time: 154.194 ms
+                                                                                                                                                                           QUERY PLAN                                                                                                                                                                           
+ Result (actual time=0.028..0.087 rows=23 loops=1)
+   One-Time Filter: ((NULLIF(COALESCE(((NULLIF(current_setting('request.jwt.claims'::text, true), ''::text))::json ->> 'app_tenant_id'::text), ''::text), ''::text))::uuid = '6aa2cd2c-5be2-49d2-83bc-68bb91dfb651'::uuid)
+   ->  Index Scan using idx_appointments_tenant_provider_start on appointments (actual time=0.024..0.080 rows=23 loops=1)
+         Index Cond: ((tenant_id = '6aa2cd2c-5be2-49d2-83bc-68bb91dfb651'::uuid) AND (provider_staff_id = '36b56e73-b1c7-4d8f-ac46-dc549f1753df'::uuid) AND (starts_at >= '2026-01-05 00:00:00+05:45'::timestamp with time zone) AND (starts_at < ('2026-01-05 00:00:00+05:45'::timestamp with time zone + '1 day'::interval)))
+         Filter: ((facility_id = (NULLIF(COALESCE(((NULLIF(current_setting('request.jwt.claims'::text, true), ''::text))::json ->> 'app_facility_id'::text), ''::text), ''::text))::uuid) OR ((NULLIF(COALESCE(((NULLIF(current_setting('request.jwt.claims'::text, true), ''::text))::json ->> 'app_facility_id'::text), ''::text), ''::text))::uuid IS NULL))
+ Planning Time: 4.846 ms
+ Execution Time: 0.107 ms
+
+== results (ms) — per benchmark statement (RLS vs baseline) ==
+stmt  RLS(ms)  baseline(ms)   delta(ms)
+S1       0.309       6.218     -5.909
+S2       0.290       0.228     +0.062
+S3     158.054       0.161   +157.893
+S4     147.391      11.342   +136.049
+S5       4.890       9.458     -4.568
+S6       0.271       3.970     -3.699
+S7       6.603       0.161     +6.442
+S8       0.267       3.402     -3.135
+S9       3.055       0.233     +2.822
+S10      0.222       2.343     -2.121
+S11      0.490       0.143     +0.347
+S12      0.359       0.309     +0.050
+S13      4.812       0.150     +4.662
+S14      0.425      34.834    -34.409
+S15      7.767       6.756     +1.011
+S16      0.751       5.819     -5.068
+S17      0.733       0.633     +0.100
+S18      3.282       0.665     +2.617
+S19     86.540       0.853    +85.687
+S20      0.781      57.286    -56.505
+BENCH_EXIT=0

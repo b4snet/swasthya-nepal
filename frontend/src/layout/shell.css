@@ -58,6 +58,30 @@
   flex: none;
 }
 
+/* Phase 22 localization — language toggle (English ⇄ नेपाली) */
+.lang-toggle {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: var(--paper);
+  color: var(--teal-800);
+  font-size: var(--fs-label);
+  font-weight: 700;
+  font-family: 'Noto Sans Devanagari', var(--font-body);
+  padding: 4px 10px;
+  min-height: 32px;
+  cursor: pointer;
+}
+
+.lang-toggle:hover {
+  border-color: var(--teal-600);
+  color: var(--teal-700);
+}
+
+.lang-toggle:focus-visible {
+  outline: 2px solid var(--teal-600);
+  outline-offset: 2px;
+}
+
 /* Sidebar */
 .side-nav {
   display: flex;

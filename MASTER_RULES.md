@@ -698,6 +698,14 @@ This is the engineering constitution of **Swasthya**, a production-grade, nation
 - [ ] Release notes and changelog written
 - [ ] Definition of Done (Section 40) met
 
+39.1a. **Drill evidence is a Phase 22 standing item:** `NATIONAL_SCALE.md`
+records measured load (1M patients, reference cluster), a national-scale
+restore drill (34 s backup / 104 s restore, isolation re-verified 1/0/0),
+and a failover-readiness drill (app serves from standby, `health/ready`
+ok). Production-scale RPO/RTO/SLO and multi-region cutover remain
+**NOT PROVEN** until the deployment environment's drills record them
+(`DISASTER_RECOVERY.md` §13.1); no release may claim them earlier.
+
 39.2. The checklist is enforced by the release process, not by memory. A release missing a checklist item is aborted or explicitly approved in writing by the architect.
 
 39.3. Post-release: the release owner watches alerts and metrics for the defined soak window; a regression that reaches production is rolled back or hotfixed per the incident process, and a postmortem follows (blameless, with actions).

@@ -202,6 +202,16 @@ flowchart LR
 
 **Phase 3 slice 23 (2026-08-17):** the readiness REGISTRY itself is implemented and governed — `integrations` (measured status, CAS, kill-switch), `integration_events` (append-only outbox with bounded CAS retry budget + quarantine), `egress_allowlist` (the SSRF guard an adapter must pass), and the OAuth2 partner surface (`oauth_partners`/`oauth_partner_tokens` — hash-at-rest secrets, scoped short-lived tokens, revocation). Staff surfaces are `authorize:integration:view|manage`; the partner FHIR surface derives the tenant from the token, projects only the tenant claim, and requires scope + consent per projection. Every layer is TENANT-tier RLS FORCE-enabled and the cross-tenant boundary is proven at the API (InteroperabilityTest) and database (ClaimsBasedRlsTest/TenancyDatabaseInventoryTest) layers. Nothing here connects to a live system — it records and governs readiness truthfully.
 
+**Phase 22 (2026-08-17) — national integrations status:** the roadmap
+permits national integrations *only when they exist and are specified*
+(ROADMAP §23). **None is specified in this repository: no national
+integration is live, planned against a real endpoint, or simulated.** The
+registry readiness layer above is the governed path any future national
+integration must take (named owner, contract tests, consent at the
+boundary, monitored registry status). Until a real system is specified,
+INTEROPERABILITY's national rows remain **future/design** — never claimed
+(`NATIONAL_SCALE.md` §5, `LEGAL_COMPLIANCE_ASSESSMENT.md` §3.8).
+
 ---
 
 ## 14. Interoperability Definition of Done

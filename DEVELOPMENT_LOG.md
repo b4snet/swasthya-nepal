@@ -1811,3 +1811,31 @@ ent schedule → 409 with zero rows changed; cross-tenant isolation — read 404
 | Tracked-secret scan | 0 matches in Slice-24 files |
 
 **Remaining risks.** The video/relay integration is provider-agnostic by design (`provider_session_ref` / `recording_storage_ref` are adapter-boundary references) — a real WebRTC/SFU vendor is a later-phase deployment decision, never simulated as a live call; the reporting replica wiring remains a deployment-phase task.
+
+---
+
+## Phase 22 — National Scale (2026-08-17)
+
+**Objective.** ROADMAP Phase 22 / milestone M5: measured capacity, resilience drills, localization, integration and compliance evidence — with the roadmap's hard rule that nothing is claimed without recorded evidence.
+
+**Honesty anchors.** Production multi-region cutover, WAL-archiving PITR, production-scale SLOs, compliance, and live national integrations are **NOT PROVEN** and are explicitly recorded as such (`NATIONAL_SCALE.md` §7). No fake integration, no invented capacity, no compliance claim.
+
+**Files created.**
+- `frontend/src/i18n/I18nProvider.tsx`, `locales/en.ts` (34 keys), `locales/ne.ts` (Devanagari mirror, parity-enforced), `I18nProvider.test.tsx`, `localized-shell.test.tsx`
+- `frontend/scripts/verify-devanagari.mjs` (static gate on shipped tokens.css — Vitest stubs CSS)
+- `backend/ci/failover-drill.sh` (app switched to pre-verified standby; HTTP `health/live`+`health/ready` against it; RLS probes)
+- `NATIONAL_SCALE.md` (evidence register), `LEGAL_COMPLIANCE_ASSESSMENT.md` (verified controls vs NOT PROVEN legal items), `docs/national-scale/*.log` (raw measured evidence)
+
+**Files modified.** `frontend/src/main.tsx`, `App.tsx`, `layout/AppShell.tsx` (language toggle), `pages/LoginPage.tsx`, `styles/tokens.css` (`html[lang='ne']` Devanagari-first stacks), `layout/shell.css` (toggle styling), `backend/ci/load-benchmark.sh` + `backend/ci/backup-restore-drill.sh` (**measurement-integrity fix**: canonical `request.jwt.claims` wiring; drill isolation probe uses one patient's own tenant/facility), `DEPLOYMENT.md`, `DISASTER_RECOVERY.md` (§13.1 drill evidence register), `OBSERVABILITY.md`, `MASTER_RULES.md` (§39.1a), `INTEROPERABILITY.md`, this log.
+
+**Measured evidence (all recorded).**
+- **Load @ 1M patients (~2.9M rows, 1,235 MB):** point lookups 0.2–0.8 ms, provider-day schedule 0.27 ms, inserts ~0.3–0.5 ms, update ~3.3 ms, delete ~86 ms (WITH CHECK), tenant-scoped name search 147–158 ms (documented hot spot); error rate 0; `BENCH_EXIT=0`. RLS index-cond folding proven in explains (0 "never executed").
+- **Restore drill @ national scale:** backup 34 s (152 MB dump), restore 104 s + role/grants fixup, total 140 s; 135 tables, 97 migrations, 1,000,000 patients / 500,000 appointments; 476 = 476 policies; RLS on; `swasthya_app bypass=false super=false`; isolation on restored data 1/0/0.
+- **Failover-readiness drill:** app serves from standby — `health/ready` database check ok; switch-over ~1 s; RLS on standby 1/0/0.
+- **Localization:** Vitest 32/32 (26 baseline + 6 new), `verify-devanagari.mjs` PASS, TS PASS; Devanagari `lang='ne'` stacks shipped.
+
+**Gates (all green).** Full backend Pest **717 passed / 9,625 assertions** (no backend PHP surface changed — CI scripts only); RLS suites 34 passed / 2,366; Node harness 855/855; frontend Vitest 32 passed; frontend + harness TypeScript PASS; Pint PASS; `git diff --check` CLEAN; debug/artifact sweep CLEAN; tracked-secret scan 0 new matches.
+
+**Remaining risks (deployment-phase, NOT PROVEN).** production-scale SLO verification; WAL/PITR production posture; real multi-region cutover (annual failover drill); legal/compliance assessment; live national integrations (none specified); page-content-level Nepali localization beyond the shell/login.
+
+**Baseline note.** Phases 20 (RPM) and 21 (CDSS/AI) were requested but never implemented (no code, no commits) — Phase 22 proceeded per the authoritative instruction; the roadmap's "all prior phases" dependency is partially unmet and is flagged in the STOP report.

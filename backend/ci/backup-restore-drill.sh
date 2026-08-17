@@ -88,23 +88,27 @@ echo "-- audit records present"
 
 echo
 echo "== RLS isolation re-verified on the RESTORED database (as swasthya_app) =="
-TID=$("$PSQL" -h "$HOST" -p "$PORT" -U "$OWNER" -d "$RESTORE_DB" -t -A -c \
-  "select tenant_id from facilities limit 1")
-FID=$("$PSQL" -h "$HOST" -p "$PORT" -U "$OWNER" -d "$RESTORE_DB" -t -A -c \
-  "select id from facilities limit 1")
-"$PSQL" -h "$HOST" -p "$PORT" -U "$OWNER" -d "$RESTORE_DB" -t -A -c \
-  "select id from patients limit 1" > /tmp/drill_pid.txt
-PID=$(head -1 /tmp/drill_pid.txt)
+# Phase 22 fix: pick ONE patient and use ITS OWN tenant/facility for the
+# probe (previously limit-1 facility and limit-1 patient were unrelated rows
+# on arbitrary-heap data, which made the "with context" check return 0).
+IFS='|' read -r TID FID PID < <("$PSQL" -h "$HOST" -p "$PORT" -U "$OWNER" -d "$RESTORE_DB" -t -A -c \
+  "select tenant_id, facility_id, id from patients limit 1")
+# Windows psql emits CRLF: strip the trailing carriage return from the last column.
+PID="${PID%$'\r'}"
 echo "tenant=$TID facility=$FID patient=$PID"
+if [ -z "$PID" ]; then
+  echo "no patient rows in $RESTORE_DB — skipping row-level isolation probes (schema/RLS/role verified above)"
+else
 echo "-- swasthya_app WITH context sees the patient (should be 1)"
 PGPASSWORD="$APP_ROLE_PW" "$PSQL" -h "$HOST" -p "$PORT" -U swasthya_app -d "$RESTORE_DB" -t -A -c \
-  "begin; select set_config('app.tenant_id','$TID',true); select set_config('app.facility_id','$FID',true); select set_config('app.is_platform','false',true); select count(*) from patients where id='$PID'; commit;"
+  "begin; select set_config('request.jwt.claims', json_build_object('app_user_id','','app_tenant_id','$TID','app_facility_id','$FID','app_branch_id','','app_is_platform','false')::text, true); select count(*) from patients where id='$PID'; commit;"
 echo "-- swasthya_app WITHOUT context (safe failure, should be 0)"
 PGPASSWORD="$APP_ROLE_PW" "$PSQL" -h "$HOST" -p "$PORT" -U swasthya_app -d "$RESTORE_DB" -t -A -c \
   "select count(*) from patients where id='$PID';"
 echo "-- swasthya_app WRONG tenant cannot read (should be 0)"
 PGPASSWORD="$APP_ROLE_PW" "$PSQL" -h "$HOST" -p "$PORT" -U swasthya_app -d "$RESTORE_DB" -t -A -c \
-  "begin; select set_config('app.tenant_id', gen_random_uuid()::text, true); select set_config('app.is_platform','false',true); select count(*) from patients where id='$PID'; commit;"
+  "begin; select set_config('request.jwt.claims', json_build_object('app_user_id','','app_tenant_id',gen_random_uuid()::text,'app_facility_id','','app_branch_id','','app_is_platform','false')::text, true); select count(*) from patients where id='$PID'; commit;"
+fi
 
 echo
 echo "== RPO / RTO =="

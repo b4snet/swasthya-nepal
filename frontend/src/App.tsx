@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth } from './auth/AuthProvider';
 import { TenantProvider, useTenant } from './context/TenantContext';
+import { useI18n } from './i18n/I18nProvider';
 import { AppShell } from './layout/AppShell';
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
@@ -24,11 +25,12 @@ function FullScreenSpinner({ label }: { label: string }) {
 
 function FacilityChooser() {
   const { facilities, selectFacility } = useTenant();
+  const { t } = useI18n();
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
       <Card className="facility-chooser" style={{ maxWidth: '26rem', width: '100%' }}>
-        <h2>Choose a facility</h2>
-        <p className="muted">You are authorized at more than one facility. Pick one to continue.</p>
+        <h2>{t('facilityChooser.title')}</h2>
+        <p className="muted">{t('facilityChooser.hint')}</p>
         <div className="stack">
           {facilities.map((f) => (
             <Button key={f.id} variant="secondary" full onClick={() => selectFacility(f.id)}>
@@ -43,8 +45,9 @@ function FacilityChooser() {
 
 function Gate() {
   const { status } = useAuth();
+  const { t } = useI18n();
   if (status === 'loading') {
-    return <FullScreenSpinner label="Restoring session…" />;
+    return <FullScreenSpinner label={t('shell.restoringSession')} />;
   }
   if (status === 'unauthenticated') return <Navigate to="/login" replace />;
   return (
@@ -60,10 +63,11 @@ function Gate() {
 
 function TenantGate() {
   const { ready, facilities } = useTenant();
+  const { t } = useI18n();
   if (!ready) {
     // A principal with several facilities must choose before any fetch.
     if (facilities.length > 1) return <FacilityChooser />;
-    return <FullScreenSpinner label="Resolving facility…" />;
+    return <FullScreenSpinner label={t('shell.resolvingFacility')} />;
   }
   return <AppShell />;
 }

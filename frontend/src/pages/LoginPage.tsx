@@ -2,12 +2,14 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
+import { useI18n } from '../i18n/I18nProvider';
 import { Button, Input } from '../components/ui';
 import { ApiError } from '../api/client';
 import './login.css';
 
 export function LoginPage() {
   const { login } = useAuth();
+  const { t } = useI18n();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -25,9 +27,9 @@ export function LoginPage() {
     } catch (err) {
       const apiErr = err as ApiError;
       setError(
-        apiErr.code === 'VALIDATION' ? 'Enter your email and password.'
-        : apiErr.code === 'RATE_LIMITED' ? 'Too many attempts. Wait a moment and try again.'
-        : 'Sign-in failed. Check your email and password.',
+        apiErr.code === 'VALIDATION' ? t('login.validationError')
+        : apiErr.code === 'RATE_LIMITED' ? t('login.rateLimited')
+        : t('login.failed'),
       );
     } finally {
       setSubmitting(false);
@@ -39,21 +41,21 @@ export function LoginPage() {
       <div className="login__card card">
         <div className="login__brand">
           <span className="login__mark" aria-hidden="true">◈</span>
-          <h1>Swasthya</h1>
-          <p className="muted">Hospital management — sign in to continue</p>
+          <h1>{t('app.name')}</h1>
+          <p className="muted">{t('login.subtitle')}</p>
         </div>
         <form onSubmit={onSubmit} className="stack" noValidate>
           <Input
-            label="Email"
+            label={t('login.email')}
             type="email"
             autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@hospital.example"
+            placeholder={t('login.emailPlaceholder')}
             required
           />
           <Input
-            label="Password"
+            label={t('login.password')}
             type="password"
             autoComplete="current-password"
             value={password}
@@ -66,7 +68,7 @@ export function LoginPage() {
             </div>
           )}
           <Button type="submit" full loading={submitting}>
-            Sign in
+            {t('login.signIn')}
           </Button>
         </form>
       </div>

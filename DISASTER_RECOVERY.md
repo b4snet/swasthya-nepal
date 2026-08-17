@@ -226,6 +226,18 @@ measured facts belong here:
 - **Evidence is the point:** every drill records measured numbers and findings; findings become tracked actions; a drill without recorded evidence did not happen (`MASTER_RULES.md` §23.4).
 - **New risk triggers a drill:** schema rework, a new data store, a region change, or a recovery-path change re-runs the relevant drill before the change is trusted.
 
+### 13.1 Drill Evidence Register (Phase 22, 2026-08-17)
+
+Measured on the disposable local cluster (`NATIONAL_SCALE.md` §2–§3). These are
+**this environment's achieved values** — production RPO/RTO claims remain the
+deployment-phase commitment, not yet measured.
+
+| Drill | Evidence recorded |
+|---|---|
+| **Restore drill @ national scale** (1,235 MB synthetic DB, ~2.9M rows) | Backup 34 s (152 MB `-Fc` dump); restore 104 s + role/grants fixup; total 140 s. Verified: 135 tables, 97 migrations, 1,000,000 patients / 500,000 appointments, 476 = 476 policies, `patients`/`audit_events` RLS on, `swasthya_app bypass=false super=false`, isolation 1/0/0 on restored data (`docs/national-scale/load-benchmark-1M-claims-2026-08-17.log` covers the dataset; drill output recorded in `NATIONAL_SCALE.md` §2) |
+| **Failover-readiness drill** (app switched to pre-verified standby) | Config switch + schema verify ~1 s; `health/live` + `health/ready` (database check ok) served from the standby; RLS on standby 1/0/0 (`docs/national-scale/failover-drill-2026-08-17.log`) |
+| **Measurement-integrity fix** | `load-benchmark.sh`/`backup-restore-drill.sh` now set the canonical `request.jwt.claims` payload (policies re-keyed in `2026_08_13_100200`); the legacy `app.*` GUCs silently produced zero-row plans. Drill isolation probe uses one patient's own tenant/facility. |
+
 ---
 
 ## 14. Recovery Runbook Inventory
