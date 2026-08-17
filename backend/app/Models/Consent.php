@@ -28,6 +28,10 @@ class Consent extends Model
 
     public const TYPE_TELEHEALTH = 'telehealth';
 
+    // Phase 3 slice 25 — RPM: device monitoring consent (data collection
+    // consent; CLINICAL_SAFETY.md §7 — no silent device data collection).
+    public const TYPE_DEVICE_MONITORING = 'device_monitoring';
+
     public const TYPE_MARKETING = 'marketing';
 
     public const TYPE_RESEARCH = 'research';

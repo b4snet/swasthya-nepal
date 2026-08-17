@@ -1839,3 +1839,23 @@ ent schedule → 409 with zero rows changed; cross-tenant isolation — read 404
 **Remaining risks (deployment-phase, NOT PROVEN).** production-scale SLO verification; WAL/PITR production posture; real multi-region cutover (annual failover drill); legal/compliance assessment; live national integrations (none specified); page-content-level Nepali localization beyond the shell/login.
 
 **Baseline note.** Phases 20 (RPM) and 21 (CDSS/AI) were requested but never implemented (no code, no commits) — Phase 22 proceeded per the authoritative instruction; the roadmap's "all prior phases" dependency is partially unmet and is flagged in the STOP report.
+
+## Phase 20 — RPM: Device Readings & Human-Mediated Alerts (2026-08-17)
+
+**Objective.** ROADMAP Phase 20 / PRODUCT_REQUIREMENTS §6.21: device adapters, validated and clearly labeled readings, personalized thresholds, human-mediated alerts with acknowledgment, and monitoring views. Closes the documented Phase 20 gap flagged in the Phase 22 entry.
+
+**Files created.**
+- Migrations: `2026_08_17_320000_create_rpm_tables.php` (`rpm_devices`, `rpm_readings`, `rpm_alerts` — composite tenant/facility FKs to `patients`, BRIN index on readings timestamp, unique `ingestion_id`, alert dedup cooldown window), `2026_08_17_320100_enable_rpm_row_level_security.php` (RLS on + **FORCED**, `request.jwt.claims` TENANT_FACILITY policies, 12 new policies → **488 total**), `2026_08_17_320200_add_device_monitoring_consent_type.php` (extends `chk_consents_type`)
+- `app/Models/RpmDevice.php`, `RpmReading.php`, `RpmAlert.php` (CAS `lock_version`, casts)
+- Factories: `RpmDeviceFactory.php`, `RpmReadingFactory.php`, `RpmAlertFactory.php`
+- `app/Services/RpmService.php` — ingestion dedup (unique `ingestion_id`, 409), validation labeling (`VALID`/`FLAGGED`), personalized per-patient thresholds (override on device), cooldown-gated alert creation, CAS exactly-one-winner transitions, consent gate (`device_monitoring`), alert escalation
+- `app/Http/Requests/Rpm/{StoreDeviceRequest,UpdateDeviceStatusRequest,IngestReadingRequest,AcknowledgeAlertRequest}.php`, `app/Http/Controllers/Api/RpmController.php`, routes, 3 permissions (`rpm:manage` / `rpm:ingest` / `rpm:acknowledge`), AuditLogger events (`rpm.device.registered`, `rpm.reading.ingested`, `rpm.alert.raised`, `rpm.alert.acknowledged`)
+- `tests/Feature/RpmTest.php` (29 tests / 106 assertions)
+
+**Files modified.** `app/Models/Consent.php` + `CaptureConsentRequest.php` (`device_monitoring` type), `app/Support/AuditLogger.php`, `RolePermissionSeeder.php`, `routes/api.php`, `ClaimsBasedRlsTest.php`, `TenancyDatabaseInventoryTest.php`, `DATABASE.md` (§3.56), this log.
+
+**Tests.** RpmTest **29 passed / 106 assertions** (labeling, personalized thresholds, ack, dedup 409, cooldown, isolation read-404/write-403, RLS, audit PHI-safety, load-oriented 500-reading batch). RLS suites **34 passed / 2,417 assertions** (488 policies, FORCE intact, `swasthya_app` NOBYPASSRLS). Full backend **746 passed / 9,842 assertions** (+29/+217 vs Phase 22). Node harness 855/855, frontend Vitest 32, frontend + harness TS PASS, Pint PASS (732 files), `git diff --check` CLEAN, debug/artifact sweep CLEAN, tracked-secret scan 0 matches.
+
+**Security.** PHI-safe audit payloads (device IDs and counts only — no patient names/clinical content); consent-gated ingestion; no autonomous action — alerts are human-mediated with acknowledgment; tenant+facility isolation both ways; CAS concurrency; adapter idempotency keys.
+
+**Remaining (documented, not this phase).** live device adapters/BLE/HL7 feeds (integration phase), monitoring views beyond the API surface, CDSS/AI (Phase 21).

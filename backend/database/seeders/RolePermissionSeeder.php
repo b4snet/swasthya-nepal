@@ -297,6 +297,14 @@ class RolePermissionSeeder extends Seeder
             'telehealth:schedule' => ['domain' => 'telehealth', 'description' => 'Schedule teleconsults from teleconsult appointments and cancel scheduled ones'],
             'telehealth:conduct' => ['domain' => 'telehealth', 'description' => 'Run the virtual consultation: ready, start (consent gate), video sessions, fallback, complete'],
             'telehealth:record' => ['domain' => 'telehealth', 'description' => 'Start/stop an explicit recording (facility policy + patient consent also required)'],
+            // Phase 3 slice 25 — Remote Patient Monitoring (ROADMAP Phase
+            // 20): device-sourced readings are validated and clearly
+            // labeled; alerts escalate to humans who acknowledge/resolve.
+            // rpm:ingest is the machine/adapter ingestion path.
+            'rpm:view' => ['domain' => 'rpm', 'description' => 'View enrolled devices, validated/labeled readings, and alerts'],
+            'rpm:manage' => ['domain' => 'rpm', 'description' => 'Enroll devices (consent-gated), activate and disable them'],
+            'rpm:ingest' => ['domain' => 'rpm', 'description' => 'Ingest device readings (batch, idempotent, validated and labeled)'],
+            'rpm:acknowledge' => ['domain' => 'rpm', 'description' => 'Acknowledge and resolve RPM alerts (human-mediated escalation)'],
         ];
     }
 
@@ -450,6 +458,10 @@ class RolePermissionSeeder extends Seeder
                     // Phase 3 slice 24 — Telehealth: the org admin
                     // administers the whole telehealth surface.
                     'telehealth:schedule', 'telehealth:conduct', 'telehealth:record',
+                    // Phase 3 slice 25 — RPM: the org admin administers the
+                    // whole remote-monitoring surface, including the
+                    // machine ingestion path.
+                    'rpm:view', 'rpm:manage', 'rpm:ingest', 'rpm:acknowledge',
                 ],
             ],
             'org_finance' => [
@@ -549,6 +561,9 @@ class RolePermissionSeeder extends Seeder
                     // start explicit recordings (policy + consent still
                     // gate the actual recording).
                     'telehealth:schedule', 'telehealth:conduct', 'telehealth:record',
+                    // Phase 3 slice 25 — RPM: the hospital admin manages
+                    // remote monitoring for their facility.
+                    'rpm:view', 'rpm:manage', 'rpm:ingest', 'rpm:acknowledge',
                 ],
             ],
             'branch_manager' => [
@@ -575,6 +590,10 @@ class RolePermissionSeeder extends Seeder
                     // Phase 3 slice 21 — operational dashboard visibility for
                     // the branch manager (curated, role-gated dashboards).
                     'analytics:view',
+                    // Phase 3 slice 25 — RPM: the branch manager sees the
+                    // monitoring surface for their facility (view-only;
+                    // enrollment and escalation are clinical acts).
+                    'rpm:view',
                 ],
             ],
             'receptionist' => [
@@ -652,6 +671,10 @@ class RolePermissionSeeder extends Seeder
                     // is deliberately NOT granted — recording is a separate
                     // restricted permission (PRODUCT_REQUIREMENTS §6.20).
                     'telehealth:schedule', 'telehealth:conduct',
+                    // Phase 3 slice 25 — RPM: the doctor views monitoring
+                    // and acknowledges/resolves alerts (the clinical act).
+                    // Device enrollment stays with nursing/administration.
+                    'rpm:view', 'rpm:acknowledge',
                 ],
             ],
             'nurse' => [
@@ -683,6 +706,10 @@ class RolePermissionSeeder extends Seeder
                     'ot:document', 'ot:checklist',
                     'icu:observe', 'icu:document',
                     'bloodbank:transfuse',
+                    // Phase 3 slice 25 — RPM: the nurse enrolls devices for
+                    // home monitoring (consent-gated), views readings, and
+                    // acknowledges/resolves alerts at the bedside.
+                    'rpm:view', 'rpm:manage', 'rpm:acknowledge',
                 ],
             ],
             'pharmacist' => [

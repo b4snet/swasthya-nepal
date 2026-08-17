@@ -17,7 +17,7 @@ class CaptureConsentRequest extends ApiRequest
     public function rules(): array
     {
         return [
-            'consentType' => ['required', 'in:treatment,data_use,telehealth,marketing,research'],
+            'consentType' => ['required', 'in:treatment,data_use,telehealth,device_monitoring,marketing,research'],
             'scope' => ['nullable', 'array'],
             'givenAt' => ['nullable', 'date'],
         ];

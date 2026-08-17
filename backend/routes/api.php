@@ -50,6 +50,7 @@ use App\Http\Controllers\Api\RefundController;
 use App\Http\Controllers\Api\RoleAssignmentController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\RoomController;
+use App\Http\Controllers\Api\RpmController;
 use App\Http\Controllers\Api\ScheduleController;
 use App\Http\Controllers\Api\ServiceController;
 use App\Http\Controllers\Api\StaffController;
@@ -959,6 +960,28 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
         ->middleware('authorize:telehealth:conduct');
     Route::post('telehealth/teleconsults/{teleconsult}/cancel', [TelehealthController::class, 'cancel'])
         ->middleware('authorize:telehealth:schedule');
+
+    // Phase 3 slice 25 — Remote Patient Monitoring (ROADMAP Phase 20):
+    // device enrollment (consent-gated), validated+labeled ingestion
+    // (idempotent batch), monitoring views, and human-mediated alerts with
+    // acknowledgment. rpm:ingest is the machine/adapter path; the rest are
+    // clinical roles.
+    Route::post('rpm/devices', [RpmController::class, 'store'])
+        ->middleware('authorize:rpm:manage');
+    Route::get('rpm/devices', [RpmController::class, 'index'])
+        ->middleware('authorize:rpm:view');
+    Route::patch('rpm/devices/{rpmDevice}', [RpmController::class, 'update'])
+        ->middleware('authorize:rpm:manage');
+    Route::post('rpm/readings', [RpmController::class, 'ingest'])
+        ->middleware('authorize:rpm:ingest');
+    Route::get('rpm/patients/{patient}/readings', [RpmController::class, 'readings'])
+        ->middleware('authorize:rpm:view');
+    Route::get('rpm/alerts', [RpmController::class, 'alerts'])
+        ->middleware('authorize:rpm:view');
+    Route::post('rpm/alerts/{rpmAlert}/acknowledge', [RpmController::class, 'acknowledge'])
+        ->middleware('authorize:rpm:acknowledge');
+    Route::post('rpm/alerts/{rpmAlert}/resolve', [RpmController::class, 'resolve'])
+        ->middleware('authorize:rpm:acknowledge');
 });
 
 // Patient Portal — portal-authenticated surface (Phase 3 slice 22,

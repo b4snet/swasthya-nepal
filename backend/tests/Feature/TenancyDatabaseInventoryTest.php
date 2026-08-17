@@ -16,12 +16,12 @@ use Illuminate\Support\Str;
  * and the deliberately permissive INSERT boundary, so any change to the
  * policy matrix becomes a visible, reviewed regression.
  *
- * The 120-table set is the RLS-on matrix (ClaimsBasedRlsTest asserts 120
- * scoped + 15 unscoped); the 120 here must match it exactly.
+ * The 123-table set is the RLS-on matrix (ClaimsBasedRlsTest asserts 123
+ * scoped + 15 unscoped); the 123 here must match it exactly.
  */
 
 /**
- * The 120 tables with RLS enabled (the documented scoped set).
+ * The 123 tables with RLS enabled (the documented scoped set).
  *
  * @var list<string>
  */
@@ -102,6 +102,10 @@ const RLS_SCOPED_TABLES = [
     // PRODUCT_REQUIREMENTS §6.20): the virtual-consultation record and its
     // secure video-session metadata (consent-gated, recording-policy-bound).
     'teleconsults', 'video_sessions',
+    // Phase 3 slice 25 — RPM (DATABASE.md §3.56, ROADMAP Phase 20): device
+    // adapters, validated/labeled readings (append-only), and
+    // human-mediated threshold alerts.
+    'rpm_devices', 'rpm_readings', 'rpm_alerts',
     // TENANT_ONLY
     'payers', 'mrn_counters', 'patient_identifiers', 'patient_contacts',
     'insurance_policies', 'patient_documents', 'consents',
@@ -686,6 +690,21 @@ function seedTenantChain(ConnectionInterface $c, string $tenantId, string $facil
     $c->insert('insert into video_sessions (id, tenant_id, facility_id, teleconsult_id, status, started_at, ended_at, provider_session_ref, participant_type, recording_requested, recording_consent_verified, recording_started_at, recording_ended_at, recording_storage_ref, failure_reason, created_by_staff_id, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$videoSession, $tenantId, $facilityId, $teleconsult, 'ended', '2026-08-16 15:05:00+00', '2026-08-16 15:25:00+00', 'chain-room', 'provider', false, false, null, null, null, null, $staff, 0]);
     $ids['video_sessions'] = $videoSession;
 
+    // Phase 3 slice 25 — RPM (rpm_devices, rpm_readings, rpm_alerts —
+    // DATABASE.md §3.56): an enrolled device → one labeled reading → one
+    // open threshold alert. Values are synthetic.
+    $rpmDevice = (string) Str::uuid();
+    $c->insert('insert into rpm_devices (id, tenant_id, facility_id, patient_id, device_identifier, model, manufacturer, reading_type, status, settings, adapter, last_seen_at, created_by, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$rpmDevice, $tenantId, $facilityId, $patient, 'CHAIN-RPM-1', 'PulseOx-2', 'Chain Devices', 'pulse', 'active', '{}', 'chain', '2026-08-17 14:00:00+00', $staff, 0]);
+    $ids['rpm_devices'] = $rpmDevice;
+
+    $rpmReading = (string) Str::uuid();
+    $c->insert('insert into rpm_readings (id, tenant_id, facility_id, patient_id, device_id, reading_type, value, units, measured_at, received_at, source, validation_status, validation_reason, provenance, ingestion_id, created_by) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$rpmReading, $tenantId, $facilityId, $patient, $rpmDevice, 'pulse', '{"value": 140}', null, '2026-08-17 14:01:00+00', '2026-08-17 14:01:00+00', 'device', 'flagged', 'value above threshold', '{"adapter": "chain"}', 'chain-ing-1', null]);
+    $ids['rpm_readings'] = $rpmReading;
+
+    $rpmAlert = (string) Str::uuid();
+    $c->insert('insert into rpm_alerts (id, tenant_id, facility_id, patient_id, device_id, reading_id, alert_type, parameter, threshold_value, observed_value, severity, status, acknowledged_by, acknowledged_at, acknowledged_note, resolved_by, resolved_at, created_by, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$rpmAlert, $tenantId, $facilityId, $patient, $rpmDevice, $rpmReading, 'threshold_high', 'value', '{"high": 120}', '{"value": 140}', 'medium', 'open', null, null, null, null, null, null, 0]);
+    $ids['rpm_alerts'] = $rpmAlert;
+
     // Support sessions are owner-or-platform visible: insert with the chain
     // user as the owning context (user_id GUC).
     $session = (string) Str::uuid();
@@ -761,6 +780,9 @@ function chainUpdateColumns(): array
         'oauth_partner_tokens' => ['revoked_at', '2026-08-16 13:00:00+00'],
         'teleconsults' => ['fallback_mode', 'phone'],
         'video_sessions' => ['participant_type', 'patient'],
+        'rpm_devices' => ['status', 'disabled'],
+        'rpm_readings' => ['validation_status', 'validated'],
+        'rpm_alerts' => ['status', 'resolved'],
         'payment_allocations' => ['amount_minor', '1'],
         'payments' => ['provider_ref', 'upd'],
         'payroll_exports' => ['format', 'csv'],
@@ -855,7 +877,7 @@ function inventoryTenants(ConnectionInterface $c): array
     return $t;
 }
 
-it('records the current RLS inventory: 120 scoped tables enabled + FORCED, 15 unscoped off', function () {
+it('records the current RLS inventory: 123 scoped tables enabled + FORCED, 15 unscoped off', function () {
     $rows = DB::connection('pgsql')->select(
         'select c.relname as table_name, c.relrowsecurity::text as enabled, c.relforcerowsecurity::text as forced
          from pg_class c
@@ -993,7 +1015,7 @@ it('FORCE RLS binds a non-superuser table owner (defense-in-depth proof)', funct
     }
 });
 
-it('denies cross-tenant SELECT, UPDATE, and DELETE on all 120 tenant-owned tables — two-sided', function () {
+it('denies cross-tenant SELECT, UPDATE, and DELETE on all 123 tenant-owned tables — two-sided', function () {
     rlsTx(rlsConn(), function ($c): void {
         $t = inventoryTenants($c);
 

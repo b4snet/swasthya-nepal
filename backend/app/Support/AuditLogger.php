@@ -75,6 +75,9 @@ use App\Models\ReportSchedule;
 use App\Models\ReportTemplate;
 use App\Models\Room;
 use App\Models\Roster;
+use App\Models\RpmAlert;
+use App\Models\RpmDevice;
+use App\Models\RpmReading;
 use App\Models\ScheduleException;
 use App\Models\ScheduleTemplate;
 use App\Models\Service;
@@ -282,6 +285,12 @@ final class AuditLogger
         // not its media).
         'teleconsult' => Teleconsult::class,
         'video_session' => VideoSession::class,
+        // Phase 3 slice 25 — RPM (ROADMAP Phase 20): devices, readings, and
+        // alerts. Payloads carry facts and ids only — never reading values,
+        // thresholds, or alert notes (those are clinical PHI).
+        'rpm_device' => RpmDevice::class,
+        'rpm_reading' => RpmReading::class,
+        'rpm_alert' => RpmAlert::class,
     ];
 
     /**

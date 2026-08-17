@@ -17,7 +17,7 @@ use Illuminate\Support\Str;
  * exercised end-to-end. Every test runs in a transaction on the app-role
  * connection and rolls back in all paths: no fixtures leak.
  */
-it('re-keys every RLS policy to the claims helpers (476 policies, zero GUC references)', function () {
+it('re-keys every RLS policy to the claims helpers (488 policies, zero GUC references)', function () {
     $policies = DB::connection('pgsql')->select(
         <<<'SQL'
         select count(*) as total,
@@ -29,7 +29,7 @@ it('re-keys every RLS policy to the claims helpers (476 policies, zero GUC refer
         SQL
     )[0];
 
-    expect((int) $policies->total)->toBe(476)
+    expect((int) $policies->total)->toBe(488)
         ->and((int) $policies->not_claims)->toBe(0)
         ->and((int) $policies->still_guc)->toBe(0);
 
@@ -59,7 +59,7 @@ it('keeps the RLS matrix intact: 62 scoped on, 15 off, none on-without-policies'
         SQL
     );
 
-    // 77 tables total: 62 tenant-scoped (RLS on, FORCE on) + 15 off. The 15
+    // 80 tables total: 65 tenant-scoped (RLS on, FORCE on) + 15 off. The 15
     // are the framework/identity/public tables: users, roles, permissions,
     // role_permissions, organizations (tenant root — no tenant column to scope
     // by), migrations, jobs, job_batches, failed_jobs, cache, cache_locks,
@@ -88,7 +88,8 @@ it('keeps the RLS matrix intact: 62 scoped on, 15 off, none on-without-policies'
     // +5 since slice 23: integrations, integration_events, egress_allowlist,
     // oauth_partners, oauth_partner_tokens.
     // +2 since slice 24: teleconsults, video_sessions.
-    expect((int) $matrix->rls_on)->toBe(120)
+    // +3 since slice 25: rpm_devices, rpm_readings, rpm_alerts.
+    expect((int) $matrix->rls_on)->toBe(123)
         ->and((int) $matrix->rls_off)->toBe(15)
         ->and((int) $matrix->on_without_policies)->toBe(0);
 });
