@@ -236,6 +236,18 @@ executed locally as a twin (`backend/ci/run-local-ci.sh` + the CI Playwright
 config against `swasthya_ci`); it has **not yet run on a real GitHub-hosted
 runner** — that requires the repository to be pushed to GitHub.
 
+A third job, `smoke-validation`, runs in parallel and is the **CI-side gate
+for the staging smoke script (§11) — validation only**. It never contacts a
+host and never runs the live smoke flow; it proves the script is
+syntactically valid (`bash -n`) and that its documented configuration
+validation modes behave as specified, using deliberately non-sensitive
+dummy values (`https://smoke.invalid` — the RFC 2606 reserved TLD — and a
+throwaway CI fixture password): valid dry-run env → exit 0 with no HTTP;
+plain-HTTP remote URL → exit 2 with the refusal diagnostic; missing
+`STAGING_BASE_URL` → exit 2; missing `STAGING_FIXTURE_PASSWORD` → exit 2.
+The live post-deploy smoke remains an operator action against a deployed
+staging API (§11, §15.4) — it is intentionally not executable in CI.
+
 ## 15. What Remains for a Real Staging Host
 
 1. Choose the provider and create the infrastructure per §2–§9 (TLS,

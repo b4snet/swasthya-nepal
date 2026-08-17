@@ -268,3 +268,95 @@ jobs:
             frontend/test-results/
             frontend/playwright-report/
           retention-days: 7
+
+  # Staging smoke gate — VALIDATION ONLY. This job never contacts a host and
+  # never runs the live smoke flow: it proves the smoke script itself is
+  # syntactically valid, that its documented configuration validation modes
+  # behave as specified, and that the script refuses misconfiguration before
+  # any HTTP could occur. All values are deliberately non-sensitive dummies:
+  #   - https://smoke.invalid  — RFC 2606 reserved TLD, never resolvable
+  #   - ci-dummy-fixture-password — throwaway CI value, never a real secret
+  # The live post-deploy smoke (STAGING.md §11) is executed by an operator
+  # against a deployed staging API; it must never run in CI.
+  smoke-validation:
+    name: staging smoke gate (validation only — never contacts a host)
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP (script prerequisite for JSON extraction)
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+
+      - name: Shell syntax validation
+        run: bash -n smoke_staging.sh
+
+      - name: Dry-run with non-sensitive dummy values (no HTTP performed)
+        env:
+          SMOKE_DRY_RUN: '1'
+          STAGING_BASE_URL: 'https://smoke.invalid'
+          STAGING_FIXTURE_PASSWORD: 'ci-dummy-fixture-password'
+        run: ./smoke_staging.sh
+
+      - name: Plain-HTTP remote URL is refused (exit 2)
+        env:
+          SMOKE_DRY_RUN: '1'
+          STAGING_BASE_URL: 'http://smoke.invalid'
+          STAGING_FIXTURE_PASSWORD: 'ci-dummy-fixture-password'
+        run: |
+          set +e
+          output="$(./smoke_staging.sh 2>&1)"
+          code=$?
+          set -e
+          if [[ "$code" -ne 2 ]]; then
+            echo "::error::expected exit 2 (plain-HTTP remote refused), got ${code}"
+            exit 1
+          fi
+          echo "$output" | grep -qi 'plain-HTTP' || {
+            echo '::error::plain-HTTP refusal diagnostic missing'
+            exit 1
+          }
+
+      - name: Missing STAGING_BASE_URL is refused (exit 2)
+        env:
+          SMOKE_DRY_RUN: '1'
+          STAGING_FIXTURE_PASSWORD: 'ci-dummy-fixture-password'
+        run: |
+          set +e
+          output="$(./smoke_staging.sh 2>&1)"
+          code=$?
+          set -e
+          if [[ "$code" -ne 2 ]]; then
+            echo "::error::expected exit 2 (missing STAGING_BASE_URL), got ${code}"
+            exit 1
+          fi
+          echo "$output" | grep -qi 'STAGING_BASE_URL is required' || {
+            echo '::error::missing-URL diagnostic absent'
+            exit 1
+          }
+
+      - name: Missing STAGING_FIXTURE_PASSWORD is refused (exit 2)
+        env:
+          SMOKE_DRY_RUN: '1'
+          STAGING_BASE_URL: 'https://smoke.invalid'
+        run: |
+          set +e
+          output="$(./smoke_staging.sh 2>&1)"
+          code=$?
+          set -e
+          if [[ "$code" -ne 2 ]]; then
+            echo "::error::expected exit 2 (missing STAGING_FIXTURE_PASSWORD), got ${code}"
+            exit 1
+          fi
+          echo "$output" | grep -qi 'STAGING_FIXTURE_PASSWORD is required' || {
+            echo '::error::missing-password diagnostic absent'
+            exit 1
+          }
