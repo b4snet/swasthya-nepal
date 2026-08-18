@@ -4,10 +4,16 @@ namespace App\Http\Controllers\Api;
 
 use App\Exceptions\ApiException;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Inventory\RejectAdjustmentRequest;
+use App\Http\Requests\Inventory\StoreAdjustmentRequest;
+use App\Http\Requests\Inventory\StoreTransferRequest;
 use App\Http\Requests\Pharmacy\AdjustInventoryRequest;
 use App\Http\Requests\Pharmacy\StoreInventoryRequest;
+use App\Models\Facility;
+use App\Models\InventoryAdjustmentRequest;
 use App\Models\InventoryItem;
 use App\Models\InventoryMovement;
+use App\Models\InventoryTransfer;
 use App\Models\Medication;
 use App\Models\Organization;
 use App\Models\StockBatch;
@@ -262,6 +268,387 @@ final class InventoryController extends Controller
         );
 
         return Envelope::success(data: $this->present($inventoryItem->fresh('medication:id,generic_name,brand_name,strength,form,unit,is_controlled,price_minor,currency')), request: $request);
+    }
+
+    /**
+     * GET /organizations/{organization}/reorder-alerts — the documented
+     * low-stock alert surface (PRODUCT_REQUIREMENTS §6.15.6, ROADMAP Phase
+     * 14 MVP): every stocked item whose on-hand quantity is AT or BELOW its
+     * reorder level, with the shortage (how many units below the level).
+     * Read-only — no mutation, no audit (mirrors the batch-visibility
+     * surface).
+     */
+    public function reorderAlerts(Request $request, Organization $organization): JsonResponse
+    {
+        AccessCheck::organization($organization->getKey(), write: false);
+
+        $context = TenantContext::current();
+        $query = InventoryItem::query()
+            ->where('tenant_id', $organization->getKey())
+            ->whereNotNull('reorder_level')
+            ->whereColumn('quantity_on_hand', '<=', 'reorder_level')
+            ->with('medication:id,generic_name,brand_name,strength,form,unit,is_controlled,price_minor,currency');
+
+        if (! $context->isPlatform && $context->facilityId() !== null) {
+            $query->where('facility_id', $context->facilityId());
+        }
+
+        $alerts = $query->get()->map(function (InventoryItem $item): array {
+            $presented = $this->present($item);
+            $presented['reorderLevel'] = $item->reorder_level;
+            $presented['shortageMinor'] = max(0, $item->reorder_level - $item->quantity_on_hand);
+
+            return $presented;
+        })->values();
+
+        return Envelope::success(data: $alerts, request: $request);
+    }
+
+    /**
+     * POST /inventory-transfers — an inter-facility stock transfer
+     * (PRODUCT_REQUIREMENTS §6.15.4). ATOMIC: the source item is
+     * CAS-decremented and the destination item CAS-incremented in one
+     * transaction with a paired `transfer` ledger movement on each side
+     * (both linked to the transfer row). Stock never goes in-transit and
+     * the movement ledger stays the only stock truth. Requires
+     * inventory:transfer (org-level — a facility-scoped principal can
+     * never write another facility's stock).
+     */
+    public function transfer(StoreTransferRequest $request): JsonResponse
+    {
+        $context = TenantContext::current();
+        $source = InventoryItem::query()
+            ->where('tenant_id', $context->tenantId())
+            ->where('id', $request->validated('inventoryItemId'))
+            ->first();
+
+        if ($source === null) {
+            throw new ApiException(ErrorCodes::NOT_FOUND, 'Inventory item not found.', 404);
+        }
+
+        AccessCheck::scoped($source, write: true);
+
+        $destinationFacility = Facility::query()
+            ->where('tenant_id', $context->tenantId())
+            ->where('id', $request->validated('destinationFacilityId'))
+            ->first();
+
+        if ($destinationFacility === null) {
+            throw new ApiException(ErrorCodes::NOT_FOUND, 'Destination facility not found.', 404);
+        }
+
+        $destination = InventoryItem::query()
+            ->where('tenant_id', $context->tenantId())
+            ->where('facility_id', $destinationFacility->getKey())
+            ->where('medication_id', $source->medication_id)
+            ->first();
+
+        if ($destination === null) {
+            throw new ApiException(ErrorCodes::CONFLICT, 'The destination facility has no stock row for this medication; stock it first.', 409);
+        }
+
+        $quantity = (int) $request->validated('quantity');
+        $reason = $request->validated('reason');
+        $userId = $context->user?->getKey();
+
+        $transfer = DB::transaction(function () use ($context, $source, $destination, $destinationFacility, $quantity, $reason, $userId): InventoryTransfer {
+            // Source: CAS down (never negative).
+            $sourceUpdated = DB::table('inventory_items')
+                ->where('tenant_id', $source->tenant_id)
+                ->where('id', $source->getKey())
+                ->where('lock_version', $source->lock_version)
+                ->where('quantity_on_hand', '>=', $quantity)
+                ->update([
+                    'quantity_on_hand' => DB::raw('quantity_on_hand - '.$quantity),
+                    'lock_version' => DB::raw('lock_version + 1'),
+                    'updated_by' => $userId,
+                    'updated_at' => now(),
+                ]);
+
+            if ($sourceUpdated !== 1) {
+                throw new ApiException(ErrorCodes::CONFLICT, 'The source has insufficient stock or was concurrently modified; refresh and retry.', 409);
+            }
+
+            // Destination: CAS up.
+            $destinationUpdated = DB::table('inventory_items')
+                ->where('tenant_id', $destination->tenant_id)
+                ->where('id', $destination->getKey())
+                ->where('lock_version', $destination->lock_version)
+                ->update([
+                    'quantity_on_hand' => DB::raw('quantity_on_hand + '.$quantity),
+                    'lock_version' => DB::raw('lock_version + 1'),
+                    'updated_by' => $userId,
+                    'updated_at' => now(),
+                ]);
+
+            if ($destinationUpdated !== 1) {
+                throw new ApiException(ErrorCodes::LOCK_CONFLICT, 'The destination item was concurrently modified; refresh and retry.', 409);
+            }
+
+            $transfer = InventoryTransfer::query()->create([
+                'tenant_id' => (string) $context->tenantId(),
+                'facility_id' => $source->facility_id,
+                'destination_facility_id' => $destinationFacility->getKey(),
+                'inventory_item_id' => $source->getKey(),
+                'medication_id' => $source->medication_id,
+                'quantity' => $quantity,
+                'reason' => $reason,
+                'dispatched_by' => $userId,
+                'dispatched_at' => now(),
+                'received_by' => $userId,
+                'received_at' => now(),
+                'created_by' => $userId,
+                'updated_by' => $userId,
+            ]);
+
+            // Paired ledger rows — stock truth on both sides.
+            InventoryMovement::query()->create([
+                'tenant_id' => $source->tenant_id,
+                'facility_id' => $source->facility_id,
+                'inventory_item_id' => $source->getKey(),
+                'movement_type' => InventoryMovement::TYPE_TRANSFER,
+                'quantity_delta' => -$quantity,
+                'reason' => $reason,
+                'inventory_transfer_id' => $transfer->getKey(),
+                'occurred_at' => now(),
+                'created_by' => $userId,
+            ]);
+            InventoryMovement::query()->create([
+                'tenant_id' => $destination->tenant_id,
+                'facility_id' => $destination->facility_id,
+                'inventory_item_id' => $destination->getKey(),
+                'movement_type' => InventoryMovement::TYPE_TRANSFER,
+                'quantity_delta' => $quantity,
+                'reason' => $reason,
+                'inventory_transfer_id' => $transfer->getKey(),
+                'occurred_at' => now(),
+                'created_by' => $userId,
+            ]);
+
+            return $transfer;
+        });
+
+        $this->audit->record('inventory.transferred', 'inventory_transfer', $transfer->getKey(), [
+            'sourceFacilityId' => $source->facility_id,
+            'destinationFacilityId' => $destinationFacility->getKey(),
+            'medicationId' => $source->medication_id,
+            'quantity' => $quantity,
+        ], $request);
+
+        return Envelope::success(data: [
+            'id' => $transfer->getKey(),
+            'sourceFacilityId' => $transfer->facility_id,
+            'destinationFacilityId' => $transfer->destination_facility_id,
+            'medicationId' => $transfer->medication_id,
+            'quantity' => $transfer->quantity,
+            'reason' => $transfer->reason,
+            'transferredAt' => $transfer->received_at?->toIso8601String(),
+        ], status: 201, request: $request);
+    }
+
+    /**
+     * POST /inventory-items/{inventoryItem}/adjustment-requests — the
+     * APPROVAL-GATED adjustment path (PRODUCT_REQUIREMENTS §6.15.5,
+     * ROADMAP Phase 14 acceptance "adjustments approval-gated"): a signed
+     * delta with a mandatory reason is requested; an approver (never the
+     * requester) applies it. The pharmacist's immediate signed correction
+     * (POST .../adjust) remains unchanged.
+     */
+    public function storeAdjustmentRequest(StoreAdjustmentRequest $request, InventoryItem $inventoryItem): JsonResponse
+    {
+        AccessCheck::scoped($inventoryItem, write: true);
+
+        $context = TenantContext::current();
+
+        $adjustmentRequest = InventoryAdjustmentRequest::query()->create([
+            'tenant_id' => $inventoryItem->tenant_id,
+            'facility_id' => $inventoryItem->facility_id,
+            'inventory_item_id' => $inventoryItem->getKey(),
+            'quantity_delta' => (int) $request->validated('quantityDelta'),
+            'reason' => $request->validated('reason'),
+            'status' => InventoryAdjustmentRequest::STATUS_REQUESTED,
+            'requested_by' => $context->user?->getKey(),
+            'lock_version' => 0,
+            'created_by' => $context->user?->getKey(),
+            'updated_by' => $context->user?->getKey(),
+        ]);
+
+        $this->audit->record('inventory.adjustment_requested', 'inventory_adjustment_request', $adjustmentRequest->getKey(), [
+            'inventoryItemId' => $inventoryItem->getKey(),
+            'quantityDelta' => $adjustmentRequest->quantity_delta,
+        ], $request);
+
+        return Envelope::success(data: $this->presentAdjustmentRequest($adjustmentRequest), status: 201, request: $request);
+    }
+
+    /**
+     * GET /inventory-items/{inventoryItem}/adjustment-requests — the
+     * requests against one item, oldest first.
+     */
+    public function adjustmentRequests(Request $request, InventoryItem $inventoryItem): JsonResponse
+    {
+        AccessCheck::scoped($inventoryItem, write: false);
+
+        $requests = InventoryAdjustmentRequest::query()
+            ->where('tenant_id', $inventoryItem->tenant_id)
+            ->where('inventory_item_id', $inventoryItem->getKey())
+            ->orderBy('created_at')
+            ->get()
+            ->map(fn (InventoryAdjustmentRequest $r): array => $this->presentAdjustmentRequest($r))
+            ->values();
+
+        return Envelope::success(data: $requests, request: $request);
+    }
+
+    /**
+     * POST /inventory-adjustment-requests/{request}/approve — the financial
+     * gate: applies the requested delta atomically (item CAS + ledger row)
+     * exactly like the pharmacist's immediate adjustment. Approver must
+     * differ from the requester; CAS on (status, lock_version) makes a
+     * duplicate/concurrent approval resolve to exactly one winner.
+     */
+    public function approveAdjustmentRequest(Request $request, InventoryAdjustmentRequest $adjustmentRequest): JsonResponse
+    {
+        AccessCheck::scoped($adjustmentRequest, write: true);
+
+        $context = TenantContext::current();
+        $approverId = $context->user?->getKey();
+
+        $item = InventoryItem::query()->where('tenant_id', $adjustmentRequest->tenant_id)->where('id', $adjustmentRequest->inventory_item_id)->firstOrFail();
+
+        DB::transaction(function () use ($adjustmentRequest, $item, $approverId): void {
+            if ($adjustmentRequest->status !== InventoryAdjustmentRequest::STATUS_REQUESTED) {
+                throw new ApiException(ErrorCodes::CONFLICT, 'Only a requested adjustment can be approved.', 409);
+            }
+
+            if ($approverId !== null && $adjustmentRequest->requested_by === $approverId) {
+                throw new ApiException(ErrorCodes::FORBIDDEN, 'The requester cannot approve their own adjustment request.', 403);
+            }
+
+            $delta = $adjustmentRequest->quantity_delta;
+
+            $updated = DB::table('inventory_items')
+                ->where('tenant_id', $item->tenant_id)
+                ->where('id', $item->getKey())
+                ->where('lock_version', $item->lock_version)
+                ->where('quantity_on_hand', '>=', -$delta)
+                ->update([
+                    'quantity_on_hand' => DB::raw('quantity_on_hand + '.$delta),
+                    'lock_version' => DB::raw('lock_version + 1'),
+                    'updated_by' => $approverId,
+                    'updated_at' => now(),
+                ]);
+
+            if ($updated !== 1) {
+                throw new ApiException(ErrorCodes::CONFLICT, 'This adjustment would drive stock negative or the item was concurrently modified; refresh and retry.', 409);
+            }
+
+            InventoryMovement::query()->create([
+                'tenant_id' => $adjustmentRequest->tenant_id,
+                'facility_id' => $adjustmentRequest->facility_id,
+                'inventory_item_id' => $item->getKey(),
+                'movement_type' => InventoryMovement::TYPE_ADJUSTMENT,
+                'quantity_delta' => $delta,
+                'reason' => $adjustmentRequest->reason.' (approved adjustment request '.$adjustmentRequest->getKey().')',
+                'occurred_at' => now(),
+                'created_by' => $approverId,
+            ]);
+
+            $affected = DB::table('inventory_adjustment_requests')
+                ->where('tenant_id', $adjustmentRequest->tenant_id)
+                ->where('id', $adjustmentRequest->getKey())
+                ->where('status', InventoryAdjustmentRequest::STATUS_REQUESTED)
+                ->where('lock_version', $adjustmentRequest->lock_version)
+                ->update([
+                    'status' => InventoryAdjustmentRequest::STATUS_APPROVED,
+                    'approved_by' => $approverId,
+                    'approved_at' => now(),
+                    'lock_version' => $adjustmentRequest->lock_version + 1,
+                    'updated_at' => now(),
+                ]);
+
+            if ($affected !== 1) {
+                throw new ApiException(ErrorCodes::LOCK_CONFLICT, 'This adjustment request was changed by another approval. Reload and retry.', 409);
+            }
+        });
+
+        $approved = $adjustmentRequest->refresh();
+
+        $this->audit->record('inventory.adjustment_approved', 'inventory_adjustment_request', $approved->getKey(), [
+            'inventoryItemId' => $approved->inventory_item_id,
+            'quantityDelta' => $approved->quantity_delta,
+            'newQuantityOnHand' => $item->fresh()->quantity_on_hand,
+        ], $request);
+
+        return Envelope::success(data: $this->presentAdjustmentRequest($approved), request: $request);
+    }
+
+    /**
+     * POST /inventory-adjustment-requests/{request}/reject — approver
+     * declines with a required reason. Terminal; CAS-guarded.
+     */
+    public function rejectAdjustmentRequest(RejectAdjustmentRequest $request, InventoryAdjustmentRequest $adjustmentRequest): JsonResponse
+    {
+        AccessCheck::scoped($adjustmentRequest, write: true);
+
+        $context = TenantContext::current();
+        $rejectedBy = $context->user?->getKey();
+
+        DB::transaction(function () use ($adjustmentRequest, $rejectedBy, $request): void {
+            if ($adjustmentRequest->status !== InventoryAdjustmentRequest::STATUS_REQUESTED) {
+                throw new ApiException(ErrorCodes::CONFLICT, 'Only a requested adjustment can be rejected.', 409);
+            }
+
+            if ($rejectedBy !== null && $adjustmentRequest->requested_by === $rejectedBy) {
+                throw new ApiException(ErrorCodes::FORBIDDEN, 'The requester cannot reject their own adjustment request.', 403);
+            }
+
+            $affected = DB::table('inventory_adjustment_requests')
+                ->where('tenant_id', $adjustmentRequest->tenant_id)
+                ->where('id', $adjustmentRequest->getKey())
+                ->where('status', InventoryAdjustmentRequest::STATUS_REQUESTED)
+                ->where('lock_version', $adjustmentRequest->lock_version)
+                ->update([
+                    'status' => InventoryAdjustmentRequest::STATUS_REJECTED,
+                    'rejected_by' => $rejectedBy,
+                    'rejection_reason' => $request->validated('rejectionReason'),
+                    'rejected_at' => now(),
+                    'lock_version' => $adjustmentRequest->lock_version + 1,
+                    'updated_at' => now(),
+                ]);
+
+            if ($affected !== 1) {
+                throw new ApiException(ErrorCodes::LOCK_CONFLICT, 'This adjustment request was changed by another actor. Reload and retry.', 409);
+            }
+        });
+
+        $rejected = $adjustmentRequest->refresh();
+
+        $this->audit->record('inventory.adjustment_rejected', 'inventory_adjustment_request', $rejected->getKey(), [
+            'inventoryItemId' => $rejected->inventory_item_id,
+            'quantityDelta' => $rejected->quantity_delta,
+        ], $request);
+
+        return Envelope::success(data: $this->presentAdjustmentRequest($rejected), request: $request);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function presentAdjustmentRequest(InventoryAdjustmentRequest $request): array
+    {
+        return [
+            'id' => $request->getKey(),
+            'inventoryItemId' => $request->inventory_item_id,
+            'quantityDelta' => $request->quantity_delta,
+            'status' => $request->status,
+            'requestedBy' => $request->requested_by,
+            'approvedBy' => $request->approved_by,
+            'approvedAt' => $request->approved_at?->toIso8601String(),
+            'rejectedBy' => $request->rejected_by,
+            'rejectedAt' => $request->rejected_at?->toIso8601String(),
+            'lockVersion' => $request->lock_version,
+        ];
     }
 
     /**

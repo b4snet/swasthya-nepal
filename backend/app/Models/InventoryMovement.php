@@ -26,6 +26,9 @@ class InventoryMovement extends Model
 
     public const TYPE_RETURN = 'return';
 
+    // Phase 14 — inter-facility transfers (paired source/destination rows).
+    public const TYPE_TRANSFER = 'transfer';
+
     /**
      * @var list<string>
      */

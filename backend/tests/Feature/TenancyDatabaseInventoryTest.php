@@ -48,6 +48,14 @@ const RLS_SCOPED_TABLES = [
     // Phase 3 — standalone dispensing records (dispensing without a
     // prescription; §3.30).
     'dispensings',
+    // Phase 14 — inventory & procurement (DATABASE.md §3.31–3.32):
+    // inter-facility transfers, approval-gated adjustments, and the
+    // procurement chain (vendors, requests + approvals, orders, GRNs,
+    // contracts).
+    'inventory_transfers', 'inventory_adjustment_requests',
+    'vendors', 'purchase_requests', 'purchase_request_lines',
+    'purchase_request_approvals', 'purchase_orders', 'purchase_order_lines',
+    'goods_receipts', 'goods_receipt_lines', 'vendor_contracts',
     // Phase 3 slice 4 — discharge & follow-up.
     'follow_ups',
     // Phase 3 slice 5 — billing refunds & adjustments.
@@ -383,6 +391,52 @@ function seedTenantChain(ConnectionInterface $c, string $tenantId, string $facil
     $c->insert('insert into stock_batches (id, tenant_id, facility_id, inventory_item_id, medication_id, batch_number, expiry_date, quantity_received, quantity_remaining, status, controlled_dispense_requires_dual, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$batch, $tenantId, $facilityId, $inventoryItem, $medication, 'B-CHAIN', '2026-12-31', 100, 100, 'available', false, 0]);
     $ids['stock_batches'] = $batch;
     $c->update('update inventory_movements set stock_batch_id = ? where id = ?', [$batch, $movement]);
+
+    // Phase 14 — inventory & procurement chain (DATABASE.md §3.31–3.32),
+    // chained to the inventory item, medication, and vendor above.
+    $transfer = (string) Str::uuid();
+    $c->insert('insert into inventory_transfers (id, tenant_id, facility_id, destination_facility_id, inventory_item_id, medication_id, quantity, reason, dispatched_by, dispatched_at, received_by, received_at, created_by, updated_by) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$transfer, $tenantId, $facilityId, $facilityId, $inventoryItem, $medication, 10, 'Chain transfer', $user, '2026-08-15 12:10:00+00', $user, '2026-08-15 12:10:00+00', $user, $user]);
+    $ids['inventory_transfers'] = $transfer;
+
+    $adjustmentRequest = (string) Str::uuid();
+    $c->insert('insert into inventory_adjustment_requests (id, tenant_id, facility_id, inventory_item_id, quantity_delta, reason, status, requested_by, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?)', [$adjustmentRequest, $tenantId, $facilityId, $inventoryItem, -5, 'Chain adjustment', 'requested', $user, 0]);
+    $ids['inventory_adjustment_requests'] = $adjustmentRequest;
+
+    $vendor = (string) Str::uuid();
+    $c->insert('insert into vendors (id, tenant_id, facility_id, code, name, status) values (?, ?, ?, ?, ?, ?)', [$vendor, $tenantId, $facilityId, 'VND-CHAIN', 'Chain Supplier', 'active']);
+    $ids['vendors'] = $vendor;
+
+    $purchaseRequest = (string) Str::uuid();
+    $c->insert('insert into purchase_requests (id, tenant_id, facility_id, request_number, requested_by, department_id, status, requested_at, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?)', [$purchaseRequest, $tenantId, $facilityId, 'PR-CHAIN', $user, $department, 'approved', '2026-08-15 12:15:00+00', 0]);
+    $ids['purchase_requests'] = $purchaseRequest;
+
+    $purchaseRequestLine = (string) Str::uuid();
+    $c->insert('insert into purchase_request_lines (id, tenant_id, facility_id, purchase_request_id, medication_id, quantity, estimated_unit_price_minor) values (?, ?, ?, ?, ?, ?, ?)', [$purchaseRequestLine, $tenantId, $facilityId, $purchaseRequest, $medication, 20, 450]);
+    $ids['purchase_request_lines'] = $purchaseRequestLine;
+
+    $approval = (string) Str::uuid();
+    $c->insert('insert into purchase_request_approvals (id, tenant_id, purchase_request_id, approver_id, decision, decided_at) values (?, ?, ?, ?, ?, ?)', [$approval, $tenantId, $purchaseRequest, $user, 'approved', '2026-08-15 12:20:00+00']);
+    $ids['purchase_request_approvals'] = $approval;
+
+    $purchaseOrder = (string) Str::uuid();
+    $c->insert('insert into purchase_orders (id, tenant_id, facility_id, po_number, vendor_id, status, lock_version) values (?, ?, ?, ?, ?, ?, ?)', [$purchaseOrder, $tenantId, $facilityId, 'PO-CHAIN', $vendor, 'received', 0]);
+    $ids['purchase_orders'] = $purchaseOrder;
+
+    $purchaseOrderLine = (string) Str::uuid();
+    $c->insert('insert into purchase_order_lines (id, tenant_id, facility_id, po_id, medication_id, quantity_ordered, unit_price_minor, received_quantity, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?)', [$purchaseOrderLine, $tenantId, $facilityId, $purchaseOrder, $medication, 20, 450, 20, 0]);
+    $ids['purchase_order_lines'] = $purchaseOrderLine;
+
+    $grn = (string) Str::uuid();
+    $c->insert('insert into goods_receipts (id, tenant_id, facility_id, grn_number, po_id, received_by, received_at, status, match_status) values (?, ?, ?, ?, ?, ?, ?, ?, ?)', [$grn, $tenantId, $facilityId, 'GRN-CHAIN', $purchaseOrder, $user, '2026-08-15 12:30:00+00', 'matched', 'matched']);
+    $ids['goods_receipts'] = $grn;
+
+    $grnLine = (string) Str::uuid();
+    $c->insert('insert into goods_receipt_lines (id, tenant_id, facility_id, grn_id, po_line_id, medication_id, quantity_received, unit_price_received) values (?, ?, ?, ?, ?, ?, ?, ?)', [$grnLine, $tenantId, $facilityId, $grn, $purchaseOrderLine, $medication, 20, 450]);
+    $ids['goods_receipt_lines'] = $grnLine;
+
+    $contract = (string) Str::uuid();
+    $c->insert('insert into vendor_contracts (id, tenant_id, facility_id, vendor_id, medication_id, unit_price_minor, valid_from, valid_to, status) values (?, ?, ?, ?, ?, ?, ?, ?, ?)', [$contract, $tenantId, $facilityId, $vendor, $medication, 450, '2026-01-01', '2026-12-31', 'active']);
+    $ids['vendor_contracts'] = $contract;
 
     // Phase 3 slice 4 — follow-up plan chained to the encounter above.
     $followUp = (string) Str::uuid();
@@ -791,6 +845,17 @@ function chainUpdateColumns(): array
         'claim_lines' => ['status', 'denied'],
         'inventory_items' => ['reorder_level', '12'],
         'inventory_movements' => ['reason', 'upd'],
+        'inventory_transfers' => ['reason', 'upd'],
+        'inventory_adjustment_requests' => ['reason', 'upd'],
+        'vendors' => ['name', 'upd'],
+        'purchase_requests' => ['status', 'submitted'],
+        'purchase_request_lines' => ['quantity', '2'],
+        'purchase_request_approvals' => ['decision', 'rejected'],
+        'purchase_orders' => ['status', 'confirmed'],
+        'purchase_order_lines' => ['received_quantity', '1'],
+        'goods_receipts' => ['status', 'received'],
+        'goods_receipt_lines' => ['quantity_received', '2'],
+        'vendor_contracts' => ['status', 'expired'],
         'stock_batches' => ['batch_number', 'upd'],
         'lab_order_items' => ['result_unit', 'upd'],
         'lab_orders' => ['clinical_indication', 'upd'],

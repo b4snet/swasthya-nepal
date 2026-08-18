@@ -192,6 +192,22 @@ class RolePermissionSeeder extends Seeder
             // of duties — charge ≠ void).
             'billing:void' => ['domain' => 'billing', 'description' => 'Void posted charges and uncollected invoices (status + reason + approver, restricted)'],
 
+            // Phase 14 — inventory & procurement (ROADMAP §15, PRODUCT_
+            // REQUIREMENTS §6.15–6.16): inter-facility transfers, the
+            // approval-gated adjustment path (requester ≠ approver), and
+            // the procurement chain (request → approve → order → receive →
+            // match). Procurement permissions separate the requester,
+            // approver, orderer, receiver, and contract manager.
+            'inventory:transfer' => ['domain' => 'inventory', 'description' => 'Transfer stock between facilities (paired ledger movements, org-level)'],
+            'inventory:adjust-request' => ['domain' => 'inventory', 'description' => 'Request a stock adjustment for approval (cycle counts and corrections)'],
+            'inventory:adjust-approve' => ['domain' => 'inventory', 'description' => 'Approve stock adjustment requests (never the requester)'],
+            'procurement:view' => ['domain' => 'procurement', 'description' => 'View procurement documents within scope'],
+            'procurement:request' => ['domain' => 'procurement', 'description' => 'Create and submit purchase requests'],
+            'procurement:approve' => ['domain' => 'procurement', 'description' => 'Approve or reject purchase requests (never the requester)'],
+            'procurement:order' => ['domain' => 'procurement', 'description' => 'Issue, confirm, and close purchase orders'],
+            'procurement:receive' => ['domain' => 'procurement', 'description' => 'Record goods receipts and run three-way match'],
+            'procurement:contract' => ['domain' => 'procurement', 'description' => 'Manage the vendor master and vendor contracts'],
+
             // Phase 3 slice 18 — insurance claims (PRODUCT_REQUIREMENTS
             // §6.14): building/submitting/tracking a claim is one
             // permission; recording the payer SETTLEMENT is another
@@ -450,6 +466,11 @@ class RolePermissionSeeder extends Seeder
                     // Phase 13 — void stays with the financial approver tier
                     // (the clerk who charges cannot void — segregation of duties).
                     'billing:void',
+                    // Phase 14 — the org admin administers the whole tenant's
+                    // inventory and procurement surface.
+                    'inventory:transfer', 'inventory:adjust-request', 'inventory:adjust-approve',
+                    'procurement:view', 'procurement:request', 'procurement:approve',
+                    'procurement:order', 'procurement:receive', 'procurement:contract',
                     'insurance:claim', 'insurance:settle',
                     'admission:view', 'admission:create', 'admission:discharge',
                     'admission:transfer', 'nursing:document', 'mar:administer',
@@ -508,6 +529,9 @@ class RolePermissionSeeder extends Seeder
                     // Phase 13 — void stays with the financial approver tier
                     // (the clerk who charges cannot void — segregation of duties).
                     'billing:void',
+                    // Phase 14 — the finance officer sees procurement documents
+                    // and holds the purchase-approval gate (never requests).
+                    'procurement:view', 'procurement:approve',
                     'insurance:claim', 'insurance:settle',
                     // Phase 3 slice 21 — the finance officer sees financial
                     // analytics and RUNS reports; exports (reports:export)
@@ -560,6 +584,11 @@ class RolePermissionSeeder extends Seeder
                     // Phase 13 — void stays with the financial approver tier
                     // (the clerk who charges cannot void — segregation of duties).
                     'billing:void',
+                    // Phase 14 — the hospital admin administers their facility's
+                    // inventory and procurement surface.
+                    'inventory:transfer', 'inventory:adjust-request', 'inventory:adjust-approve',
+                    'procurement:view', 'procurement:request', 'procurement:approve',
+                    'procurement:order', 'procurement:receive', 'procurement:contract',
                     'insurance:claim', 'insurance:settle',
                     'admission:view', 'admission:create', 'admission:discharge',
                     'admission:transfer', 'nursing:document', 'mar:administer',
@@ -633,6 +662,8 @@ class RolePermissionSeeder extends Seeder
                     // monitoring surface for their facility (view-only;
                     // enrollment and escalation are clinical acts).
                     'rpm:view',
+                    // Phase 14 — procurement visibility for their facility.
+                    'procurement:view',
                 ],
             ],
             'receptionist' => [
@@ -773,6 +804,11 @@ class RolePermissionSeeder extends Seeder
                     'patient:view', 'patient:search',
                     'pharmacy:view', 'pharmacy:dispense', 'pharmacy:stock',
                     'pharmacy:return',
+                    // Phase 14 — the pharmacist requests adjustments (approval
+                    // is the admin's gate), requests replenishment, and sees
+                    // procurement documents; transfers are org-level.
+                    'inventory:adjust-request',
+                    'procurement:view', 'procurement:request',
                     // Phase 21 — CDSS: the pharmacist sees knowledge checks
                     // during dispensing (DDI/allergy/dose alerts) and the
                     // AI registry; curation and sign-off stay elsewhere.

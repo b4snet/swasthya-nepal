@@ -47,6 +47,7 @@ use App\Http\Controllers\Api\PharmacyController;
 use App\Http\Controllers\Api\PharmacyReturnController;
 use App\Http\Controllers\Api\PlatformAssignmentController;
 use App\Http\Controllers\Api\PlatformSupportController;
+use App\Http\Controllers\Api\ProcurementController;
 use App\Http\Controllers\Api\RadiologyController;
 use App\Http\Controllers\Api\RefundController;
 use App\Http\Controllers\Api\RoleAssignmentController;
@@ -530,6 +531,60 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
         ->middleware('authorize:pharmacy:stock');
     Route::post('inventory-items/{inventoryItem}/adjust', [InventoryController::class, 'adjust'])
         ->middleware('authorize:pharmacy:stock');
+
+    // Phase 14 — inventory & procurement (ROADMAP §15, PRODUCT_REQUIREMENTS
+    // §6.15–6.16, DATABASE.md §3.31–3.32): reorder alerts, inter-facility
+    // transfers, approval-gated adjustments, and the procurement chain
+    // (vendor → request → approval → PO → GRN → three-way match).
+    Route::get('organizations/{organization}/reorder-alerts', [InventoryController::class, 'reorderAlerts'])
+        ->middleware('authorize:pharmacy:view');
+    Route::post('inventory-transfers', [InventoryController::class, 'transfer'])
+        ->middleware('authorize:inventory:transfer');
+    Route::post('inventory-items/{inventoryItem}/adjustment-requests', [InventoryController::class, 'storeAdjustmentRequest'])
+        ->middleware('authorize:inventory:adjust-request');
+    Route::get('inventory-items/{inventoryItem}/adjustment-requests', [InventoryController::class, 'adjustmentRequests'])
+        ->middleware('authorize:pharmacy:view');
+    Route::post('inventory-adjustment-requests/{adjustmentRequest}/approve', [InventoryController::class, 'approveAdjustmentRequest'])
+        ->middleware('authorize:inventory:adjust-approve');
+    Route::post('inventory-adjustment-requests/{adjustmentRequest}/reject', [InventoryController::class, 'rejectAdjustmentRequest'])
+        ->middleware('authorize:inventory:adjust-approve');
+
+    Route::get('organizations/{organization}/procurement/vendors', [ProcurementController::class, 'indexVendors'])
+        ->middleware('authorize:procurement:view');
+    Route::post('organizations/{organization}/procurement/vendors', [ProcurementController::class, 'storeVendor'])
+        ->middleware('authorize:procurement:contract');
+    Route::post('vendors/{vendor}/blacklist', [ProcurementController::class, 'blacklistVendor'])
+        ->middleware('authorize:procurement:contract');
+    Route::get('vendors/{vendor}/contracts', [ProcurementController::class, 'indexContracts'])
+        ->middleware('authorize:procurement:view');
+    Route::post('vendors/{vendor}/contracts', [ProcurementController::class, 'storeContract'])
+        ->middleware('authorize:procurement:contract');
+    Route::get('organizations/{organization}/procurement/requests', [ProcurementController::class, 'indexRequests'])
+        ->middleware('authorize:procurement:view');
+    Route::post('organizations/{organization}/procurement/requests', [ProcurementController::class, 'storeRequest'])
+        ->middleware('authorize:procurement:request');
+    Route::get('purchase-requests/{purchaseRequest}', [ProcurementController::class, 'showRequest'])
+        ->middleware('authorize:procurement:view');
+    Route::post('purchase-requests/{purchaseRequest}/submit', [ProcurementController::class, 'submitRequest'])
+        ->middleware('authorize:procurement:request');
+    Route::post('purchase-requests/{purchaseRequest}/approve', [ProcurementController::class, 'approveRequest'])
+        ->middleware('authorize:procurement:approve');
+    Route::post('purchase-requests/{purchaseRequest}/reject', [ProcurementController::class, 'rejectRequest'])
+        ->middleware('authorize:procurement:approve');
+    Route::get('organizations/{organization}/procurement/orders', [ProcurementController::class, 'indexOrders'])
+        ->middleware('authorize:procurement:view');
+    Route::post('organizations/{organization}/procurement/orders', [ProcurementController::class, 'storeOrder'])
+        ->middleware('authorize:procurement:order');
+    Route::post('purchase-orders/{order}/confirm', [ProcurementController::class, 'confirmOrder'])
+        ->middleware('authorize:procurement:order');
+    Route::post('purchase-orders/{order}/close', [ProcurementController::class, 'closeOrder'])
+        ->middleware('authorize:procurement:order');
+    Route::post('purchase-orders/{order}/goods-receipts', [ProcurementController::class, 'receiveGoods'])
+        ->middleware('authorize:procurement:receive');
+    Route::post('goods-receipts/{grn}/match', [ProcurementController::class, 'matchReceipt'])
+        ->middleware('authorize:procurement:receive');
+    Route::get('purchase-orders/{order}/goods-receipts', [ProcurementController::class, 'indexReceipts'])
+        ->middleware('authorize:procurement:view');
     Route::get('prescriptions/{prescription}', [PharmacyController::class, 'show'])
         ->middleware('authorize:pharmacy:view');
     Route::post('prescriptions/{prescription}/verify', [PharmacyController::class, 'verify'])
