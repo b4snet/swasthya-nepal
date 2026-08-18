@@ -6,6 +6,7 @@ use App\Exceptions\ApiException;
 use App\Models\Charge;
 use App\Models\InventoryItem;
 use App\Models\InventoryMovement;
+use App\Models\Notification;
 use App\Models\PharmacyReturn;
 use App\Models\PrescriptionLine;
 use App\Models\RefundRequest;
@@ -41,6 +42,14 @@ use Illuminate\Support\Facades\DB;
  *    price × quantity). The refund layer's refundable check (amount − Σ
  *    approved) and the approval-time charge-row lock already prevent
  *    over-refund across multiple partial requests.
+ *  - Each return also creates ONE in-app billing notification (type
+ *    'billing', DATABASE.md §3.37) typed to the opened refund request — the
+ *    documented "automatic notification to billing on return" integration.
+ *    It lives in the SAME transaction as the return (both succeed or
+ *    neither); the partial unique (tenant_id, refund_request_id) makes a
+ *    duplicate a database-level no-op. In-app dispatch is synchronous
+ *    (created 'sent') — no provider round-trip, nothing external, and the
+ *    return's financial consistency never depends on delivery.
  */
 final class PharmacyReturnService
 {
@@ -50,7 +59,7 @@ final class PharmacyReturnService
      * @param  int|null  $quantity  the quantity to return; NULL returns the
      *                              FULL remaining returnable quantity (the
      *                              backward-compatible whole-line default).
-     * @return array{return: PharmacyReturn, refundRequest: RefundRequest}
+     * @return array{return: PharmacyReturn, refundRequest: RefundRequest, notification: Notification}
      */
     public function reverseLine(
         string $tenantId,
@@ -261,7 +270,35 @@ final class PharmacyReturnService
                 'created_by' => $userId,
             ]);
 
-            return ['return' => $pharmacyReturn, 'refundRequest' => $refundRequest];
+            // The billing notification — one per refund request, in the same
+            // transaction (the return and its notification are atomic). The
+            // partial unique (tenant_id, refund_request_id) is the database
+            // backstop: a duplicate insert is a no-op, never a second
+            // notification. Payload carries FACTS only — ids, the integer
+            // amount, the reason code — never names or free text (§3.37
+            // sensitive flag: the notification references a patient's
+            // financial matter).
+            $notification = Notification::query()->create([
+                'tenant_id' => $tenantId,
+                'patient_id' => $charge->patient_id,
+                'refund_request_id' => $refundRequest->getKey(),
+                'type' => Notification::TYPE_BILLING,
+                'channel' => Notification::CHANNEL_IN_APP,
+                'payload' => [
+                    'refundRequestId' => $refundRequest->getKey(),
+                    'chargeId' => $charge->getKey(),
+                    'amountMinor' => $refundAmount,
+                    'reasonCode' => $refundRequest->reason_code,
+                ],
+                'status' => Notification::STATUS_SENT,
+                'sensitive' => true,
+            ]);
+
+            return [
+                'return' => $pharmacyReturn,
+                'refundRequest' => $refundRequest,
+                'notification' => $notification,
+            ];
         });
     }
 }

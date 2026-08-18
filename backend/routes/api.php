@@ -611,6 +611,11 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
     // the patient (the documented 'completed' state — DATABASE.md §3.33).
     Route::post('refund-requests/{refundRequest}/complete', [RefundController::class, 'complete'])
         ->middleware('authorize:billing:refund-approve');
+    // Pharmacy return → billing notification: the billing team's in-app
+    // view of the notification a pharmacy return created for this refund
+    // request (DATABASE.md §3.30/§3.37).
+    Route::get('refund-requests/{refundRequest}/notification', [RefundController::class, 'notification'])
+        ->middleware('authorize:billing:view');
 
     // Phase 3 slice 18 — remaining Billing and Finance (PRODUCT_REQUIREMENTS
     // §6.13–6.14, DATABASE.md §3.33–3.35): deposits (collect/allocate),

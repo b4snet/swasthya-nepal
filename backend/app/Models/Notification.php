@@ -15,8 +15,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * Phase 3 slice 10 delivers the in-app channel for follow-up reminders:
  * a planned follow-up carries one appointment_reminder notification for its
  * patient (partial unique (tenant_id, follow_up_id) — retries and concurrent
- * triggers cannot duplicate). Email/SMS/push channels, templates, delivery
- * attempts, and preferences remain the documented later-phase surface.
+ * triggers cannot duplicate). A pharmacy return also carries ONE in-app
+ * billing notification typed to its opened refund request (partial unique
+ * (tenant_id, refund_request_id) — the same guarantee). Email/SMS/push
+ * channels, templates, delivery attempts, and preferences remain the
+ * documented later-phase surface.
  */
 class Notification extends Model
 {
@@ -57,6 +60,7 @@ class Notification extends Model
         'user_id',
         'patient_id',
         'follow_up_id',
+        'refund_request_id',
         'type',
         'channel',
         'template_id',
@@ -90,5 +94,13 @@ class Notification extends Model
     public function followUp(): BelongsTo
     {
         return $this->belongsTo(FollowUp::class, 'follow_up_id');
+    }
+
+    /**
+     * @return BelongsTo<RefundRequest, $this>
+     */
+    public function refundRequest(): BelongsTo
+    {
+        return $this->belongsTo(RefundRequest::class, 'refund_request_id');
     }
 }

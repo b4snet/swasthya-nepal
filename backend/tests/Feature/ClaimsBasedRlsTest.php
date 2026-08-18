@@ -1197,6 +1197,53 @@ it('isolates follow-up reminder notifications from claims (TENANT tier: tenant-b
     });
 });
 
+it('isolates pharmacy return billing notifications from claims (TENANT tier: tenant-bound, facility-agnostic)', function () {
+    rlsTx(rlsConn(), function ($c): void {
+        $t = claimsTenants($c);
+        $department = (string) Str::uuid();
+        $staff = (string) Str::uuid();
+        $patient = (string) Str::uuid();
+        $charge = (string) Str::uuid();
+        $refundRequest = (string) Str::uuid();
+        $notification = (string) Str::uuid();
+
+        // Full chain in tenant A: staff → patient → posted charge → refund
+        // request → billing notification (typed refund_request_id, RLS
+        // policies apply on every row).
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
+        $c->insert('insert into departments (id, tenant_id, facility_id, name, code, status) values (?, ?, ?, ?, ?, ?)', [$department, $t['tenantA'], $t['facilityA'], 'OPD', 'opd', 'active']);
+        $c->insert('insert into staff (id, tenant_id, facility_id, department_id, employee_code, full_name, designation, status) values (?, ?, ?, ?, ?, ?, ?, ?)', [$staff, $t['tenantA'], $t['facilityA'], $department, 'EMP-BLN', 'Billing Staff', 'Consultant', 'active']);
+        $c->insert('insert into patients (id, tenant_id, facility_id, mrn, full_name, date_of_birth, sex, status) values (?, ?, ?, ?, ?, ?, ?, ?)', [$patient, $t['tenantA'], $t['facilityA'], 'MRN-BLN', 'Billing Patient', '1990-01-01', 'female', 'active']);
+        $c->insert('insert into charges (id, tenant_id, facility_id, patient_id, source_type, description, amount_minor, currency, tax_rate_bps, status, charged_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$charge, $t['tenantA'], $t['facilityA'], $patient, 'encounter', 'Consultation', 5000, 'NPR', 0, 'posted', '2026-08-15 09:10:00+00']);
+        $c->insert('insert into refund_requests (id, tenant_id, facility_id, patient_id, charge_id, amount_minor, reason_code, status, requested_by, lock_version) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$refundRequest, $t['tenantA'], $t['facilityA'], $patient, $charge, 2000, 'patient_request', 'requested', $staff, 0]);
+        $c->insert('insert into notifications (id, tenant_id, patient_id, refund_request_id, type, channel, payload, status, sensitive) values (?, ?, ?, ?, ?, ?, ?, ?, ?)', [$notification, $t['tenantA'], $patient, $refundRequest, 'billing', 'in_app', '{}', 'sent', true]);
+
+        // Own tenant+facility claims → visible.
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
+        expect($c->selectOne('select id from notifications where id = ?', [$notification]))->not->toBeNull();
+
+        // Another tenant → invisible; update/delete affect zero rows.
+        claimsSet($c, ['app_tenant_id' => $t['tenantB'], 'app_facility_id' => $t['facilityB']]);
+        expect($c->selectOne('select id from notifications where id = ?', [$notification]))->toBeNull()
+            ->and($c->update('update notifications set status = ? where id = ?', ['failed', $notification]))->toBe(0)
+            ->and($c->delete('delete from notifications where id = ?', [$notification]))->toBe(0);
+
+        // TENANT tier: the SAME tenant sees the billing notification from
+        // ANY facility (no facility clause — unlike the TENANT_FACILITY
+        // tables).
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityB']]);
+        expect($c->selectOne('select id from notifications where id = ?', [$notification]))->not->toBeNull();
+
+        // Org-wide claims (no facility) → still visible (purely tenant-bound).
+        claimsSet($c, ['app_tenant_id' => $t['tenantA']]);
+        expect($c->selectOne('select id from notifications where id = ?', [$notification]))->not->toBeNull();
+
+        // The row is untouched by every attack above.
+        claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
+        expect($c->selectOne('select status from notifications where id = ?', [$notification])->status)->toBe('sent');
+    });
+});
+
 it('enforces facility isolation from claims within a tenant', function () {
     rlsTx(rlsConn(), function ($c): void {
         $t = claimsTenants($c);

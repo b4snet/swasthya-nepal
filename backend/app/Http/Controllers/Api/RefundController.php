@@ -2,15 +2,18 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exceptions\ApiException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Billing\RejectRefundRequest;
 use App\Http\Requests\Billing\StoreRefundRequest;
 use App\Models\Charge;
+use App\Models\Notification;
 use App\Models\RefundRequest;
 use App\Services\BillingService;
 use App\Support\AccessCheck;
 use App\Support\AuditLogger;
 use App\Support\Envelope;
+use App\Support\ErrorCodes;
 use App\Support\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -152,6 +155,48 @@ final class RefundController extends Controller
         ], $request);
 
         return Envelope::success(data: self::present($rejected), request: $request);
+    }
+
+    /**
+     * GET refund-requests/{refundRequest}/notification — the billing team's
+     * in-app view of the return's billing notification (PRODUCT_REQUIREMENTS
+     * §5.4: module owners trigger domain notifications; DATABASE.md §3.37).
+     * Created atomically with the pharmacy return that opened this request;
+     * a manual refund request (no return) has none → 404. Read-only: no
+     * mutation, no audit.
+     */
+    public function notification(Request $request, RefundRequest $refundRequest): JsonResponse
+    {
+        AccessCheck::scoped($refundRequest, write: false);
+
+        $notification = Notification::query()
+            ->where('tenant_id', $refundRequest->tenant_id)
+            ->where('refund_request_id', $refundRequest->getKey())
+            ->first();
+
+        if ($notification === null) {
+            throw new ApiException(ErrorCodes::NOT_FOUND, 'No billing notification has been created for this refund request.', 404);
+        }
+
+        return Envelope::success(data: self::presentNotification($notification), request: $request);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function presentNotification(Notification $notification): array
+    {
+        return [
+            'id' => $notification->getKey(),
+            'refundRequestId' => $notification->refund_request_id,
+            'patientId' => $notification->patient_id,
+            'type' => $notification->type,
+            'channel' => $notification->channel,
+            'status' => $notification->status,
+            'sensitive' => $notification->sensitive,
+            'payload' => $notification->payload,
+            'createdAt' => $notification->created_at?->toIso8601String(),
+        ];
     }
 
     /**

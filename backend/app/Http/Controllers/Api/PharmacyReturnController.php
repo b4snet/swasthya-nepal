@@ -77,10 +77,29 @@ final class PharmacyReturnController extends Controller
             $request,
         );
 
+        // The billing notification's own facts-only audit (the return always
+        // creates exactly one — the partial unique makes a replay a no-op,
+        // and a no-op return never reaches this point, so this event is
+        // never fabricated for a rejected operation).
+        $this->audit->record(
+            'refund.notification_created',
+            'refund_request',
+            $result['refundRequest']->getKey(),
+            [
+                'refundRequestId' => $result['refundRequest']->getKey(),
+                'chargeId' => $result['return']->charge_id,
+                'amountMinor' => $result['refundRequest']->amount_minor,
+                'reasonCode' => $result['refundRequest']->reason_code,
+                'channel' => $result['notification']->channel,
+            ],
+            $request,
+        );
+
         return Envelope::success(
             data: [
                 'return' => $this->present($result['return']),
                 'refundRequestId' => $result['refundRequest']->getKey(),
+                'notificationId' => $result['notification']->getKey(),
             ],
             status: 201,
             request: $request,
