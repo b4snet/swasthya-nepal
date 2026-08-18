@@ -594,6 +594,16 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
     Route::post('invoices/{invoice}/pay', [BillingController::class, 'pay'])
         ->middleware('authorize:billing:collect');
 
+    // Phase 13 — charge/invoice void (ROADMAP §14, DATABASE.md §3.33): void
+    // is a status with required reason and approver — never a delete.
+    // Restricted to billing:void: the clerk who charges cannot void
+    // (segregation of duties — charge ≠ void). An invoice void cascades to
+    // the charges it was built from (one atomic transaction).
+    Route::post('charges/{charge}/void', [BillingController::class, 'voidCharge'])
+        ->middleware('authorize:billing:void');
+    Route::post('invoices/{invoice}/void', [BillingController::class, 'voidInvoice'])
+        ->middleware('authorize:billing:void');
+
     // Phase 3 slice 5 — billing refunds & adjustments (PRODUCT_REQUIREMENTS
     // §6.13): posted charge → refund/adjustment request → authorized
     // approval → immutable reversing entry. Approval is a distinct

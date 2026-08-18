@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Exceptions\ApiException;
 use App\Models\Charge;
+use App\Models\DepositAllocation;
+use App\Models\InsuranceClaim;
 use App\Models\Invoice;
 use App\Models\InvoiceLine;
 use App\Models\Payment;
@@ -424,6 +426,204 @@ final class BillingService
             }
 
             return $request->refresh();
+        });
+    }
+
+    /**
+     * Void a posted charge (ROADMAP §14, DATABASE.md §3.33). Void is a
+     * status with reason and approver — the charge row is never deleted and
+     * its financial fields are never mutated. A charge can only be voided
+     * while POSTED and before value has attached to it:
+     *
+     *  - an invoiced charge is refused (the bill was built from it — void
+     *    the invoice instead, which cascades);
+     *  - a charge with a pending, approved, or completed refund is refused
+     *    (money is reserved against it — the refund path is the correction).
+     *
+     * Charges carry no lock_version, so the CAS is on status alone: under
+     * the row lock two concurrent voids resolve to exactly one — the loser
+     * affects zero rows and gets a 409.
+     */
+    public function voidCharge(
+        string $tenantId,
+        string $chargeId,
+        string $reason,
+        ?string $voidedBy = null,
+    ): Charge {
+        return DB::transaction(function () use ($tenantId, $chargeId, $reason, $voidedBy): Charge {
+            // Lock the charge row: concurrent voids serialize here.
+            $charge = Charge::query()
+                ->where('tenant_id', $tenantId)
+                ->where('id', $chargeId)
+                ->lockForUpdate()
+                ->first();
+
+            if ($charge === null) {
+                throw new ApiException(ErrorCodes::NOT_FOUND, 'Charge not found.', 404);
+            }
+
+            if ($charge->status !== Charge::STATUS_POSTED) {
+                throw new ApiException(ErrorCodes::CONFLICT, 'Only a posted charge can be voided.', 409);
+            }
+
+            $invoiced = InvoiceLine::query()
+                ->where('tenant_id', $tenantId)
+                ->where('charge_id', $chargeId)
+                ->exists();
+
+            if ($invoiced) {
+                throw new ApiException(ErrorCodes::CONFLICT, 'This charge has already been invoiced; void the invoice instead.', 409);
+            }
+
+            $hasReservedRefunds = RefundRequest::query()
+                ->where('tenant_id', $tenantId)
+                ->where('charge_id', $chargeId)
+                ->whereIn('status', [
+                    RefundRequest::STATUS_REQUESTED,
+                    RefundRequest::STATUS_APPROVED,
+                    RefundRequest::STATUS_COMPLETED,
+                ])
+                ->exists();
+
+            if ($hasReservedRefunds) {
+                throw new ApiException(ErrorCodes::CONFLICT, 'A refund is pending or approved against this charge; it cannot be voided.', 409);
+            }
+
+            // CAS on status: a stale concurrent voider affects zero rows.
+            $affected = DB::table('charges')
+                ->where('tenant_id', $tenantId)
+                ->where('id', $chargeId)
+                ->where('status', Charge::STATUS_POSTED)
+                ->update([
+                    'status' => Charge::STATUS_VOIDED,
+                    'voided_by' => $voidedBy,
+                    'void_reason' => $reason,
+                    'updated_at' => now(),
+                ]);
+
+            if ($affected === 0) {
+                throw new ApiException(ErrorCodes::LOCK_CONFLICT, 'This charge was voided by another actor. Reload and retry.', 409);
+            }
+
+            return $charge->refresh();
+        });
+    }
+
+    /**
+     * Void an uncollected invoice (ROADMAP §14, DATABASE.md §3.33). Only a
+     * draft or issued invoice with NO value attached can be voided:
+     * payments, deposit allocations, and insurance claims all refuse void
+     * (money or value moved — the refund/credit path is the correction).
+     *
+     * The void CASCADES to the invoice's charges — the bill and the charges
+     * it was built from are cancelled together in one atomic transaction
+     * (the same reason and approver); a re-bill is a fresh charge (a charge
+     * appears on at most one invoice).
+     *
+     * CAS on (status, lock_version): a stale concurrent voider affects zero
+     * rows and gets a 409.
+     *
+     * @return array{invoice: Invoice, voidedChargeCount: int}
+     */
+    public function voidInvoice(
+        string $tenantId,
+        string $invoiceId,
+        string $reason,
+        ?string $voidedBy = null,
+    ): array {
+        return DB::transaction(function () use ($tenantId, $invoiceId, $reason, $voidedBy): array {
+            // Lock the invoice row: concurrent voids serialize here.
+            $invoice = Invoice::query()
+                ->where('tenant_id', $tenantId)
+                ->where('id', $invoiceId)
+                ->lockForUpdate()
+                ->first();
+
+            if ($invoice === null) {
+                throw new ApiException(ErrorCodes::NOT_FOUND, 'Invoice not found.', 404);
+            }
+
+            if ($invoice->status === Invoice::STATUS_VOIDED) {
+                throw new ApiException(ErrorCodes::CONFLICT, 'This invoice is already voided.', 409);
+            }
+
+            if (! in_array($invoice->status, [Invoice::STATUS_DRAFT, Invoice::STATUS_ISSUED], true)) {
+                throw new ApiException(ErrorCodes::CONFLICT, 'Only an uncollected invoice can be voided; money has moved — use the refund path.', 409);
+            }
+
+            $hasPayments = PaymentAllocation::query()
+                ->where('tenant_id', $tenantId)
+                ->where('invoice_id', $invoiceId)
+                ->exists();
+
+            if ($hasPayments) {
+                throw new ApiException(ErrorCodes::CONFLICT, 'Payments have been captured against this invoice; it cannot be voided.', 409);
+            }
+
+            $hasDepositAllocations = DepositAllocation::query()
+                ->where('tenant_id', $tenantId)
+                ->where('invoice_id', $invoiceId)
+                ->exists();
+
+            if ($hasDepositAllocations) {
+                throw new ApiException(ErrorCodes::CONFLICT, 'Deposits have been allocated to this invoice; it cannot be voided.', 409);
+            }
+
+            $hasClaims = InsuranceClaim::query()
+                ->where('tenant_id', $tenantId)
+                ->where('invoice_id', $invoiceId)
+                ->exists();
+
+            if ($hasClaims) {
+                throw new ApiException(ErrorCodes::CONFLICT, 'An insurance claim has been built from this invoice; it cannot be voided.', 409);
+            }
+
+            // CAS on the invoice row (status + lock_version).
+            $affected = DB::table('invoices')
+                ->where('tenant_id', $tenantId)
+                ->where('id', $invoiceId)
+                ->where('status', $invoice->status)
+                ->where('lock_version', $invoice->lock_version)
+                ->update([
+                    'status' => Invoice::STATUS_VOIDED,
+                    'void_reason' => $reason,
+                    'updated_by' => $voidedBy,
+                    'lock_version' => $invoice->lock_version + 1,
+                    'updated_at' => now(),
+                ]);
+
+            if ($affected === 0) {
+                throw new ApiException(ErrorCodes::LOCK_CONFLICT, 'This invoice was changed by another actor. Reload and retry.', 409);
+            }
+
+            // Cascade: void the charges the invoice was built from (they can
+            // never be re-invoiced — one invoice per charge — so the whole
+            // erroneous bill is cancelled together). The charges are all
+            // POSTED by construction (issueInvoice only takes posted
+            // charges); the status CAS keeps the cascade idempotent.
+            $chargeIds = InvoiceLine::query()
+                ->where('tenant_id', $tenantId)
+                ->where('invoice_id', $invoiceId)
+                ->pluck('charge_id');
+
+            $voidedChargeCount = 0;
+            if ($chargeIds->isNotEmpty()) {
+                $voidedChargeCount = DB::table('charges')
+                    ->where('tenant_id', $tenantId)
+                    ->whereIn('id', $chargeIds)
+                    ->where('status', Charge::STATUS_POSTED)
+                    ->update([
+                        'status' => Charge::STATUS_VOIDED,
+                        'voided_by' => $voidedBy,
+                        'void_reason' => $reason,
+                        'updated_at' => now(),
+                    ]);
+            }
+
+            return [
+                'invoice' => $invoice->refresh(),
+                'voidedChargeCount' => $voidedChargeCount,
+            ];
         });
     }
 

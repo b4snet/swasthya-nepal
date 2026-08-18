@@ -185,6 +185,13 @@ class RolePermissionSeeder extends Seeder
             // does not reconcile it — segregation of duties).
             'billing:reconcile' => ['domain' => 'billing', 'description' => 'Reconcile daily cashier settlements'],
 
+            // Phase 13 — charge/invoice void (ROADMAP §14, DATABASE.md §3.33):
+            // void is a status with reason and approver — never a delete.
+            // RESTRICTED to the financial approver tier: the billing clerk
+            // who creates charges and invoices cannot void them (segregation
+            // of duties — charge ≠ void).
+            'billing:void' => ['domain' => 'billing', 'description' => 'Void posted charges and uncollected invoices (status + reason + approver, restricted)'],
+
             // Phase 3 slice 18 — insurance claims (PRODUCT_REQUIREMENTS
             // §6.14): building/submitting/tracking a claim is one
             // permission; recording the payer SETTLEMENT is another
@@ -440,6 +447,9 @@ class RolePermissionSeeder extends Seeder
                     'billing:refund', 'billing:refund-approve',
                     // Phase 3 slice 18 — the org admin reconciles and settles.
                     'billing:reconcile',
+                    // Phase 13 — void stays with the financial approver tier
+                    // (the clerk who charges cannot void — segregation of duties).
+                    'billing:void',
                     'insurance:claim', 'insurance:settle',
                     'admission:view', 'admission:create', 'admission:discharge',
                     'admission:transfer', 'nursing:document', 'mar:administer',
@@ -495,6 +505,9 @@ class RolePermissionSeeder extends Seeder
                     'insurance:view', 'payer:view',
                     'billing:view',
                     'billing:reconcile',
+                    // Phase 13 — void stays with the financial approver tier
+                    // (the clerk who charges cannot void — segregation of duties).
+                    'billing:void',
                     'insurance:claim', 'insurance:settle',
                     // Phase 3 slice 21 — the finance officer sees financial
                     // analytics and RUNS reports; exports (reports:export)
@@ -544,6 +557,9 @@ class RolePermissionSeeder extends Seeder
                     'billing:refund', 'billing:refund-approve',
                     // Phase 3 slice 18 — the hospital admin reconciles and settles.
                     'billing:reconcile',
+                    // Phase 13 — void stays with the financial approver tier
+                    // (the clerk who charges cannot void — segregation of duties).
+                    'billing:void',
                     'insurance:claim', 'insurance:settle',
                     'admission:view', 'admission:create', 'admission:discharge',
                     'admission:transfer', 'nursing:document', 'mar:administer',

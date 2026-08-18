@@ -4,6 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Billing\CapturePaymentRequest;
+use App\Http\Requests\Billing\VoidChargeRequest;
+use App\Http\Requests\Billing\VoidInvoiceRequest;
+use App\Models\Charge;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Services\BillingService;
@@ -105,6 +108,82 @@ final class BillingController extends Controller
             status: $isNew ? 201 : 200,
             request: $request,
         );
+    }
+
+    /**
+     * POST charges/{charge}/void — void a posted charge (ROADMAP §14,
+     * DATABASE.md §3.33): status + required reason + approver, never a
+     * delete. Restricted to billing:void — the clerk who charges cannot
+     * void (segregation of duties). The reason is free text that may
+     * contain PHI and is therefore recorded on the row but never echoed in
+     * the response or any audit payload.
+     */
+    public function voidCharge(VoidChargeRequest $request, Charge $charge): JsonResponse
+    {
+        AccessCheck::scoped($charge, write: true);
+
+        $context = TenantContext::current();
+
+        $voided = $this->billing->voidCharge(
+            (string) $context->tenantId(),
+            (string) $charge->getKey(),
+            (string) $request->validated('reason'),
+            $context->user?->getKey(),
+        );
+
+        $this->audit->record('charge.voided', 'charge', $voided->getKey(), [
+            'amountMinor' => $voided->amount_minor,
+            'currency' => $voided->currency,
+            'sourceType' => $voided->source_type,
+        ], $request);
+
+        return Envelope::success(data: [
+            'id' => $voided->getKey(),
+            'sourceType' => $voided->source_type,
+            'amountMinor' => $voided->amount_minor,
+            'currency' => $voided->currency,
+            'status' => $voided->status,
+            'voidedBy' => $voided->voided_by,
+            'chargedAt' => $voided->charged_at?->toIso8601String(),
+        ], request: $request);
+    }
+
+    /**
+     * POST invoices/{invoice}/void — void an uncollected draft/issued
+     * invoice (ROADMAP §14, DATABASE.md §3.33). Payments, deposit
+     * allocations, and insurance claims all refuse void (money or value
+     * moved — the refund/credit path is the correction). The void cascades
+     * to the charges the invoice was built from in one atomic transaction.
+     * Reason + approver required; restricted to billing:void.
+     */
+    public function voidInvoice(VoidInvoiceRequest $request, Invoice $invoice): JsonResponse
+    {
+        AccessCheck::scoped($invoice, write: true);
+
+        $context = TenantContext::current();
+
+        $result = $this->billing->voidInvoice(
+            (string) $context->tenantId(),
+            (string) $invoice->getKey(),
+            (string) $request->validated('reason'),
+            $context->user?->getKey(),
+        );
+
+        $voided = $result['invoice'];
+
+        $this->audit->record('invoice.voided', 'invoice', $voided->getKey(), [
+            'invoiceNumber' => $voided->invoice_number,
+            'totalMinor' => $voided->total_minor,
+            'voidedChargeCount' => $result['voidedChargeCount'],
+        ], $request);
+
+        return Envelope::success(data: [
+            'id' => $voided->getKey(),
+            'invoiceNumber' => $voided->invoice_number,
+            'status' => $voided->status,
+            'totalMinor' => $voided->total_minor,
+            'voidedChargeCount' => $result['voidedChargeCount'],
+        ], request: $request);
     }
 
     /**
