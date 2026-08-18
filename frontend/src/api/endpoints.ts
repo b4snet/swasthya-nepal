@@ -20,6 +20,8 @@ import type {
   ClinicalNote,
   Diagnosis,
   Encounter,
+  FollowUp,
+  FollowUpReminder,
   Invoice,
   LoginResponse,
   Medication,
@@ -178,6 +180,38 @@ export const encountersApi = {
 
   sign: (id: string, facilityId?: string | null) =>
     api.request<Encounter>(`/api/v1/encounters/${id}/sign`, { method: 'POST', body: {}, ...opt(facilityId) }),
+};
+
+export const followUpsApi = {
+  forEncounter: (encounterId: string, facilityId?: string | null) =>
+    api.request<FollowUp[]>(`/api/v1/encounters/${encounterId}/follow-ups`, opt(facilityId)),
+
+  forPatient: (patientId: string, facilityId?: string | null) =>
+    api.request<FollowUp[]>(`/api/v1/patients/${patientId}/follow-ups`, opt(facilityId)),
+
+  create: (
+    encounterId: string,
+    payload: { followUpType: string; plannedAt: string; reason?: string; providerStaffId?: string },
+    facilityId?: string | null,
+  ) => api.request<FollowUp>(`/api/v1/encounters/${encounterId}/follow-ups`, { method: 'POST', body: payload, ...opt(facilityId) }),
+
+  book: (followUpId: string, appointmentId: string, facilityId?: string | null) =>
+    api.request<FollowUp>(`/api/v1/follow-ups/${followUpId}/book`, { method: 'POST', body: { appointmentId }, ...opt(facilityId) }),
+
+  autoBook: (followUpId: string, facilityId?: string | null) =>
+    api.request<{ followUp: FollowUp; appointment: Appointment }>(`/api/v1/follow-ups/${followUpId}/auto-book`, { method: 'POST', body: {}, ...opt(facilityId) }),
+
+  cancel: (followUpId: string, reason: string, facilityId?: string | null) =>
+    api.request<FollowUp>(`/api/v1/follow-ups/${followUpId}/cancel`, { method: 'POST', body: { reason }, ...opt(facilityId) }),
+
+  complete: (followUpId: string, facilityId?: string | null) =>
+    api.request<FollowUp>(`/api/v1/follow-ups/${followUpId}/complete`, { method: 'POST', body: {}, ...opt(facilityId) }),
+
+  remind: (followUpId: string, facilityId?: string | null) =>
+    api.request<FollowUpReminder>(`/api/v1/follow-ups/${followUpId}/remind`, { method: 'POST', body: {}, ...opt(facilityId) }),
+
+  reminder: (followUpId: string, facilityId?: string | null) =>
+    api.request<FollowUpReminder>(`/api/v1/follow-ups/${followUpId}/reminder`, opt(facilityId)),
 };
 
 export const billingApi = {

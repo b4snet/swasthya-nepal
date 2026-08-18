@@ -50,6 +50,7 @@ export function AppointmentsPage() {
                 <th>Provider</th>
                 <th>Token</th>
                 <th>Status</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -62,6 +63,7 @@ export function AppointmentsPage() {
                   <td data-label="Provider">{a.provider?.fullName ?? '—'}</td>
                   <td data-label="Token" className="mono">{a.tokenNo ?? '—'}</td>
                   <td data-label="Status"><AppointmentStatus status={a.status} /></td>
+                  <td><Link to={`/appointments/${a.id}`} className="btn btn--ghost btn--sm">View</Link></td>
                 </tr>
               ))}
             </tbody>

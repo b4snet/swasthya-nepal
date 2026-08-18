@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTenant } from '../context/TenantContext';
 import { billingApi, catalogsApi, encountersApi } from '../api/endpoints';
+import { FollowUpList } from '../components/FollowUpList';
+import { CreateFollowUpDialog } from '../components/CreateFollowUpDialog';
 import { useFetch } from '../hooks/useFetch';
 import { Alert, Button, Card, EmptyState, ErrorState, Input, Select, Spinner, Textarea } from '../components/ui';
 import { ApiError } from '../api/client';
@@ -20,7 +22,7 @@ export function EncounterPage() {
   const medications = useFetch(() => catalogsApi.medications(organizationId ?? '', fac), [organizationId, fac]);
 
   const [notice, setNotice] = useState<{ tone: 'success' | 'danger'; text: string } | null>(null);
-  const [tab, setTab] = useState<'note' | 'diagnosis' | 'prescription'>('note');
+  const [tab, setTab] = useState<'note' | 'diagnosis' | 'prescription' | 'followup'>('note');
   const [busy, setBusy] = useState(false);
 
   if (encounter.loading) return <Spinner />;
@@ -86,9 +88,9 @@ export function EncounterPage() {
       )}
 
       <div className="tabs" role="tablist">
-        {(['note', 'diagnosis', 'prescription'] as const).map((t) => (
+        {(['note', 'diagnosis', 'prescription', 'followup'] as const).map((t) => (
           <button key={t} role="tab" aria-selected={tab === t} className={`tabs__tab ${tab === t ? 'tabs__tab--active' : ''}`} onClick={() => setTab(t)}>
-            {t === 'note' ? 'Clinical note' : t === 'diagnosis' ? 'Diagnosis' : 'Prescription'}
+            {t === 'note' ? 'Clinical note' : t === 'diagnosis' ? 'Diagnosis' : t === 'prescription' ? 'Prescription' : 'Follow-ups'}
           </button>
         ))}
       </div>
@@ -96,6 +98,14 @@ export function EncounterPage() {
       {tab === 'note' && <NoteTab encounterId={id!} fac={fac} signed={signed} notes={notes} onError={showError} onSaved={() => { setNotice({ tone: 'success', text: 'Note saved.' }); void notes.refresh(); }} />}
       {tab === 'diagnosis' && <DiagnosisTab encounterId={id!} fac={fac} signed={signed} onError={showError} onSaved={() => setNotice({ tone: 'success', text: 'Diagnosis recorded.' })} />}
       {tab === 'prescription' && <PrescriptionTab encounterId={id!} fac={fac} signed={signed} medications={medications} onError={showError} onSaved={() => setNotice({ tone: 'success', text: 'Prescription drafted.' })} />}
+      {tab === 'followup' && (
+        <FollowUpTab
+          encounterId={id!}
+          signed={signed}
+          providerStaffId={enc.providerStaffId}
+          onRefresh={() => void encounter.refresh()}
+        />
+      )}
 
       <Card title="Patient">
         <Link to={`/patients/${enc.patientId}`}>Open patient profile →</Link>
@@ -319,6 +329,31 @@ function PrescriptionTab({ encounterId, fac, signed, medications, onError, onSav
           </div>
         )}
       </div>
+    </Card>
+  );
+}
+
+/* ------------------------------------------------------------------ Follow-up */
+
+function FollowUpTab({ encounterId, signed, providerStaffId, onRefresh }: { encounterId: string; signed: boolean; providerStaffId: string; onRefresh: () => void }) {
+  const [createOpen, setCreateOpen] = useState(false);
+
+  return (
+    <Card>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--sp-3)' }}>
+        <h3 style={{ margin: 0 }}>Follow-up plans</h3>
+        {!signed && (
+          <Button size="sm" onClick={() => setCreateOpen(true)}>Plan follow-up</Button>
+        )}
+      </div>
+      <FollowUpList encounterId={encounterId} onRefresh={onRefresh} />
+      <CreateFollowUpDialog
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        encounterId={encounterId}
+        providerStaffId={providerStaffId}
+        onCreated={() => { onRefresh(); }}
+      />
     </Card>
   );
 }

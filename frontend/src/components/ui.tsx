@@ -11,12 +11,13 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
   loading?: boolean;
   full?: boolean;
+  size?: 'sm' | 'md';
 }
 
-export function Button({ variant = 'primary', loading = false, full = false, children, disabled, className = '', ...rest }: ButtonProps) {
+export function Button({ variant = 'primary', loading = false, full = false, size = 'md', children, disabled, className = '', ...rest }: ButtonProps) {
   return (
     <button
-      className={`btn btn--${variant} ${full ? 'btn--full' : ''} ${className}`}
+      className={`btn btn--${variant} ${full ? 'btn--full' : ''} ${size === 'sm' ? 'btn--sm' : ''} ${className}`}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
       {...rest}

@@ -387,3 +387,33 @@ export interface DuplicateCandidate {
   sex: string;
   matchReason: string;
 }
+
+/* ------------------------------------------------------------------
+   Follow-up types (DATABASE.md §3.17, PRODUCT_REQUIREMENTS §6.7)
+   ------------------------------------------------------------------ */
+
+export interface FollowUp {
+  id: string;
+  patientId: string;
+  encounterId: string;
+  providerStaffId: string;
+  followUpType: 'return_visit' | 'teleconsult';
+  plannedAt: string | null;
+  reason: string | null;
+  bookedAppointmentId: string | null;
+  status: 'planned' | 'booked' | 'completed' | 'cancelled';
+  cancelReason: string | null;
+  lockVersion: number;
+}
+
+export interface FollowUpReminder {
+  id: string;
+  followUpId: string;
+  patientId: string;
+  type: string;
+  channel: string;
+  status: string;
+  sensitive: boolean;
+  payload: Record<string, unknown>;
+  createdAt: string | null;
+}
