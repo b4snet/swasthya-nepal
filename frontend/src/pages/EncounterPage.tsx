@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTenant } from '../context/TenantContext';
-import { billingApi, catalogsApi, encountersApi } from '../api/endpoints';
+import { billingApi, catalogsApi, encountersApi, labOrdersApi, labTestsApi, radiologyApi } from '../api/endpoints';
 import { FollowUpList } from '../components/FollowUpList';
 import { CreateFollowUpDialog } from '../components/CreateFollowUpDialog';
 import { useFetch } from '../hooks/useFetch';
@@ -22,7 +22,7 @@ export function EncounterPage() {
   const medications = useFetch(() => catalogsApi.medications(organizationId ?? '', fac), [organizationId, fac]);
 
   const [notice, setNotice] = useState<{ tone: 'success' | 'danger'; text: string } | null>(null);
-  const [tab, setTab] = useState<'note' | 'diagnosis' | 'prescription' | 'followup'>('note');
+  const [tab, setTab] = useState<'note' | 'diagnosis' | 'prescription' | 'lab' | 'radiology' | 'followup'>('note');
   const [busy, setBusy] = useState(false);
 
   if (encounter.loading) return <Spinner />;
@@ -88,9 +88,9 @@ export function EncounterPage() {
       )}
 
       <div className="tabs" role="tablist">
-        {(['note', 'diagnosis', 'prescription', 'followup'] as const).map((t) => (
+        {(['note', 'diagnosis', 'prescription', 'lab', 'radiology', 'followup'] as const).map((t) => (
           <button key={t} role="tab" aria-selected={tab === t} className={`tabs__tab ${tab === t ? 'tabs__tab--active' : ''}`} onClick={() => setTab(t)}>
-            {t === 'note' ? 'Clinical note' : t === 'diagnosis' ? 'Diagnosis' : t === 'prescription' ? 'Prescription' : 'Follow-ups'}
+            {t === 'note' ? 'Clinical note' : t === 'diagnosis' ? 'Diagnosis' : t === 'prescription' ? 'Prescription' : t === 'lab' ? 'Lab orders' : t === 'radiology' ? 'Radiology' : 'Follow-ups'}
           </button>
         ))}
       </div>
@@ -98,6 +98,8 @@ export function EncounterPage() {
       {tab === 'note' && <NoteTab encounterId={id!} fac={fac} signed={signed} notes={notes} onError={showError} onSaved={() => { setNotice({ tone: 'success', text: 'Note saved.' }); void notes.refresh(); }} />}
       {tab === 'diagnosis' && <DiagnosisTab encounterId={id!} fac={fac} signed={signed} onError={showError} onSaved={() => setNotice({ tone: 'success', text: 'Diagnosis recorded.' })} />}
       {tab === 'prescription' && <PrescriptionTab encounterId={id!} fac={fac} signed={signed} medications={medications} onError={showError} onSaved={() => setNotice({ tone: 'success', text: 'Prescription drafted.' })} />}
+      {tab === 'lab' && <LabOrdersTab encounterId={id!} fac={fac} signed={signed} onError={showError} onSaved={() => { setNotice({ tone: 'success', text: 'Lab order placed.' }); }} />}
+      {tab === 'radiology' && <RadiologyOrdersTab encounterId={id!} fac={fac} signed={signed} onError={showError} onSaved={() => { setNotice({ tone: 'success', text: 'Radiology order placed.' }); }} />}
       {tab === 'followup' && (
         <FollowUpTab
           encounterId={id!}
@@ -355,5 +357,198 @@ function FollowUpTab({ encounterId, signed, providerStaffId, onRefresh }: { enco
         onCreated={() => { onRefresh(); }}
       />
     </Card>
+  );
+}
+
+/* ------------------------------------------------------------------ Lab Orders */
+
+function LabOrdersTab({ encounterId, fac, signed, onError, onSaved }: { encounterId: string; fac: string | null; signed: boolean; onError: (e: unknown) => void; onSaved: () => void }) {
+  const { organizationId } = useTenant();
+  const [testIds, setTestIds] = useState<string[]>([]);
+  const [priority, setPriority] = useState('routine');
+  const [clinicalIndication, setClinicalIndication] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const labTests = useFetch(() => labTestsApi.list(organizationId ?? '', fac), [organizationId, fac]);
+  const orders = useFetch(() => labOrdersApi.forEncounter(encounterId, fac), [encounterId, fac]);
+
+  const toggleTest = (id: string) => {
+    setTestIds((prev) => prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]);
+  };
+
+  const submit = async () => {
+    setBusy(true);
+    try {
+      await labOrdersApi.store(encounterId, { testIds, priority, clinicalIndication: clinicalIndication || undefined }, fac);
+      setTestIds([]);
+      setClinicalIndication('');
+      onSaved();
+      void orders.refresh();
+    } catch (err) {
+      onError(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const transitionOrder = async (orderId: string, action: 'collect' | 'process' | 'verify' | 'report') => {
+    try {
+      if (action === 'collect') await labOrdersApi.collect(orderId, fac);
+      else if (action === 'process') await labOrdersApi.process(orderId, fac);
+      else if (action === 'verify') await labOrdersApi.verify(orderId, fac);
+      else if (action === 'report') await labOrdersApi.report(orderId, fac);
+      onSaved();
+      void orders.refresh();
+    } catch (err) {
+      onError(err);
+    }
+  };
+
+  const nextAction = (status: string): { label: string; action: 'collect' | 'process' | 'verify' | 'report' } | null => {
+    if (status === 'ordered') return { label: 'Collect specimen', action: 'collect' };
+    if (status === 'collected') return { label: 'Start processing', action: 'process' };
+    if (status === 'results_entered') return { label: 'Verify results', action: 'verify' };
+    if (status === 'verified') return { label: 'Release report', action: 'report' };
+    return null;
+  };
+
+  return (
+    <div className="stack">
+      {!signed && (
+        <Card title="Order lab tests">
+          <div className="stack">
+            {labTests.loading ? <Spinner /> : (
+              <div className="check-grid">
+                {(labTests.data ?? []).map((t) => (
+                  <label key={t.id} className="check">
+                    <input type="checkbox" checked={testIds.includes(t.id)} onChange={() => toggleTest(t.id)} />
+                    <span>{t.name} <span className="muted small">({t.sampleType})</span></span>
+                  </label>
+                ))}
+              </div>
+            )}
+            <Select label="Priority" value={priority} onChange={(e) => setPriority(e.target.value)}>
+              <option value="routine">Routine</option>
+              <option value="urgent">Urgent</option>
+              <option value="stat">STAT</option>
+            </Select>
+            <Textarea label="Clinical indication" value={clinicalIndication} onChange={(e) => setClinicalIndication(e.target.value)} placeholder="Why are these tests ordered?" />
+            <Button onClick={() => void submit()} loading={busy} disabled={testIds.length === 0}>Order tests</Button>
+          </div>
+        </Card>
+      )}
+
+      <Card title="Orders">
+        {(orders.data ?? []).length === 0 ? (
+          <EmptyState title="No lab orders" body="Order tests from the encounter." />
+        ) : (
+          (orders.data ?? []).map((o) => {
+            const next = nextAction(o.status);
+            return (
+              <Card key={o.id} className="lab-order-card">
+                <div className="detail-grid">
+                  <div className="detail-row"><span className="detail-label">Status</span><span className="status-chip status-chip--info">{o.status}</span></div>
+                  <div className="detail-row"><span className="detail-label">Priority</span><span>{o.priority}</span></div>
+                  {o.clinicalIndication && <div className="detail-row"><span className="detail-label">Indication</span><span>{o.clinicalIndication}</span></div>}
+                  <div className="detail-row"><span className="detail-label">Tests</span><span>{o.items.map((i) => i.testName ?? 'Unknown').join(', ')}</span></div>
+                  {o.items.some((i) => i.resultValue) && (
+                    <div className="detail-row"><span className="detail-label">Results</span>
+                      <span>{o.items.map((i) => i.resultValue ? `${i.testName}: ${i.resultValue} ${i.resultUnit ?? ''}` : null).filter(Boolean).join(' · ')}</span>
+                    </div>
+                  )}
+                  {next && !signed && (
+                    <Button size="sm" onClick={() => void transitionOrder(o.id, next.action)}>{next.label}</Button>
+                  )}
+                </div>
+              </Card>
+            );
+          })
+        )}
+      </Card>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ Radiology Orders */
+
+function RadiologyOrdersTab({ encounterId, fac, signed, onError, onSaved }: { encounterId: string; fac: string | null; signed: boolean; onError: (e: unknown) => void; onSaved: () => void }) {
+  const { organizationId } = useTenant();
+  const [testIds, setTestIds] = useState<string[]>([]);
+  const [priority, setPriority] = useState('routine');
+  const [clinicalIndication, setClinicalIndication] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const labTests = useFetch(() => labTestsApi.list(organizationId ?? '', fac), [organizationId, fac]);
+  const studies = useFetch(() => radiologyApi.queue(fac), [fac]);
+
+  const toggleTest = (id: string) => {
+    setTestIds((prev) => prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]);
+  };
+
+  const submit = async () => {
+    setBusy(true);
+    try {
+      await radiologyApi.storeOrder(encounterId, { testIds, priority, clinicalIndication: clinicalIndication || undefined }, fac);
+      setTestIds([]);
+      setClinicalIndication('');
+      onSaved();
+      void studies.refresh();
+    } catch (err) {
+      onError(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="stack">
+      {!signed && (
+        <Card title="Order imaging">
+          <div className="stack">
+            {labTests.loading ? <Spinner /> : (
+              <div className="check-grid">
+                {(labTests.data ?? []).map((t) => (
+                  <label key={t.id} className="check">
+                    <input type="checkbox" checked={testIds.includes(t.id)} onChange={() => toggleTest(t.id)} />
+                    <span>{t.name}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+            <Select label="Priority" value={priority} onChange={(e) => setPriority(e.target.value)}>
+              <option value="routine">Routine</option>
+              <option value="urgent">Urgent</option>
+              <option value="stat">STAT</option>
+            </Select>
+            <Textarea label="Clinical indication" value={clinicalIndication} onChange={(e) => setClinicalIndication(e.target.value)} placeholder="Clinical reason for imaging" />
+            <Button onClick={() => void submit()} loading={busy} disabled={testIds.length === 0}>Order imaging</Button>
+          </div>
+        </Card>
+      )}
+
+      <Card title="Radiology worklist">
+        {(studies.data ?? []).length === 0 ? (
+          <EmptyState title="No studies" body="Imaging studies will appear here." />
+        ) : (
+          <Card>
+            <table className="data-table">
+              <thead>
+                <tr><th>Status</th><th>Modality</th><th>Priority</th><th>Indication</th></tr>
+              </thead>
+              <tbody>
+                {(studies.data ?? []).map((s) => (
+                  <tr key={s.id}>
+                    <td data-label="Status"><span className="status-chip status-chip--info">{s.status}</span></td>
+                    <td data-label="Modality">{s.modality?.name ?? '—'}</td>
+                    <td data-label="Priority">{s.priority}</td>
+                    <td data-label="Indication">{s.clinicalIndication ?? '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Card>
+        )}
+      </Card>
+    </div>
   );
 }

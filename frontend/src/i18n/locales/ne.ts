@@ -184,4 +184,32 @@ export const messages: Record<MessageKey, string> = {
   'followUp.plannedAtLabel': 'योजना मिति/समय',
   'followUp.reasonLabel': 'कारण',
   'followUp.reasonPlaceholder': 'फलो-अप कारण',
+
+  // Lab orders
+  'lab.title': 'प्रयोगशाला अर्डर',
+  'lab.orderTitle': 'प्रयोगशाला परीक्षण अर्डर गर्नुहोस्',
+  'lab.empty': 'कुनै प्रयोगशाला अर्डर छैन',
+  'lab.emptyBody': 'भेटघाटबाट परीक्षणहरू अर्डर गर्नुहोस्।',
+  'lab.orderTests': 'परीक्षण अर्डर गर्नुहोस्',
+  'lab.collectSpecimen': 'नमूना संकलन गर्नुहोस्',
+  'lab.startProcessing': 'प्रशोधन सुरु गर्नुहोस्',
+  'lab.verifyResults': 'परिणाम प्रमाणित गर्नुहोस्',
+  'lab.releaseReport': 'प्रतिवेदन जारी गर्नुहोस्',
+  'lab.indication': 'संकेत',
+  'lab.results': 'परिणाम',
+  'lab.priority': 'प्राथमिकता',
+  'lab.routine': 'नियमित',
+  'lab.urgent': 'अत्यावश्यक',
+  'lab.stat': 'तत्काल',
+
+  // Radiology
+  'radiology.title': 'रेडियोलोजी',
+  'radiology.orderTitle': 'इमेजिङ अर्डर गर्नुहोस्',
+  'radiology.orderImaging': 'इमेजिङ अर्डर गर्नुहोस्',
+  'radiology.worklist': 'रेडियोलोजी कार्यसूची',
+  'radiology.empty': 'कुनै अध्ययन छैन',
+  'radiology.emptyBody': 'इमेजिङ अध्ययनहरू यहाँ देखिनेछन्।',
+  'radiology.modality': 'मोडालिटी',
+  'radiology.status': 'स्थिति',
+  'radiology.priority': 'प्राथमिकता',
 };

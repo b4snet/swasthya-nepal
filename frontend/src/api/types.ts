@@ -417,3 +417,172 @@ export interface FollowUpReminder {
   payload: Record<string, unknown>;
   createdAt: string | null;
 }
+
+/* ------------------------------------------------------------------
+   Laboratory (DATABASE.md §3.26, PRODUCT_REQUIREMENTS §6.8)
+   ------------------------------------------------------------------ */
+
+export interface LabTest {
+  id: string;
+  facilityId: string;
+  name: string;
+  code: string;
+  sampleType: string;
+  resultType: string;
+  unit: string | null;
+  referenceRange: string | null;
+  isCritical: boolean;
+  turnaroundMinutes: number | null;
+  priceMinor: number;
+  currency: string;
+  status: string;
+}
+
+export interface LabOrderItem {
+  id: string;
+  testId: string;
+  testName: string | null;
+  sampleType: string | null;
+  resultValue: string | null;
+  resultUnit: string | null;
+  referenceRange: string | null;
+  enteredAt: string | null;
+  enteredByStaffId: string | null;
+  verifiedAt: string | null;
+  verifiedByStaffId: string | null;
+  versions: LabResultVersion[];
+}
+
+export interface LabResultVersion {
+  versionNo: number;
+  resultValue: string;
+  resultUnit: string | null;
+  referenceRange: string | null;
+  isCritical: boolean;
+  correctionReason: string | null;
+  enteredAt: string | null;
+  enteredByStaffId: string | null;
+  verifiedAt: string | null;
+  verifiedByStaffId: string | null;
+}
+
+export interface Specimen {
+  id: string;
+  labOrderId: string;
+  accessionNumber: string | null;
+  specimenType: string;
+  status: string;
+  collectedAt: string | null;
+  collectedByStaffId: string | null;
+  accessionedAt: string | null;
+  accessionedByStaffId: string | null;
+  processedAt: string | null;
+  processedByStaffId: string | null;
+  completedAt: string | null;
+  rejectedAt: string | null;
+  rejectionReason: string | null;
+}
+
+export interface LabOrder {
+  id: string;
+  facilityId: string;
+  patientId: string;
+  encounterId: string;
+  orderedByStaffId: string;
+  priority: string;
+  status: string;
+  clinicalIndication: string | null;
+  orderedAt: string | null;
+  collectedAt: string | null;
+  collectedByStaffId: string | null;
+  processingAt: string | null;
+  verifiedAt: string | null;
+  verifiedByStaffId: string | null;
+  reportedAt: string | null;
+  reportedByStaffId: string | null;
+  correctionReason: string | null;
+  correctingAt: string | null;
+  correctingByStaffId: string | null;
+  lockVersion: number;
+  specimens: Specimen[];
+  items: LabOrderItem[];
+}
+
+export interface CriticalValueEvent {
+  id: string;
+  labOrderId: string;
+  labOrderItemId: string;
+  testId: string;
+  testName: string | null;
+  resultValue: string;
+  referenceRange: string | null;
+  severity: string;
+  status: string;
+  orderedByStaffId: string;
+  acknowledgedByStaffId: string | null;
+  acknowledgedAt: string | null;
+  escalatedByStaffId: string | null;
+  escalatedAt: string | null;
+  escalationTarget: string | null;
+  escalationReason: string | null;
+  createdAt: string | null;
+}
+
+/* ------------------------------------------------------------------
+   Radiology (DATABASE.md §3.29, PRODUCT_REQUIREMENTS §6.9)
+   ------------------------------------------------------------------ */
+
+export interface Modality {
+  id: string;
+  facilityId: string;
+  name: string;
+  modalityType: string;
+  status: string;
+  manufacturer: string | null;
+  model: string | null;
+}
+
+export interface RadiologyStudy {
+  id: string;
+  labOrderId: string;
+  facilityId: string;
+  patientId: string;
+  encounterId: string;
+  modalityId: string | null;
+  modality: { id: string; name: string } | null;
+  priority: string;
+  status: string;
+  scheduledAt: string | null;
+  performedAt: string | null;
+  clinicalIndication: string | null;
+  imageReferences: Array<{ url: string; description: string } | null>;
+  lockVersion: number;
+}
+
+export interface RadiologyReport {
+  id: string;
+  studyId: string;
+  facilityId: string;
+  reportType: string;
+  content: string;
+  status: string;
+  draftedAt: string | null;
+  draftedByStaffId: string | null;
+  verifiedAt: string | null;
+  verifiedByStaffId: string | null;
+  amendedAt: string | null;
+  amendedByStaffId: string | null;
+  lockVersion: number;
+}
+
+export interface RadiologyOrder {
+  id: string;
+  facilityId: string;
+  patientId: string;
+  encounterId: string;
+  study: RadiologyStudy;
+  status: string;
+  orderedAt: string | null;
+  priority: string;
+  clinicalIndication: string | null;
+}

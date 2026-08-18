@@ -313,3 +313,23 @@
 .breadcrumb-link:hover {
   text-decoration: underline;
 }
+
+/* Lab/Radiology order grid */
+.check-grid {
+  display: grid;
+  gap: var(--sp-2);
+  max-height: 200px;
+  overflow-y: auto;
+  padding: var(--sp-2) 0;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  cursor: pointer;
+}
+
+.lab-order-card {
+  margin-bottom: var(--sp-3);
+}

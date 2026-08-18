@@ -183,6 +183,34 @@ export const messages = {
   'followUp.plannedAtLabel': 'Planned date/time',
   'followUp.reasonLabel': 'Reason',
   'followUp.reasonPlaceholder': 'Follow-up reason',
+
+  // Lab orders
+  'lab.title': 'Lab orders',
+  'lab.orderTitle': 'Order lab tests',
+  'lab.empty': 'No lab orders',
+  'lab.emptyBody': 'Order tests from the encounter.',
+  'lab.orderTests': 'Order tests',
+  'lab.collectSpecimen': 'Collect specimen',
+  'lab.startProcessing': 'Start processing',
+  'lab.verifyResults': 'Verify results',
+  'lab.releaseReport': 'Release report',
+  'lab.indication': 'Indication',
+  'lab.results': 'Results',
+  'lab.priority': 'Priority',
+  'lab.routine': 'Routine',
+  'lab.urgent': 'Urgent',
+  'lab.stat': 'STAT',
+
+  // Radiology
+  'radiology.title': 'Radiology',
+  'radiology.orderTitle': 'Order imaging',
+  'radiology.orderImaging': 'Order imaging',
+  'radiology.worklist': 'Radiology worklist',
+  'radiology.empty': 'No studies',
+  'radiology.emptyBody': 'Imaging studies will appear here.',
+  'radiology.modality': 'Modality',
+  'radiology.status': 'Status',
+  'radiology.priority': 'Priority',
 } as const;
 
 export type MessageKey = keyof typeof messages;
