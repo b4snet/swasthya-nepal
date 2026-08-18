@@ -5,7 +5,7 @@ import { TenantProvider } from '../context/TenantContext';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { ToastProvider } from '../context/ToastContext';
 import { AuditPage } from './AuditPage';
-import { jsonOk, stubFetch, assignments } from '../test/helpers';
+import { jsonOk, stubFetch } from '../test/helpers';
 
 function renderWithProviders(ui: React.ReactNode, initialEntries: string[] = ['/test']) {
   return render(
