@@ -24,6 +24,8 @@ import type {
   LoginResponse,
   Medication,
   Patient,
+  PatientContact,
+  PatientIdentifier,
   PatientListItem,
   Prescription,
   QueueEntry,
@@ -83,6 +85,24 @@ export const patientsApi = {
   ) => api.request<Patient>(`${orgUrl(organizationId)}/patients`, { method: 'POST', body: payload, facilityId: payload.facilityId }),
 
   timeline: (id: string, facilityId?: string | null) => api.request<TimelineEntry[]>(`/api/v1/patients/${id}/timeline`, opt(facilityId)),
+
+  update: (id: string, payload: Partial<{ fullName: string; dateOfBirth: string; sex: string; bloodGroup: string }>, facilityId?: string | null) =>
+    api.request<Patient>(`/api/v1/patients/${id}`, { method: 'PATCH', body: payload, ...opt(facilityId) }),
+
+  identifiers: (id: string, facilityId?: string | null) =>
+    api.request<PatientIdentifier[]>(`/api/v1/patients/${id}/identifiers`, opt(facilityId)),
+
+  addIdentifier: (id: string, payload: { type: string; value: string; issuingCountry?: string }, facilityId?: string | null) =>
+    api.request<PatientIdentifier>(`/api/v1/patients/${id}/identifiers`, { method: 'POST', body: payload, ...opt(facilityId) }),
+
+  contacts: (id: string, facilityId?: string | null) =>
+    api.request<PatientContact[]>(`/api/v1/patients/${id}/contacts`, opt(facilityId)),
+
+  addContact: (id: string, payload: { type: string; value: string; isPrimary?: boolean }, facilityId?: string | null) =>
+    api.request<PatientContact>(`/api/v1/patients/${id}/contacts`, { method: 'POST', body: payload, ...opt(facilityId) }),
+
+  updateContact: (patientId: string, contactId: string, payload: Partial<{ value: string; isPrimary: boolean; status: string }>, facilityId?: string | null) =>
+    api.request<PatientContact>(`/api/v1/patients/${patientId}/contacts/${contactId}`, { method: 'PATCH', body: payload, ...opt(facilityId) }),
 };
 
 export const appointmentsApi = {

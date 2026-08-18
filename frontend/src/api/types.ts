@@ -361,3 +361,29 @@ export interface FacilitySetting {
   version: number;
   updatedAt: string | null;
 }
+
+export interface PatientIdentifier {
+  id: string;
+  type: string;
+  value: string;
+  issuingCountry: string | null;
+  isVerified: boolean;
+  status: string;
+}
+
+export interface PatientContact {
+  id: string;
+  type: string;
+  value: string;
+  isPrimary: boolean;
+  status: string;
+}
+
+export interface DuplicateCandidate {
+  id: string;
+  mrn: string;
+  fullName: string;
+  dateOfBirth: string;
+  sex: string;
+  matchReason: string;
+}
