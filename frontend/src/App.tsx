@@ -14,6 +14,10 @@ import { AppointmentDetailPage } from './pages/AppointmentDetailPage';
 import { QueuePage } from './pages/QueuePage';
 import { EncounterPage } from './pages/EncounterPage';
 import { BillingPage } from './pages/BillingPage';
+import { PharmacyPage } from './pages/PharmacyPage';
+import { InventoryPage } from './pages/InventoryPage';
+import { ProcurementPage } from './pages/ProcurementPage';
+import { FinancePage } from './pages/FinancePage';
 import { AuditPage } from './pages/AuditPage';
 import { ForbiddenPage } from './pages/ForbiddenPage';
 import { AdminLayout } from './pages/admin/AdminLayout';
@@ -108,6 +112,10 @@ export function App() {
             <Route path="/encounters/:id" element={<EncounterPage />} />
             <Route path="/billing" element={<BillingPage />} />
             <Route path="/billing/:invoiceId" element={<BillingPage />} />
+            <Route path="/pharmacy" element={<PharmacyPage />} />
+            <Route path="/inventory" element={<InventoryPage />} />
+            <Route path="/procurement" element={<ProcurementPage />} />
+            <Route path="/finance" element={<FinancePage />} />
             <Route path="/audit" element={<AuditPage />} />
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<Navigate to="/admin/users" replace />} />

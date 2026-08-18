@@ -211,6 +211,12 @@ export const messages = {
   'radiology.modality': 'Modality',
   'radiology.status': 'Status',
   'radiology.priority': 'Priority',
+
+  // Navigation
+  'nav.pharmacy': 'Pharmacy',
+  'nav.inventory': 'Inventory',
+  'nav.procurement': 'Procurement',
+  'nav.finance': 'Finance',
 } as const;
 
 export type MessageKey = keyof typeof messages;

@@ -586,3 +586,210 @@ export interface RadiologyOrder {
   priority: string;
   clinicalIndication: string | null;
 }
+
+/* ------------------------------------------------------------------
+   Pharmacy (DATABASE.md §3.30–§3.31, PRODUCT_REQUIREMENTS §6.7)
+   ------------------------------------------------------------------ */
+
+export interface PharmacyMedication {
+  id: string;
+  genericName: string;
+  brandName: string | null;
+  strength: string;
+  form: string;
+  unit: string;
+  isControlled: boolean;
+  priceMinor: number;
+  currency: string;
+}
+
+export interface PharmacyPrescriptionLine {
+  id: string;
+  medication: PharmacyMedication | null;
+  dose: string;
+  route: string;
+  frequency: string;
+  duration: string | null;
+  quantityMinor: number | null;
+  instructions: string | null;
+  status: string;
+  dispensedByStaffId: string | null;
+  dispensedAt: string | null;
+  availableQuantity: number | null;
+  batchId: string | null;
+  batchNumber: string | null;
+  batchExpiresAt: string | null;
+  batchQuantityMinor: number | null;
+  dualVerifiedByStaffId: string | null;
+  dualVerifiedAt: string | null;
+}
+
+export interface PharmacyPrescription {
+  id: string;
+  patientId: string;
+  encounterId: string;
+  prescriberStaffId: string;
+  status: string;
+  notes: string | null;
+  verifiedByStaffId: string | null;
+  verifiedAt: string | null;
+  lockVersion: number;
+  lines: PharmacyPrescriptionLine[];
+}
+
+/* ------------------------------------------------------------------
+   Inventory (DATABASE.md §3.31, PRODUCT_REQUIREMENTS §6.14)
+   ------------------------------------------------------------------ */
+
+export interface InventoryItem {
+  id: string;
+  facilityId: string;
+  medicationId: string;
+  medication: PharmacyMedication | null;
+  quantityOnHand: number;
+  reorderLevel: number;
+  lockVersion: number;
+}
+
+export interface StockBatch {
+  id: string;
+  inventoryItemId: string;
+  medicationId: string;
+  batchNumber: string;
+  expiryDate: string | null;
+  quantityReceived: number;
+  quantityRemaining: number;
+  status: string;
+  controlledDispenseRequiresDual: boolean;
+  expiryStatus: string;
+  daysToExpiry: number | null;
+}
+
+export interface InventoryAdjustmentRequest {
+  id: string;
+  inventoryItemId: string;
+  quantityDelta: number;
+  status: string;
+  requestedBy: string;
+  approvedBy: string | null;
+  approvedAt: string | null;
+  rejectedBy: string | null;
+  rejectedAt: string | null;
+  lockVersion: number;
+}
+
+/* ------------------------------------------------------------------
+   Procurement (ROADMAP §15, PRODUCT_REQUIREMENTS §6.15–§6.16)
+   ------------------------------------------------------------------ */
+
+export interface Vendor {
+  id: string;
+  facilityId: string;
+  code: string;
+  name: string;
+  status: string;
+  hasTaxId: boolean;
+  hasBankDetails: boolean;
+}
+
+export interface PurchaseRequestLine {
+  id: string;
+  medicationId: string;
+  quantity: number;
+  estimatedUnitPriceMinor: number;
+}
+
+export interface PurchaseRequest {
+  id: string;
+  facilityId: string;
+  requestNumber: string;
+  status: string;
+  requestedAt: string | null;
+  estimatedTotalMinor: number;
+  approval: {
+    approverId: string;
+    decision: string;
+    decidedAt: string | null;
+  } | null;
+  lines: PurchaseRequestLine[];
+}
+
+export interface PurchaseOrderLine {
+  id: string;
+  medicationId: string;
+  quantityOrdered: number;
+  unitPriceMinor: number;
+  receivedQuantity: number;
+}
+
+export interface PurchaseOrder {
+  id: string;
+  facilityId: string;
+  poNumber: string;
+  vendorId: string;
+  status: string;
+  expectedDelivery: string | null;
+  lockVersion: number;
+  lines: PurchaseOrderLine[];
+}
+
+/* ------------------------------------------------------------------
+   Finance (PRODUCT_REQUIREMENTS §6.13–§6.14)
+   ------------------------------------------------------------------ */
+
+export interface Deposit {
+  id: string;
+  patientId: string;
+  amountMinor: number;
+  remainingMinor: number;
+  status: string;
+  collectedAt: string | null;
+  lockVersion: number;
+}
+
+export interface AgingEntry {
+  patientId: string;
+  patientName: string | null;
+  totalOutstandingMinor: number;
+  buckets: {
+    current: number;
+    days30: number;
+    days60: number;
+    days90: number;
+    over90: number;
+  };
+}
+
+export interface Settlement {
+  id: string;
+  cashierId: string;
+  settlementDate: string;
+  expectedMinor: number;
+  actualMinor: number;
+  varianceMinor: number;
+  status: string;
+  reconciledAt: string | null;
+  notes: string | null;
+  lockVersion: number;
+}
+
+export interface InsuranceClaim {
+  id: string;
+  claimNumber: string;
+  invoiceId: string;
+  policyId: string;
+  payerId: string;
+  status: string;
+  submittedAt: string | null;
+  denialReason: string | null;
+  settlementMinor: number;
+  billedMinor: number;
+  lockVersion: number;
+  lines: Array<{
+    id: string;
+    invoiceLineId: string;
+    billedMinor: number;
+    approvedMinor: number;
+    status: string;
+  }>;
+}

@@ -212,4 +212,10 @@ export const messages: Record<MessageKey, string> = {
   'radiology.modality': 'मोडालिटी',
   'radiology.status': 'स्थिति',
   'radiology.priority': 'प्राथमिकता',
+
+  // Navigation
+  'nav.pharmacy': 'फार्मेसी',
+  'nav.inventory': 'इन्भेन्टरी',
+  'nav.procurement': 'प्रोक्युरमेन्ट',
+  'nav.finance': 'वित्त',
 };

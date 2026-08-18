@@ -23,6 +23,8 @@ import type {
   Encounter,
   FollowUp,
   FollowUpReminder,
+  InventoryAdjustmentRequest,
+  InventoryItem,
   Invoice,
   LabOrder,
   LabTest,
@@ -33,13 +35,20 @@ import type {
   PatientContact,
   PatientIdentifier,
   PatientListItem,
-  Prescription,
+  PharmacyPrescription,
+  PurchaseOrder,
+  PurchaseRequest,
   QueueEntry,
   RadiologyOrder,
   RadiologyStudy,
   Service,
+  Settlement,
   Staff,
+  StockBatch,
   TimelineEntry,
+  Vendor,
+  Deposit,
+  AgingEntry,
 } from './types';
 
 const opt = (facilityId?: string | null): RequestOptions => ({ facilityId });
@@ -182,7 +191,7 @@ export const encountersApi = {
     id: string,
     payload: { notes?: string; lines: Array<{ medicationId: string; dose: string; route: string; frequency: string; duration?: string; quantityMinor?: number; instructions?: string }> },
     facilityId?: string | null,
-  ) => api.request<Prescription>(`/api/v1/encounters/${id}/prescriptions`, { method: 'POST', body: payload, ...opt(facilityId) }),
+  ) => api.request<PharmacyPrescription>(`/api/v1/encounters/${id}/prescriptions`, { method: 'POST', body: payload, ...opt(facilityId) }),
 
   sign: (id: string, facilityId?: string | null) =>
     api.request<Encounter>(`/api/v1/encounters/${id}/sign`, { method: 'POST', body: {}, ...opt(facilityId) }),
@@ -433,4 +442,128 @@ export const radiologyApi = {
     api.request<RadiologyStudy>(`/api/v1/studies/${studyId}/report`, { method: 'POST', body: payload, ...opt(facilityId) }),
 };
 
+/* ------------------------------------------------------------------
+   Pharmacy (PRODUCT_REQUIREMENTS §6.7)
+   ------------------------------------------------------------------ */
+
+export const pharmacyApi = {
+  showPrescription: (id: string, facilityId?: string | null) =>
+    api.request<PharmacyPrescription>(`/api/v1/prescriptions/${id}`, opt(facilityId)),
+
+  verify: (id: string, facilityId?: string | null) =>
+    api.request<PharmacyPrescription>(`/api/v1/prescriptions/${id}/verify`, { method: 'POST', body: {}, ...opt(facilityId) }),
+
+  dispense: (id: string, payload: { batchSelections?: Array<{ lineId: string; batchId: string; quantity: number }> }, facilityId?: string | null) =>
+    api.request<PharmacyPrescription>(`/api/v1/prescriptions/${id}/dispense`, { method: 'POST', body: payload, ...opt(facilityId) }),
+
+  returnLine: (lineId: string, payload: { quantityMinor?: number; reason: string }, facilityId?: string | null) =>
+    api.request<PharmacyPrescription>(`/api/v1/prescription-lines/${lineId}/return`, { method: 'POST', body: payload, ...opt(facilityId) }),
+
+  dualVerify: (lineId: string, facilityId?: string | null) =>
+    api.request<void>(`/api/v1/prescription-lines/${lineId}/dual-verify`, { method: 'POST', body: {}, ...opt(facilityId) }),
+};
+
+/* ------------------------------------------------------------------
+   Inventory (PRODUCT_REQUIREMENTS §6.14)
+   ------------------------------------------------------------------ */
+
+export const inventoryApi = {
+  list: (organizationId: string, facilityId?: string | null) =>
+    api.request<InventoryItem[]>(`${orgUrl(organizationId)}/inventory`, opt(facilityId)),
+
+  batches: (itemId: string, facilityId?: string | null) =>
+    api.request<StockBatch[]>(`/api/v1/inventory-items/${itemId}/batches`, opt(facilityId)),
+
+  store: (organizationId: string, payload: { medicationId: string; quantityOnHand?: number; reorderLevel?: number }, facilityId?: string | null) =>
+    api.request<InventoryItem>(`${orgUrl(organizationId)}/inventory`, { method: 'POST', body: payload, ...opt(facilityId) }),
+
+  adjust: (itemId: string, payload: { quantityDelta: number; reason: string }, facilityId?: string | null) =>
+    api.request<InventoryItem>(`/api/v1/inventory-items/${itemId}/adjust`, { method: 'POST', body: payload, ...opt(facilityId) }),
+
+  reorderAlerts: (organizationId: string, facilityId?: string | null) =>
+    api.request<InventoryItem[]>(`${orgUrl(organizationId)}/reorder-alerts`, opt(facilityId)),
+
+  storeAdjustmentRequest: (itemId: string, payload: { quantityDelta: number }, facilityId?: string | null) =>
+    api.request<InventoryAdjustmentRequest>(`/api/v1/inventory-items/${itemId}/adjustment-requests`, { method: 'POST', body: payload, ...opt(facilityId) }),
+
+  adjustmentRequests: (itemId: string, facilityId?: string | null) =>
+    api.request<InventoryAdjustmentRequest[]>(`/api/v1/inventory-items/${itemId}/adjustment-requests`, opt(facilityId)),
+
+  approveAdjustment: (requestId: string, facilityId?: string | null) =>
+    api.request<InventoryAdjustmentRequest>(`/api/v1/inventory-adjustment-requests/${requestId}/approve`, { method: 'POST', body: {}, ...opt(facilityId) }),
+
+  rejectAdjustment: (requestId: string, facilityId?: string | null) =>
+    api.request<InventoryAdjustmentRequest>(`/api/v1/inventory-adjustment-requests/${requestId}/reject`, { method: 'POST', body: {}, ...opt(facilityId) }),
+
+  transfer: (payload: { fromInventoryItemId: string; toInventoryItemId: string; quantity: number; reason: string }, facilityId?: string | null) =>
+    api.request<void>('/api/v1/inventory-transfers', { method: 'POST', body: payload, ...opt(facilityId) }),
+};
+
+/* ------------------------------------------------------------------
+   Procurement (PRODUCT_REQUIREMENTS §6.15–§6.16)
+   ------------------------------------------------------------------ */
+
+export const procurementApi = {
+  vendors: (organizationId: string, facilityId?: string | null) =>
+    api.request<Vendor[]>(`${orgUrl(organizationId)}/procurement/vendors`, opt(facilityId)),
+
+  storeVendor: (organizationId: string, payload: { code: string; name: string; taxId?: string; bankDetails?: string }, facilityId?: string | null) =>
+    api.request<Vendor>(`${orgUrl(organizationId)}/procurement/vendors`, { method: 'POST', body: payload, ...opt(facilityId) }),
+
+  requests: (organizationId: string, facilityId?: string | null) =>
+    api.request<PurchaseRequest[]>(`${orgUrl(organizationId)}/procurement/requests`, opt(facilityId)),
+
+  showRequest: (id: string, facilityId?: string | null) =>
+    api.request<PurchaseRequest>(`/api/v1/purchase-requests/${id}`, opt(facilityId)),
+
+  storeRequest: (organizationId: string, payload: { lines: Array<{ medicationId: string; quantity: number; estimatedUnitPriceMinor: number }> }, facilityId?: string | null) =>
+    api.request<PurchaseRequest>(`${orgUrl(organizationId)}/procurement/requests`, { method: 'POST', body: payload, ...opt(facilityId) }),
+
+  submitRequest: (id: string, facilityId?: string | null) =>
+    api.request<PurchaseRequest>(`/api/v1/purchase-requests/${id}/submit`, { method: 'POST', body: {}, ...opt(facilityId) }),
+
+  approveRequest: (id: string, facilityId?: string | null) =>
+    api.request<PurchaseRequest>(`/api/v1/purchase-requests/${id}/approve`, { method: 'POST', body: {}, ...opt(facilityId) }),
+
+  rejectRequest: (id: string, facilityId?: string | null) =>
+    api.request<PurchaseRequest>(`/api/v1/purchase-requests/${id}/reject`, { method: 'POST', body: {}, ...opt(facilityId) }),
+
+  orders: (organizationId: string, facilityId?: string | null) =>
+    api.request<PurchaseOrder[]>(`${orgUrl(organizationId)}/procurement/orders`, opt(facilityId)),
+
+  storeOrder: (organizationId: string, payload: { vendorId: string; expectedDelivery?: string; lines: Array<{ medicationId: string; quantityOrdered: number; unitPriceMinor: number }> }, facilityId?: string | null) =>
+    api.request<PurchaseOrder>(`${orgUrl(organizationId)}/procurement/orders`, { method: 'POST', body: payload, ...opt(facilityId) }),
+
+  confirmOrder: (id: string, facilityId?: string | null) =>
+    api.request<PurchaseOrder>(`/api/v1/purchase-orders/${id}/confirm`, { method: 'POST', body: {}, ...opt(facilityId) }),
+
+  closeOrder: (id: string, facilityId?: string | null) =>
+    api.request<PurchaseOrder>(`/api/v1/purchase-orders/${id}/close`, { method: 'POST', body: {}, ...opt(facilityId) }),
+
+  receiveGoods: (id: string, payload: { lines: Array<{ purchaseOrderLineId: string; quantityReceived: number }> }, facilityId?: string | null) =>
+    api.request<PurchaseOrder>(`/api/v1/purchase-orders/${id}/goods-receipts`, { method: 'POST', body: payload, ...opt(facilityId) }),
+};
+
+/* ------------------------------------------------------------------
+   Finance (PRODUCT_REQUIREMENTS §6.13–§6.14)
+   ------------------------------------------------------------------ */
+
+export const financeApi = {
+  deposits: (patientId: string, facilityId?: string | null) =>
+    api.request<Deposit[]>(`/api/v1/patients/${patientId}/deposits`, opt(facilityId)),
+
+  collectDeposit: (patientId: string, payload: { amountMinor: number }, facilityId?: string | null) =>
+    api.request<Deposit>(`/api/v1/patients/${patientId}/deposits`, { method: 'POST', body: payload, ...opt(facilityId) }),
+
+  aging: (patientId: string, facilityId?: string | null) =>
+    api.request<AgingEntry[]>(`/api/v1/patients/${patientId}/aging`, opt(facilityId)),
+
+  settlements: (facilityId?: string | null) =>
+    api.request<Settlement[]>('/api/v1/cashier-settlements', opt(facilityId)),
+
+  reconcileSettlement: (payload: { settlementDate: string; actualMinor: number; notes?: string }, facilityId?: string | null) =>
+    api.request<Settlement>('/api/v1/cashier-settlements/reconcile', { method: 'POST', body: payload, ...opt(facilityId) }),
+};
+
+export type { Deposit, AgingEntry, Settlement };
 export type { Assignment };
