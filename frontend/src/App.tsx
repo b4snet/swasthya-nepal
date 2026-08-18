@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth } from './auth/AuthProvider';
 import { TenantProvider, useTenant } from './context/TenantContext';
+import { ToastProvider } from './context/ToastContext';
 import { useI18n } from './i18n/I18nProvider';
 import { AppShell } from './layout/AppShell';
 import { LoginPage } from './pages/LoginPage';
@@ -13,6 +14,7 @@ import { QueuePage } from './pages/QueuePage';
 import { EncounterPage } from './pages/EncounterPage';
 import { BillingPage } from './pages/BillingPage';
 import { AuditPage } from './pages/AuditPage';
+import { ForbiddenPage } from './pages/ForbiddenPage';
 import { Button, Card, Spinner } from './components/ui';
 
 function FullScreenSpinner({ label }: { label: string }) {
@@ -82,22 +84,25 @@ function LoginRoute() {
 export function App() {
   return (
     <AuthProvider>
-      <Routes>
-        <Route path="/login" element={<LoginRoute />} />
-        <Route element={<Gate />}>
-          <Route path="/" element={<DashboardPage />} />
-          <Route path="/patients" element={<PatientsPage />} />
-          <Route path="/patients/new" element={<PatientRegisterPage />} />
-          <Route path="/patients/:id" element={<PatientProfilePage />} />
-          <Route path="/appointments" element={<AppointmentsPage />} />
-          <Route path="/queue" element={<QueuePage />} />
-          <Route path="/encounters/:id" element={<EncounterPage />} />
-          <Route path="/billing" element={<BillingPage />} />
-          <Route path="/billing/:invoiceId" element={<BillingPage />} />
-          <Route path="/audit" element={<AuditPage />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Route>
-      </Routes>
+      <ToastProvider>
+        <Routes>
+          <Route path="/login" element={<LoginRoute />} />
+          <Route path="/forbidden" element={<ForbiddenPage />} />
+          <Route element={<Gate />}>
+            <Route path="/" element={<DashboardPage />} />
+            <Route path="/patients" element={<PatientsPage />} />
+            <Route path="/patients/new" element={<PatientRegisterPage />} />
+            <Route path="/patients/:id" element={<PatientProfilePage />} />
+            <Route path="/appointments" element={<AppointmentsPage />} />
+            <Route path="/queue" element={<QueuePage />} />
+            <Route path="/encounters/:id" element={<EncounterPage />} />
+            <Route path="/billing" element={<BillingPage />} />
+            <Route path="/billing/:invoiceId" element={<BillingPage />} />
+            <Route path="/audit" element={<AuditPage />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Route>
+        </Routes>
+      </ToastProvider>
     </AuthProvider>
   );
 }

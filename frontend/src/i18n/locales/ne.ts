@@ -36,4 +36,13 @@ export const messages: Record<MessageKey, string> = {
   'login.rateLimited': 'धेरै प्रयास भयो। केही बेर पर्खेर फेरि प्रयास गर्नुहोस्।',
   'login.failed': 'साइन इन असफल भयो। आफ्नो इमेल र पासवर्ड जाँच गर्नुहोस्।',
   'common.loading': 'लोड हुँदै…',
+  'common.cancel': 'रद्द गर्नुहोस्',
+  'common.confirm': 'पुष्टि गर्नुहोस्',
+  'login.sessionExpired': 'तपाईंको सत्रको म्याद सकिएको छ। कृपया फेरि साइन इन गर्नुहोस्।',
+  'login.sessionRevoked': 'तपाईंको सत्र रद्द गरिएको छ। कृपया फेरि साइन इन गर्नुहोस्।',
+  'shell.confirmLogout': 'साइन आउट गर्ने?',
+  'shell.confirmLogoutMessage': 'के तपाईं साइन आउट गर्न निश्चित हुनुहुन्छ? तपाईंलाई फेरि प्रमाणपत्र प्रविष्ट गर्नुपर्नेछ।',
+  'forbidden.title': 'पहुँच अस्वीकृत',
+  'forbidden.message': 'तपाईंलाई यो पृष्ठ हेर्ने अनुमति छैन। यो गलती हो भने आफ्नो प्रशासकसँग सम्पर्क गर्नुहोस्।',
+  'forbidden.backToDashboard': 'ड्यासबोर्डमा फर्कनुहोस्',
 };

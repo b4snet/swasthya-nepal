@@ -31,3 +31,7 @@
 .login__brand p {
   font-size: var(--fs-label);
 }
+
+.login__expired {
+  margin-bottom: var(--sp-2);
+}

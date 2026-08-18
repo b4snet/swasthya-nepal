@@ -1,11 +1,11 @@
-import { useState } from 'react';
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { useTenant } from '../context/TenantContext';
 import { AUDIT_ROLES, BILLING_ROLES, QUEUE_ROLES } from '../auth/roles';
 import { useI18n } from '../i18n/I18nProvider';
 import type { MessageKey } from '../i18n/locales/en';
-import { Button } from '../components/ui';
+import { Button, Dialog } from '../components/ui';
 import './shell.css';
 
 // Nav gating is a UX control: every code below exists in the seeded RBAC
@@ -77,23 +77,110 @@ function LanguageToggle() {
   );
 }
 
-export function AppShell() {
+/**
+ * User account menu — shows initials chip, opens dropdown with user info
+ * and logout. The logout action requires confirmation.
+ */
+function UserMenu() {
   const { user, logout } = useAuth();
+  const { t } = useI18n();
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  const [confirmLogout, setConfirmLogout] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close on outside click.
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  // Close on Escape.
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [open]);
+
+  const onLogout = async () => {
+    setConfirmLogout(false);
+    setOpen(false);
+    await logout();
+    navigate('/login', { replace: true });
+  };
+
+  return (
+    <div className="user-menu" ref={menuRef}>
+      <button
+        type="button"
+        className="user-chip user-chip--clickable"
+        title={user?.email ?? ''}
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        data-testid="user-menu-trigger"
+      >
+        {user?.email?.slice(0, 2).toUpperCase()}
+      </button>
+
+      {open && (
+        <div className="user-menu__dropdown" role="menu" data-testid="user-menu-dropdown">
+          <div className="user-menu__info">
+            <span className="user-menu__email">{user?.email}</span>
+            <span className="user-menu__id mono muted small">{user?.id?.slice(0, 8)}</span>
+          </div>
+          <div className="user-menu__divider" />
+          <button
+            type="button"
+            className="user-menu__item user-menu__item--danger"
+            onClick={() => { setConfirmLogout(true); setOpen(false); }}
+            role="menuitem"
+            data-testid="user-menu-logout"
+          >
+            {t('shell.signOut')}
+          </button>
+        </div>
+      )}
+
+      <Dialog
+        open={confirmLogout}
+        onClose={() => setConfirmLogout(false)}
+        title={t('shell.confirmLogout')}
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setConfirmLogout(false)}>
+              {t('common.cancel')}
+            </Button>
+            <Button variant="danger" onClick={() => void onLogout()}>
+              {t('shell.signOut')}
+            </Button>
+          </>
+        }
+      >
+        <p>{t('shell.confirmLogoutMessage')}</p>
+      </Dialog>
+    </div>
+  );
+}
+
+export function AppShell() {
   const { selectedFacilityId } = useTenant();
   const hasRole = useTenant().hasRole;
   const { t } = useI18n();
-  const navigate = useNavigate();
-  const location = useLocation();
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
 
   const visible = NAV.filter((n) => allowed(n.roles, hasRole)).map((n) => ({ ...n, label: t(n.labelKey) }));
   const primary = visible.slice(0, 4);
   const rest = visible.slice(4);
-
-  const onLogout = async () => {
-    await logout();
-    navigate('/login');
-  };
 
   return (
     <div className="app-shell">
@@ -108,9 +195,7 @@ export function AppShell() {
         <div className="app-header__spacer" />
         <ContextSwitcher />
         <LanguageToggle />
-        <span className="user-chip" title={user?.email ?? ''}>
-          {user?.email?.slice(0, 2).toUpperCase()}
-        </span>
+        <UserMenu />
       </header>
       <div className="app-body">
         <aside className="app-sidebar" aria-label={t('shell.primary')}>
@@ -128,9 +213,7 @@ export function AppShell() {
             ))}
           </nav>
           <div className="side-nav__footer">
-            <Button variant="ghost" onClick={onLogout} className="side-nav__logout">
-              {t('shell.signOut')}
-            </Button>
+            <UserMenuSidebar />
           </div>
         </aside>
         <main className="app-content" id="content" tabIndex={-1}>
@@ -172,12 +255,51 @@ export function AppShell() {
         </div>
       )}
 
-      {location.pathname !== '/login' && !selectedFacilityId && (
-        <div className="ctx-required" role="alert">
+      {!selectedFacilityId && (
+        <div className="ctx-required" role="status" data-testid="facility-required-banner">
           {t('shell.selectFacilityRequired')}
         </div>
       )}
     </div>
+  );
+}
+
+/** Sidebar sign-out button with confirmation dialog. */
+function UserMenuSidebar() {
+  const { logout } = useAuth();
+  const { t } = useI18n();
+  const nav = useNavigate();
+  const [confirmLogout, setConfirmLogout] = useState(false);
+
+  const onLogout = async () => {
+    setConfirmLogout(false);
+    await logout();
+    nav('/login', { replace: true });
+  };
+
+  return (
+    <>
+      <Button variant="ghost" onClick={() => setConfirmLogout(true)} className="side-nav__logout">
+        {t('shell.signOut')}
+      </Button>
+      <Dialog
+        open={confirmLogout}
+        onClose={() => setConfirmLogout(false)}
+        title={t('shell.confirmLogout')}
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setConfirmLogout(false)}>
+              {t('common.cancel')}
+            </Button>
+            <Button variant="danger" onClick={() => void onLogout()}>
+              {t('shell.signOut')}
+            </Button>
+          </>
+        }
+      >
+        <p>{t('shell.confirmLogoutMessage')}</p>
+      </Dialog>
+    </>
   );
 }
 

@@ -35,6 +35,15 @@ export const messages = {
   'login.rateLimited': 'Too many attempts. Wait a moment and try again.',
   'login.failed': 'Sign-in failed. Check your email and password.',
   'common.loading': 'Loading…',
+  'common.cancel': 'Cancel',
+  'common.confirm': 'Confirm',
+  'login.sessionExpired': 'Your session has expired. Please sign in again.',
+  'login.sessionRevoked': 'Your session was revoked. Please sign in again.',
+  'shell.confirmLogout': 'Sign out?',
+  'shell.confirmLogoutMessage': 'Are you sure you want to sign out? You will need to enter your credentials again.',
+  'forbidden.title': 'Access denied',
+  'forbidden.message': 'You do not have permission to view this page. Contact your administrator if you believe this is an error.',
+  'forbidden.backToDashboard': 'Back to dashboard',
 } as const;
 
 export type MessageKey = keyof typeof messages;

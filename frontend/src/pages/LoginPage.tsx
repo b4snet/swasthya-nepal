@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
@@ -8,7 +8,7 @@ import { ApiError } from '../api/client';
 import './login.css';
 
 export function LoginPage() {
-  const { login } = useAuth();
+  const { login, sessionExpiredReason, clearExpiredReason } = useAuth();
   const { t } = useI18n();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
@@ -16,11 +16,19 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // Auto-dismiss the expired banner after 8 seconds.
+  useEffect(() => {
+    if (!sessionExpiredReason) return;
+    const timer = setTimeout(clearExpiredReason, 8000);
+    return () => clearTimeout(timer);
+  }, [sessionExpiredReason, clearExpiredReason]);
+
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (submitting) return;
     setSubmitting(true);
     setError(null);
+    clearExpiredReason();
     try {
       await login(email.trim(), password);
       navigate('/', { replace: true });
@@ -44,6 +52,15 @@ export function LoginPage() {
           <h1>{t('app.name')}</h1>
           <p className="muted">{t('login.subtitle')}</p>
         </div>
+
+        {sessionExpiredReason && (
+          <div className="alert alert--warning login__expired" role="alert" data-testid="session-expired-banner">
+            {sessionExpiredReason === 'expired'
+              ? t('login.sessionExpired')
+              : t('login.sessionRevoked')}
+          </div>
+        )}
+
         <form onSubmit={onSubmit} className="stack" noValidate>
           <Input
             label={t('login.email')}
