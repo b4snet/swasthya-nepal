@@ -217,6 +217,7 @@ export const messages = {
   'nav.inventory': 'Inventory',
   'nav.procurement': 'Procurement',
   'nav.finance': 'Finance',
+  'nav.analytics': 'Analytics',
 } as const;
 
 export type MessageKey = keyof typeof messages;

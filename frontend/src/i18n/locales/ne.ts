@@ -218,4 +218,5 @@ export const messages: Record<MessageKey, string> = {
   'nav.inventory': 'इन्भेन्टरी',
   'nav.procurement': 'प्रोक्युरमेन्ट',
   'nav.finance': 'वित्त',
+  'nav.analytics': 'एनालिटिक्स',
 };

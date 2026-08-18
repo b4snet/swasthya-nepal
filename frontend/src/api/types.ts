@@ -793,3 +793,66 @@ export interface InsuranceClaim {
     status: string;
   }>;
 }
+
+/* ------------------------------------------------------------------
+   Analytics & Reporting (ROADMAP Phase 17, PRODUCT_REQUIREMENTS §6.17)
+   ------------------------------------------------------------------ */
+
+export interface KpiDefinition {
+  id: string;
+  code: string;
+  name: string;
+  domain: string;
+  sourceTable: string;
+  dateColumn: string;
+  filter: string | null;
+  aggregation: string;
+  sumColumn: string | null;
+  unit: string | null;
+  version: number;
+  status: string;
+}
+
+export interface KpiMetric {
+  kpiId: string;
+  facilityId: string | null;
+  periodStart: string;
+  periodEnd: string;
+  value: number;
+  computedAt: string;
+}
+
+export interface Dashboard {
+  id: string;
+  code: string;
+  name: string;
+  roleGate: string | null;
+  isActive: boolean;
+}
+
+export interface ReportTemplate {
+  id: string;
+  code: string;
+  name: string;
+  category: string;
+  scope: string;
+  parameterSchema: Record<string, unknown> | null;
+  query: string | null;
+  isActive: boolean;
+}
+
+export interface ReportRun {
+  id: string;
+  templateId: string | null;
+  templateCode: string | null;
+  scheduleId: string | null;
+  status: string;
+  runAt: string;
+  completedAt: string | null;
+  rowCount: number | null;
+  errorMessage: string | null;
+  isExport: boolean;
+  exportFormat: string | null;
+  outputChecksum: string | null;
+  rows?: Record<string, unknown>[];
+}

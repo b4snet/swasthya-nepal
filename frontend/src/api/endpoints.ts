@@ -19,6 +19,7 @@ import type {
   AvailabilitySlot,
   ClinicalNote,
   CriticalValueEvent,
+  Dashboard,
   Diagnosis,
   Encounter,
   FollowUp,
@@ -26,6 +27,8 @@ import type {
   InventoryAdjustmentRequest,
   InventoryItem,
   Invoice,
+  KpiDefinition,
+  KpiMetric,
   LabOrder,
   LabTest,
   LoginResponse,
@@ -41,6 +44,8 @@ import type {
   QueueEntry,
   RadiologyOrder,
   RadiologyStudy,
+  ReportRun,
+  ReportTemplate,
   Service,
   Settlement,
   Staff,
@@ -563,6 +568,42 @@ export const financeApi = {
 
   reconcileSettlement: (payload: { settlementDate: string; actualMinor: number; notes?: string }, facilityId?: string | null) =>
     api.request<Settlement>('/api/v1/cashier-settlements/reconcile', { method: 'POST', body: payload, ...opt(facilityId) }),
+};
+
+/* ------------------------------------------------------------------
+   Analytics & Reporting (ROADMAP Phase 17)
+   ------------------------------------------------------------------ */
+
+export const analyticsApi = {
+  kpiDefinitions: (facilityId?: string | null) =>
+    api.request<KpiDefinition[]>('/api/v1/analytics/kpi-definitions', opt(facilityId)),
+
+  storeKpiDefinition: (payload: { code: string; name: string; domain: string; sourceTable: string; dateColumn: string; aggregation: string; filter?: string; sumColumn?: string; unit?: string }, facilityId?: string | null) =>
+    api.request<KpiDefinition>('/api/v1/analytics/kpi-definitions', { method: 'POST', body: payload, ...opt(facilityId) }),
+
+  showMetrics: (kpiId: string, facilityId?: string | null) =>
+    api.request<KpiMetric[]>(`/api/v1/analytics/metrics/${kpiId}`, opt(facilityId)),
+
+  dashboards: (facilityId?: string | null) =>
+    api.request<Dashboard[]>(`/api/v1/analytics/dashboards`, opt(facilityId)),
+
+  showDashboard: (id: string, facilityId?: string | null) =>
+    api.request<Dashboard>(`/api/v1/analytics/dashboards/${id}`, opt(facilityId)),
+
+  reportTemplates: (facilityId?: string | null) =>
+    api.request<ReportTemplate[]>('/api/v1/analytics/report-templates', opt(facilityId)),
+
+  storeReportTemplate: (payload: { code: string; name: string; category: string; scope: string; parameterSchema?: Record<string, unknown>; query?: string }, facilityId?: string | null) =>
+    api.request<ReportTemplate>('/api/v1/analytics/report-templates', { method: 'POST', body: payload, ...opt(facilityId) }),
+
+  reportRuns: (facilityId?: string | null) =>
+    api.request<ReportRun[]>('/api/v1/analytics/report-runs', opt(facilityId)),
+
+  runReport: (payload: { templateId: string; parameters?: Record<string, unknown> }, facilityId?: string | null) =>
+    api.request<ReportRun>('/api/v1/analytics/reports/run', { method: 'POST', body: payload, ...opt(facilityId) }),
+
+  exportReport: (payload: { templateId: string; format: string; parameters?: Record<string, unknown> }, facilityId?: string | null) =>
+    api.request<ReportRun>('/api/v1/analytics/reports/export', { method: 'POST', body: payload, ...opt(facilityId) }),
 };
 
 export type { Deposit, AgingEntry, Settlement };

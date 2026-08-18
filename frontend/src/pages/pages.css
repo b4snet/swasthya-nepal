@@ -333,3 +333,58 @@
 .lab-order-card {
   margin-bottom: var(--sp-3);
 }
+
+/* Filter row */
+.filter-row {
+  display: flex;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.filter-row .field {
+  min-width: 120px;
+  flex: 1;
+}
+
+@media (max-width: 600px) {
+  .filter-row {
+    flex-direction: column;
+  }
+  .filter-row .field {
+    min-width: auto;
+  }
+}
+
+/* Pagination */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  padding: var(--sp-4) 0;
+}
+
+.pagination button {
+  min-height: 32px;
+  padding: 0 var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.pagination button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Utility */
+.mb-4 {
+  margin-bottom: var(--sp-4);
+}
+
+.text-danger {
+  color: var(--color-danger);
+}

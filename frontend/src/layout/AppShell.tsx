@@ -21,6 +21,7 @@ const NAV: Array<{ to: string; labelKey: MessageKey; icon: string; roles: string
   { to: '/procurement', labelKey: 'nav.procurement', icon: '🛒', roles: [] },
   { to: '/billing', labelKey: 'nav.billing', icon: '₨', roles: [...BILLING_ROLES] },
   { to: '/finance', labelKey: 'nav.finance', icon: '💰', roles: [] },
+  { to: '/analytics', labelKey: 'nav.analytics', icon: '📊', roles: [] },
   { to: '/audit', labelKey: 'nav.audit', icon: '☰', roles: [...AUDIT_ROLES] },
   { to: '/admin', labelKey: 'nav.admin', icon: '⚙', roles: [...ADMIN_ROLES] },
 ];

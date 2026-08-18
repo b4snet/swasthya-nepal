@@ -19,6 +19,7 @@ import { InventoryPage } from './pages/InventoryPage';
 import { ProcurementPage } from './pages/ProcurementPage';
 import { FinancePage } from './pages/FinancePage';
 import { AuditPage } from './pages/AuditPage';
+import { AnalyticsPage } from './pages/AnalyticsPage';
 import { ForbiddenPage } from './pages/ForbiddenPage';
 import { AdminLayout } from './pages/admin/AdminLayout';
 import { AdminUsersPage } from './pages/admin/AdminUsersPage';
@@ -117,6 +118,7 @@ export function App() {
             <Route path="/procurement" element={<ProcurementPage />} />
             <Route path="/finance" element={<FinancePage />} />
             <Route path="/audit" element={<AuditPage />} />
+            <Route path="/analytics" element={<AnalyticsPage />} />
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<Navigate to="/admin/users" replace />} />
               <Route path="users" element={<AdminUsersPage />} />
