@@ -17,3 +17,10 @@
 export const QUEUE_ROLES = ['hospital_admin', 'doctor', 'nurse', 'receptionist'] as const;
 export const BILLING_ROLES = ['hospital_admin', 'org_admin', 'billing_clerk'] as const;
 export const AUDIT_ROLES = ['hospital_admin', 'org_admin', 'org_finance', 'branch_manager', 'superadmin'] as const;
+
+/** Admin module gates — UX-only (backend is authoritative). */
+export const ADMIN_ROLES = ['superadmin', 'org_admin', 'hospital_admin'] as const;
+export const STAFF_MANAGE_ROLES = ['superadmin', 'org_admin', 'hospital_admin'] as const;
+export const DEPARTMENT_MANAGE_ROLES = ['superadmin', 'org_admin', 'hospital_admin'] as const;
+export const SERVICE_MANAGE_ROLES = ['superadmin', 'org_admin', 'hospital_admin'] as const;
+export const SETTINGS_MANAGE_ROLES = ['superadmin', 'org_admin', 'hospital_admin'] as const;

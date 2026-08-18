@@ -15,6 +15,14 @@ import { EncounterPage } from './pages/EncounterPage';
 import { BillingPage } from './pages/BillingPage';
 import { AuditPage } from './pages/AuditPage';
 import { ForbiddenPage } from './pages/ForbiddenPage';
+import { AdminLayout } from './pages/admin/AdminLayout';
+import { AdminUsersPage } from './pages/admin/AdminUsersPage';
+import { AdminRolesPage } from './pages/admin/AdminRolesPage';
+import { AdminStaffPage } from './pages/admin/AdminStaffPage';
+import { AdminDepartmentsPage } from './pages/admin/AdminDepartmentsPage';
+import { AdminServicesPage } from './pages/admin/AdminServicesPage';
+import { AdminMedicationsPage } from './pages/admin/AdminMedicationsPage';
+import { AdminSettingsPage } from './pages/admin/AdminSettingsPage';
 import { Button, Card, Spinner } from './components/ui';
 
 function FullScreenSpinner({ label }: { label: string }) {
@@ -99,6 +107,16 @@ export function App() {
             <Route path="/billing" element={<BillingPage />} />
             <Route path="/billing/:invoiceId" element={<BillingPage />} />
             <Route path="/audit" element={<AuditPage />} />
+            <Route path="/admin" element={<AdminLayout />}>
+              <Route index element={<Navigate to="/admin/users" replace />} />
+              <Route path="users" element={<AdminUsersPage />} />
+              <Route path="roles" element={<AdminRolesPage />} />
+              <Route path="staff" element={<AdminStaffPage />} />
+              <Route path="departments" element={<AdminDepartmentsPage />} />
+              <Route path="services" element={<AdminServicesPage />} />
+              <Route path="medications" element={<AdminMedicationsPage />} />
+              <Route path="settings" element={<AdminSettingsPage />} />
+            </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>

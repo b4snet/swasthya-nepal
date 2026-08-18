@@ -41,7 +41,9 @@ interface TenantState {
 const TenantContext = createContext<TenantState | null>(null);
 
 export function TenantProvider({ children }: { children: ReactNode }) {
-  const { assignments, status } = useAuth();
+  const auth = useAuth();
+  const assignments = Array.isArray(auth?.assignments) ? auth.assignments : [];
+  const status = auth?.status ?? 'loading';
   const [selectedFacilityId, setSelectedFacilityId] = useState<string | null>(null);
 
   const facilities = useMemo(() => {

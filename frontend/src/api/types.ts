@@ -266,3 +266,98 @@ export interface AuditEvent {
   occurredAt: string;
   metadata: Record<string, unknown> | null;
 }
+
+/* ------------------------------------------------------------------
+   Admin module types (mirrors backend API_CONTRACTS §21)
+   ------------------------------------------------------------------ */
+
+export interface Organization {
+  id: string;
+  code: string;
+  name: string;
+  status: string;
+  currency?: string;
+  timezone?: string;
+  locale?: string;
+  settings?: Record<string, unknown>;
+  facilities?: Array<{ id: string; name: string; code: string } | undefined>;
+}
+
+export interface Facility {
+  id: string;
+  name: string;
+  code: string;
+  status: string;
+  timezone?: string;
+  address?: Record<string, unknown> | null;
+}
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  status: string;
+  assignments: Array<{
+    organizationId: string;
+    facilityId: string | null;
+    role: string;
+    status: string;
+  }>;
+}
+
+export interface Role {
+  id: string;
+  code: string;
+  name: string;
+  scopeType: string;
+  permissions: Array<{ id: string; code: string }>;
+}
+
+export interface Permission {
+  id: string;
+  code: string;
+  domain: string;
+  description: string | null;
+}
+
+export interface AdminStaff {
+  id: string;
+  facilityId: string;
+  departmentId: string | null;
+  department: { id: string; code: string; name: string } | null;
+  employeeCode: string;
+  fullName: string;
+  designation: string | null;
+  status: string;
+  userId: string | null;
+  hireDate: string | null;
+}
+
+export interface Department {
+  id: string;
+  facilityId: string;
+  branchId: string | null;
+  name: string;
+  code: string;
+  status: string;
+  parentDepartmentId: string | null;
+}
+
+export interface AdminService {
+  id: string;
+  facilityId: string;
+  departmentId: string | null;
+  department: { id: string; code: string; name: string } | null;
+  name: string;
+  code: string;
+  serviceType: string;
+  status: string;
+  defaultDurationMinutes: number | null;
+  defaultChargeMinor: number | null;
+  currency: string | null;
+}
+
+export interface FacilitySetting {
+  value: string | number | boolean | null;
+  version: number;
+  updatedAt: string | null;
+}

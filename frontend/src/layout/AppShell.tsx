@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { useTenant } from '../context/TenantContext';
-import { AUDIT_ROLES, BILLING_ROLES, QUEUE_ROLES } from '../auth/roles';
+import { ADMIN_ROLES, AUDIT_ROLES, BILLING_ROLES, QUEUE_ROLES } from '../auth/roles';
 import { useI18n } from '../i18n/I18nProvider';
 import type { MessageKey } from '../i18n/locales/en';
 import { Button, Dialog } from '../components/ui';
@@ -18,6 +18,7 @@ const NAV: Array<{ to: string; labelKey: MessageKey; icon: string; roles: string
   { to: '/queue', labelKey: 'nav.queue', icon: '≣', roles: [...QUEUE_ROLES] },
   { to: '/billing', labelKey: 'nav.billing', icon: '₨', roles: [...BILLING_ROLES] },
   { to: '/audit', labelKey: 'nav.audit', icon: '☰', roles: [...AUDIT_ROLES] },
+  { to: '/admin', labelKey: 'nav.admin', icon: '⚙', roles: [...ADMIN_ROLES] },
 ];
 
 function allowed(roles: string[], hasRole: (r: string) => boolean) {
