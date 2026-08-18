@@ -12,6 +12,12 @@ use Illuminate\Validation\Rule;
  * procedures, medications, follow-up sections — stored as a signed clinical
  * note of type 'discharge', never in audit payloads). The bed is released
  * atomically in the same transaction.
+ *
+ * High-risk gate (CLINICAL_SAFETY.md §16 — "Discharge / transfer a patient |
+ * Identity confirmation"): identity re-confirmation (name + MRN on-screen)
+ * is REQUIRED, mirroring the MAR administration discipline — an incomplete
+ * discharge (identityConfirmed missing or false) is rejected at the request
+ * layer with no side effects.
  */
 class DischargeAdmissionRequest extends ApiRequest
 {
@@ -35,6 +41,10 @@ class DischargeAdmissionRequest extends ApiRequest
             'summary.medications' => ['sometimes', 'array', 'max:100'],
             'summary.medications.*' => ['string', 'max:500'],
             'summary.followUp' => ['sometimes', 'string', 'max:2000'],
+            // CLINICAL_SAFETY §16 — identity confirmation is a hard gate for
+            // the discharge action (accepted = the on-screen name + MRN
+            // dialog was confirmed in-flow, never at session start).
+            'identityConfirmed' => ['required', 'boolean', 'accepted'],
         ];
     }
 }

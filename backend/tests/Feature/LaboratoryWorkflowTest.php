@@ -584,7 +584,13 @@ it('re-triggers critical-value escalation when a correction is critical', functi
 
     $retriggered = AuditEvent::query()->where('action', 'critical_value.retriggered')->firstOrFail();
     expect($retriggered->payload['itemId'])->toBe($released['itemIds'][0])
-        ->and(json_encode($retriggered->payload))->not->toContain('450');
+        // The event stores facts only — never the (critical) result value.
+        // Asserted by KEY, not by whole-payload substring (a UUID's hex can
+        // coincidentally contain the digits '450', which made the
+        // raw-substring form flaky).
+        ->and($retriggered->payload)->not->toHaveKey('resultValue')
+        ->and($retriggered->payload)->not->toHaveKey('value')
+        ->and($retriggered->payload)->not->toHaveKey('isCritical');
 
     // The corrected version itself is flagged critical.
     $latest = LabResultVersion::query()->where('lab_order_item_id', $released['itemIds'][0])->orderByDesc('version_no')->first();

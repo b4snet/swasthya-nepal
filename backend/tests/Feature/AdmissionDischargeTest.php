@@ -252,6 +252,7 @@ it('discharges an admission with a structured summary and releases the bed', fun
                 'medications' => ['Paracetamol 500mg tid x 5 days'],
                 'followUp' => 'Review in 1 week',
             ],
+            'identityConfirmed' => true,
         ])
         ->assertOk()
         ->assertJsonPath('data.status', 'discharged')
@@ -301,13 +302,40 @@ it('refuses invalid discharges: already discharged, unknown admission', function
     $this->withToken(Identity::tokenFor($doctorUser))
         ->postJson('/api/v1/admissions/'.$admission->getKey().'/discharge', [
             'summary' => ['diagnoses' => ['Test']],
+            'identityConfirmed' => true,
         ])
         ->assertStatus(422);
 
+    // Incomplete discharge — missing identity confirmation → 422
+    // (CLINICAL_SAFETY §16: the high-risk gate, never bypassable).
     $this->withToken(Identity::tokenFor($doctorUser))
         ->postJson('/api/v1/admissions/'.$admission->getKey().'/discharge', [
             'dischargeType' => 'home',
             'summary' => ['diagnoses' => ['Test']],
+        ])
+        ->assertStatus(422);
+
+    // identityConfirmed = false → 422, never accepted.
+    $this->withToken(Identity::tokenFor($doctorUser))
+        ->postJson('/api/v1/admissions/'.$admission->getKey().'/discharge', [
+            'dischargeType' => 'home',
+            'summary' => ['diagnoses' => ['Test']],
+            'identityConfirmed' => false,
+        ])
+        ->assertStatus(422);
+
+    // No side effects from any rejected attempt.
+    expect($admission->refresh()->status)->toBe(Admission::STATUS_ADMITTED)
+        ->and($bed->refresh()->current_admission_id)->toBe($admission->getKey())
+        ->and(ClinicalNote::query()->where('note_type', ClinicalNote::TYPE_DISCHARGE)->count())->toBe(0)
+        ->and(AuditEvent::query()->where('action', 'admission.discharged')->count())->toBe(0);
+
+    // Complete discharge (identity confirmed) → 200.
+    $this->withToken(Identity::tokenFor($doctorUser))
+        ->postJson('/api/v1/admissions/'.$admission->getKey().'/discharge', [
+            'dischargeType' => 'home',
+            'summary' => ['diagnoses' => ['Test']],
+            'identityConfirmed' => true,
         ])
         ->assertOk();
 
@@ -316,6 +344,7 @@ it('refuses invalid discharges: already discharged, unknown admission', function
         ->postJson('/api/v1/admissions/'.$admission->getKey().'/discharge', [
             'dischargeType' => 'home',
             'summary' => ['diagnoses' => ['Again']],
+            'identityConfirmed' => true,
         ])
         ->assertStatus(409);
 
@@ -481,6 +510,7 @@ it('enforces cross-tenant and cross-facility isolation for the admission surface
         ->postJson('/api/v1/admissions/'.$admissionA->getKey().'/discharge', [
             'dischargeType' => 'home',
             'summary' => ['diagnoses' => ['Pwned']],
+            'identityConfirmed' => true,
         ])
         ->assertStatus(403);
 
@@ -521,6 +551,7 @@ it('keeps patient identifiers and discharge-summary content out of audit payload
                 'medications' => ['Morphine 5mg IV'],
                 'followUp' => 'Review with Dr. '.$patientName.' next week',
             ],
+            'identityConfirmed' => true,
         ])
         ->assertOk();
 

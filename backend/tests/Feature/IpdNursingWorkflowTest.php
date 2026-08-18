@@ -171,6 +171,7 @@ it('transfers an admitted patient between beds with a captured reason and an aud
         ->postJson('/api/v1/admissions/'.$admission->getKey().'/transfer', [
             'toBedId' => $toBed->getKey(),
             'reason' => 'Escalation to monitored bed',
+            'identityConfirmed' => true,
         ])
         ->assertOk()
         ->assertJsonPath('data.status', 'transferred');
@@ -215,6 +216,7 @@ it('refuses invalid transfers: occupied/same bed, discharged admission, unknown 
     $doctor = ipdStaff($org, $facility, $doctorUser, 'Consultant Physician');
     $encounter = ipdEncounter($org, $facility, $doctor);
     $fromBed = ipdBed($org, $facility);
+    $toBed = ipdBed($org, $facility);
     Identity::assign($doctorUser, 'doctor', $org, $facility);
 
     $this->withToken(Identity::tokenFor($doctorUser))
@@ -227,11 +229,35 @@ it('refuses invalid transfers: occupied/same bed, discharged admission, unknown 
 
     $admission = Admission::query()->where('encounter_id', $encounter->getKey())->firstOrFail();
 
+    // Incomplete transfer — missing identity confirmation → 422
+    // (CLINICAL_SAFETY §16: the high-risk gate, never bypassable).
+    $this->withToken(Identity::tokenFor($doctorUser))
+        ->postJson('/api/v1/admissions/'.$admission->getKey().'/transfer', [
+            'toBedId' => $toBed->getKey(),
+            'reason' => 'No confirmation',
+        ])
+        ->assertStatus(422);
+
+    // identityConfirmed = false → 422, never accepted.
+    $this->withToken(Identity::tokenFor($doctorUser))
+        ->postJson('/api/v1/admissions/'.$admission->getKey().'/transfer', [
+            'toBedId' => $toBed->getKey(),
+            'reason' => 'False confirmation',
+            'identityConfirmed' => false,
+        ])
+        ->assertStatus(422);
+
+    // No side effects from any rejected attempt.
+    expect(TransferEvent::query()->count())->toBe(0)
+        ->and($admission->refresh()->status)->toBe(Admission::STATUS_ADMITTED)
+        ->and($fromBed->refresh()->current_admission_id)->toBe($admission->getKey());
+
     // Same bed → 409.
     $this->withToken(Identity::tokenFor($doctorUser))
         ->postJson('/api/v1/admissions/'.$admission->getKey().'/transfer', [
             'toBedId' => $fromBed->getKey(),
             'reason' => 'Nowhere to go',
+            'identityConfirmed' => true,
         ])
         ->assertStatus(409);
 
@@ -241,6 +267,7 @@ it('refuses invalid transfers: occupied/same bed, discharged admission, unknown 
         ->postJson('/api/v1/admissions/'.$admission->getKey().'/transfer', [
             'toBedId' => $occupied->getKey(),
             'reason' => 'To occupied',
+            'identityConfirmed' => true,
         ])
         ->assertStatus(409);
 
@@ -251,6 +278,7 @@ it('refuses invalid transfers: occupied/same bed, discharged admission, unknown 
         ->postJson('/api/v1/admissions/'.$admission->getKey().'/transfer', [
             'toBedId' => $bedB->getKey(),
             'reason' => 'Cross facility',
+            'identityConfirmed' => true,
         ])
         ->assertStatus(404);
 
@@ -259,12 +287,14 @@ it('refuses invalid transfers: occupied/same bed, discharged admission, unknown 
         ->postJson('/api/v1/admissions/'.$admission->getKey().'/transfer', [
             'toBedId' => (string) Str::uuid(),
             'reason' => 'Ghost',
+            'identityConfirmed' => true,
         ])
         ->assertStatus(404);
 
     $this->withToken(Identity::tokenFor($doctorUser))
         ->postJson('/api/v1/admissions/'.$admission->getKey().'/transfer', [
             'toBedId' => $occupied->getKey(),
+            'identityConfirmed' => true,
         ])
         ->assertStatus(422);
 
@@ -273,6 +303,7 @@ it('refuses invalid transfers: occupied/same bed, discharged admission, unknown 
         ->postJson('/api/v1/admissions/'.$admission->getKey().'/discharge', [
             'dischargeType' => 'home',
             'summary' => ['diagnoses' => ['Test']],
+            'identityConfirmed' => true,
         ])
         ->assertOk();
 
@@ -280,6 +311,7 @@ it('refuses invalid transfers: occupied/same bed, discharged admission, unknown 
         ->postJson('/api/v1/admissions/'.$admission->getKey().'/transfer', [
             'toBedId' => (string) Str::uuid(),
             'reason' => 'Too late',
+            'identityConfirmed' => true,
         ])
         ->assertStatus(409);
 });
@@ -338,6 +370,7 @@ it('wins the transfer bed-claim race via the compare-and-swap', function () {
         ->postJson('/api/v1/admissions/'.$admission->getKey().'/transfer', [
             'toBedId' => $toBed->getKey(),
             'reason' => 'Too late',
+            'identityConfirmed' => true,
         ])
         ->assertStatus(409)
         ->assertJsonPath('error.code', 'CONFLICT');
@@ -371,6 +404,7 @@ it('discharges a transferred admission and releases the NEW bed', function () {
         ->postJson('/api/v1/admissions/'.$admission->getKey().'/transfer', [
             'toBedId' => $toBed->getKey(),
             'reason' => 'Moved to monitored bed',
+            'identityConfirmed' => true,
         ])
         ->assertOk();
 
@@ -379,6 +413,7 @@ it('discharges a transferred admission and releases the NEW bed', function () {
         ->postJson('/api/v1/admissions/'.$admission->getKey().'/discharge', [
             'dischargeType' => 'home',
             'summary' => ['diagnoses' => ['Observation complete']],
+            'identityConfirmed' => true,
         ])
         ->assertOk()
         ->assertJsonPath('data.status', 'discharged');
@@ -419,6 +454,7 @@ it('enforces RBAC for transfers and nursing acts', function () {
         ->postJson('/api/v1/admissions/'.$admission->getKey().'/transfer', [
             'toBedId' => $toBed->getKey(),
             'reason' => 'Nurse attempt',
+            'identityConfirmed' => true,
         ])
         ->assertStatus(403);
 
@@ -457,6 +493,7 @@ it('enforces RBAC for transfers and nursing acts', function () {
     $this->postJson('/api/v1/admissions/'.$admission->getKey().'/transfer', [
         'toBedId' => $toBed->getKey(),
         'reason' => 'Anonymous',
+        'identityConfirmed' => true,
     ])->assertStatus(401);
 });
 
@@ -751,6 +788,7 @@ it('enforces cross-tenant and cross-facility isolation for the nursing surface',
         ->postJson('/api/v1/admissions/'.$admissionA->getKey().'/transfer', [
             'toBedId' => $bedB->getKey(),
             'reason' => 'Attack',
+            'identityConfirmed' => true,
         ])
         ->assertStatus(403);
 
@@ -791,6 +829,7 @@ it('keeps all patient identifiers and clinical content out of audit payloads', f
         ->postJson('/api/v1/admissions/'.$admission->getKey().'/transfer', [
             'toBedId' => $toBed->getKey(),
             'reason' => 'Distinctive-Transfer-Reason-XYZ',
+            'identityConfirmed' => true,
         ])
         ->assertOk();
 
@@ -846,10 +885,18 @@ it('keeps all patient identifiers and clinical content out of audit payloads', f
         $encoded = json_encode($event->payload);
         expect($encoded)->not->toContain($patientName)
             ->and($encoded)->not->toContain('Distinctive-Note-Content-XYZ')
-            ->and($encoded)->not->toContain('177')
             ->and($encoded)->not->toContain('Distinctive-Hold-Reason-XYZ')
             ->and($encoded)->not->toContain('Distinctive-Transfer-Reason-XYZ')
             ->and($encoded)->not->toContain('Distinctive-Diagnosis-XYZ');
+    }
+
+    // The vital VALUE is never in an audit payload — asserted by KEY, not by
+    // whole-payload substring (a UUID's hex can coincidentally contain the
+    // digits '177', which made the raw-substring form flaky).
+    foreach (AuditEvent::query()->where('action', 'vital_observation.recorded')->get() as $event) {
+        expect($event->payload)->not->toHaveKey('value')
+            ->and($event->payload)->not->toHaveKey('systolic')
+            ->and($event->payload)->not->toHaveKey('diastolic');
     }
 
     // Facts are present: ids and timestamps, never clinical values.
