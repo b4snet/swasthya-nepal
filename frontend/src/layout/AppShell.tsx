@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { useTenant } from '../context/TenantContext';
+import { useNetworkStatus } from '../hooks/useNetworkStatus';
 import { ADMIN_ROLES, AUDIT_ROLES, BILLING_ROLES, QUEUE_ROLES } from '../auth/roles';
 import { useI18n } from '../i18n/I18nProvider';
 import type { MessageKey } from '../i18n/locales/en';
@@ -188,11 +189,18 @@ export function AppShell() {
   const primary = visible.slice(0, 4);
   const rest = visible.slice(4);
 
+  const network = useNetworkStatus();
+
   return (
     <div className="app-shell">
       <a className="skip-link" href="#content">
         {t('shell.skipToContent')}
       </a>
+      {!network.online && (
+        <div className="offline-banner" role="alert" style={{ background: '#fee2e2', color: '#991b1b', padding: '0.5rem 1rem', textAlign: 'center', fontSize: '0.875rem' }}>
+          You are offline. Some features may be unavailable.
+        </div>
+      )}
       <header className="app-header">
         <span className="brand" aria-hidden="true">
           ◈

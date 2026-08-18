@@ -1,35 +1,43 @@
+import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth } from './auth/AuthProvider';
 import { TenantProvider, useTenant } from './context/TenantContext';
 import { ToastProvider } from './context/ToastContext';
 import { useI18n } from './i18n/I18nProvider';
 import { AppShell } from './layout/AppShell';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { Button, Card, Spinner } from './components/ui';
+
+// Core pages — eagerly loaded (high-traffic, small)
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
-import { PatientsPage } from './pages/PatientsPage';
-import { PatientRegisterPage } from './pages/PatientRegisterPage';
-import { PatientProfilePage } from './pages/PatientProfilePage';
-import { AppointmentsPage } from './pages/AppointmentsPage';
-import { AppointmentDetailPage } from './pages/AppointmentDetailPage';
-import { QueuePage } from './pages/QueuePage';
-import { EncounterPage } from './pages/EncounterPage';
-import { BillingPage } from './pages/BillingPage';
-import { PharmacyPage } from './pages/PharmacyPage';
-import { InventoryPage } from './pages/InventoryPage';
-import { ProcurementPage } from './pages/ProcurementPage';
-import { FinancePage } from './pages/FinancePage';
-import { AuditPage } from './pages/AuditPage';
-import { AnalyticsPage } from './pages/AnalyticsPage';
 import { ForbiddenPage } from './pages/ForbiddenPage';
-import { AdminLayout } from './pages/admin/AdminLayout';
-import { AdminUsersPage } from './pages/admin/AdminUsersPage';
-import { AdminRolesPage } from './pages/admin/AdminRolesPage';
-import { AdminStaffPage } from './pages/admin/AdminStaffPage';
-import { AdminDepartmentsPage } from './pages/admin/AdminDepartmentsPage';
-import { AdminServicesPage } from './pages/admin/AdminServicesPage';
-import { AdminMedicationsPage } from './pages/admin/AdminMedicationsPage';
-import { AdminSettingsPage } from './pages/admin/AdminSettingsPage';
-import { Button, Card, Spinner } from './components/ui';
+
+// Feature pages — lazily loaded (code-split per route)
+const PatientsPage = lazy(() => import('./pages/PatientsPage').then(m => ({ default: m.PatientsPage })));
+const PatientRegisterPage = lazy(() => import('./pages/PatientRegisterPage').then(m => ({ default: m.PatientRegisterPage })));
+const PatientProfilePage = lazy(() => import('./pages/PatientProfilePage').then(m => ({ default: m.PatientProfilePage })));
+const AppointmentsPage = lazy(() => import('./pages/AppointmentsPage').then(m => ({ default: m.AppointmentsPage })));
+const AppointmentDetailPage = lazy(() => import('./pages/AppointmentDetailPage').then(m => ({ default: m.AppointmentDetailPage })));
+const QueuePage = lazy(() => import('./pages/QueuePage').then(m => ({ default: m.QueuePage })));
+const EncounterPage = lazy(() => import('./pages/EncounterPage').then(m => ({ default: m.EncounterPage })));
+const BillingPage = lazy(() => import('./pages/BillingPage').then(m => ({ default: m.BillingPage })));
+const PharmacyPage = lazy(() => import('./pages/PharmacyPage').then(m => ({ default: m.PharmacyPage })));
+const InventoryPage = lazy(() => import('./pages/InventoryPage').then(m => ({ default: m.InventoryPage })));
+const ProcurementPage = lazy(() => import('./pages/ProcurementPage').then(m => ({ default: m.ProcurementPage })));
+const FinancePage = lazy(() => import('./pages/FinancePage').then(m => ({ default: m.FinancePage })));
+const AuditPage = lazy(() => import('./pages/AuditPage').then(m => ({ default: m.AuditPage })));
+const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage').then(m => ({ default: m.AnalyticsPage })));
+
+// Admin pages — lazily loaded as a group
+const AdminLayout = lazy(() => import('./pages/admin/AdminLayout').then(m => ({ default: m.AdminLayout })));
+const AdminUsersPage = lazy(() => import('./pages/admin/AdminUsersPage').then(m => ({ default: m.AdminUsersPage })));
+const AdminRolesPage = lazy(() => import('./pages/admin/AdminRolesPage').then(m => ({ default: m.AdminRolesPage })));
+const AdminStaffPage = lazy(() => import('./pages/admin/AdminStaffPage').then(m => ({ default: m.AdminStaffPage })));
+const AdminDepartmentsPage = lazy(() => import('./pages/admin/AdminDepartmentsPage').then(m => ({ default: m.AdminDepartmentsPage })));
+const AdminServicesPage = lazy(() => import('./pages/admin/AdminServicesPage').then(m => ({ default: m.AdminServicesPage })));
+const AdminMedicationsPage = lazy(() => import('./pages/admin/AdminMedicationsPage').then(m => ({ default: m.AdminMedicationsPage })));
+const AdminSettingsPage = lazy(() => import('./pages/admin/AdminSettingsPage').then(m => ({ default: m.AdminSettingsPage })));
 
 function FullScreenSpinner({ label }: { label: string }) {
   return (
@@ -37,6 +45,10 @@ function FullScreenSpinner({ label }: { label: string }) {
       <Spinner label={label} />
     </div>
   );
+}
+
+function LazySuspense({ children }: { children: React.ReactNode }) {
+  return <Suspense fallback={<FullScreenSpinner label="Loading…" />}>{children}</Suspense>;
 }
 
 function FacilityChooser() {
@@ -68,10 +80,6 @@ function Gate() {
   if (status === 'unauthenticated') return <Navigate to="/login" replace />;
   return (
     <TenantProvider>
-      {/* Tenant context must be resolved before any tenant-scoped page mounts:
-          the facility auto-selection happens after the first render, so a raw
-          AppShell would fire requests with an empty organization/facility
-          context (a malformed-URL bug the E2E caught). */}
       <TenantGate />
     </TenantProvider>
   );
@@ -81,7 +89,6 @@ function TenantGate() {
   const { ready, facilities } = useTenant();
   const { t } = useI18n();
   if (!ready) {
-    // A principal with several facilities must choose before any fetch.
     if (facilities.length > 1) return <FacilityChooser />;
     return <FullScreenSpinner label={t('shell.resolvingFacility')} />;
   }
@@ -97,42 +104,44 @@ function LoginRoute() {
 
 export function App() {
   return (
-    <AuthProvider>
-      <ToastProvider>
-        <Routes>
-          <Route path="/login" element={<LoginRoute />} />
-          <Route path="/forbidden" element={<ForbiddenPage />} />
-          <Route element={<Gate />}>
-            <Route path="/" element={<DashboardPage />} />
-            <Route path="/patients" element={<PatientsPage />} />
-            <Route path="/patients/new" element={<PatientRegisterPage />} />
-            <Route path="/patients/:id" element={<PatientProfilePage />} />
-            <Route path="/appointments" element={<AppointmentsPage />} />
-            <Route path="/appointments/:id" element={<AppointmentDetailPage />} />
-            <Route path="/queue" element={<QueuePage />} />
-            <Route path="/encounters/:id" element={<EncounterPage />} />
-            <Route path="/billing" element={<BillingPage />} />
-            <Route path="/billing/:invoiceId" element={<BillingPage />} />
-            <Route path="/pharmacy" element={<PharmacyPage />} />
-            <Route path="/inventory" element={<InventoryPage />} />
-            <Route path="/procurement" element={<ProcurementPage />} />
-            <Route path="/finance" element={<FinancePage />} />
-            <Route path="/audit" element={<AuditPage />} />
-            <Route path="/analytics" element={<AnalyticsPage />} />
-            <Route path="/admin" element={<AdminLayout />}>
-              <Route index element={<Navigate to="/admin/users" replace />} />
-              <Route path="users" element={<AdminUsersPage />} />
-              <Route path="roles" element={<AdminRolesPage />} />
-              <Route path="staff" element={<AdminStaffPage />} />
-              <Route path="departments" element={<AdminDepartmentsPage />} />
-              <Route path="services" element={<AdminServicesPage />} />
-              <Route path="medications" element={<AdminMedicationsPage />} />
-              <Route path="settings" element={<AdminSettingsPage />} />
+    <ErrorBoundary>
+      <AuthProvider>
+        <ToastProvider>
+          <Routes>
+            <Route path="/login" element={<LoginRoute />} />
+            <Route path="/forbidden" element={<ForbiddenPage />} />
+            <Route element={<Gate />}>
+              <Route path="/" element={<DashboardPage />} />
+              <Route path="/patients" element={<LazySuspense><PatientsPage /></LazySuspense>} />
+              <Route path="/patients/new" element={<LazySuspense><PatientRegisterPage /></LazySuspense>} />
+              <Route path="/patients/:id" element={<LazySuspense><PatientProfilePage /></LazySuspense>} />
+              <Route path="/appointments" element={<LazySuspense><AppointmentsPage /></LazySuspense>} />
+              <Route path="/appointments/:id" element={<LazySuspense><AppointmentDetailPage /></LazySuspense>} />
+              <Route path="/queue" element={<LazySuspense><QueuePage /></LazySuspense>} />
+              <Route path="/encounters/:id" element={<LazySuspense><EncounterPage /></LazySuspense>} />
+              <Route path="/billing" element={<LazySuspense><BillingPage /></LazySuspense>} />
+              <Route path="/billing/:invoiceId" element={<LazySuspense><BillingPage /></LazySuspense>} />
+              <Route path="/pharmacy" element={<LazySuspense><PharmacyPage /></LazySuspense>} />
+              <Route path="/inventory" element={<LazySuspense><InventoryPage /></LazySuspense>} />
+              <Route path="/procurement" element={<LazySuspense><ProcurementPage /></LazySuspense>} />
+              <Route path="/finance" element={<LazySuspense><FinancePage /></LazySuspense>} />
+              <Route path="/audit" element={<LazySuspense><AuditPage /></LazySuspense>} />
+              <Route path="/analytics" element={<LazySuspense><AnalyticsPage /></LazySuspense>} />
+              <Route path="/admin" element={<LazySuspense><AdminLayout /></LazySuspense>}>
+                <Route index element={<Navigate to="/admin/users" replace />} />
+                <Route path="users" element={<LazySuspense><AdminUsersPage /></LazySuspense>} />
+                <Route path="roles" element={<LazySuspense><AdminRolesPage /></LazySuspense>} />
+                <Route path="staff" element={<LazySuspense><AdminStaffPage /></LazySuspense>} />
+                <Route path="departments" element={<LazySuspense><AdminDepartmentsPage /></LazySuspense>} />
+                <Route path="services" element={<LazySuspense><AdminServicesPage /></LazySuspense>} />
+                <Route path="medications" element={<LazySuspense><AdminMedicationsPage /></LazySuspense>} />
+                <Route path="settings" element={<LazySuspense><AdminSettingsPage /></LazySuspense>} />
+              </Route>
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Route>
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Route>
-        </Routes>
-      </ToastProvider>
-    </AuthProvider>
+          </Routes>
+        </ToastProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
