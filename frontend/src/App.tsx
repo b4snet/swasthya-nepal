@@ -30,6 +30,7 @@ const AuditPage = lazy(() => import('./pages/AuditPage').then(m => ({ default: m
 const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage').then(m => ({ default: m.AnalyticsPage })));
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage').then(m => ({ default: m.NotificationsPage })));
 const RadiologyPage = lazy(() => import('./pages/RadiologyPage').then(m => ({ default: m.RadiologyPage })));
+const OncologyPage = lazy(() => import('./pages/OncologyPage').then(m => ({ default: m.OncologyPage })));
 
 // Admin pages — lazily loaded as a group
 const AdminLayout = lazy(() => import('./pages/admin/AdminLayout').then(m => ({ default: m.AdminLayout })));
@@ -129,8 +130,8 @@ export function App() {
               <Route path="/finance" element={<LazySuspense><FinancePage /></LazySuspense>} />
               <Route path="/audit" element={<LazySuspense><AuditPage /></LazySuspense>} />
               <Route path="/analytics" element={<LazySuspense><AnalyticsPage /></LazySuspense>} />
-              <Route path="/notifications" element={<LazySuspense><NotificationsPage /></LazySuspense>} />
-              <Route path="/radiology" element={<LazySuspense><RadiologyPage /></LazySuspense>} />
+              <Route path="/notifications" element={<LazySuspense><NotificationsPage /></LazySuspense>} />               <Route path="/radiology" element={<LazySuspense><RadiologyPage /></LazySuspense>} />
+               <Route path="/oncology" element={<LazySuspense><OncologyPage /></LazySuspense>} />
               <Route path="/admin" element={<LazySuspense><AdminLayout /></LazySuspense>}>
                 <Route index element={<Navigate to="/admin/users" replace />} />
                 <Route path="users" element={<LazySuspense><AdminUsersPage /></LazySuspense>} />

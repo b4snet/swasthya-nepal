@@ -1,0 +1,55 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Support\Facades\DB;
+
+/**
+ * Enable RLS on oncology and radiotherapy tables.
+ * All tables are tenant+facility scoped.
+ */
+return new class extends Migration
+{
+    private const TABLES = [
+        // Oncology
+        'oncology_profiles', 'oncology_diagnoses', 'treatment_plans',
+        'treatment_cycles', 'treatment_medications', 'toxicity_records',
+        'oncology_encounters', 'multidisciplinary_reviews',
+        // Radiotherapy
+        'rt_treatment_machines', 'rt_treatment_courses', 'rt_treatment_plans',
+        'rt_fractions', 'rt_fraction_sessions', 'rt_structures',
+        'rt_dose_constraints', 'rt_plan_approvals',
+    ];
+
+    public function up(): void
+    {
+        foreach (self::TABLES as $table) {
+            DB::statement("ALTER TABLE public.\"{$table}\" ENABLE ROW LEVEL SECURITY");
+            DB::statement("ALTER TABLE public.\"{$table}\" FORCE ROW LEVEL SECURITY");
+
+            $tenantFacility = 'tenant_id = swasthya_rls_tenant_id() AND (facility_id = swasthya_rls_facility_id() OR swasthya_rls_facility_id() IS NULL)';
+
+            DB::statement("DROP POLICY IF EXISTS p_rls_{$table}_select ON public.\"{$table}\"");
+            DB::statement("CREATE POLICY p_rls_{$table}_select ON public.\"{$table}\" FOR SELECT USING ({$tenantFacility})");
+
+            DB::statement("DROP POLICY IF EXISTS p_rls_{$table}_insert ON public.\"{$table}\"");
+            DB::statement("CREATE POLICY p_rls_{$table}_insert ON public.\"{$table}\" FOR INSERT WITH CHECK (true)");
+
+            DB::statement("DROP POLICY IF EXISTS p_rls_{$table}_update ON public.\"{$table}\"");
+            DB::statement("CREATE POLICY p_rls_{$table}_update ON public.\"{$table}\" FOR UPDATE USING ({$tenantFacility}) WITH CHECK ({$tenantFacility})");
+
+            DB::statement("DROP POLICY IF EXISTS p_rls_{$table}_delete ON public.\"{$table}\"");
+            DB::statement("CREATE POLICY p_rls_{$table}_delete ON public.\"{$table}\" FOR DELETE USING ({$tenantFacility})");
+        }
+    }
+
+    public function down(): void
+    {
+        foreach (self::TABLES as $table) {
+            DB::statement("DROP POLICY IF EXISTS p_rls_{$table}_select ON public.\"{$table}\"");
+            DB::statement("DROP POLICY IF EXISTS p_rls_{$table}_insert ON public.\"{$table}\"");
+            DB::statement("DROP POLICY IF EXISTS p_rls_{$table}_update ON public.\"{$table}\"");
+            DB::statement("DROP POLICY IF EXISTS p_rls_{$table}_delete ON public.\"{$table}\"");
+            DB::statement("ALTER TABLE public.\"{$table}\" DISABLE ROW LEVEL SECURITY");
+        }
+    }
+};

@@ -34,6 +34,7 @@ use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\MedicationController;
 use App\Http\Controllers\Api\MfaController;
 use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\OncologyController;
 use App\Http\Controllers\Api\OrganizationController;
 use App\Http\Controllers\Api\OtController;
 use App\Http\Controllers\Api\PasswordResetController;
@@ -1141,6 +1142,58 @@ Route::middleware(['throttle:api', ResolvePartnerContext::class])->prefix('inter
     Route::get('Encounter/{encounter}', [InteropController::class, 'fhirEncounter']);
     Route::get('MedicationRequest/{prescription}', [InteropController::class, 'fhirMedicationRequest']);
     Route::get('DiagnosticReport/{labOrder}', [InteropController::class, 'fhirDiagnosticReport']);
+});
+
+// ── Phase 15: Oncology & Radiotherapy ──
+Route::middleware(['throttle:api', ResolveTenantContext::class])->prefix('oncology')->group(function (): void {
+    // Profiles
+    Route::post('profiles', [OncologyController::class, 'storeProfile']);
+    Route::get('profiles', [OncologyController::class, 'listProfiles']);
+    Route::get('profiles/{profile}', [OncologyController::class, 'showProfile']);
+
+    // Diagnoses
+    Route::post('profiles/{profile}/diagnoses', [OncologyController::class, 'storeDiagnosis']);
+
+    // Treatment Plans
+    Route::post('profiles/{profile}/treatment-plans', [OncologyController::class, 'storeTreatmentPlan']);
+    Route::get('treatment-plans/{plan}', [OncologyController::class, 'showTreatmentPlan']);
+    Route::post('treatment-plans/{plan}/start', [OncologyController::class, 'startCycle']);
+
+    // Cycles
+    Route::post('cycles/{cycle}/complete', [OncologyController::class, 'completeCycle']);
+    Route::post('cycles/{cycle}/toxicity', [OncologyController::class, 'storeToxicity']);
+
+    // Oncology Encounters
+    Route::post('profiles/{profile}/encounters', [OncologyController::class, 'storeOncologyEncounter']);
+
+    // MDT Reviews
+    Route::get('profiles/{profile}/mdt-reviews', [OncologyController::class, 'listMdtReviews']);
+    Route::post('profiles/{profile}/mdt-reviews', [OncologyController::class, 'storeMdtReview']);
+
+    // RT Courses
+    Route::post('profiles/{profile}/rt-courses', [OncologyController::class, 'storeRtCourse']);
+    Route::get('rt-courses/{course}', [OncologyController::class, 'showRtCourse']);
+
+    // RT Plans
+    Route::post('rt-courses/{course}/plans', [OncologyController::class, 'storeRtPlan']);
+    Route::post('rt-plans/{plan}/submit', [OncologyController::class, 'submitRtPlan']);
+    Route::post('rt-plans/{plan}/physicist-check', [OncologyController::class, 'physicistCheck']);
+    Route::post('rt-plans/{plan}/secondary-check', [OncologyController::class, 'secondaryCheck']);
+    Route::post('rt-plans/{plan}/ro-approval', [OncologyController::class, 'roApproval']);
+
+    // RT Fractions
+    Route::get('rt-plans/{plan}/fractions', [OncologyController::class, 'listFractions']);
+    Route::post('rt-fractions/{fraction}/deliver', [OncologyController::class, 'deliverFraction']);
+
+    // RT Machines
+    Route::get('rt-machines', [OncologyController::class, 'listMachines']);
+    Route::post('rt-machines', [OncologyController::class, 'storeMachine']);
+
+    // RT Structures
+    Route::post('rt-plans/{plan}/structures', [OncologyController::class, 'storeStructure']);
+
+    // Stats
+    Route::get('stats', [OncologyController::class, 'stats']);
 });
 
 // ── Phase 12: National Mass Notification Platform ──
