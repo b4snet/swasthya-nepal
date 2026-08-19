@@ -26,6 +26,7 @@ const NAV: Array<{ to: string; labelKey: MessageKey; icon: string; roles: string
   { to: '/notifications', labelKey: 'nav.notifications', icon: '🔔', roles: [] },
   { to: '/radiology', labelKey: 'nav.radiology', icon: '🩻', roles: [] },
   { to: '/oncology', labelKey: 'nav.oncology', icon: '🎯', roles: [] },
+  { to: '/portal', labelKey: 'nav.portal', icon: '🏥', roles: [] },
   { to: '/audit', labelKey: 'nav.audit', icon: '☰', roles: [...AUDIT_ROLES] },
   { to: '/admin', labelKey: 'nav.admin', icon: '⚙', roles: [...ADMIN_ROLES] },
 ];

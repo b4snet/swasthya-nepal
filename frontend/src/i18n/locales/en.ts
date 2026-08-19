@@ -221,6 +221,7 @@ export const messages = {
   'nav.notifications': 'Notifications',
   'nav.radiology': 'Radiology',
   'nav.oncology': 'Oncology',
+  'nav.portal': 'Patient Portal',
 } as const;
 
 export type MessageKey = keyof typeof messages;

@@ -10,6 +10,7 @@ use App\Http\Requests\Portal\ProvisionAccountRequest;
 use App\Models\AuditEvent;
 use App\Models\Organization;
 use App\Models\Patient;
+use App\Models\PatientConsentRecord;
 use App\Models\PortalAccessGrant;
 use App\Models\PortalAccount;
 use App\Services\PatientPortalService;
@@ -128,6 +129,202 @@ final class PatientPortalController extends Controller
     public function bills(Request $request): JsonResponse
     {
         return Envelope::success(['bills' => $this->portal->selfBills($this->currentAccount($request))]);
+    }
+
+    // ─────────────────────── PHR Endpoints ────────────────────────────
+
+    public function medicalHistory(Request $request): JsonResponse
+    {
+        return Envelope::success($this->portal->selfMedicalHistory($this->currentAccount($request)));
+    }
+
+    public function medications(Request $request): JsonResponse
+    {
+        return Envelope::success(['medications' => $this->portal->selfMedications($this->currentAccount($request))]);
+    }
+
+    public function labResults(Request $request): JsonResponse
+    {
+        return Envelope::success(['results' => $this->portal->selfLabResults($this->currentAccount($request))]);
+    }
+
+    public function radiologyReports(Request $request): JsonResponse
+    {
+        return Envelope::success(['reports' => $this->portal->selfRadiologyReports($this->currentAccount($request))]);
+    }
+
+    public function prescriptions(Request $request): JsonResponse
+    {
+        return Envelope::success(['prescriptions' => $this->portal->selfPrescriptions($this->currentAccount($request))]);
+    }
+
+    public function documents(Request $request): JsonResponse
+    {
+        return Envelope::success(['documents' => $this->portal->selfDocuments($this->currentAccount($request))]);
+    }
+
+    public function referrals(Request $request): JsonResponse
+    {
+        return Envelope::success(['referrals' => $this->portal->selfReferrals($this->currentAccount($request))]);
+    }
+
+    public function immunizations(Request $request): JsonResponse
+    {
+        return Envelope::success(['immunizations' => $this->portal->selfImmunizations($this->currentAccount($request))]);
+    }
+
+    public function profile(Request $request): JsonResponse
+    {
+        return Envelope::success(['patient' => $this->portal->selfProfile($this->currentAccount($request))]);
+    }
+
+    // ─────────────────── Secure Messaging ─────────────────────────────
+
+    public function messages(Request $request): JsonResponse
+    {
+        return Envelope::success(['messages' => $this->portal->selfMessages($this->currentAccount($request))]);
+    }
+
+    public function sendMessage(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'recipientStaffId' => 'required|uuid',
+            'subject' => 'required|string|max:255',
+            'body' => 'required|string|max:5000',
+            'category' => 'nullable|string',
+        ]);
+
+        $account = $this->currentAccount($request);
+        $message = $this->portal->sendMessage(
+            $account,
+            $validated['recipientStaffId'],
+            $validated['subject'],
+            $validated['body'],
+            $validated['category'] ?? 'general',
+        );
+
+        $this->audit->record(
+            'portal.message_sent',
+            'secure_message',
+            $message->getKey(),
+            ['category' => $message->category, 'phi_safe' => $message->phi_safe],
+            $request,
+        );
+
+        return Envelope::success(['message' => ['id' => $message->getKey(), 'status' => $message->status]], [], [], 201);
+    }
+
+    // ──────────────── Notification Preferences ────────────────────────
+
+    public function notificationPreferences(Request $request): JsonResponse
+    {
+        return Envelope::success(['preferences' => $this->portal->selfNotificationPreferences($this->currentAccount($request))]);
+    }
+
+    public function updateNotificationPreferences(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'emailEnabled' => 'nullable|boolean',
+            'smsEnabled' => 'nullable|boolean',
+            'pushEnabled' => 'nullable|boolean',
+            'appointmentReminders' => 'nullable|boolean',
+            'resultNotifications' => 'nullable|boolean',
+            'billingNotifications' => 'nullable|boolean',
+            'messagingNotifications' => 'nullable|boolean',
+            'marketingOptOut' => 'nullable|boolean',
+            'preferredLanguage' => 'nullable|string',
+            'timezone' => 'nullable|string',
+        ]);
+
+        $mapping = [];
+        if (isset($validated['emailEnabled'])) {
+            $mapping['email_enabled'] = $validated['emailEnabled'];
+        }
+        if (isset($validated['smsEnabled'])) {
+            $mapping['sms_enabled'] = $validated['smsEnabled'];
+        }
+        if (isset($validated['pushEnabled'])) {
+            $mapping['push_enabled'] = $validated['pushEnabled'];
+        }
+        if (isset($validated['appointmentReminders'])) {
+            $mapping['appointment_reminders'] = $validated['appointmentReminders'];
+        }
+        if (isset($validated['resultNotifications'])) {
+            $mapping['result_notifications'] = $validated['resultNotifications'];
+        }
+        if (isset($validated['billingNotifications'])) {
+            $mapping['billing_notifications'] = $validated['billingNotifications'];
+        }
+        if (isset($validated['messagingNotifications'])) {
+            $mapping['messaging_notifications'] = $validated['messagingNotifications'];
+        }
+        if (isset($validated['marketingOptOut'])) {
+            $mapping['marketing_opt_out'] = $validated['marketingOptOut'];
+        }
+        if (isset($validated['preferredLanguage'])) {
+            $mapping['preferred_language'] = $validated['preferredLanguage'];
+        }
+        if (isset($validated['timezone'])) {
+            $mapping['timezone'] = $validated['timezone'];
+        }
+
+        $prefs = $this->portal->updateNotificationPreferences($this->currentAccount($request), $mapping);
+
+        return Envelope::success(['preferences' => $prefs]);
+    }
+
+    // ──────────────────── Consent Management ──────────────────────────
+
+    public function consentRecords(Request $request): JsonResponse
+    {
+        $account = $this->currentAccount($request);
+        $records = PatientConsentRecord::query()
+            ->where('patient_id', $account->patient_id)
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(fn ($r) => [
+                'id' => $r->getKey(),
+                'dataCategory' => $r->data_category,
+                'consentStatus' => $r->consent_status,
+                'purpose' => $r->purpose,
+                'grantedAt' => $r->granted_at?->toIso8601String(),
+                'revokedAt' => $r->revoked_at?->toIso8601String(),
+                'expiresAt' => $r->expires_at?->toIso8601String(),
+            ])
+            ->values()
+            ->all();
+
+        return Envelope::success(['consents' => $records]);
+    }
+
+    public function revokeConsent(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'consentId' => 'required|uuid',
+            'reason' => 'nullable|string',
+        ]);
+
+        $account = $this->currentAccount($request);
+        $consent = PatientConsentRecord::query()
+            ->where('id', $validated['consentId'])
+            ->where('patient_id', $account->patient_id)
+            ->firstOrFail();
+
+        $consent->update([
+            'consent_status' => PatientConsentRecord::STATUS_REVOKED,
+            'revoked_at' => now(),
+            'revocation_reason' => $validated['reason'] ?? null,
+        ]);
+
+        $this->audit->record(
+            'portal.consent_revoked',
+            'patient_consent_record',
+            $consent->getKey(),
+            ['dataCategory' => $consent->data_category],
+            $request,
+        );
+
+        return Envelope::success(['consent' => ['id' => $consent->getKey(), 'status' => $consent->consent_status]]);
     }
 
     public function grants(Request $request): JsonResponse

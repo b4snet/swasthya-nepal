@@ -222,4 +222,5 @@ export const messages: Record<MessageKey, string> = {
   'nav.notifications': 'सूचनाहरू',
   'nav.radiology': 'रेडियोलोजी',
   'nav.oncology': 'अङ्कोलोजी',
+  'nav.portal': 'बिरामी पोर्टल',
 };

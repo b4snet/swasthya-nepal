@@ -726,3 +726,53 @@ export const oncologyApi = {
   storeMdtReview: (profileId: string, payload: Record<string, unknown>, facilityId?: string | null) =>
     api.request(`/api/v1/oncology/profiles/${profileId}/mdt-reviews`, { method: 'POST', body: payload, ...opt(facilityId) }),
 };
+
+/* ------------------------------------------------------------------
+   Patient Portal / PHR (Phase 16)
+   ------------------------------------------------------------------ */
+
+export const portalApi = {
+  me: () => api.request('/api/v1/portal/me'),
+
+  profile: () => api.request('/api/v1/portal/profile'),
+
+  medicalHistory: () => api.request('/api/v1/portal/medical-history'),
+
+  medications: () => api.request('/api/v1/portal/medications'),
+
+  labResults: () => api.request('/api/v1/portal/lab-results'),
+
+  radiologyReports: () => api.request('/api/v1/portal/radiology-reports'),
+
+  prescriptions: () => api.request('/api/v1/portal/prescriptions'),
+
+  documents: () => api.request('/api/v1/portal/documents'),
+
+  referrals: () => api.request('/api/v1/portal/referrals'),
+
+  immunizations: () => api.request('/api/v1/portal/immunizations'),
+
+  appointments: () => api.request('/api/v1/portal/appointments'),
+
+  bills: () => api.request('/api/v1/portal/bills'),
+
+  grants: () => api.request('/api/v1/portal/grants'),
+
+  revokeGrant: (grantId: string) =>
+    api.request(`/api/v1/portal/grants/${grantId}/revoke`, { method: 'POST', body: {} }),
+
+  messages: () => api.request('/api/v1/portal/messages'),
+
+  sendMessage: (payload: { recipientStaffId: string; subject: string; body: string; category?: string }) =>
+    api.request('/api/v1/portal/messages', { method: 'POST', body: payload }),
+
+  notificationPreferences: () => api.request('/api/v1/portal/notification-preferences'),
+
+  updateNotificationPreferences: (payload: Record<string, unknown>) =>
+    api.request('/api/v1/portal/notification-preferences', { method: 'PUT', body: payload }),
+
+  consentRecords: () => api.request('/api/v1/portal/consents'),
+
+  revokeConsent: (consentId: string, reason?: string) =>
+    api.request('/api/v1/portal/consents/revoke', { method: 'POST', body: { consentId, reason } }),
+};

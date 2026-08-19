@@ -29,6 +29,22 @@ class PortalAccessGrant extends Model
 
     public const SCOPE_BILLS = 'bills';
 
+    public const SCOPE_MEDICAL_HISTORY = 'medical_history';
+
+    public const SCOPE_PRESCRIPTIONS = 'prescriptions';
+
+    public const SCOPE_DOCUMENTS = 'documents';
+
+    public const SCOPE_RADIOLOGY = 'radiology';
+
+    public const SCOPE_REFERRALS = 'referrals';
+
+    public const SCOPE_CARE_PLANS = 'care_plans';
+
+    public const SCOPE_IMMUNIZATIONS = 'immunizations';
+
+    public const SCOPE_MESSAGING = 'messaging';
+
     public const STATUS_GRANTED = 'granted';
 
     public const STATUS_REVOKED = 'revoked';

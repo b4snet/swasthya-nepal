@@ -4,13 +4,23 @@ namespace App\Services;
 
 use App\Exceptions\ApiException;
 use App\Models\Appointment;
+use App\Models\Diagnosis;
+use App\Models\Encounter;
 use App\Models\Invoice;
 use App\Models\LabOrder;
 use App\Models\LabOrderItem;
 use App\Models\Organization;
+use App\Models\Patient;
+use App\Models\PatientAllergy;
+use App\Models\PatientDocument;
+use App\Models\PatientNotificationPreference;
 use App\Models\PortalAccessGrant;
 use App\Models\PortalAccount;
 use App\Models\PortalSession;
+use App\Models\Prescription;
+use App\Models\RadiologyReport;
+use App\Models\SecureMessage;
+use App\Models\VitalObservation;
 use App\Support\DatabaseTenantContext;
 use App\Support\ErrorCodes;
 use Illuminate\Database\QueryException;
@@ -379,6 +389,340 @@ final class PatientPortalService
     }
 
     /**
+     * PHR: Medical history (allergies + diagnoses).
+     */
+    public function selfMedicalHistory(PortalAccount $account): array
+    {
+        $this->assertScope($account, PortalAccessGrant::SCOPE_MEDICAL_HISTORY);
+        $patientId = $account->patient_id;
+        $tenantId = $account->tenant_id;
+        $facilityId = $account->facility_id;
+
+        $allergies = PatientAllergy::query()
+            ->where('tenant_id', $tenantId)
+            ->where('patient_id', $patientId)
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(fn ($a) => ['id' => $a->getKey(), 'allergen' => $a->allergen, 'reaction' => $a->reaction ?? null, 'severity' => $a->severity ?? null, 'status' => $a->status ?? 'active'])
+            ->values()
+            ->all();
+
+        // Diagnoses are linked via encounters — get them through encounter linkage
+        $encounterIds = Encounter::query()
+            ->where('tenant_id', $tenantId)
+            ->where('patient_id', $patientId)
+            ->pluck('id');
+
+        $diagnoses = Diagnosis::query()
+            ->where('tenant_id', $tenantId)
+            ->whereIn('encounter_id', $encounterIds)
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(fn ($d) => ['id' => $d->getKey(), 'code' => $d->code ?? null, 'description' => $d->description ?? null, 'status' => $d->status ?? 'active'])
+            ->values()
+            ->all();
+
+        return ['allergies' => $allergies, 'diagnoses' => $diagnoses];
+    }
+
+    /**
+     * PHR: Current medications.
+     */
+    public function selfMedications(PortalAccount $account): array
+    {
+        $this->assertScope($account, PortalAccessGrant::SCOPE_MEDICAL_HISTORY);
+
+        return Prescription::query()
+            ->where('tenant_id', $account->tenant_id)
+            ->where('patient_id', $account->patient_id)
+            ->where('status', '!=', 'cancelled')
+            ->orderByDesc('created_at')
+            ->limit(100)
+            ->get()
+            ->map(fn ($p) => [
+                'id' => $p->getKey(),
+                'status' => $p->status,
+                'prescribedAt' => $p->created_at?->toIso8601String(),
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * PHR: Lab results.
+     */
+    public function selfLabResults(PortalAccount $account): array
+    {
+        $this->assertScope($account, PortalAccessGrant::SCOPE_RESULTS);
+
+        return LabOrderItem::query()
+            ->whereHas('order', fn ($q) => $q->where('patient_id', $account->patient_id)->where('tenant_id', $account->tenant_id))
+            ->where('tenant_id', $account->tenant_id)
+            ->whereNotNull('result_value')
+            ->orderByDesc('created_at')
+            ->limit(100)
+            ->get()
+            ->map(fn ($item) => [
+                'id' => $item->getKey(),
+                'testName' => $item->test?->name ?? null,
+                'resultValue' => $item->result_value ?? null,
+                'resultUnit' => $item->result_unit ?? null,
+                'referenceRange' => $item->reference_range ?? null,
+                'resultedAt' => $item->entered_at?->toIso8601String(),
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * PHR: Radiology reports.
+     */
+    public function selfRadiologyReports(PortalAccount $account): array
+    {
+        $this->assertScope($account, PortalAccessGrant::SCOPE_RADIOLOGY);
+
+        return RadiologyReport::query()
+            ->whereIn('status', ['preliminary', 'final'])
+            ->whereHas('study.order', fn ($q) => $q->where('patient_id', $account->patient_id)->where('tenant_id', $account->tenant_id))
+            ->where('tenant_id', $account->tenant_id)
+            ->orderByDesc('verified_at')
+            ->limit(50)
+            ->get()
+            ->map(fn ($r) => [
+                'id' => $r->getKey(),
+                'reportType' => $r->report_type,
+                'status' => $r->status,
+                'impression' => $r->impression,
+                'criticalFindings' => $r->critical_findings,
+                'verifiedAt' => $r->verified_at?->toIso8601String(),
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * PHR: Prescriptions.
+     */
+    public function selfPrescriptions(PortalAccount $account): array
+    {
+        $this->assertScope($account, PortalAccessGrant::SCOPE_PRESCRIPTIONS);
+
+        return Prescription::query()
+            ->where('tenant_id', $account->tenant_id)
+            ->where('patient_id', $account->patient_id)
+            ->orderByDesc('created_at')
+            ->limit(50)
+            ->get()
+            ->map(fn ($p) => [
+                'id' => $p->getKey(),
+                'status' => $p->status,
+                'encounterId' => $p->encounter_id,
+                'prescribedAt' => $p->created_at?->toIso8601String(),
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * PHR: Documents.
+     */
+    public function selfDocuments(PortalAccount $account): array
+    {
+        $this->assertScope($account, PortalAccessGrant::SCOPE_DOCUMENTS);
+
+        try {
+            return PatientDocument::query()
+                ->where('tenant_id', $account->tenant_id)
+                ->where('patient_id', $account->patient_id)
+                ->orderByDesc('created_at')
+                ->limit(100)
+                ->get()
+                ->map(fn ($d) => [
+                    'id' => $d->getKey(),
+                    'documentType' => $d->document_type,
+                    'title' => $d->getAttribute('title') ?? $d->document_type,
+                    'description' => $d->getAttribute('description') ?? null,
+                    'mimeType' => $d->mime_type,
+                    'createdAt' => $d->created_at?->toIso8601String(),
+                ])
+                ->values()
+                ->all();
+        } catch (\Throwable) {
+            return [];
+        }
+    }
+
+    /**
+     * PHR: Referrals.
+     */
+    public function selfReferrals(PortalAccount $account): array
+    {
+        $this->assertScope($account, PortalAccessGrant::SCOPE_REFERRALS);
+
+        // Referrals may come from encounters with a referral type
+        return Encounter::query()
+            ->where('tenant_id', $account->tenant_id)
+            ->where('patient_id', $account->patient_id)
+            ->where('type', 'referral')
+            ->orderByDesc('created_at')
+            ->limit(50)
+            ->get()
+            ->map(fn ($r) => [
+                'id' => $r->getKey(),
+                'reason' => $r->reason ?? $r->chief_complaint ?? null,
+                'status' => $r->status,
+                'createdAt' => $r->created_at?->toIso8601String(),
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * PHR: Immunization history.
+     */
+    public function selfImmunizations(PortalAccount $account): array
+    {
+        $this->assertScope($account, PortalAccessGrant::SCOPE_IMMUNIZATIONS);
+
+        try {
+            return VitalObservation::query()
+                ->where('tenant_id', $account->tenant_id)
+                ->where('patient_id', $account->patient_id)
+                ->orderByDesc('created_at')
+                ->limit(100)
+                ->get()
+                ->map(fn ($o) => [
+                    'id' => $o->getKey(),
+                    'code' => $o->getAttribute('code') ?? null,
+                    'description' => $o->getAttribute('description') ?? null,
+                    'observedAt' => $o->created_at?->toIso8601String(),
+                ])
+                ->values()
+                ->all();
+        } catch (\Throwable) {
+            return [];
+        }
+    }
+
+    /**
+     * PHR: Secure messages.
+     */
+    public function selfMessages(PortalAccount $account): array
+    {
+        $this->assertScope($account, PortalAccessGrant::SCOPE_MESSAGING);
+
+        return SecureMessage::query()
+            ->where('tenant_id', $account->tenant_id)
+            ->where('facility_id', $account->facility_id)
+            ->where('patient_id', $account->patient_id)
+            ->orderByDesc('created_at')
+            ->limit(100)
+            ->get()
+            ->map(fn ($m) => [
+                'id' => $m->getKey(),
+                'subject' => $m->subject,
+                'body' => $m->body,
+                'senderIsPatient' => $m->sender_is_patient,
+                'status' => $m->status,
+                'category' => $m->category,
+                'createdAt' => $m->created_at?->toIso8601String(),
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * PHR: Send a secure message from patient to staff.
+     */
+    public function sendMessage(
+        PortalAccount $account,
+        string $recipientStaffId,
+        string $subject,
+        string $body,
+        string $category = 'general',
+    ): SecureMessage {
+        $this->assertScope($account, PortalAccessGrant::SCOPE_MESSAGING);
+
+        return SecureMessage::create([
+            'tenant_id' => $account->tenant_id,
+            'facility_id' => $account->facility_id,
+            'patient_id' => $account->patient_id,
+            'sender_is_patient' => true,
+            'recipient_staff_id' => $recipientStaffId,
+            'recipient_is_patient' => false,
+            'subject' => $subject,
+            'body' => $body,
+            'status' => SecureMessage::STATUS_UNREAD,
+            'category' => $category,
+            'phi_safe' => true,
+        ]);
+    }
+
+    /**
+     * PHR: Patient profile.
+     */
+    public function selfProfile(PortalAccount $account): array
+    {
+        $patient = Patient::query()
+            ->where('id', $account->patient_id)
+            ->where('tenant_id', $account->tenant_id)
+            ->firstOrFail();
+
+        return [
+            'id' => $patient->getKey(),
+            'fullName' => $patient->full_name,
+            'dateOfBirth' => $patient->date_of_birth,
+            'sex' => $patient->sex,
+            'mrn' => $patient->mrn,
+            'status' => $patient->status,
+        ];
+    }
+
+    /**
+     * PHR: Notification preferences.
+     */
+    public function selfNotificationPreferences(PortalAccount $account): array
+    {
+        $prefs = PatientNotificationPreference::firstOrCreate(
+            ['patient_id' => $account->patient_id],
+            [
+                'tenant_id' => $account->tenant_id,
+                'facility_id' => $account->facility_id,
+            ],
+        );
+        $prefs->refresh();
+
+        return [
+            'emailEnabled' => $prefs->email_enabled,
+            'smsEnabled' => $prefs->sms_enabled,
+            'pushEnabled' => $prefs->push_enabled,
+            'appointmentReminders' => $prefs->appointment_reminders,
+            'resultNotifications' => $prefs->result_notifications,
+            'billingNotifications' => $prefs->billing_notifications,
+            'messagingNotifications' => $prefs->messaging_notifications,
+            'marketingOptOut' => $prefs->marketing_opt_out,
+            'preferredLanguage' => $prefs->preferred_language,
+            'timezone' => $prefs->timezone,
+        ];
+    }
+
+    /**
+     * PHR: Update notification preferences.
+     */
+    public function updateNotificationPreferences(PortalAccount $account, array $data): array
+    {
+        $prefs = PatientNotificationPreference::updateOrCreate(
+            ['patient_id' => $account->patient_id],
+            array_merge($data, [
+                'tenant_id' => $account->tenant_id,
+                'facility_id' => $account->facility_id,
+            ]),
+        );
+
+        return $this->selfNotificationPreferences($account);
+    }
+
+    /**
      * @return array<int, array<string, mixed>>
      */
     public function selfGrants(PortalAccount $account): array
@@ -401,8 +745,21 @@ final class PatientPortalService
 
     public function assertScopeValue(string $scope): void
     {
-        if (! in_array($scope, [PortalAccessGrant::SCOPE_APPOINTMENTS, PortalAccessGrant::SCOPE_RESULTS, PortalAccessGrant::SCOPE_BILLS], true)) {
-            throw new ApiException(ErrorCodes::VALIDATION_ERROR, 'dataScope must be appointments, results, or bills.', 422);
+        $valid = [
+            PortalAccessGrant::SCOPE_APPOINTMENTS,
+            PortalAccessGrant::SCOPE_RESULTS,
+            PortalAccessGrant::SCOPE_BILLS,
+            PortalAccessGrant::SCOPE_MEDICAL_HISTORY,
+            PortalAccessGrant::SCOPE_PRESCRIPTIONS,
+            PortalAccessGrant::SCOPE_DOCUMENTS,
+            PortalAccessGrant::SCOPE_RADIOLOGY,
+            PortalAccessGrant::SCOPE_REFERRALS,
+            PortalAccessGrant::SCOPE_CARE_PLANS,
+            PortalAccessGrant::SCOPE_IMMUNIZATIONS,
+            PortalAccessGrant::SCOPE_MESSAGING,
+        ];
+        if (! in_array($scope, $valid, true)) {
+            throw new ApiException(ErrorCodes::VALIDATION_ERROR, 'Invalid data scope.', 422);
         }
     }
 

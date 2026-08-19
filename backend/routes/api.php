@@ -1119,12 +1119,30 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
 Route::middleware(['throttle:api', 'auth:sanctum', ResolvePortalContext::class])->prefix('portal')->group(function (): void {
     Route::post('logout', [PatientPortalController::class, 'logout']);
     Route::get('me', [PatientPortalController::class, 'me']);
+    Route::get('profile', [PatientPortalController::class, 'profile']);
     Route::get('appointments', [PatientPortalController::class, 'appointments']);
     Route::get('results', [PatientPortalController::class, 'results']);
     Route::get('bills', [PatientPortalController::class, 'bills']);
     Route::get('grants', [PatientPortalController::class, 'grants']);
-    // The patient may revoke ANY of their own grants (self-service).
     Route::post('grants/{grant}/revoke', [PatientPortalController::class, 'revokeGrant']);
+    // PHR
+    Route::get('medical-history', [PatientPortalController::class, 'medicalHistory']);
+    Route::get('medications', [PatientPortalController::class, 'medications']);
+    Route::get('lab-results', [PatientPortalController::class, 'labResults']);
+    Route::get('radiology-reports', [PatientPortalController::class, 'radiologyReports']);
+    Route::get('prescriptions', [PatientPortalController::class, 'prescriptions']);
+    Route::get('documents', [PatientPortalController::class, 'documents']);
+    Route::get('referrals', [PatientPortalController::class, 'referrals']);
+    Route::get('immunizations', [PatientPortalController::class, 'immunizations']);
+    // Messaging
+    Route::get('messages', [PatientPortalController::class, 'messages']);
+    Route::post('messages', [PatientPortalController::class, 'sendMessage']);
+    // Notification preferences
+    Route::get('notification-preferences', [PatientPortalController::class, 'notificationPreferences']);
+    Route::put('notification-preferences', [PatientPortalController::class, 'updateNotificationPreferences']);
+    // Consent management
+    Route::get('consents', [PatientPortalController::class, 'consentRecords']);
+    Route::post('consents/revoke', [PatientPortalController::class, 'revokeConsent']);
 });
 
 // Partner OAuth2 token endpoint (Phase 3 slice 23): public, behind the
