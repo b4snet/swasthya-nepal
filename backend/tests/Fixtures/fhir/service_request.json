@@ -1,0 +1,17 @@
+{
+  "resourceType": "ServiceRequest",
+  "id": "sr1",
+  "status": "active",
+  "intent": "order",
+  "code": {
+    "text": "Complete Blood Count"
+  },
+  "subject": {
+    "reference": "Patient/p1"
+  },
+  "meta": {
+    "profile": [
+      "http://hl7.org/fhir/StructureDefinition/ServiceRequest"
+    ]
+  }
+}

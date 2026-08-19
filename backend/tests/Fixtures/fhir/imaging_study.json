@@ -1,0 +1,29 @@
+{
+  "resourceType": "ImagingStudy",
+  "id": "img1",
+  "status": "available",
+  "modality": [
+    {
+      "system": "http://dicom.nema.org/resources/ontology/DCM",
+      "code": "CR"
+    }
+  ],
+  "subject": {
+    "reference": "Patient/p1"
+  },
+  "numberOfSeries": 1,
+  "series": [
+    {
+      "uid": "1.2.3.4.5.6.7.8.9",
+      "modality": {
+        "system": "http://dicom.nema.org/resources/ontology/DCM",
+        "code": "dicom_study_instance_uid"
+      }
+    }
+  ],
+  "meta": {
+    "profile": [
+      "http://hl7.org/fhir/StructureDefinition/ImagingStudy"
+    ]
+  }
+}
