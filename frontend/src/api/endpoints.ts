@@ -652,6 +652,68 @@ export const notificationsApi = {
     api.request('/api/v1/notifications/stats', opt(facilityId)),
 };
 
+/* ------------------------------------------------------------------
+   Enterprise: Budgets, Expenses & Financial Periods (Phase 17)
+   ------------------------------------------------------------------ */
+
+export const enterpriseApi = {
+  // Budgets
+  budgets: (orgId: string, params?: { fiscal_year?: number; status?: string }, facilityId?: string | null) => {
+    const qs = params ? '?' + new URLSearchParams(params as Record<string, string>).toString() : '';
+    return api.request(`/api/v1/enterprise/organizations/${orgId}/budgets${qs}`, opt(facilityId));
+  },
+  storeBudget: (orgId: string, payload: Record<string, unknown>, facilityId?: string | null) =>
+    api.request(`/api/v1/enterprise/organizations/${orgId}/budgets`, { method: 'POST', body: payload, ...opt(facilityId) }),
+  showBudget: (id: string, facilityId?: string | null) =>
+    api.request(`/api/v1/enterprise/budgets/${id}`, opt(facilityId)),
+  approveBudget: (id: string, facilityId?: string | null) =>
+    api.request(`/api/v1/enterprise/budgets/${id}/approve`, { method: 'POST', ...opt(facilityId) }),
+  closeBudget: (id: string, facilityId?: string | null) =>
+    api.request(`/api/v1/enterprise/budgets/${id}/close`, { method: 'POST', ...opt(facilityId) }),
+  storeBudgetLine: (id: string, payload: Record<string, unknown>, facilityId?: string | null) =>
+    api.request(`/api/v1/enterprise/budgets/${id}/lines`, { method: 'POST', body: payload, ...opt(facilityId) }),
+
+  // Expense Categories
+  expenseCategories: (orgId: string, facilityId?: string | null) =>
+    api.request(`/api/v1/enterprise/organizations/${orgId}/expense-categories`, opt(facilityId)),
+  storeExpenseCategory: (orgId: string, payload: Record<string, unknown>, facilityId?: string | null) =>
+    api.request(`/api/v1/enterprise/organizations/${orgId}/expense-categories`, { method: 'POST', body: payload, ...opt(facilityId) }),
+
+  // Expenses
+  expenses: (orgId: string, params?: { status?: string; category_id?: string; budget_id?: string }, facilityId?: string | null) => {
+    const qs = params ? '?' + new URLSearchParams(params as Record<string, string>).toString() : '';
+    return api.request(`/api/v1/enterprise/organizations/${orgId}/expenses${qs}`, opt(facilityId));
+  },
+  storeExpense: (orgId: string, payload: Record<string, unknown>, facilityId?: string | null) =>
+    api.request(`/api/v1/enterprise/organizations/${orgId}/expenses`, { method: 'POST', body: payload, ...opt(facilityId) }),
+  showExpense: (id: string, facilityId?: string | null) =>
+    api.request(`/api/v1/enterprise/expenses/${id}`, opt(facilityId)),
+  submitExpense: (id: string, facilityId?: string | null) =>
+    api.request(`/api/v1/enterprise/expenses/${id}/submit`, { method: 'POST', ...opt(facilityId) }),
+  approveExpense: (id: string, facilityId?: string | null) =>
+    api.request(`/api/v1/enterprise/expenses/${id}/approve`, { method: 'POST', ...opt(facilityId) }),
+  rejectExpense: (id: string, reason: string, facilityId?: string | null) =>
+    api.request(`/api/v1/enterprise/expenses/${id}/reject`, { method: 'POST', body: { reason }, ...opt(facilityId) }),
+  payExpense: (id: string, payload: { paymentMethod: string; paymentReference?: string }, facilityId?: string | null) =>
+    api.request(`/api/v1/enterprise/expenses/${id}/pay`, { method: 'POST', body: payload, ...opt(facilityId) }),
+  voidExpense: (id: string, facilityId?: string | null) =>
+    api.request(`/api/v1/enterprise/expenses/${id}/void`, { method: 'POST', ...opt(facilityId) }),
+
+  // Financial Periods
+  financialPeriods: (orgId: string, params?: { fiscal_year?: number; status?: string }, facilityId?: string | null) => {
+    const qs = params ? '?' + new URLSearchParams(params as Record<string, string>).toString() : '';
+    return api.request(`/api/v1/enterprise/organizations/${orgId}/financial-periods${qs}`, opt(facilityId));
+  },
+  storeFinancialPeriod: (orgId: string, payload: Record<string, unknown>, facilityId?: string | null) =>
+    api.request(`/api/v1/enterprise/organizations/${orgId}/financial-periods`, { method: 'POST', body: payload, ...opt(facilityId) }),
+  showFinancialPeriod: (id: string, facilityId?: string | null) =>
+    api.request(`/api/v1/enterprise/financial-periods/${id}`, opt(facilityId)),
+  closeFinancialPeriod: (id: string, facilityId?: string | null) =>
+    api.request(`/api/v1/enterprise/financial-periods/${id}/close`, { method: 'POST', ...opt(facilityId) }),
+  lockFinancialPeriod: (id: string, facilityId?: string | null) =>
+    api.request(`/api/v1/enterprise/financial-periods/${id}/lock`, { method: 'POST', ...opt(facilityId) }),
+};
+
 export type { Deposit, AgingEntry, Settlement };
 export type { Assignment };
 

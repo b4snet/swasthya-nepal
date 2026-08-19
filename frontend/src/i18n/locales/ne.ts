@@ -223,4 +223,7 @@ export const messages: Record<MessageKey, string> = {
   'nav.radiology': 'रेडियोलोजी',
   'nav.oncology': 'अङ्कोलोजी',
   'nav.portal': 'बिरामी पोर्टल',
+  'nav.budgets': 'बजेट',
+  'nav.expenses': 'खर्च',
+  'nav.financialPeriods': 'वित्तीय अवधि',
 };

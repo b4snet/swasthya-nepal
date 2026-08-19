@@ -11,15 +11,18 @@ use App\Http\Controllers\Api\BedController;
 use App\Http\Controllers\Api\BillingController;
 use App\Http\Controllers\Api\BloodBankController;
 use App\Http\Controllers\Api\BranchController;
+use App\Http\Controllers\Api\BudgetController;
 use App\Http\Controllers\Api\CdssController;
 use App\Http\Controllers\Api\ConsentController;
 use App\Http\Controllers\Api\CriticalValueEventController;
 use App\Http\Controllers\Api\DepartmentController;
 use App\Http\Controllers\Api\EncounterController;
 use App\Http\Controllers\Api\ErController;
+use App\Http\Controllers\Api\ExpenseController;
 use App\Http\Controllers\Api\FacilityController;
 use App\Http\Controllers\Api\FacilitySettingsController;
 use App\Http\Controllers\Api\FinanceController;
+use App\Http\Controllers\Api\FinancialPeriodController;
 use App\Http\Controllers\Api\FollowUpController;
 use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\HrController;
@@ -1212,6 +1215,38 @@ Route::middleware(['throttle:api', ResolveTenantContext::class])->prefix('oncolo
 
     // Stats
     Route::get('stats', [OncologyController::class, 'stats']);
+});
+
+// ── Phase 17: Enterprise Budget, Expense & Financial Periods ──
+Route::middleware(['throttle:api', ResolveTenantContext::class])->prefix('enterprise')->group(function (): void {
+    // Budgets
+    Route::get('organizations/{organization}/budgets', [BudgetController::class, 'index']);
+    Route::post('organizations/{organization}/budgets', [BudgetController::class, 'store']);
+    Route::get('budgets/{budget}', [BudgetController::class, 'show']);
+    Route::post('budgets/{budget}/approve', [BudgetController::class, 'approve']);
+    Route::post('budgets/{budget}/close', [BudgetController::class, 'close']);
+    Route::post('budgets/{budget}/lines', [BudgetController::class, 'storeLine']);
+
+    // Expense Categories
+    Route::get('organizations/{organization}/expense-categories', [BudgetController::class, 'indexCategories']);
+    Route::post('organizations/{organization}/expense-categories', [BudgetController::class, 'storeCategory']);
+
+    // Expenses
+    Route::get('organizations/{organization}/expenses', [ExpenseController::class, 'index']);
+    Route::post('organizations/{organization}/expenses', [ExpenseController::class, 'store']);
+    Route::get('expenses/{expense}', [ExpenseController::class, 'show']);
+    Route::post('expenses/{expense}/submit', [ExpenseController::class, 'submit']);
+    Route::post('expenses/{expense}/approve', [ExpenseController::class, 'approve']);
+    Route::post('expenses/{expense}/reject', [ExpenseController::class, 'reject']);
+    Route::post('expenses/{expense}/pay', [ExpenseController::class, 'pay']);
+    Route::post('expenses/{expense}/void', [ExpenseController::class, 'void']);
+
+    // Financial Periods
+    Route::get('organizations/{organization}/financial-periods', [FinancialPeriodController::class, 'index']);
+    Route::post('organizations/{organization}/financial-periods', [FinancialPeriodController::class, 'store']);
+    Route::get('financial-periods/{period}', [FinancialPeriodController::class, 'show']);
+    Route::post('financial-periods/{period}/close', [FinancialPeriodController::class, 'close']);
+    Route::post('financial-periods/{period}/lock', [FinancialPeriodController::class, 'lock']);
 });
 
 // ── Phase 12: National Mass Notification Platform ──

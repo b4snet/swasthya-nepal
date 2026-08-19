@@ -222,6 +222,9 @@ export const messages = {
   'nav.radiology': 'Radiology',
   'nav.oncology': 'Oncology',
   'nav.portal': 'Patient Portal',
+  'nav.budgets': 'Budgets',
+  'nav.expenses': 'Expenses',
+  'nav.financialPeriods': 'Financial Periods',
 } as const;
 
 export type MessageKey = keyof typeof messages;
