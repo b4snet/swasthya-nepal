@@ -128,6 +128,11 @@ const RLS_SCOPED_TABLES = [
     'patient_timeline_entries', 'diagnoses', 'clinical_notes',
     'prescriptions', 'prescription_lines', 'invoice_lines',
     'payment_allocations',
+    // Phase 12 — National Mass Notification Platform (DATABASE.md §3.58):
+    // notification templates, audience segments, broadcast campaigns,
+    // delivery attempts, and recipient tracking.
+    'notification_templates', 'audience_segments', 'broadcast_campaigns',
+    'delivery_attempts', 'notification_recipients',
     // special policies
     'facilities', 'audit_events', 'role_assignments', 'support_sessions',
 ];
@@ -1002,7 +1007,7 @@ function inventoryTenants(ConnectionInterface $c): array
     return $t;
 }
 
-it('records the current RLS inventory: 132 scoped tables enabled + FORCED, 11 unscoped off', function () {
+it('records the current RLS inventory: 137 scoped tables enabled + FORCED, 11 unscoped off', function () {
     $rows = DB::connection('pgsql')->select(
         'select c.relname as table_name, c.relrowsecurity::text as enabled, c.relforcerowsecurity::text as forced
          from pg_class c

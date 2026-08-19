@@ -29,7 +29,9 @@ it('re-keys every RLS policy to the claims helpers (572 policies, zero GUC refer
         SQL
     )[0];
 
-    expect((int) $policies->total)->toBe(572)
+    // +20 since Phase 12: notification_templates, audience_segments,
+    // broadcast_campaigns, delivery_attempts, notification_recipients (5 × 4 policies).
+    expect((int) $policies->total)->toBe(592)
         ->and((int) $policies->not_claims)->toBe(0)
         ->and((int) $policies->still_guc)->toBe(0);
 
@@ -97,7 +99,9 @@ it('keeps the RLS matrix intact: 62 scoped on, 15 off, none on-without-policies'
     // purchase_request_approvals, purchase_orders, purchase_order_lines,
     // goods_receipts, goods_receipt_lines, vendor_contracts.
     // +4 since Phase 11: organizations, roles, permissions, role_permissions.
-    expect((int) $matrix->rls_on)->toBe(144)
+    // +5 since Phase 12: notification_templates, audience_segments,
+    // broadcast_campaigns, delivery_attempts, notification_recipients.
+    expect((int) $matrix->rls_on)->toBe(149)
         ->and((int) $matrix->rls_off)->toBe(11)
         ->and((int) $matrix->on_without_policies)->toBe(0);
 });

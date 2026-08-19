@@ -606,5 +606,45 @@ export const analyticsApi = {
     api.request<ReportRun>('/api/v1/analytics/reports/export', { method: 'POST', body: payload, ...opt(facilityId) }),
 };
 
+export const notificationsApi = {
+  templates: (facilityId?: string | null) =>
+    api.request('/api/v1/notifications/templates', opt(facilityId)),
+
+  storeTemplate: (payload: Record<string, unknown>, facilityId?: string | null) =>
+    api.request('/api/v1/notifications/templates', { method: 'POST', body: payload, ...opt(facilityId) }),
+
+  segments: (facilityId?: string | null) =>
+    api.request('/api/v1/notifications/segments', opt(facilityId)),
+
+  storeSegment: (payload: Record<string, unknown>, facilityId?: string | null) =>
+    api.request('/api/v1/notifications/segments', { method: 'POST', body: payload, ...opt(facilityId) }),
+
+  campaigns: (params?: { status?: string; emergency?: string }, facilityId?: string | null) => {
+    const qs = params ? '?' + new URLSearchParams(params as Record<string, string>).toString() : '';
+    return api.request(`/api/v1/notifications/campaigns${qs}`, opt(facilityId));
+  },
+
+  showCampaign: (id: string, facilityId?: string | null) =>
+    api.request(`/api/v1/notifications/campaigns/${id}`, opt(facilityId)),
+
+  storeCampaign: (payload: Record<string, unknown>, facilityId?: string | null) =>
+    api.request('/api/v1/notifications/campaigns', { method: 'POST', body: payload, ...opt(facilityId) }),
+
+  transitionCampaign: (id: string, action: string, facilityId?: string | null) =>
+    api.request(`/api/v1/notifications/campaigns/${id}/${action}`, { method: 'POST', ...opt(facilityId) }),
+
+  campaignDelivery: (id: string, facilityId?: string | null) =>
+    api.request(`/api/v1/notifications/campaigns/${id}/delivery`, opt(facilityId)),
+
+  acknowledgeDelivery: (attemptId: string, facilityId?: string | null) =>
+    api.request(`/api/v1/notifications/deliveries/${attemptId}/acknowledge`, { method: 'POST', ...opt(facilityId) }),
+
+  emergencyBroadcast: (payload: Record<string, unknown>, facilityId?: string | null) =>
+    api.request('/api/v1/notifications/emergency', { method: 'POST', body: payload, ...opt(facilityId) }),
+
+  stats: (facilityId?: string | null) =>
+    api.request('/api/v1/notifications/stats', opt(facilityId)),
+};
+
 export type { Deposit, AgingEntry, Settlement };
 export type { Assignment };

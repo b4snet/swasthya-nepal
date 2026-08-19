@@ -33,6 +33,7 @@ use App\Http\Controllers\Api\LabTestController;
 use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\MedicationController;
 use App\Http\Controllers\Api\MfaController;
+use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\OrganizationController;
 use App\Http\Controllers\Api\OtController;
 use App\Http\Controllers\Api\PasswordResetController;
@@ -1136,4 +1137,31 @@ Route::middleware(['throttle:api', ResolvePartnerContext::class])->prefix('inter
     Route::get('Encounter/{encounter}', [InteropController::class, 'fhirEncounter']);
     Route::get('MedicationRequest/{prescription}', [InteropController::class, 'fhirMedicationRequest']);
     Route::get('DiagnosticReport/{labOrder}', [InteropController::class, 'fhirDiagnosticReport']);
+});
+
+// ── Phase 12: National Mass Notification Platform ──
+Route::middleware(['throttle:api', ResolveTenantContext::class])->prefix('notifications')->group(function (): void {
+    // Templates
+    Route::get('templates', [NotificationController::class, 'indexTemplates']);
+    Route::post('templates', [NotificationController::class, 'storeTemplate']);
+
+    // Audience Segments
+    Route::get('segments', [NotificationController::class, 'indexSegments']);
+    Route::post('segments', [NotificationController::class, 'storeSegment']);
+
+    // Broadcast Campaigns
+    Route::get('campaigns', [NotificationController::class, 'indexCampaigns']);
+    Route::post('campaigns', [NotificationController::class, 'storeCampaign']);
+    Route::get('campaigns/{id}', [NotificationController::class, 'showCampaign']);
+    Route::post('campaigns/{id}/{action}', [NotificationController::class, 'transitionCampaign']);
+
+    // Delivery Tracking
+    Route::get('campaigns/{id}/delivery', [NotificationController::class, 'campaignDelivery']);
+    Route::post('deliveries/{attemptId}/acknowledge', [NotificationController::class, 'acknowledgeDelivery']);
+
+    // Emergency Broadcast
+    Route::post('emergency', [NotificationController::class, 'emergencyBroadcast']);
+
+    // Stats
+    Route::get('stats', [NotificationController::class, 'stats']);
 });
