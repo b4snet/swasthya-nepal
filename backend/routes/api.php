@@ -519,6 +519,10 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
         ->middleware('authorize:radiology:report');
     Route::get('patients/{patient}/radiology-reports', [RadiologyController::class, 'forPatient'])
         ->middleware('authorize:radiology:view');
+    Route::get('patients/{patient}/imaging-history', [RadiologyController::class, 'imagingHistory'])
+        ->middleware('authorize:radiology:view');
+    Route::get('radiology/stats', [RadiologyController::class, 'stats'])
+        ->middleware('authorize:radiology:view');
 
     // Billing and payments.
     // Phase 3 slice 3 — pharmacy dispensing & inventory

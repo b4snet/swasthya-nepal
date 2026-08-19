@@ -445,6 +445,12 @@ export const radiologyApi = {
 
   draftReport: (studyId: string, payload: { content: string; reportType?: string }, facilityId?: string | null) =>
     api.request<RadiologyStudy>(`/api/v1/studies/${studyId}/report`, { method: 'POST', body: payload, ...opt(facilityId) }),
+
+  imagingHistory: (patientId: string, facilityId?: string | null) =>
+    api.request(`/api/v1/patients/${patientId}/imaging-history`, opt(facilityId)),
+
+  stats: (facilityId?: string | null) =>
+    api.request('/api/v1/radiology/stats', opt(facilityId)),
 };
 
 /* ------------------------------------------------------------------

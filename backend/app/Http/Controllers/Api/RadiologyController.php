@@ -410,6 +410,62 @@ final class RadiologyController extends Controller
     }
 
     /**
+     * GET /patients/{patient}/imaging-history — longitudinal imaging history:
+     * all studies for a patient across encounters, ordered by date descending.
+     */
+    public function imagingHistory(Patient $patient, Request $request): JsonResponse
+    {
+        AccessCheck::scoped($patient, read: true);
+
+        $studies = Study::query()
+            ->join('lab_orders', function ($join): void {
+                $join->on('lab_orders.id', '=', 'studies.lab_order_id')
+                    ->on('lab_orders.tenant_id', '=', 'studies.tenant_id');
+            })
+            ->where('lab_orders.patient_id', $patient->getKey())
+            ->where('studies.tenant_id', TenantContext::tenantId())
+            ->with(['modality:id,code,name', 'reports:id,study_id,status,report_type,critical_findings,reported_at,verified_at', 'imageReferences:id,study_id,reference_type,reference_value'])
+            ->orderByDesc('studies.ordered_at')
+            ->paginate(25);
+
+        return Envelope::success(data: $studies->through(fn (Study $study): array => $this->presentStudy($study)), request: $request);
+    }
+
+    /**
+     * GET /radiology/stats — radiology department statistics.
+     */
+    public function stats(Request $request): JsonResponse
+    {
+        $tenantId = TenantContext::tenantId();
+        $facilityId = TenantContext::facilityId();
+
+        $query = Study::where('tenant_id', $tenantId);
+        if ($facilityId) {
+            $query->where('facility_id', $facilityId);
+        }
+
+        $pending = (clone $query)->where('status', Study::STATUS_ORDERED)->count();
+        $scheduled = (clone $query)->where('status', Study::STATUS_SCHEDULED)->count();
+        $performed = (clone $query)->where('status', Study::STATUS_PERFORMED)->count();
+        $reported = (clone $query)->where('status', Study::STATUS_REPORTED)->count();
+        $cancelled = (clone $query)->where('status', Study::STATUS_CANCELLED)->count();
+
+        $criticalPending = RadiologyReport::where('tenant_id', $tenantId)
+            ->whereNotNull('critical_findings')
+            ->where('status', '!=', RadiologyReport::STATUS_FINAL)
+            ->count();
+
+        return Envelope::success(data: [
+            'pending' => $pending,
+            'scheduled' => $scheduled,
+            'performed' => $performed,
+            'reported' => $reported,
+            'cancelled' => $cancelled,
+            'critical_pending' => $criticalPending,
+        ], request: $request);
+    }
+
+    /**
      * The actor's staff record in the given tenant+facility.
      */
     private function currentStaff(string $tenantId, string $facilityId): Staff
