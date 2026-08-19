@@ -36,12 +36,16 @@ function rlsTenants(ConnectionInterface $c): array
 
     $suffix = substr((string) Str::uuid(), 0, 8);
 
+    // organizations INSERT requires is_platform (SECURITY.md §16 RLS reconciliation)
+    claimsSet($c, ['app_is_platform' => 'true']);
     foreach (['tenantA', 'tenantB'] as $tenant) {
         $c->insert(
             'insert into organizations (id, name, code, status) values (?, ?, ?, ?)',
             [$tenants[$tenant], 'Tenant '.$tenant, 'code-'.$suffix.'-'.strtolower($tenant), 'active']
         );
     }
+    // Clear platform claim — subsequent inserts use normal tenant context
+    claimsSet($c, ['app_tenant_id' => $tenants['tenantA'], 'app_facility_id' => $tenants['facilityA']]);
 
     foreach (['facilityA', 'facilityB'] as $key) {
         $tenant = $key === 'facilityA' ? 'tenantA' : 'tenantB';
@@ -378,10 +382,14 @@ it('keeps two concurrent connections with different tenants isolated', function 
         }
         $run($pdo, 'select set_config(?, ?, true)', ['request.jwt.claims', json_encode($claims)]);
     };
-    $tenant = function (PDO $pdo, string $label) use ($run): array {
+    $tenant = function (PDO $pdo, string $label) use ($run, $set): array {
         $org = (string) Str::uuid();
         $facility = (string) Str::uuid();
+        // organizations INSERT requires is_platform (SECURITY.md §16 RLS reconciliation)
+        $set($pdo, 'is_platform', 'true');
         $run($pdo, 'insert into organizations (id, name, code, status) values (?, ?, ?, ?)', [$org, 'Org '.$label, 'code-'.$label.'-'.substr((string) Str::uuid(), 0, 8), 'active']);
+        $set($pdo, 'tenant_id', $org);
+        $set($pdo, 'facility_id', null);
         $run($pdo, 'insert into facilities (id, tenant_id, name, code, status, timezone, address, settings) values (?, ?, ?, ?, ?, ?, ?, ?)', [$facility, $org, 'Fac '.$label, 'fac-'.$label, 'active', 'UTC', '{}', '{}']);
 
         return ['org' => $org, 'facility' => $facility];

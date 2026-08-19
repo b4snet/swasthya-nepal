@@ -140,12 +140,15 @@ function claimsTenants(ConnectionInterface $c): array
 
     $suffix = substr((string) Str::uuid(), 0, 8);
 
+    // organizations INSERT requires is_platform (SECURITY.md §16 RLS reconciliation)
+    claimsSet($c, ['app_is_platform' => 'true']);
     foreach (['tenantA', 'tenantB'] as $tenant) {
         $c->insert(
             'insert into organizations (id, name, code, status) values (?, ?, ?, ?)',
             [$t[$tenant], 'Tenant '.$tenant, 'code-'.$suffix.'-'.strtolower($tenant), 'active']
         );
     }
+    claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
 
     foreach (['facilityA', 'facilityB'] as $key) {
         $tenant = $key === 'facilityA' ? 'tenantA' : 'tenantB';

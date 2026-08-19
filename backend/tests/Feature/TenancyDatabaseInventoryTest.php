@@ -139,11 +139,22 @@ const RLS_SCOPED_TABLES = [
  */
 const RLS_UNSCOPED_TABLES = [
     'cache', 'cache_locks', 'failed_jobs', 'job_batches', 'jobs',
-    'migrations', 'organizations', 'permissions', 'personal_access_tokens',
-    'refresh_tokens', 'role_permissions', 'roles', 'users',
+    'migrations', 'personal_access_tokens',
+    'refresh_tokens',
+    'users',
     // Pre-tenant public-route flows (Phase 2): hash-only payloads, same
     // pattern as refresh_tokens.
     'mfa_challenges', 'password_reset_tokens',
+];
+
+/**
+ * The 4 RBAC/org tables scoped in Phase 11 (organizations, roles,
+ * permissions, role_permissions). These now have RLS + FORCE enabled.
+ *
+ * @var list<string>
+ */
+const RLS_RBAC_SCOPED_TABLES = [
+    'organizations', 'roles', 'permissions', 'role_permissions',
 ];
 
 /**
@@ -976,9 +987,12 @@ function inventoryTenants(ConnectionInterface $c): array
     ];
     $suffix = substr((string) Str::uuid(), 0, 8);
 
+    // organizations INSERT requires is_platform (Phase 11 RLS reconciliation)
+    claimsSet($c, ['app_is_platform' => 'true']);
     foreach (['tenantA', 'tenantB'] as $tenant) {
         $c->insert('insert into organizations (id, name, code, status) values (?, ?, ?, ?)', [$t[$tenant], 'Tenant '.$tenant, 'code-'.$suffix.'-'.strtolower($tenant), 'active']);
     }
+    claimsSet($c, ['app_tenant_id' => $t['tenantA'], 'app_facility_id' => $t['facilityA']]);
 
     foreach (['facilityA', 'facilityB'] as $key) {
         $tenant = $key === 'facilityA' ? 'tenantA' : 'tenantB';
@@ -988,7 +1002,7 @@ function inventoryTenants(ConnectionInterface $c): array
     return $t;
 }
 
-it('records the current RLS inventory: 128 scoped tables enabled + FORCED, 15 unscoped off', function () {
+it('records the current RLS inventory: 132 scoped tables enabled + FORCED, 11 unscoped off', function () {
     $rows = DB::connection('pgsql')->select(
         'select c.relname as table_name, c.relrowsecurity::text as enabled, c.relforcerowsecurity::text as forced
          from pg_class c
@@ -999,7 +1013,9 @@ it('records the current RLS inventory: 128 scoped tables enabled + FORCED, 15 un
 
     $byName = collect($rows)->keyBy('table_name');
 
-    foreach (RLS_SCOPED_TABLES as $table) {
+    $allScoped = array_merge(RLS_SCOPED_TABLES, RLS_RBAC_SCOPED_TABLES);
+
+    foreach ($allScoped as $table) {
         expect(isset($byName[$table]))->toBeTrue("$table exists");
         expect($byName[$table]->enabled)->toBe('true', "$table has RLS enabled");
     }
@@ -1013,7 +1029,7 @@ it('records the current RLS inventory: 128 scoped tables enabled + FORCED, 15 un
     // table is now FORCED — the owner is bound too, not just the runtime
     // role. Regression coverage: this assertion fails if a migration ever
     // re-enables RLS without FORCE.
-    foreach (RLS_SCOPED_TABLES as $table) {
+    foreach ($allScoped as $table) {
         expect($byName[$table]->forced)->toBe('true', "$table is FORCE-enabled");
     }
 
