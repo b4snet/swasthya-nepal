@@ -3,6 +3,7 @@ import { useTenant } from '../context/TenantContext';
 import { notificationsApi } from '../api/endpoints';
 import { ApiError } from '../api/client';
 import { Card, EmptyState, Spinner } from '../components/ui';
+import { Circle, AlertTriangle, Bell, Siren } from 'lucide-react';
 
 type Campaign = {
   id: string;
@@ -40,12 +41,12 @@ const STATUS_COLORS: Record<string, string> = {
   expired: '#6b7280',
 };
 
-const PRIORITY_ICONS: Record<string, string> = {
-  low: '🔵',
-  normal: '⚪',
-  high: '🟡',
-  urgent: '🟠',
-  emergency: '🔴',
+const PRIORITY_COLORS: Record<string, string> = {
+  low: 'var(--blue-500)',
+  normal: 'var(--gray-400)',
+  high: 'var(--amber-500)',
+  urgent: 'var(--amber-600)',
+  emergency: 'var(--red-500)',
 };
 
 export function NotificationsPage() {
@@ -151,7 +152,7 @@ export function NotificationsPage() {
 
   return (
     <div className="page">
-      <h1>🔔 Notifications</h1>
+      <h1 style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Bell size={24} /> Notifications</h1>
 
       {error && <div className="alert alert-error" role="alert">{error}</div>}
 
@@ -182,8 +183,7 @@ export function NotificationsPage() {
         <button className={`tab ${activeTab === 'campaigns' ? 'active' : ''}`} onClick={() => setActiveTab('campaigns')}>
           📢 Campaigns
         </button>
-        <button className={`tab ${activeTab === 'emergency' ? 'active' : ''}`} onClick={() => setActiveTab('emergency')} style={{ color: '#ef4444' }}>
-          🚨 Emergency
+        <button className={`tab ${activeTab === 'emergency' ? 'active' : ''}`} onClick={() => setActiveTab('emergency')} style={{ color: '#ef4444' }}>           <Siren size={14} /> Emergency
         </button>
       </div>
 
@@ -217,7 +217,7 @@ export function NotificationsPage() {
                 <tbody>
                   {campaigns.map((c) => (
                     <tr key={c.id} style={c.is_emergency ? { backgroundColor: '#fef2f2' } : undefined}>
-                      <td>{PRIORITY_ICONS[c.priority] || '⚪'} {c.priority}</td>
+                      <td><span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Circle size={8} fill={PRIORITY_COLORS[c.priority] || 'var(--gray-400)'} color={PRIORITY_COLORS[c.priority] || 'var(--gray-400)'} /> {c.priority}</span></td>
                       <td><code>{c.code}</code></td>
                       <td>
                         {c.name}
@@ -305,8 +305,7 @@ export function NotificationsPage() {
       )}
 
       {activeTab === 'emergency' && (
-        <div>
-          <h2 style={{ color: '#ef4444' }}>🚨 Emergency Broadcast Console</h2>
+        <div>           <h2 style={{ color: 'var(--red-600)', display: 'flex', alignItems: 'center', gap: 8 }}><Siren size={20} /> Emergency Broadcast Console</h2>
           <Card>
             <div className="form-group">
               <label htmlFor="emrg-name">Broadcast Name *</label>
@@ -330,11 +329,11 @@ export function NotificationsPage() {
                 ))}
               </div>
             </div>
-            <div className="alert alert-warning">
-              ⚠️ Emergency broadcasts bypass approval and are sent immediately. This action cannot be undone.
+            <div className="alert alert--warning">
+              <AlertTriangle size={14} /> Emergency broadcasts bypass approval and are sent immediately. This action cannot be undone.
             </div>
-            <button className="btn btn-danger" onClick={handleEmergencyBroadcast} disabled={busy || !emergencyForm.name || !emergencyForm.message}>
-              {busy ? 'Sending...' : '🚨 SEND EMERGENCY BROADCAST'}
+            <button className="btn btn--danger" onClick={handleEmergencyBroadcast} disabled={busy || !emergencyForm.name || !emergencyForm.message}>
+              {busy ? 'Sending...' : 'Send Emergency Broadcast'}
             </button>
           </Card>
         </div>

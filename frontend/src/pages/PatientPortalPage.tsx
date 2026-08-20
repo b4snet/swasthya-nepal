@@ -2,6 +2,19 @@ import { useState, useEffect } from 'react';
 import { portalApi } from '../api/endpoints';
 import { ApiError } from '../api/client';
 import { Card, EmptyState, SkeletonCard, SkeletonStats, StatusChip, Button, Input } from '../components/ui';
+import {
+  Home,
+  ClipboardList,
+  TestTube,
+  Pill,
+  FileText,
+  MessageSquare,
+  CalendarDays,
+  WalletCards,
+  Lock,
+  Settings,
+  AlertTriangle,
+} from 'lucide-react';
 import './portal.css';
 
 type PatientProfile = {
@@ -204,17 +217,17 @@ export function PatientPortalPage() {
   );
   if (error) return <div className="state state--error"><p>{error}</p></div>;
 
-  const tabs: { key: Tab; label: string; icon: string }[] = [
-    { key: 'overview', label: 'Overview', icon: '🏠' },
-    { key: 'medical', label: 'Medical', icon: '📋' },
-    { key: 'results', label: 'Results', icon: '🔬' },
-    { key: 'prescriptions', label: 'Rx', icon: '💊' },
-    { key: 'documents', label: 'Docs', icon: '📄' },
-    { key: 'messaging', label: 'Messages', icon: '💬' },
-    { key: 'appointments', label: 'Appts', icon: '📅' },
-    { key: 'billing', label: 'Billing', icon: '💰' },
-    { key: 'consent', label: 'Consent', icon: '🔒' },
-    { key: 'preferences', label: 'Settings', icon: '⚙️' },
+  const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
+    { key: 'overview', label: 'Overview', icon: <Home size={14} /> },
+    { key: 'medical', label: 'Medical', icon: <ClipboardList size={14} /> },
+    { key: 'results', label: 'Results', icon: <TestTube size={14} /> },
+    { key: 'prescriptions', label: 'Rx', icon: <Pill size={14} /> },
+    { key: 'documents', label: 'Docs', icon: <FileText size={14} /> },
+    { key: 'messaging', label: 'Messages', icon: <MessageSquare size={14} /> },
+    { key: 'appointments', label: 'Appts', icon: <CalendarDays size={14} /> },
+    { key: 'billing', label: 'Billing', icon: <WalletCards size={14} /> },
+    { key: 'consent', label: 'Consent', icon: <Lock size={14} /> },
+    { key: 'preferences', label: 'Settings', icon: <Settings size={14} /> },
   ];
 
   return (
@@ -288,19 +301,19 @@ export function PatientPortalPage() {
           <Card title="Quick Access">
             <div className="portal__quick-grid">
               <button onClick={() => loadTab('medical')} className="portal__quick-card">
-                <span className="portal__quick-icon" aria-hidden="true">📋</span>
+                <ClipboardList size={20} className="portal__quick-icon" aria-hidden="true" />
                 <span className="portal__quick-label">Medical History</span>
               </button>
               <button onClick={() => loadTab('results')} className="portal__quick-card">
-                <span className="portal__quick-icon" aria-hidden="true">🔬</span>
+                <TestTube size={20} className="portal__quick-icon" aria-hidden="true" />
                 <span className="portal__quick-label">Lab Results</span>
               </button>
               <button onClick={() => loadTab('prescriptions')} className="portal__quick-card">
-                <span className="portal__quick-icon" aria-hidden="true">💊</span>
+                <Pill size={20} className="portal__quick-icon" aria-hidden="true" />
                 <span className="portal__quick-label">Prescriptions</span>
               </button>
               <button onClick={() => loadTab('messaging')} className="portal__quick-card">
-                <span className="portal__quick-icon" aria-hidden="true">💬</span>
+                <MessageSquare size={20} className="portal__quick-icon" aria-hidden="true" />
                 <span className="portal__quick-label">Messages</span>
               </button>
             </div>
@@ -413,7 +426,7 @@ export function PatientPortalPage() {
                     {r.impression && <p className="muted small" style={{ marginTop: 'var(--sp-2)' }}>{r.impression}</p>}
                     {r.criticalFindings && (
                       <div className="alert alert--danger" style={{ marginTop: 'var(--sp-2)', padding: 'var(--sp-2) var(--sp-3)' }}>
-                        ⚠️ {r.criticalFindings}
+                        <AlertTriangle size={14} /> {r.criticalFindings}
                       </div>
                     )}
                   </div>

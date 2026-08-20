@@ -3,6 +3,7 @@ import { useTenant } from '../context/TenantContext';
 import { radiologyApi } from '../api/endpoints';
 import { ApiError } from '../api/client';
 import { Card, EmptyState, Spinner } from '../components/ui';
+import { ClipboardList, History, AlertTriangle, ScanLine } from 'lucide-react';
 
 type Study = {
   id: string;
@@ -140,7 +141,7 @@ export function RadiologyPage() {
 
   return (
     <div className="page">
-      <h1>🩻 Radiology</h1>
+      <h1 style={{ display: 'flex', alignItems: 'center', gap: 8 }}><ScanLine size={24} /> Radiology</h1>
 
       {error && <div className="alert alert-error" role="alert">{error}</div>}
 
@@ -175,10 +176,10 @@ export function RadiologyPage() {
       {/* Tab Navigation */}
       <div className="tab-nav">
         <button className={`tab ${activeTab === 'worklist' ? 'active' : ''}`} onClick={() => setActiveTab('worklist')}>
-          📋 Worklist
+          <ClipboardList size={14} /> Worklist
         </button>
         <button className={`tab ${activeTab === 'history' ? 'active' : ''}`} onClick={() => setActiveTab('history')}>
-          📜 Imaging History
+          <History size={14} /> Imaging History
         </button>
       </div>
 
@@ -324,7 +325,7 @@ export function RadiologyPage() {
                     {r.impression && <p><strong>Impression:</strong> {r.impression}</p>}
                     {r.criticalFindings && (
                       <div className="alert alert-warning" style={{ marginTop: 8 }}>
-                        ⚠️ <strong>Critical Findings:</strong> {r.criticalFindings}
+                        <AlertTriangle size={14} /> <strong>Critical Findings:</strong> {r.criticalFindings}
                       </div>
                     )}
                     <div className="text-muted" style={{ fontSize: 12 }}>

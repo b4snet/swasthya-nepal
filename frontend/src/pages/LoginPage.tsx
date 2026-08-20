@@ -49,7 +49,10 @@ export function LoginPage() {
       <div className="login__card card">
         <div className="login__brand">
           <div className="login__mark-wrap" aria-hidden="true">
-            <span className="login__mark">◈</span>
+            <svg width="32" height="32" viewBox="0 0 28 28" fill="none">
+              <rect width="28" height="28" rx="6" fill="#1570ef"/>
+              <path d="M8 14h12M14 8v12" stroke="#fff" strokeWidth="2.2" strokeLinecap="round"/>
+            </svg>
           </div>
           <h1>{t('app.name')}</h1>
           <p className="login__subtitle">{t('login.subtitle')}</p>

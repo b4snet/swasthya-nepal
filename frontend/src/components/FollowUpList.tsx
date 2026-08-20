@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useTenant } from '../context/TenantContext';
 import { followUpsApi } from '../api/endpoints';
 import { useFetch } from '../hooks/useFetch';
+import { Video, Building2 } from 'lucide-react';
 import {
   Alert,
   Button,
@@ -133,8 +134,7 @@ function FollowUpRow({
   return (
     <div className="followup-row">
       <div className="followup-row__main">
-        <div className="followup-row__header">
-          <span className="followup-row__type">{fu.followUpType === 'teleconsult' ? '📹' : '🏥'} {fu.followUpType === 'teleconsult' ? t('followUp.teleconsult') : t('followUp.returnVisit')}</span>
+        <div className="followup-row__header">           <span className="followup-row__type" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>{fu.followUpType === 'teleconsult' ? <Video size={14} /> : <Building2 size={14} />} {fu.followUpType === 'teleconsult' ? t('followUp.teleconsult') : t('followUp.returnVisit')}</span>
           <span className={statusClass}>{fu.status}</span>
         </div>
         <div className="followup-row__meta">
