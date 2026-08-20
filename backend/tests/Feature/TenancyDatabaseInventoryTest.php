@@ -239,7 +239,7 @@ function seedTenantChain(ConnectionInterface $c, string $tenantId, string $facil
     $ids['insurance_policies'] = $policy;
 
     $document = (string) Str::uuid();
-    $c->insert('insert into patient_documents (id, tenant_id, patient_id, document_type, status) values (?, ?, ?, ?, ?)', [$document, $tenantId, $patient, 'other', 'staged']);
+    $c->insert('insert into patient_documents (id, tenant_id, facility_id, patient_id, document_type, status) values (?, ?, ?, ?, ?, ?)', [$document, $tenantId, $facilityId, $patient, 'other', 'staged']);
     $ids['patient_documents'] = $document;
 
     $consent = (string) Str::uuid();
@@ -824,6 +824,27 @@ function seedTenantChain(ConnectionInterface $c, string $tenantId, string $facil
 
     $ids['facilities'] = $facilityId;
 
+    // Phase 12 — Notification platform chain rows (DATABASE.md §3.58).
+    $notifTemplate = (string) Str::uuid();
+    $c->insert('insert into notification_templates (id, tenant_id, code, name, channel, type, subject, body_template, active) values (?, ?, ?, ?, ?, ?, ?, ?, ?)', [$notifTemplate, $tenantId, $u('ntpl'), 'Chain Template', 'email', 'transactional', 'Chain Subject', '{}', true]);
+    $ids['notification_templates'] = $notifTemplate;
+
+    $audience = (string) Str::uuid();
+    $c->insert('insert into audience_segments (id, tenant_id, code, name, scope_type, criteria, estimated_recipients, active) values (?, ?, ?, ?, ?, ?, ?, ?)', [$audience, $tenantId, $u('aud'), 'Chain Segment', 'all_patients', '{}', 100, true]);
+    $ids['audience_segments'] = $audience;
+
+    $campaign = (string) Str::uuid();
+    $c->insert('insert into broadcast_campaigns (id, tenant_id, code, name, status, priority, severity, is_emergency, template_id, segment_id, message_content, total_recipients, created_by) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [$campaign, $tenantId, $u('cmp'), 'Chain Campaign', 'draft', 'normal', 'info', false, $notifTemplate, $audience, '{}', 0, $staff]);
+    $ids['broadcast_campaigns'] = $campaign;
+
+    $delivery = (string) Str::uuid();
+    $c->insert('insert into delivery_attempts (id, tenant_id, campaign_id, recipient_user_id, channel, status, provider, attempt_number, metadata) values (?, ?, ?, ?, ?, ?, ?, ?, ?)', [$delivery, $tenantId, $campaign, $user, 'email', 'pending', 'chain', 1, '{}']);
+    $ids['delivery_attempts'] = $delivery;
+
+    $recipient = (string) Str::uuid();
+    $c->insert('insert into notification_recipients (id, tenant_id, campaign_id, user_id, delivery_status) values (?, ?, ?, ?, ?)', [$recipient, $tenantId, $campaign, $user, 'pending']);
+    $ids['notification_recipients'] = $recipient;
+
     return $ids;
 }
 
@@ -976,6 +997,11 @@ function chainUpdateColumns(): array
         'support_sessions' => ['reason', 'upd'],
         'token_counters' => ['last_token', '1'],
         'wards' => ['code', 'upd'],
+        'notification_templates' => ['name', 'upd'],
+        'audience_segments' => ['name', 'upd'],
+        'broadcast_campaigns' => ['name', 'upd'],
+        'delivery_attempts' => ['provider', 'upd'],
+        'notification_recipients' => ['delivery_status', 'sent'],
     ];
 }
 

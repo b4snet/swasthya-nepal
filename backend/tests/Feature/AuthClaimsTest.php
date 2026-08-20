@@ -277,7 +277,10 @@ it('a verified token with missing claims grants zero access', function () {
 
 it('mints a token whose claims, verified and set, are transaction-local', function () {
     $c = rlsConn();
+    // Wrap tenant setup in a transaction so platform claims (is_local=true) take effect.
+    $c->beginTransaction();
     $t = claimsTenants($c);
+    $c->commit();
 
     $c->beginTransaction();
     try {

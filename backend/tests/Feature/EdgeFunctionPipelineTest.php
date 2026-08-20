@@ -4136,30 +4136,30 @@ it('patients:documents — the claims-scoped documents read is RLS-gated, ordere
         // discharge row is fully-nullable metadata. The consent row carries
         // a real object_key pointer that the read must never project.
         $c->insert(
-            "insert into patient_documents (id, tenant_id, patient_id, document_type, object_key, checksum, size_bytes, mime_type, status, uploaded_at, expires_at, retention_class, created_at) values (?, ?, ?, 'consent', ?, ?, 204800, 'application/pdf', 'available', '2026-03-02 10:30:00', '2027-06-01 00:00:00', 'legal', '2026-03-02 10:30:00')",
-            [$docConsent, $t['tenantA'], $patient, 'patients/'.$patient.'/'.$docConsent, 'c3d4e5f6a7b8'.str_repeat('0', 52)]
+            "insert into patient_documents (id, tenant_id, facility_id, patient_id, document_type, object_key, checksum, size_bytes, mime_type, status, uploaded_at, expires_at, retention_class, created_at) values (?, ?, ?, ?, 'consent', ?, ?, 204800, 'application/pdf', 'available', '2026-03-02 10:30:00', '2027-06-01 00:00:00', 'legal', '2026-03-02 10:30:00')",
+            [$docConsent, $t['tenantA'], $t['facilityA'], $patient, 'patients/'.$patient.'/'.$docConsent, 'c3d4e5f6a7b8'.str_repeat('0', 52)]
         );
         $c->insert(
-            "insert into patient_documents (id, tenant_id, patient_id, document_type, object_key, checksum, size_bytes, mime_type, status, uploaded_at, expires_at, retention_class, created_at) values (?, ?, ?, 'id', NULL, NULL, NULL, NULL, 'archived', '2026-03-02 10:00:00', NULL, NULL, '2026-03-02 10:00:00')",
-            [$docId, $t['tenantA'], $patient]
+            "insert into patient_documents (id, tenant_id, facility_id, patient_id, document_type, object_key, checksum, size_bytes, mime_type, status, uploaded_at, expires_at, retention_class, created_at) values (?, ?, ?, ?, 'id', NULL, NULL, NULL, NULL, 'archived', '2026-03-02 10:00:00', NULL, NULL, '2026-03-02 10:00:00')",
+            [$docId, $t['tenantA'], $t['facilityA'], $patient]
         );
         $c->insert(
-            "insert into patient_documents (id, tenant_id, patient_id, document_type, object_key, checksum, size_bytes, mime_type, status, uploaded_at, expires_at, retention_class, created_at) values (?, ?, ?, 'discharge', NULL, NULL, NULL, NULL, 'purged', '2026-03-02 09:00:00', NULL, NULL, '2026-03-02 09:00:00')",
-            [$docDischarge, $t['tenantA'], $patient]
+            "insert into patient_documents (id, tenant_id, facility_id, patient_id, document_type, object_key, checksum, size_bytes, mime_type, status, uploaded_at, expires_at, retention_class, created_at) values (?, ?, ?, ?, 'discharge', NULL, NULL, NULL, NULL, 'purged', '2026-03-02 09:00:00', NULL, NULL, '2026-03-02 09:00:00')",
+            [$docDischarge, $t['tenantA'], $t['facilityA'], $patient]
         );
         $c->insert(
-            "insert into patient_documents (id, tenant_id, patient_id, document_type, object_key, checksum, size_bytes, mime_type, status, uploaded_at, expires_at, retention_class, created_at) values (?, ?, ?, 'report', NULL, ?, 1048576, 'application/pdf', 'staged', '2026-03-02 11:00:00', NULL, 'clinical', '2026-03-02 11:00:00')",
-            [$docReport, $t['tenantA'], $patient, 'a1b2c3d4e5f6'.str_repeat('0', 52)]
+            "insert into patient_documents (id, tenant_id, facility_id, patient_id, document_type, object_key, checksum, size_bytes, mime_type, status, uploaded_at, expires_at, retention_class, created_at) values (?, ?, ?, ?, 'report', NULL, ?, 1048576, 'application/pdf', 'staged', '2026-03-02 11:00:00', NULL, 'clinical', '2026-03-02 11:00:00')",
+            [$docReport, $t['tenantA'], $t['facilityA'], $patient, 'a1b2c3d4e5f6'.str_repeat('0', 52)]
         );
         // Same-tenant fac-a2 patient's own document (invisible to fac-a1).
         $c->insert(
-            "insert into patient_documents (id, tenant_id, patient_id, document_type, object_key, checksum, size_bytes, mime_type, status, uploaded_at, expires_at, retention_class, created_at) values (?, ?, ?, 'other', NULL, NULL, NULL, NULL, 'staged', '2026-03-02 09:30:00', NULL, NULL, '2026-03-02 09:30:00')",
-            [(string) Str::uuid(), $t['tenantA'], $patientA2]
+            "insert into patient_documents (id, tenant_id, facility_id, patient_id, document_type, object_key, checksum, size_bytes, mime_type, status, uploaded_at, expires_at, retention_class, created_at) values (?, ?, ?, ?, 'other', NULL, NULL, NULL, NULL, 'staged', '2026-03-02 09:30:00', NULL, NULL, '2026-03-02 09:30:00')",
+            [(string) Str::uuid(), $t['tenantA'], $facA2, $patientA2]
         );
         // Other-tenant patient's own document (invisible to org-a).
         $c->insert(
-            "insert into patient_documents (id, tenant_id, patient_id, document_type, object_key, checksum, size_bytes, mime_type, status, uploaded_at, expires_at, retention_class, created_at) values (?, ?, ?, 'other', NULL, NULL, NULL, NULL, 'staged', '2026-03-02 09:30:00', NULL, NULL, '2026-03-02 09:30:00')",
-            [(string) Str::uuid(), $t['tenantB'], $patientB]
+            "insert into patient_documents (id, tenant_id, facility_id, patient_id, document_type, object_key, checksum, size_bytes, mime_type, status, uploaded_at, expires_at, retention_class, created_at) values (?, ?, ?, ?, 'other', NULL, NULL, NULL, NULL, 'staged', '2026-03-02 09:30:00', NULL, NULL, '2026-03-02 09:30:00')",
+            [(string) Str::uuid(), $t['tenantB'], $t['facilityB'], $patientB]
         );
 
         // The exact edge queries.

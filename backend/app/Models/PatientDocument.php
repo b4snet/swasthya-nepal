@@ -11,6 +11,12 @@ class PatientDocument extends Model
 {
     use HasFactory, HasUuid;
 
+    public const STATUS_STAGED = 'staged';
+
+    public const STATUS_ACTIVE = 'active';
+
+    public const STATUS_ARCHIVED = 'archived';
+
     public const VISIBILITY_PATIENT_ONLY = 'patient_only';
 
     public const VISIBILITY_STAFF_ONLY = 'staff_only';
@@ -20,9 +26,10 @@ class PatientDocument extends Model
     protected $fillable = [
         'tenant_id', 'facility_id', 'patient_id',
         'encounter_id', 'document_type', 'title', 'description',
-        'file_path', 'file_hash', 'mime_type', 'file_size_bytes',
-        'visibility', 'patient_accessible', 'uploaded_by_staff_id',
-        'metadata',
+        'file_path', 'file_hash', 'mime_type', 'file_size_bytes', 'visibility', 'patient_accessible', 'uploaded_by_staff_id',
+        'metadata', 'object_key', 'checksum', 'size_bytes', 'status',
+        'uploaded_by', 'uploaded_at', 'expires_at', 'retention_class', 'parent_document_id',
+        'phi_safe',
     ];
 
     protected function casts(): array

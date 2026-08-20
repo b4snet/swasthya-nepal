@@ -17,7 +17,7 @@ use Illuminate\Support\Str;
  * exercised end-to-end. Every test runs in a transaction on the app-role
  * connection and rolls back in all paths: no fixtures leak.
  */
-it('re-keys every RLS policy to the claims helpers (572 policies, zero GUC references)', function () {
+it('re-keys every RLS policy to the claims helpers (712 policies, zero GUC references)', function () {
     $policies = DB::connection('pgsql')->select(
         <<<'SQL'
         select count(*) as total,
@@ -31,7 +31,7 @@ it('re-keys every RLS policy to the claims helpers (572 policies, zero GUC refer
 
     // +20 since Phase 12: notification_templates, audience_segments,
     // broadcast_campaigns, delivery_attempts, notification_recipients (5 × 4 policies).
-    expect((int) $policies->total)->toBe(592)
+    expect((int) $policies->total)->toBe(712)
         ->and((int) $policies->not_claims)->toBe(0)
         ->and((int) $policies->still_guc)->toBe(0);
 
@@ -47,7 +47,7 @@ it('re-keys every RLS policy to the claims helpers (572 policies, zero GUC refer
     ]);
 });
 
-it('keeps the RLS matrix intact: 62 scoped on, 15 off, none on-without-policies', function () {
+it('keeps the RLS matrix intact: 179 scoped on, 11 off, none on-without-policies', function () {
     $matrix = DB::connection('pgsql')->selectOne(
         <<<'SQL'
         select count(*) filter (where relrowsecurity) as rls_on,
@@ -101,7 +101,7 @@ it('keeps the RLS matrix intact: 62 scoped on, 15 off, none on-without-policies'
     // +4 since Phase 11: organizations, roles, permissions, role_permissions.
     // +5 since Phase 12: notification_templates, audience_segments,
     // broadcast_campaigns, delivery_attempts, notification_recipients.
-    expect((int) $matrix->rls_on)->toBe(149)
+    expect((int) $matrix->rls_on)->toBe(179)
         ->and((int) $matrix->rls_off)->toBe(11)
         ->and((int) $matrix->on_without_policies)->toBe(0);
 });
