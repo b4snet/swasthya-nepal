@@ -614,3 +614,43 @@ it('isolates portal identities across tenants at the database layer', function (
     expect($accountA->sessions()->count())->toBe(1)
         ->and(PortalAccount::query()->count())->toBe(2);
 });
+
+/**
+ * Regression test: portal login must work when organizations table has RLS
+ * enabled. The login is a public route with no authentication context, so
+ * no tenant claims are set. The initial Organization::where('code',...)
+ * lookup must bypass RLS (via platform scope) for that single query.
+ *
+ * This test runs the portal login through the HTTP endpoint and verifies
+ * the org lookup succeeds even with RLS enforced on organizations.
+ */
+it('portal login works with organizations RLS enforced (regression: public route org lookup)', function (): void {
+    $ctx = portalAdmin();
+    $patient = portalPatient($ctx['org'], $ctx['facility']);
+    $identifier = 'rls-regression-'.Str::uuid().'@example.test';
+    portalProvision($ctx, $patient, $identifier);
+
+    // Verify RLS is actually enforced on organizations by checking through
+    // the RLS connection (app-role, NOBYPASSRLS).
+    $rlsConn = DB::connection('pgsql_rls');
+    $rlsConn->beginTransaction();
+    try {
+        // Set empty claims — simulating the public login route context.
+        $rlsConn->statement('select set_config(?, ?, true)', ['request.jwt.claims', json_encode([])]);
+
+        // With empty claims, the org should NOT be visible through RLS.
+        $orgViaRls = $rlsConn->selectOne(
+            'select id from public.organizations where code = ?',
+            [$ctx['org']->code]
+        );
+        expect($orgViaRls)->toBeNull('Organization should be invisible with empty claims');
+    } finally {
+        $rlsConn->rollBack();
+    }
+
+    // Now test the actual HTTP login endpoint — it must succeed despite RLS.
+    portalLogin($ctx['org'], $identifier, 'correct-horse-battery-staple')
+        ->assertStatus(201)
+        ->assertJsonPath('data.tokenType', 'Bearer')
+        ->assertJsonPath('data.account.patientId', $patient->getKey());
+});

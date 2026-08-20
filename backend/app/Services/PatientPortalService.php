@@ -97,7 +97,14 @@ final class PatientPortalService
         string $password,
         Request $request,
     ): array {
-        $organization = Organization::query()->where('code', $organizationCode)->first();
+        // The organizations table has RLS enforced (FORCE RLS). The portal
+        // login is a public route with no authentication context, so no
+        // tenant claims are set. We must bypass RLS for this single org
+        // lookup by temporarily asserting platform scope, then immediately
+        // clear it so all subsequent queries remain tenant-scoped.
+        $organization = $this->withinPlatform(fn (): ?Organization => Organization::query()
+            ->where('code', $organizationCode)
+            ->first());
 
         // The account lookup needs the tenant GUC before RLS lets the app
         // role read it (login is a public route with no context).
@@ -817,6 +824,20 @@ final class PatientPortalService
     {
         return DB::transaction(function () use ($tenantId, $callback): mixed {
             DatabaseTenantContext::setTenant($tenantId);
+
+            return $callback();
+        });
+    }
+
+    /**
+     * Execute a callback with platform scope enabled, then clear it.
+     * Used only for the initial organization lookup during portal login
+     * where no tenant context exists yet.
+     */
+    private function withinPlatform(callable $callback): mixed
+    {
+        return DB::transaction(function () use ($callback): mixed {
+            DatabaseTenantContext::setPlatform(true);
 
             return $callback();
         });
