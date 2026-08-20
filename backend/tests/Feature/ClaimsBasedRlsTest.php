@@ -31,7 +31,8 @@ it('re-keys every RLS policy to the claims helpers (712 policies, zero GUC refer
 
     // +20 since Phase 12: notification_templates, audience_segments,
     // broadcast_campaigns, delivery_attempts, notification_recipients (5 × 4 policies).
-    expect((int) $policies->total)->toBe(712)
+    // +12 since Phase Onboarding: modules, module_entitlements, onboarding_sessions (3 × 4 policies).
+    expect((int) $policies->total)->toBe(724)
         ->and((int) $policies->not_claims)->toBe(0)
         ->and((int) $policies->still_guc)->toBe(0);
 
@@ -101,7 +102,8 @@ it('keeps the RLS matrix intact: 179 scoped on, 11 off, none on-without-policies
     // +4 since Phase 11: organizations, roles, permissions, role_permissions.
     // +5 since Phase 12: notification_templates, audience_segments,
     // broadcast_campaigns, delivery_attempts, notification_recipients.
-    expect((int) $matrix->rls_on)->toBe(179)
+    // +3 since Phase Onboarding: modules, module_entitlements, onboarding_sessions.
+    expect((int) $matrix->rls_on)->toBe(182)
         ->and((int) $matrix->rls_off)->toBe(11)
         ->and((int) $matrix->on_without_policies)->toBe(0);
 });

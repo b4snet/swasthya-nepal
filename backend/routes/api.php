@@ -37,7 +37,9 @@ use App\Http\Controllers\Api\LabTestController;
 use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\MedicationController;
 use App\Http\Controllers\Api\MfaController;
+use App\Http\Controllers\Api\ModuleController;
 use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\OnboardingController;
 use App\Http\Controllers\Api\OncologyController;
 use App\Http\Controllers\Api\OrganizationController;
 use App\Http\Controllers\Api\OtController;
@@ -1139,6 +1141,19 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
         ->middleware('authorize:ai:invoke');
     Route::post('ai/drafts/{aiDraft}/sign', [AiController::class, 'sign'])
         ->middleware('authorize:ai:sign');
+
+    // Module catalog and entitlements
+    Route::get('modules/catalog', [ModuleController::class, 'catalog']);
+    Route::get('modules/enabled', [ModuleController::class, 'enabled']);
+    Route::get('modules/{moduleCode}/check', [ModuleController::class, 'check']);
+
+    // Onboarding
+    Route::post('onboarding', [OnboardingController::class, 'store']);
+    Route::get('onboarding/{id}', [OnboardingController::class, 'show']);
+    Route::put('onboarding/{id}', [OnboardingController::class, 'update']);
+    Route::post('onboarding/{id}/activate', [OnboardingController::class, 'activate']);
+    Route::get('onboarding/modules', [OnboardingController::class, 'modules']);
+    Route::get('onboarding/modules/{moduleCode}/check', [OnboardingController::class, 'checkModule']);
 });
 
 // Patient Portal — portal-authenticated surface (Phase 3 slice 22,
@@ -1318,3 +1333,5 @@ Route::middleware(['throttle:api', ResolveTenantContext::class])->prefix('notifi
     Route::get('stats', [NotificationController::class, 'stats'])
         ->middleware('authorize:notification:view');
 });
+
+// (removed — module/onboarding routes moved inside main v1 group)
