@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { useTenant } from '../context/TenantContext';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
@@ -190,6 +190,7 @@ export function AppShell() {
   const { selectedFacilityId } = useTenant();
   const hasRole = useTenant().hasRole;
   const { t } = useI18n();
+  const location = useLocation();
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
 
   const visible = NAV.filter((n) => allowed(n.roles, hasRole)).map((n) => ({ ...n, label: t(n.labelKey) }));
@@ -238,7 +239,9 @@ export function AppShell() {
           </div>
         </aside>
         <main className="app-content" id="content" tabIndex={-1}>
-          <Outlet />
+          <div key={location.pathname} className="page-transition">
+            <Outlet />
+          </div>
         </main>
       </div>
 

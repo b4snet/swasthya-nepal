@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTenant } from '../context/TenantContext';
 import { patientsApi } from '../api/endpoints';
 import { useFetch } from '../hooks/useFetch';
-import { Button, Card, EmptyState, ErrorState, Spinner, StatusChip, formatDate } from '../components/ui';
+import { Button, Card, EmptyState, ErrorState, SkeletonTable, StatusChip, formatDate } from '../components/ui';
 import './patients.css';
 
 export function PatientsPage() {
@@ -62,7 +62,7 @@ export function PatientsPage() {
       </div>
 
       {list.loading ? (
-        <Spinner />
+        <SkeletonTable rows={6} cols={5} />
       ) : list.error ? (
         <ErrorState error={list.error} onRetry={() => void list.refresh()} />
       ) : (list.data ?? []).length === 0 ? (

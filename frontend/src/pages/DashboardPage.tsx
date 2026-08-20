@@ -3,7 +3,7 @@ import { useTenant } from '../context/TenantContext';
 import { useAuth } from '../auth/AuthProvider';
 import { appointmentsApi } from '../api/endpoints';
 import { useFetch } from '../hooks/useFetch';
-import { AppointmentStatus, Card, EmptyState, ErrorState, Spinner, formatDateTime } from '../components/ui';
+import { AppointmentStatus, Card, EmptyState, ErrorState, SkeletonStats, SkeletonCard, formatDateTime } from '../components/ui';
 import { BILLING_ROLES } from '../auth/roles';
 import './dashboard.css';
 
@@ -28,7 +28,19 @@ export function DashboardPage() {
 
   const paid = (a: { status: string }) => a.status === 'completed';
 
-  if (todayAppts.loading || queue.loading) return <Spinner />;
+  if (todayAppts.loading || queue.loading) return (
+    <div className="page dashboard">
+      <div className="dashboard__welcome" style={{ minHeight: 100 }}>
+        <div>
+          <div className="skeleton skeleton--heading" style={{ width: 200, height: 28, marginBottom: 8 }} />
+          <div className="skeleton skeleton--text-sm" style={{ width: 260, height: 12 }} />
+        </div>
+      </div>
+      <SkeletonStats />
+      <SkeletonCard rows={3} />
+      <SkeletonCard rows={4} />
+    </div>
+  );
   const apptError = todayAppts.error ?? queue.error;
   if (apptError) return <ErrorState error={apptError} onRetry={() => { void todayAppts.refresh(); void queue.refresh(); }} />;
 

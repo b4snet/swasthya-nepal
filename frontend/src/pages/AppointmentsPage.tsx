@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTenant } from '../context/TenantContext';
 import { appointmentsApi, catalogsApi, patientsApi, scheduleApi } from '../api/endpoints';
 import { useFetch } from '../hooks/useFetch';
-import { Alert, AppointmentStatus, Button, Card, Dialog, EmptyState, ErrorState, Input, Select, Spinner, formatDateTime } from '../components/ui';
+import { Alert, AppointmentStatus, Button, Card, Dialog, EmptyState, ErrorState, Input, Select, SkeletonTable, SkeletonCard, Spinner, formatDateTime } from '../components/ui';
 import { ApiError } from '../api/client';
 import './appointments.css';
 
@@ -36,7 +36,10 @@ export function AppointmentsPage() {
       </div>
 
       {list.loading ? (
-        <Spinner />
+        <>
+          <SkeletonCard rows={1} />
+          <SkeletonTable rows={5} cols={6} />
+        </>
       ) : list.error ? (
         <ErrorState error={list.error} onRetry={() => void list.refresh()} />
       ) : (list.data ?? []).length === 0 ? (

@@ -187,6 +187,75 @@ export function Spinner({ label = 'Loading…' }: { label?: string }) {
   );
 }
 
+/* ------------------------------------------------------------------ Skeletons */
+
+/** A single shimmer bar. */
+function SkeletonBar({ className = '', style }: { className?: string; style?: React.CSSProperties }) {
+  return <div className={`skeleton ${className}`} style={style} aria-hidden="true" />;
+}
+
+/** Skeleton for 3 stat cards in a row. */
+export function SkeletonStats() {
+  return (
+    <div className="grid grid--3" aria-label="Loading statistics" role="status">
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="skeleton--stat">
+          <SkeletonBar className="skeleton--text-sm" style={{ width: '50%' }} />
+          <SkeletonBar className="skeleton--heading" style={{ width: '30%' }} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Skeleton for a card with a title bar and content lines. */
+export function SkeletonCard({ rows = 3 }: { rows?: number }) {
+  return (
+    <div className="skeleton--card" aria-label="Loading content" role="status">
+      <SkeletonBar className="skeleton--heading" style={{ width: '40%' }} />
+      {Array.from({ length: rows }, (_, i) => (
+        <SkeletonBar key={i} className="skeleton--text" style={{ width: `${70 + (i % 3) * 10}%` }} />
+      ))}
+    </div>
+  );
+}
+
+/** Skeleton for a data table with header + N rows. */
+export function SkeletonTable({ rows = 5, cols = 4 }: { rows?: number; cols?: number }) {
+  return (
+    <div className="skeleton--table" aria-label="Loading table" role="status">
+      <div className="skeleton--table-row">
+        {Array.from({ length: cols }, (_, i) => (
+          <SkeletonBar key={i} className="skeleton--text-sm" style={{ flex: i === 0 ? '2' : '1', height: 8 }} />
+        ))}
+      </div>
+      {Array.from({ length: rows }, (_, r) => (
+        <div key={r} className="skeleton--table-row">
+          {Array.from({ length: cols }, (_, i) => (
+            <SkeletonBar key={i} className="skeleton--text" style={{ flex: i === 0 ? '2' : '1', width: `${50 + ((r + i) % 3) * 15}%` }} />
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Full-page skeleton for a page with header + cards. */
+export function SkeletonPage() {
+  return (
+    <div className="page" aria-label="Loading page" role="status">
+      <div className="page__head">
+        <div className="page__title">
+          <SkeletonBar className="skeleton--heading" style={{ width: '200px' }} />
+          <SkeletonBar className="skeleton--text-sm" style={{ width: '300px' }} />
+        </div>
+      </div>
+      <SkeletonStats />
+      <SkeletonCard rows={4} />
+    </div>
+  );
+}
+
 export function EmptyState({ title, body, action }: { title: string; body?: string; action?: ReactNode }) {
   return (
     <div className="state state--empty">

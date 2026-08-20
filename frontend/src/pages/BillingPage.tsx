@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useTenant } from '../context/TenantContext';
 import { billingApi } from '../api/endpoints';
 import { useFetch } from '../hooks/useFetch';
-import { Alert, Button, Card, ErrorState, FinancialStatus, Select, Spinner, money } from '../components/ui';
+import { Alert, Button, Card, ErrorState, FinancialStatus, Select, SkeletonTable, money } from '../components/ui';
 import { ApiError } from '../api/client';
 import { BILLING_ROLES } from '../auth/roles';
 import './billing.css';
@@ -46,7 +46,17 @@ function InvoicePanel({ invoiceId, fac, canPay }: { invoiceId: string; fac: stri
   const [method, setMethod] = useState('cash');
   const [busy, setBusy] = useState(false);
 
-  if (invoice.loading) return <Spinner />;
+  if (invoice.loading) return (
+    <div className="page page--narrow">
+      <div className="billing__header" style={{ minHeight: 80 }}>
+        <div>
+          <div className="skeleton skeleton--heading" style={{ width: 260, height: 24 }} />
+          <div className="skeleton skeleton--text-sm" style={{ width: 180, height: 10, marginTop: 8 }} />
+        </div>
+      </div>
+      <SkeletonTable rows={3} cols={3} />
+    </div>
+  );
   if (invoice.error) return <ErrorState error={invoice.error} onRetry={() => void invoice.refresh()} />;
   const inv = invoice.data!;
   const outstanding = inv.totalMinor - inv.paidMinor;

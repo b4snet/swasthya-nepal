@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { portalApi } from '../api/endpoints';
 import { ApiError } from '../api/client';
-import { Card, EmptyState, Spinner, StatusChip, Button, Input } from '../components/ui';
+import { Card, EmptyState, SkeletonCard, SkeletonStats, StatusChip, Button, Input } from '../components/ui';
 import './portal.css';
 
 type PatientProfile = {
@@ -189,7 +189,19 @@ export function PatientPortalPage() {
     }
   }
 
-  if (loading) return <div className="state"><Spinner /></div>;
+  if (loading) return (
+    <div className="portal">
+      <div className="portal__header" style={{ minHeight: 88 }}>
+        <div className="skeleton skeleton--circle" style={{ width: 56, height: 56 }} />
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div className="skeleton skeleton--heading" style={{ width: 200, height: 24 }} />
+          <div className="skeleton skeleton--text-sm" style={{ width: 280, height: 10 }} />
+        </div>
+      </div>
+      <SkeletonStats />
+      <SkeletonCard rows={3} />
+    </div>
+  );
   if (error) return <div className="state state--error"><p>{error}</p></div>;
 
   const tabs: { key: Tab; label: string; icon: string }[] = [

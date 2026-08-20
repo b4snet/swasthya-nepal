@@ -12,7 +12,7 @@ import {
   EmptyState,
   ErrorState,
   Input,
-  Spinner,
+  SkeletonCard,
   formatDateTime,
 } from '../components/ui';
 import { ApiError } from '../api/client';
@@ -56,7 +56,15 @@ export function AppointmentDetailPage() {
     }
   };
 
-  if (appointment.loading && !data) return <Spinner />;
+  if (appointment.loading && !data) return (
+    <div className="page">
+      <div className="page__head"><div className="page__title">
+        <div className="skeleton skeleton--text-sm" style={{ width: 120, height: 12 }} />
+        <div className="skeleton skeleton--heading" style={{ width: 240, height: 24 }} />
+      </div></div>
+      <SkeletonCard rows={6} />
+    </div>
+  );
   if (appointment.error && !data) return <ErrorState error={appointment.error} onRetry={() => void appointment.refresh()} />;
   if (!data) return <EmptyState title="Appointment not found" />;
 
