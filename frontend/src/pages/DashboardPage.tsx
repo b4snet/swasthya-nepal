@@ -1,16 +1,26 @@
 import { Link } from 'react-router-dom';
 import { useTenant } from '../context/TenantContext';
+import { useAuth } from '../auth/AuthProvider';
 import { appointmentsApi } from '../api/endpoints';
 import { useFetch } from '../hooks/useFetch';
-import { AppointmentStatus, Card, EmptyState, ErrorState, Spinner, Stat, formatDateTime } from '../components/ui';
+import { AppointmentStatus, Card, EmptyState, ErrorState, Spinner, formatDateTime } from '../components/ui';
 import { BILLING_ROLES } from '../auth/roles';
+import './dashboard.css';
 
 function today(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+function greeting(): string {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
 export function DashboardPage() {
   const { selectedFacilityId, hasRole } = useTenant();
+  const { user } = useAuth();
   const fac = selectedFacilityId;
 
   const todayAppts = useFetch(() => appointmentsApi.list({ date: today(), facilityId: fac }), [fac]);
@@ -26,20 +36,44 @@ export function DashboardPage() {
   const queueEntries = queue.data ?? [];
 
   return (
-    <div className="page">
-      <div className="page__head">
-        <div className="page__title">
-          <h1>Today</h1>
-          <span className="page__sub">{today()} — {fac ? 'facility view' : 'all authorized facilities'}</span>
+    <div className="page dashboard">
+      {/* Welcome header */}
+      <div className="dashboard__welcome">
+        <div>
+          <h1 className="dashboard__greeting">{greeting()}</h1>
+          <p className="dashboard__date">{new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+        </div>
+        {user?.email && (
+          <span className="dashboard__user-badge">{user.email.split('@')[0]}</span>
+        )}
+      </div>
+
+      {/* Quick stats */}
+      <div className="grid grid--3 dashboard__stats">
+        <div className="stat stat--teal">
+          <span className="stat__icon" aria-hidden="true">◷</span>
+          <div className="stat__content">
+            <span className="stat__value">{appointments.length}</span>
+            <span className="stat__label">Appointments today</span>
+          </div>
+        </div>
+        <div className="stat stat--info">
+          <span className="stat__icon" aria-hidden="true">≣</span>
+          <div className="stat__content">
+            <span className="stat__value">{queueEntries.length}</span>
+            <span className="stat__label">In queue now</span>
+          </div>
+        </div>
+        <div className="stat stat--success">
+          <span className="stat__icon" aria-hidden="true">✓</span>
+          <div className="stat__content">
+            <span className="stat__value">{appointments.filter(paid).length}</span>
+            <span className="stat__label">Completed today</span>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid--3">
-        <Stat value={appointments.length} label="Today's appointments" />
-        <Stat value={queueEntries.length} label="In queue now" />
-        <Stat value={appointments.filter(paid).length} label="Completed today" />
-      </div>
-
+      {/* Queue */}
       <Card title="Waiting and in consultation" action={<Link to="/queue">Open queue →</Link>}>
         {queueEntries.length === 0 ? (
           <EmptyState title="Queue is clear" body="No patients are checked in right now." />
@@ -58,6 +92,7 @@ export function DashboardPage() {
 
       {hasRole(...BILLING_ROLES) && <OutstandingCard facilityId={fac} />}
 
+      {/* Today's appointments */}
       <Card title="Today's appointments" action={<Link to="/appointments">View all →</Link>}>
         {appointments.length === 0 ? (
           <EmptyState title="No appointments today" body="Book a patient at the front desk to get started." />
@@ -94,8 +129,6 @@ export function DashboardPage() {
 }
 
 function OutstandingCard({ facilityId: _facilityId }: { facilityId: string | null }) {
-  // Outstanding billing is not directly exposed; show the paid/captured
-  // snapshot that IS exposed honestly, or nothing if unavailable.
   return (
     <Card title="Billing today" action={<Link to="/billing">Billing →</Link>}>
       <p className="muted small">

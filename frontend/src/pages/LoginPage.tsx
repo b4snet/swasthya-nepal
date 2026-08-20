@@ -48,9 +48,11 @@ export function LoginPage() {
     <main className="login">
       <div className="login__card card">
         <div className="login__brand">
-          <span className="login__mark" aria-hidden="true">◈</span>
+          <div className="login__mark-wrap" aria-hidden="true">
+            <span className="login__mark">◈</span>
+          </div>
           <h1>{t('app.name')}</h1>
-          <p className="muted">{t('login.subtitle')}</p>
+          <p className="login__subtitle">{t('login.subtitle')}</p>
         </div>
 
         {sessionExpiredReason && (
