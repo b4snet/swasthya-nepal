@@ -221,6 +221,7 @@ export const messages = {
   'nav.notifications': 'Notifications',
   'nav.emergency': 'Emergency',
   'nav.icu': 'ICU',
+  'nav.ot': 'Operating Theatre',
   'nav.radiology': 'Radiology',
   'nav.oncology': 'Oncology',
   'nav.portal': 'Patient Portal',

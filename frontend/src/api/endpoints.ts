@@ -386,10 +386,86 @@ export const erApi = {
     ),
   disposition: (encounterId: string, payload: {
     disposition: string; notes?: string; bedId?: string; admittingDiagnosis?: string;
-  }) => api.request<{ encounter: { id: string; disposition: string; status: string }; admissionId: string | null }>(
-    `/api/v1/er/encounters/${encounterId}/disposition`, { method: 'POST', body: payload },
+  }) => api.request<{ encounter: { id: string; disposition: string; status: string }; admissionId: string | null }>(    `/api/v1/er/encounters/${encounterId}/disposition`, { method: 'POST', body: payload },
   ),
 };
+
+/* ------------------------------------------------------------------
+   Operating Theatre (Phase 50)
+   ------------------------------------------------------------------ */
+
+export const otApi = {
+  theatres: () => api.request<Array<{
+    id: string; code: string; name: string; status: string;
+  }>>('/api/v1/theatres'),
+  createTheatre: (payload: { code: string; name: string; status?: string }) =>
+    api.request<{ id: string; code: string; name: string; status: string }>(
+      '/api/v1/theatres', { method: 'POST', body: payload },
+    ),
+  procedureRequests: () => api.request<Array<{
+    id: string; patientId: string; encounterId: string | null;
+    procedureName: string; priority: string; status: string;
+    theatreId: string | null; scheduledAt: string | null;
+    durationMinutes: number | null; requestedBy: string;
+  }>>('/api/v1/procedure-requests'),
+  createProcedureRequest: (payload: {
+    patientId: string; encounterId?: string; procedureName: string; priority?: string;
+  }) => api.request<{ id: string; status: string }>(
+    '/api/v1/procedure-requests', { method: 'POST', body: payload },
+  ),
+  schedule: (requestId: string, payload: {
+    theatreId: string; scheduledAt: string; durationMinutes: number;
+  }) => api.request<{ id: string; status: string; scheduledAt: string }>(
+    `/api/v1/procedure-requests/${requestId}/schedule`, { method: 'POST', body: payload },
+  ),
+  cancel: (requestId: string) => api.request<{ id: string; status: string }>(
+    `/api/v1/procedure-requests/${requestId}/cancel`, { method: 'POST' },
+  ),
+  start: (requestId: string, payload: {
+    checklistTemplateId?: string; surgeonStaffId: string;
+  }) => api.request<{ id: string; status: string; checklist: Array<{
+    id: string; stepKey: string; label: string; completedAt: string | null;
+  }> }>(
+    `/api/v1/procedure-requests/${requestId}/start`, { method: 'POST', body: payload },
+  ),
+  showProcedure: (id: string) => api.request<{
+    id: string; status: string; patientId: string; theatreId: string;
+    team: Array<{ id: string; staffId: string; role: string; timeIn: string | null }>;
+    events: Array<{ id: string; eventType: string; occurredAt: string }>;
+    checklist: Array<{ id: string; stepKey: string; label: string; completedAt: string | null }>;
+    recovery: { id: string; status: string } | null;
+  }>(`/api/v1/procedures/${id}`),
+  addTeamMember: (procedureId: string, payload: { staffId: string; role: string; timeIn?: string }) =>
+    api.request<{ id: string; staffId: string; role: string }>(
+      `/api/v1/procedures/${procedureId}/team`, { method: 'POST', body: payload },
+    ),
+  startAnesthesia: (procedureId: string, payload: {
+    anesthetistStaffId: string; anesthesiaType: string; notes?: string;
+  }) => api.request<{ id: string; anesthesiaType: string }>(
+    `/api/v1/procedures/${procedureId}/anesthesia`, { method: 'POST', body: payload },
+  ),
+  recordEvent: (procedureId: string, payload: {
+    eventType: string; staffId?: string; notes?: string;
+  }) => api.request<{ id: string; eventType: string; occurredAt: string }>(
+    `/api/v1/procedures/${procedureId}/events`, { method: 'POST', body: payload },
+  ),
+  completeChecklist: (procedureId: string, itemId: string) =>
+    api.request<{ id: string; completedAt: string }>(
+      `/api/v1/procedures/${procedureId}/checklist/${itemId}/complete`, { method: 'POST' },
+    ),
+  close: (procedureId: string) => api.request<{ id: string; status: string; endedAt: string }>(
+    `/api/v1/procedures/${procedureId}/close`, { method: 'POST' },
+  ),
+  admitToRecovery: (procedureId: string, payload?: { observations?: Record<string, string> }) =>
+    api.request<{ id: string; status: string }>(
+      `/api/v1/procedures/${procedureId}/recovery`, { method: 'POST', body: payload ?? {} },
+    ),
+  dischargeRecovery: (recoveryId: string) => api.request<{ id: string; status: string }>(
+    `/api/v1/recovery/${recoveryId}/discharge`, { method: 'POST' },
+  ),
+};
+
+
 
 export const adminStaffApi = {
   list: (orgId: string, facilityId?: string | null) =>
