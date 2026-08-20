@@ -315,6 +315,44 @@ export const adminPermissionsApi = {
   list: () => api.request<Permission[]>('/api/v1/permissions'),
 };
 
+export const erApi = {
+  register: (payload: {
+    facilityId: string;
+    patientName?: string;
+    sex?: string;
+    dateOfBirth?: string;
+    estimatedAge?: number;
+    presentingComplaint?: string;
+  }) => api.request<{ id: string; patientId: string; mrn: string; encounterId: string; registeredAt: string }>(
+    '/api/v1/er/registrations', { method: 'POST', body: payload },
+  ),
+  queue: () => api.request<Array<{
+    encounterId: string; patientId: string; facilityId: string;
+    registeredAt: string | null; triageLevel: number | null;
+    triageColor: string | null; presentingComplaint: string | null;
+  }>>('/api/v1/er/queue'),
+  triageScales: (orgId: string) => api.request<Array<{
+    id: string; code: string; name: string; level: number; color: string;
+    reassessmentMinutes: number; isDefault: boolean; status: string;
+  }>>(`/api/v1/organizations/${orgId}/er/triage-scales`),
+  assignTriage: (encounterId: string, payload: { scaleId: string; overrideReason?: string }) =>
+    api.request<{ id: string; level: number; color: string }>(
+      `/api/v1/er/encounters/${encounterId}/triage`, { method: 'POST', body: payload },
+    ),
+  events: (encounterId: string) => api.request<Array<{
+    id: string; eventType: string; occurredAt: string; actorStaffId: string;
+  }>>(`/api/v1/er/encounters/${encounterId}/events`),
+  addEvent: (encounterId: string, payload: { eventType: string; notes?: string; occurredAt?: string }) =>
+    api.request<{ id: string; eventType: string; occurredAt: string }>(
+      `/api/v1/er/encounters/${encounterId}/events`, { method: 'POST', body: payload },
+    ),
+  disposition: (encounterId: string, payload: {
+    disposition: string; notes?: string; bedId?: string; admittingDiagnosis?: string;
+  }) => api.request<{ encounter: { id: string; disposition: string; status: string }; admissionId: string | null }>(
+    `/api/v1/er/encounters/${encounterId}/disposition`, { method: 'POST', body: payload },
+  ),
+};
+
 export const adminStaffApi = {
   list: (orgId: string, facilityId?: string | null) =>
     api.request<AdminStaff[]>(`/api/v1/organizations/${orgId}/staff`, opt(facilityId)),
