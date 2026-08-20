@@ -5,11 +5,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 
-class VitalObservation extends Model
+class ShiftHandover extends Model
 {
     use HasUuids;
-
-    protected $table = 'nursing_vitals';
 
     protected $guarded = ['id'];
 }

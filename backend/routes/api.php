@@ -39,6 +39,7 @@ use App\Http\Controllers\Api\MedicationController;
 use App\Http\Controllers\Api\MfaController;
 use App\Http\Controllers\Api\ModuleController;
 use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\NursingController;
 use App\Http\Controllers\Api\OnboardingController;
 use App\Http\Controllers\Api\OnboardingProfileController;
 use App\Http\Controllers\Api\OncologyController;
@@ -963,6 +964,34 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
         ->middleware('authorize:bloodbank:transfuse');
     Route::post('blood-units/{bloodUnit}/discard', [BloodBankController::class, 'discardBloodUnit'])
         ->middleware('authorize:bloodbank:discard');
+
+    // Phase 52 — Nursing Workflow
+    Route::get('nursing/tasks', [NursingController::class, 'tasks'])
+        ->middleware('authorize:nursing:document');
+    Route::post('nursing/tasks', [NursingController::class, 'storeTask'])
+        ->middleware('authorize:nursing:document');
+    Route::post('nursing/tasks/{nursingTask}/complete', [NursingController::class, 'completeTask'])
+        ->middleware('authorize:nursing:document');
+    Route::get('nursing/vitals', [NursingController::class, 'vitals'])
+        ->middleware('authorize:nursing:document');
+    Route::post('nursing/vitals', [NursingController::class, 'storeVital'])
+        ->middleware('authorize:nursing:document');
+    Route::get('nursing/care-plans', [NursingController::class, 'carePlans'])
+        ->middleware('authorize:nursing:document');
+    Route::post('nursing/care-plans', [NursingController::class, 'storeCarePlan'])
+        ->middleware('authorize:nursing:document');
+    Route::get('nursing/handovers', [NursingController::class, 'handovers'])
+        ->middleware('authorize:nursing:document');
+    Route::post('nursing/handovers', [NursingController::class, 'storeHandover'])
+        ->middleware('authorize:nursing:document');
+    Route::post('nursing/handovers/{shiftHandover}/accept', [NursingController::class, 'acceptHandover'])
+        ->middleware('authorize:nursing:document');
+    Route::get('nursing/alerts', [NursingController::class, 'alerts'])
+        ->middleware('authorize:nursing:document');
+    Route::post('nursing/alerts', [NursingController::class, 'storeAlert'])
+        ->middleware('authorize:nursing:document');
+    Route::post('nursing/alerts/{nursingAlert}/acknowledge', [NursingController::class, 'acknowledgeAlert'])
+        ->middleware('authorize:nursing:document');
 
     // Phase 3 slice 21 — Analytics and Reporting (ROADMAP Phase 17, PRODUCT
     // REQUIREMENTS §6.19, DATABASE.md §3.51): versioned metric definitions,

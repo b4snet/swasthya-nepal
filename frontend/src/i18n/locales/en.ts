@@ -223,6 +223,7 @@ export const messages = {
   'nav.icu': 'ICU',
   'nav.ot': 'Operating Theatre',
   'nav.bloodBank': 'Blood Bank',
+  'nav.nursing': 'Nursing',
   'nav.radiology': 'Radiology',
   'nav.oncology': 'Oncology',
   'nav.portal': 'Patient Portal',

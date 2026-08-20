@@ -525,6 +525,79 @@ export const bbApi = {
     ),
 };
 
+/* ------------------------------------------------------------------
+   Nursing Workflow (Phase 52)
+   ------------------------------------------------------------------ */
+
+export const nursingApi = {
+  tasks: () => api.request<Array<{
+    id: string; patientId: string; taskType: string; description: string;
+    priority: string; status: string; dueAt: string | null;
+  }>>('/api/v1/nursing/tasks'),
+  createTask: (payload: {
+    patientId: string; taskType: string; description: string;
+    priority?: string; assignedTo?: string; dueAt?: string; admissionId?: string;
+  }) => api.request<{ id: string; status: string }>(
+    '/api/v1/nursing/tasks', { method: 'POST', body: payload },
+  ),
+  completeTask: (taskId: string, payload?: { completionNotes?: string; completedBy?: string }) =>
+    api.request<{ id: string; status: string }>(
+      `/api/v1/nursing/tasks/${taskId}/complete`, { method: 'POST', body: payload ?? {} },
+    ),
+  vitals: () => api.request<Array<{
+    id: string; patientId: string; temperatureCelsius: number | null;
+    heartRateBpm: number | null; systolicBp: number | null; diastolicBp: number | null;
+    spo2Percent: number | null; painScore: number | null; observedAt: string;
+  }>>('/api/v1/nursing/vitals'),
+  recordVital: (payload: {
+    patientId: string; recordedBy: string; observedAt: string;
+    temperatureCelsius?: number; heartRateBpm?: number; respiratoryRate?: number;
+    systolicBp?: number; diastolicBp?: number; spo2Percent?: number;
+    painScore?: number; gcsScore?: number; notes?: string; admissionId?: string;
+  }) => api.request<{ id: string }>(
+    '/api/v1/nursing/vitals', { method: 'POST', body: payload },
+  ),
+  carePlans: () => api.request<Array<{
+    id: string; patientId: string; diagnosis: string; goals: string;
+    interventions: string; status: string;
+  }>>('/api/v1/nursing/care-plans'),
+  createCarePlan: (payload: {
+    patientId: string; createdBy: string; diagnosis: string;
+    goals: string; interventions: string; effectiveFrom: string;
+    effectiveUntil?: string; admissionId?: string;
+  }) => api.request<{ id: string; status: string }>(
+    '/api/v1/nursing/care-plans', { method: 'POST', body: payload },
+  ),
+  handovers: () => api.request<Array<{
+    id: string; shift: string; handoverDate: string; status: string;
+  }>>('/api/v1/nursing/handovers'),
+  createHandover: (payload: {
+    outgoingStaffId: string; incomingStaffId: string; shift: string;
+    handoverDate: string; patientSummaries: string;
+    criticalItems?: string; pendingTasks?: string;
+  }) => api.request<{ id: string; status: string }>(
+    '/api/v1/nursing/handovers', { method: 'POST', body: payload },
+  ),
+  acceptHandover: (id: string, payload?: { acceptedBy?: string }) =>
+    api.request<{ id: string; status: string }>(
+      `/api/v1/nursing/handovers/${id}/accept`, { method: 'POST', body: payload ?? {} },
+    ),
+  alerts: () => api.request<Array<{
+    id: string; patientId: string; alertType: string; severity: string;
+    message: string; status: string;
+  }>>('/api/v1/nursing/alerts'),
+  createAlert: (payload: {
+    patientId: string; alertTo: string; alertType: string;
+    severity?: string; message: string;
+  }) => api.request<{ id: string; status: string }>(
+    '/api/v1/nursing/alerts', { method: 'POST', body: payload },
+  ),
+  acknowledgeAlert: (id: string, payload?: { acknowledgedBy?: string }) =>
+    api.request<{ id: string; status: string }>(
+      `/api/v1/nursing/alerts/${id}/acknowledge`, { method: 'POST', body: payload ?? {} },
+    ),
+};
+
 
 
 export const adminStaffApi = {
