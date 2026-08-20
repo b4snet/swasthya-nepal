@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\BloodBankController;
 use App\Http\Controllers\Api\BranchController;
 use App\Http\Controllers\Api\BudgetController;
 use App\Http\Controllers\Api\CdssController;
+use App\Http\Controllers\Api\ComplianceController;
 use App\Http\Controllers\Api\ConsentController;
 use App\Http\Controllers\Api\CriticalValueEventController;
 use App\Http\Controllers\Api\DepartmentController;
@@ -996,6 +997,36 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
     Route::post('analytics/reports/run', [AnalyticsController::class, 'runReport'])
         ->middleware('authorize:reports:run');
     Route::post('analytics/reports/export', [AnalyticsController::class, 'exportReport'])
+        ->middleware('authorize:reports:export');
+
+    // Phase 18 — Domain dashboard summary (real-time data from source tables)
+    Route::get('analytics/domain-summary/{domain}', [AnalyticsController::class, 'domainSummary'])
+        ->middleware('authorize:analytics:view');
+
+    // Phase 18 — Compliance Reporting
+    Route::get('analytics/compliance-reports', [ComplianceController::class, 'indexComplianceReports'])
+        ->middleware('authorize:analytics:view');
+    Route::post('analytics/compliance-reports', [ComplianceController::class, 'storeComplianceReport'])
+        ->middleware('authorize:analytics:manage');
+    Route::get('compliance-reports/{report}', [ComplianceController::class, 'showComplianceReport'])
+        ->middleware('authorize:analytics:view');
+    Route::post('compliance-reports/{report}/items', [ComplianceController::class, 'storeItem'])
+        ->middleware('authorize:analytics:manage');
+    Route::post('compliance-reports/{report}/publish', [ComplianceController::class, 'publish'])
+        ->middleware('authorize:analytics:manage');
+    Route::post('compliance-reports/{report}/acknowledge', [ComplianceController::class, 'acknowledge'])
+        ->middleware('authorize:analytics:view');
+    Route::get('analytics/report-subscriptions', [ComplianceController::class, 'indexSubscriptions'])
+        ->middleware('authorize:analytics:view');
+    Route::post('analytics/report-subscriptions', [ComplianceController::class, 'storeSubscription'])
+        ->middleware('authorize:analytics:view');
+    Route::post('report-subscriptions/{subscription}/cancel', [ComplianceController::class, 'cancelSubscription'])
+        ->middleware('authorize:analytics:view');
+    Route::get('analytics/lineage/{reportRun}', [ComplianceController::class, 'lineage'])
+        ->middleware('authorize:analytics:view');
+    Route::get('analytics/template-versions/{template}', [ComplianceController::class, 'templateVersions'])
+        ->middleware('authorize:analytics:view');
+    Route::post('analytics/compliance-reports/{report}/export', [ComplianceController::class, 'exportComplianceReport'])
         ->middleware('authorize:reports:export');
 
     // Phase 3 slice 23 — Interoperability readiness (ROADMAP Phase 18,

@@ -725,4 +725,122 @@ final class AnalyticsService
 
         return (int) $field === $value;
     }
+
+    /**
+     * Provide real-time domain dashboard data from actual source tables.
+     * Each metric is computed from the live database; never fabricated.
+     */
+    public function domainSummary(string $domain, string $tenantId, ?string $facilityId): array
+    {
+        $scoped = function ($table) use ($tenantId, $facilityId) {
+            $builder = DB::table($table)->where('tenant_id', $tenantId);
+            // Only add facility filter for tables that have facility_id
+            $hasFacility = in_array($table, ['patients', 'appointments', 'encounters', 'beds', 'charges', 'invoices', 'payments', 'inventory_items', 'staff', 'studies', 'purchase_requests', 'purchase_orders', 'goods_receipts', 'lab_orders', 'critical_value_events', 'follow_ups', 'leave_requests'], true);
+            if ($facilityId !== null && $hasFacility) {
+                $builder->where('facility_id', $facilityId);
+            }
+
+            return $builder;
+        };
+
+        return match ($domain) {
+            'operational' => $this->operationalSummary($scoped),
+            'clinical' => $this->clinicalSummary($scoped),
+            'financial' => $this->financialSummary($scoped),
+            'pharmacy' => $this->pharmacySummary($scoped),
+            'laboratory' => $this->laboratorySummary($scoped),
+            'radiology' => $this->radiologySummary($scoped),
+            'procurement' => $this->procurementSummary($scoped),
+            'hr' => $this->hrSummary($scoped),
+            default => ['error' => 'Unknown domain.'],
+        };
+    }
+
+    /** @var callable(string): Builder */
+    private function operationalSummary(callable $scoped): array
+    {
+        $today = now()->startOfDay();
+
+        return [
+            'patientsRegisteredToday' => $scoped('patients')->where('created_at', '>=', $today)->count(),
+            'appointmentsToday' => $scoped('appointments')->where('starts_at', '>=', $today)->count(),
+            'activeEncounters' => $scoped('encounters')->where('status', 'open')->count(),
+            'bedOccupancy' => [
+                'occupied' => $scoped('beds')->where('status', 'occupied')->count(),
+                'total' => $scoped('beds')->count(),
+            ],
+        ];
+    }
+
+    /** @var callable(string): Builder */
+    private function clinicalSummary(callable $scoped): array
+    {
+        return [
+            'encountersLast7Days' => $scoped('encounters')->where('created_at', '>=', now()->subDays(7))->count(),
+            'prescriptionsLast7Days' => $scoped('prescriptions')->where('created_at', '>=', now()->subDays(7))->count(),
+            'pendingCriticalValues' => $scoped('critical_value_events')->where('status', 'pending_acknowledgment')->count(),
+            'followUpsDueIn3Days' => $scoped('follow_ups')->where('status', 'pending')->where('planned_at', '<=', now()->addDays(3))->count(),
+        ];
+    }
+
+    /** @var callable(string): Builder */
+    private function financialSummary(callable $scoped): array
+    {
+        $today = now()->startOfDay();
+
+        return [
+            'revenueTodayMinor' => (int) $scoped('payments')->where('created_at', '>=', $today)->where('status', 'completed')->sum('amount_minor'),
+            'outstandingMinor' => (int) $scoped('invoices')->where('status', '!=', 'paid')->sum(DB::raw('total_minor - paid_minor')),
+            'pendingRefunds' => $scoped('refund_requests')->where('status', 'pending_approval')->count(),
+            'chargesToday' => $scoped('charges')->where('created_at', '>=', $today)->count(),
+        ];
+    }
+
+    /** @var callable(string): Builder */
+    private function pharmacySummary(callable $scoped): array
+    {
+        return [
+            'dispensedToday' => $scoped('prescriptions')->where('created_at', '>=', now()->startOfDay())->count(),
+            'lowStockItems' => $scoped('inventory_items')->whereColumn('quantity_on_hand', '<=', 'reorder_level')->count(),
+            'totalReturns' => $scoped('pharmacy_returns')->count(),
+        ];
+    }
+
+    /** @var callable(string): Builder */
+    private function laboratorySummary(callable $scoped): array
+    {
+        return [
+            'ordersToday' => $scoped('lab_orders')->where('created_at', '>=', now()->startOfDay())->count(),
+            'pendingResults' => $scoped('lab_orders')->where('status', 'ordered')->count(),
+            'criticalPending' => $scoped('critical_value_events')->where('status', 'pending_acknowledgment')->count(),
+        ];
+    }
+
+    /** @var callable(string): Builder */
+    private function radiologySummary(callable $scoped): array
+    {
+        return [
+            'studiesToday' => $scoped('studies')->where('created_at', '>=', now()->startOfDay())->count(),
+            'pendingReports' => $scoped('radiology_reports')->where('status', 'draft')->count(),
+        ];
+    }
+
+    /** @var callable(string): Builder */
+    private function procurementSummary(callable $scoped): array
+    {
+        return [
+            'pendingRequests' => $scoped('purchase_requests')->where('status', 'draft')->count(),
+            'openOrders' => $scoped('purchase_orders')->whereIn('status', ['confirmed', 'partially_received'])->count(),
+            'pendingReceipts' => $scoped('goods_receipts')->where('status', 'pending')->count(),
+        ];
+    }
+
+    /** @var callable(string): Builder */
+    private function hrSummary(callable $scoped): array
+    {
+        return [
+            'activeStaff' => $scoped('staff')->where('status', 'active')->count(),
+            'pendingLeaveRequests' => $scoped('leave_requests')->where('status', 'pending')->count(),
+        ];
+    }
 }

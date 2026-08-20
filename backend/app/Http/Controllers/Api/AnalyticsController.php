@@ -572,6 +572,21 @@ final class AnalyticsController extends Controller
     /**
      * @return array<string, mixed>
      */
+    /**
+     * GET analytics/domain-summary/{domain} — real-time domain dashboard data.
+     * Pulls counts from the actual source tables; never fabricated.
+     */
+    public function domainSummary(Request $request, string $domain): JsonResponse
+    {
+        $context = TenantContext::current();
+        $tenantId = (string) $context->tenantId();
+        $facilityId = $context->facilityId();
+
+        $summary = $this->analytics->domainSummary($domain, $tenantId, $facilityId);
+
+        return Envelope::success(data: $summary, request: $request);
+    }
+
     private static function presentRun(ReportRun $run): array
     {
         return [
