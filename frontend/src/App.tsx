@@ -48,6 +48,7 @@ const AdminSettingsPage = lazy(() => import('./pages/admin/AdminSettingsPage').t
 const EmergencyPage = lazy(() => import('./pages/EmergencyPage').then(m => ({ default: m.EmergencyPage })));
 const IcuPage = lazy(() => import('./pages/IcuPage').then(m => ({ default: m.IcuPage })));
 const OperatingTheatrePage = lazy(() => import('./pages/OperatingTheatrePage').then(m => ({ default: m.OperatingTheatrePage })));
+const BloodBankPage = lazy(() => import('./pages/BloodBankPage').then(m => ({ default: m.BloodBankPage })));
 
 function FullScreenSpinner({ label }: { label: string }) {
   return (
@@ -143,6 +144,7 @@ export function App() {
               <Route path="/notifications" element={<LazySuspense><NotificationsPage /></LazySuspense>} />               <Route path="/emergency" element={<LazySuspense><EmergencyPage /></LazySuspense>} />
                <Route path="/icu" element={<LazySuspense><IcuPage /></LazySuspense>} />
                <Route path="/ot" element={<LazySuspense><OperatingTheatrePage /></LazySuspense>} />
+               <Route path="/blood-bank" element={<LazySuspense><BloodBankPage /></LazySuspense>} />
                <Route path="/radiology" element={<LazySuspense><RadiologyPage /></LazySuspense>} />
                <Route path="/oncology" element={<LazySuspense><OncologyPage /></LazySuspense>} />
                <Route path="/portal" element={<LazySuspense><PatientPortalPage /></LazySuspense>} />
