@@ -5,6 +5,7 @@ import { appointmentsApi, catalogsApi, patientsApi, scheduleApi } from '../api/e
 import { useFetch } from '../hooks/useFetch';
 import { Alert, AppointmentStatus, Button, Card, Dialog, EmptyState, ErrorState, Input, Select, Spinner, formatDateTime } from '../components/ui';
 import { ApiError } from '../api/client';
+import './appointments.css';
 
 function today(): string {
   return new Date().toISOString().slice(0, 10);
@@ -27,7 +28,7 @@ export function AppointmentsPage() {
         <BookDialogLink patientIdFromQuery />
       </div>
 
-      <div className="searchbar">
+      <div className="appts__datebar">
         <label className="visually-hidden" htmlFor="appt-date">
           Appointment date
         </label>
@@ -42,7 +43,7 @@ export function AppointmentsPage() {
         <EmptyState title="No appointments this day" body="Book a slot to get started." />
       ) : (
         <Card>
-          <table className="data-table">
+          <table className="data-table appts__table">
             <thead>
               <tr>
                 <th>Time</th>
@@ -63,7 +64,7 @@ export function AppointmentsPage() {
                   <td data-label="Provider">{a.provider?.fullName ?? '—'}</td>
                   <td data-label="Token" className="mono">{a.tokenNo ?? '—'}</td>
                   <td data-label="Status"><AppointmentStatus status={a.status} /></td>
-                  <td><Link to={`/appointments/${a.id}`} className="btn btn--ghost btn--sm">View</Link></td>
+                  <td><Link to={`/appointments/${a.id}`} className="appts__view-link">View →</Link></td>
                 </tr>
               ))}
             </tbody>

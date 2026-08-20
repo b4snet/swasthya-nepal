@@ -6,6 +6,7 @@ import { useFetch } from '../hooks/useFetch';
 import { Alert, Button, Card, ErrorState, FinancialStatus, Select, Spinner, money } from '../components/ui';
 import { ApiError } from '../api/client';
 import { BILLING_ROLES } from '../auth/roles';
+import './billing.css';
 
 export function BillingPage() {
   const { invoiceId } = useParams<{ invoiceId?: string }>();
@@ -26,14 +27,14 @@ export function BillingPage() {
         </div>
       </div>
       <Card>
-        <p className="muted">
-          Open an invoice from a completed encounter to see charges and capture payment. To issue an
-          invoice, finish an encounter in the <a href="/encounters">doctor workspace</a> and use the
-          invoice action there.
-        </p>
-        <p className="muted small mt-4">
-          Outstanding-balance aggregation is a Phase 13 (Finance) item — the frontend does not invent it.
-        </p>
+        <div className="billing__empty">
+          <span className="billing__empty-icon" aria-hidden="true">₨</span>
+          <p className="muted">
+            Open an invoice from a completed encounter to see charges and capture payment. To issue an
+            invoice, finish an encounter in the <a href="/encounters">doctor workspace</a> and use the
+            invoice action there.
+          </p>
+        </div>
       </Card>
     </div>
   );
@@ -68,10 +69,10 @@ function InvoicePanel({ invoiceId, fac, canPay }: { invoiceId: string; fac: stri
 
   return (
     <div className="page page--narrow">
-      <div className="page__head">
-        <div className="page__title">
+      <div className="billing__header">
+        <div>
           <h1>Invoice <span className="mono">{inv.invoiceNumber}</span></h1>
-          <span className="page__sub">
+          <span className="muted small">
             <FinancialStatus status={inv.status} /> · issued {inv.issuedAt ? new Date(inv.issuedAt).toLocaleString() : '—'}
           </span>
         </div>
@@ -98,11 +99,21 @@ function InvoicePanel({ invoiceId, fac, canPay }: { invoiceId: string; fac: stri
             ))}
           </tbody>
         </table>
-        <dl className="kv mt-4">
-          <div><dt>Total</dt><dd className="num">{money(inv.totalMinor)}</dd></div>
-          <div><dt>Paid</dt><dd className="num">{money(inv.paidMinor)}</dd></div>
-          <div><dt>Outstanding</dt><dd className="num">{money(outstanding)}</dd></div>
-        </dl>
+
+        <div className="billing__totals" style={{ marginTop: 'var(--sp-5)' }}>
+          <div className="billing__total-row">
+            <span className="billing__total-label">Total</span>
+            <span className="billing__total-value num">{money(inv.totalMinor)}</span>
+          </div>
+          <div className="billing__total-row">
+            <span className="billing__total-label">Paid</span>
+            <span className="billing__total-value num">{money(inv.paidMinor)}</span>
+          </div>
+          <div className="billing__total-row billing__total-row--highlight">
+            <span className="billing__total-label">Outstanding</span>
+            <span className="billing__total-value num">{money(outstanding)}</span>
+          </div>
+        </div>
       </Card>
 
       {!paid && canPay && (

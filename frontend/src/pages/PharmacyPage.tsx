@@ -4,6 +4,7 @@ import { pharmacyApi } from '../api/endpoints';
 import { useFetch } from '../hooks/useFetch';
 import { Alert, Button, Card, Input } from '../components/ui';
 import { ApiError } from '../api/client';
+import './pharmacy.css';
 
 export function PharmacyPage() {
   const { selectedFacilityId } = useTenant();
@@ -58,7 +59,7 @@ export function PharmacyPage() {
 
       {notice && <Alert tone={notice.tone}>{notice.text}</Alert>}
 
-      <Card title="Prescription lookup">
+      <Card title="Prescription lookup" className="pharma__lookup">
         <div className="stack">
           <Input
             label="Prescription ID"
@@ -67,28 +68,28 @@ export function PharmacyPage() {
             placeholder="Enter prescription ID"
           />
           {prescription.data && (
-            <div className="detail-grid">
-              <div className="detail-row">
-                <span className="detail-label">Status</span>
-                <span className="status-chip status-chip--info">{prescription.data.status}</span>
+            <div className="pharma__detail">
+              <div className="pharma__detail-item">
+                <span className="pharma__detail-label">Status</span>
+                <span className={`pharma__status pharma__status--${prescription.data.status}`}>{prescription.data.status}</span>
               </div>
-              <div className="detail-row">
-                <span className="detail-label">Patient</span>
-                <span>{prescription.data.patientId}</span>
+              <div className="pharma__detail-item">
+                <span className="pharma__detail-label">Patient</span>
+                <span className="pharma__detail-value">{prescription.data.patientId}</span>
               </div>
-              <div className="detail-row">
-                <span className="detail-label">Lines</span>
-                <span>{prescription.data.lines.length} items</span>
+              <div className="pharma__detail-item">
+                <span className="pharma__detail-label">Items</span>
+                <span className="pharma__detail-value">{prescription.data.lines.length}</span>
               </div>
               {prescription.data.verifiedAt && (
-                <div className="detail-row">
-                  <span className="detail-label">Verified</span>
-                  <span>{new Date(prescription.data.verifiedAt).toLocaleString()}</span>
+                <div className="pharma__detail-item">
+                  <span className="pharma__detail-label">Verified</span>
+                  <span className="pharma__detail-value">{new Date(prescription.data.verifiedAt).toLocaleString()}</span>
                 </div>
               )}
             </div>
           )}
-          <div className="row">
+          <div className="pharma__actions">
             {prescription.data?.status === 'draft' && (
               <Button onClick={() => void handleVerify()} loading={busy}>Verify prescription</Button>
             )}
@@ -100,7 +101,7 @@ export function PharmacyPage() {
       </Card>
 
       {prescription.data && prescription.data.lines.length > 0 && (
-        <Card title="Prescription lines">
+        <Card title="Prescription lines" className="pharma__lines">
           <table className="data-table">
             <thead>
               <tr>
@@ -116,15 +117,20 @@ export function PharmacyPage() {
             <tbody>
               {prescription.data.lines.map((line) => (
                 <tr key={line.id}>
-                  <td data-label="Medication">{line.medication?.genericName ?? '—'} <span className="muted small">{line.medication?.strength}</span></td>
+                  <td data-label="Medication">
+                    <span className="pharma__med-name">{line.medication?.genericName ?? '—'}</span>
+                    <span className="pharma__med-strength">{line.medication?.strength}</span>
+                  </td>
                   <td data-label="Dose">{line.dose}</td>
                   <td data-label="Route">{line.route}</td>
                   <td data-label="Frequency">{line.frequency}</td>
-                  <td data-label="Status"><span className="status-chip status-chip--info">{line.status}</span></td>
+                  <td data-label="Status">
+                    <span className={`pharma__status pharma__status--${line.status}`}>{line.status}</span>
+                  </td>
                   <td data-label="Stock" className="num">{line.availableQuantity ?? '—'}</td>
                   <td>
                     {line.status === 'active' && line.batchId && (
-                      <span className="muted small">Batch: {line.batchNumber}</span>
+                      <span className="pharma__batch">Batch: {line.batchNumber}</span>
                     )}
                   </td>
                 </tr>

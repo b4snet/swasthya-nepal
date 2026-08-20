@@ -1,0 +1,118 @@
+/* ============================================================================
+   Pharmacy — prescription lookup, line items, dispensing.
+   ========================================================================== */
+
+/* ── Prescription lookup card ── */
+.pharma__lookup {
+  padding: var(--sp-6);
+  background: linear-gradient(135deg, var(--tint-teal) 0%, var(--paper) 100%);
+  border: 1px solid var(--teal-200);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ── Prescription detail grid ── */
+.pharma__detail {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--sp-3);
+}
+
+.pharma__detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--paper);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-md);
+}
+
+.pharma__detail-label {
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.pharma__detail-value {
+  font-size: var(--fs-body);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* ── Action buttons ── */
+.pharma__actions {
+  display: flex;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+/* ── Line items table enhancements ── */
+.pharma__lines .data-table {
+  border-radius: var(--radius-lg);
+}
+
+.pharma__med-name {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.pharma__med-strength {
+  font-size: var(--fs-caption);
+  color: var(--ink-muted);
+  margin-left: var(--sp-2);
+}
+
+/* ── Batch info ── */
+.pharma__batch {
+  font-size: var(--fs-caption);
+  color: var(--teal-700);
+  font-weight: 500;
+}
+
+/* ── Status chips ── */
+.pharma__status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-caption);
+  font-weight: 600;
+}
+
+.pharma__status--draft {
+  background: var(--tint-neutral);
+  color: var(--slate-500);
+}
+
+.pharma__status--active {
+  background: var(--tint-info);
+  color: var(--semantic-info);
+}
+
+.pharma__status--dispensed {
+  background: var(--tint-success);
+  color: var(--semantic-success);
+}
+
+/* ── Responsive ── */
+@media (max-width: 767px) {
+  .pharma__lookup {
+    padding: var(--sp-4);
+  }
+
+  .pharma__detail {
+    grid-template-columns: 1fr;
+  }
+
+  .pharma__actions {
+    flex-direction: column;
+  }
+
+  .pharma__actions .btn {
+    width: 100%;
+  }
+}

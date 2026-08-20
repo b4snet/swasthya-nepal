@@ -17,6 +17,7 @@ import {
 } from '../components/ui';
 import { ApiError } from '../api/client';
 import { useI18n } from '../i18n/I18nProvider';
+import './appointments.css';
 
 export function AppointmentDetailPage() {
   const { id } = useParams<{ id: string }>();

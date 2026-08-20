@@ -1,0 +1,211 @@
+/* ============================================================================
+   Appointments — list, detail, booking dialog, slots, pick-list.
+   ========================================================================== */
+
+/* ── Date picker bar ── */
+.appts__datebar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-5);
+  background: var(--paper);
+  border: var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+}
+
+.appts__datebar .input {
+  border-radius: var(--radius-pill);
+  max-width: 220px;
+}
+
+.appts__count {
+  font-size: var(--fs-caption);
+  color: var(--ink-muted);
+  font-weight: 500;
+  margin-left: auto;
+}
+
+/* ── Table row link styling ── */
+.appts__table tbody tr {
+  cursor: default;
+}
+
+.appts__view-link {
+  color: var(--teal-700);
+  font-weight: 600;
+  font-size: var(--fs-label);
+  text-decoration: none;
+  padding: var(--sp-1) var(--sp-3);
+  border-radius: var(--radius-sm);
+  transition: background var(--dur-fast) var(--ease);
+}
+
+.appts__view-link:hover {
+  background: var(--tint-teal);
+}
+
+/* ── Appointment detail grid ── */
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+}
+
+.detail-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  padding: var(--sp-3) 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.detail-row:last-child {
+  border-bottom: none;
+}
+
+.detail-label {
+  font-size: var(--fs-label);
+  font-weight: 600;
+  color: var(--ink-muted);
+  flex-shrink: 0;
+}
+
+/* ── Action bar ── */
+.action-bar {
+  display: flex;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+/* ── Breadcrumb link ── */
+.breadcrumb-link {
+  font-size: var(--fs-label);
+  color: var(--teal-600);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.breadcrumb-link:hover {
+  color: var(--teal-800);
+  text-decoration: underline;
+}
+
+/* ── Page narrow variant ── */
+.page--narrow {
+  max-width: 720px;
+}
+
+/* ── Booking dialog: patient pick list ── */
+.pick {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--tint-teal);
+  border: 1px solid var(--teal-200);
+  border-radius: var(--radius-md);
+}
+
+.pick-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--paper);
+  box-shadow: var(--shadow-md);
+}
+
+.pick-list li + li {
+  border-top: 1px solid var(--line-soft);
+}
+
+.pick-list__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  width: 100%;
+  padding: var(--sp-3) var(--sp-4);
+  border: none;
+  background: none;
+  text-align: left;
+  font: inherit;
+  color: var(--ink);
+  cursor: pointer;
+  min-height: 44px;
+  transition: background var(--dur-fast) var(--ease);
+}
+
+.pick-list__item:hover {
+  background: var(--mist);
+}
+
+/* ── Slot picker ── */
+.slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+}
+
+.slot {
+  min-height: 40px;
+  padding: 0 var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: var(--fs-label);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--dur-fast) var(--ease);
+}
+
+.slot:hover {
+  border-color: var(--teal-500);
+  background: var(--tint-teal);
+}
+
+.slot--selected {
+  background: var(--teal-700);
+  color: var(--on-teal);
+  border-color: var(--teal-700);
+  box-shadow: 0 1px 3px rgba(15, 118, 110, 0.2);
+}
+
+.slot--selected:hover {
+  background: var(--teal-800);
+  color: var(--on-teal);
+  border-color: var(--teal-800);
+}
+
+/* ── Responsive ── */
+@media (max-width: 767px) {
+  .appts__datebar {
+    flex-direction: column;
+    align-items: stretch;
+    padding: var(--sp-3);
+  }
+
+  .appts__datebar .input {
+    max-width: none;
+  }
+
+  .appts__count {
+    margin-left: 0;
+  }
+
+  .action-bar {
+    flex-direction: column;
+  }
+
+  .action-bar .btn {
+    width: 100%;
+  }
+}
