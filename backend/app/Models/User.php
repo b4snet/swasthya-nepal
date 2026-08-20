@@ -49,6 +49,11 @@ class User extends Authenticatable
         'mfa_recovery_codes_encrypted',
         'last_login_at',
         'password_changed_at',
+        'onboarding_complete',
+        'onboarding_step',
+        'profile_data',
+        'professional_status',
+        'onboarding_completed_at',
     ];
 
     /**
@@ -70,6 +75,9 @@ class User extends Authenticatable
             'mfa_recovery_codes_encrypted' => 'array',
             'last_login_at' => 'datetime',
             'password_changed_at' => 'datetime',
+            'onboarding_complete' => 'boolean',
+            'profile_data' => 'array',
+            'onboarding_completed_at' => 'datetime',
         ];
     }
 
@@ -95,6 +103,59 @@ class User extends Authenticatable
     public function refreshTokens(): HasMany
     {
         return $this->hasMany(RefreshToken::class);
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* ONBOARDING */
+
+    public function requiresOnboarding(): bool
+    {
+        return $this->status === self::STATUS_ACTIVE
+            && ! $this->onboarding_complete;
+    }
+
+    public function completeOnboarding(): void
+    {
+        $this->update([
+            'onboarding_complete' => true,
+            'onboarding_completed_at' => now(),
+            'onboarding_step' => null,
+        ]);
+    }
+
+    public function primaryRole(): ?string
+    {
+        $assignment = $this->roleAssignments()
+            ->where('status', RoleAssignment::STATUS_ACTIVE)
+            ->with('role')
+            ->first();
+
+        return $assignment?->role?->code;
+    }
+
+    public function isDoctor(): bool
+    {
+        return $this->primaryRole() === 'doctor';
+    }
+
+    public function isNurse(): bool
+    {
+        return in_array($this->primaryRole(), ['nurse', 'nurse_supervisor']);
+    }
+
+    public function isPharmacist(): bool
+    {
+        return in_array($this->primaryRole(), ['pharmacist', 'pharmacy_technician']);
+    }
+
+    public function isLabStaff(): bool
+    {
+        return in_array($this->primaryRole(), ['lab_technician', 'lab_supervisor', 'lab_assistant']);
+    }
+
+    public function isClinical(): bool
+    {
+        return $this->isDoctor() || $this->isNurse() || $this->isPharmacist() || $this->isLabStaff();
     }
 
     /* ------------------------------------------------------------------ */

@@ -40,6 +40,7 @@ use App\Http\Controllers\Api\MfaController;
 use App\Http\Controllers\Api\ModuleController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\OnboardingController;
+use App\Http\Controllers\Api\OnboardingProfileController;
 use App\Http\Controllers\Api\OncologyController;
 use App\Http\Controllers\Api\OrganizationController;
 use App\Http\Controllers\Api\OtController;
@@ -1154,6 +1155,11 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
     Route::post('onboarding/{id}/activate', [OnboardingController::class, 'activate']);
     Route::get('onboarding/modules', [OnboardingController::class, 'modules']);
     Route::get('onboarding/modules/{moduleCode}/check', [OnboardingController::class, 'checkModule']);
+
+    // Profile onboarding (first-login identity completion)
+    Route::get('onboarding/profile/steps', [OnboardingProfileController::class, 'steps']);
+    Route::post('onboarding/profile/step/{stepKey}', [OnboardingProfileController::class, 'saveStep']);
+    Route::post('onboarding/profile/complete', [OnboardingProfileController::class, 'complete']);
 });
 
 // Patient Portal — portal-authenticated surface (Phase 3 slice 22,
