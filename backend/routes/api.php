@@ -1283,26 +1283,38 @@ Route::middleware(['throttle:api', ResolveTenantContext::class])->prefix('enterp
 // ── Phase 12: National Mass Notification Platform ──
 Route::middleware(['throttle:api', ResolveTenantContext::class])->prefix('notifications')->group(function (): void {
     // Templates
-    Route::get('templates', [NotificationController::class, 'indexTemplates']);
-    Route::post('templates', [NotificationController::class, 'storeTemplate']);
+    Route::get('templates', [NotificationController::class, 'indexTemplates'])
+        ->middleware('authorize:notification:view');
+    Route::post('templates', [NotificationController::class, 'storeTemplate'])
+        ->middleware('authorize:notification:manage');
 
     // Audience Segments
-    Route::get('segments', [NotificationController::class, 'indexSegments']);
-    Route::post('segments', [NotificationController::class, 'storeSegment']);
+    Route::get('segments', [NotificationController::class, 'indexSegments'])
+        ->middleware('authorize:notification:view');
+    Route::post('segments', [NotificationController::class, 'storeSegment'])
+        ->middleware('authorize:notification:manage');
 
     // Broadcast Campaigns
-    Route::get('campaigns', [NotificationController::class, 'indexCampaigns']);
-    Route::post('campaigns', [NotificationController::class, 'storeCampaign']);
-    Route::get('campaigns/{id}', [NotificationController::class, 'showCampaign']);
-    Route::post('campaigns/{id}/{action}', [NotificationController::class, 'transitionCampaign']);
+    Route::get('campaigns', [NotificationController::class, 'indexCampaigns'])
+        ->middleware('authorize:notification:view');
+    Route::post('campaigns', [NotificationController::class, 'storeCampaign'])
+        ->middleware('authorize:notification:manage');
+    Route::get('campaigns/{id}', [NotificationController::class, 'showCampaign'])
+        ->middleware('authorize:notification:view');
+    Route::post('campaigns/{id}/{action}', [NotificationController::class, 'transitionCampaign'])
+        ->middleware('authorize:notification:manage');
 
     // Delivery Tracking
-    Route::get('campaigns/{id}/delivery', [NotificationController::class, 'campaignDelivery']);
-    Route::post('deliveries/{attemptId}/acknowledge', [NotificationController::class, 'acknowledgeDelivery']);
+    Route::get('campaigns/{id}/delivery', [NotificationController::class, 'campaignDelivery'])
+        ->middleware('authorize:notification:view');
+    Route::post('deliveries/{attemptId}/acknowledge', [NotificationController::class, 'acknowledgeDelivery'])
+        ->middleware('authorize:notification:view');
 
     // Emergency Broadcast
-    Route::post('emergency', [NotificationController::class, 'emergencyBroadcast']);
+    Route::post('emergency', [NotificationController::class, 'emergencyBroadcast'])
+        ->middleware('authorize:notification:manage');
 
     // Stats
-    Route::get('stats', [NotificationController::class, 'stats']);
+    Route::get('stats', [NotificationController::class, 'stats'])
+        ->middleware('authorize:notification:view');
 });

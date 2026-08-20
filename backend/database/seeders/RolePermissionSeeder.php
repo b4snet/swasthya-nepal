@@ -342,6 +342,12 @@ class RolePermissionSeeder extends Seeder
             'ai:manage' => ['domain' => 'ai', 'description' => 'Register AI features, activate them (evidence-gated), and toggle kill switches'],
             'ai:invoke' => ['domain' => 'ai', 'description' => 'Invoke registered, enabled, approved AI features and create assistive drafts'],
             'ai:sign' => ['domain' => 'ai', 'description' => 'Clinician sign-off of AI-assistive drafts (the accountable review act)'],
+            // Phase 12 — National Mass Notification Platform (DATABASE.md §3.58):
+            // notification:manage = create templates, segments, campaigns,
+            // and trigger emergency broadcasts. notification:view = read
+            // campaign status, delivery tracking, and stats.
+            'notification:view' => ['domain' => 'notification', 'description' => 'View notification templates, audience segments, campaigns, and delivery tracking'],
+            'notification:manage' => ['domain' => 'notification', 'description' => 'Create and manage notification templates, segments, campaigns, and trigger emergency broadcasts'],
         ];
     }
 
@@ -511,6 +517,10 @@ class RolePermissionSeeder extends Seeder
                     // knowledge base and governs the AI registry across
                     // facilities.
                     'cdss:view', 'cdss:manage', 'ai:view', 'ai:manage',
+                    // Phase 12 — Notifications: the org admin manages the
+                    // whole notification platform (templates, segments,
+                    // campaigns, emergency broadcasts).
+                    'notification:view', 'notification:manage',
                 ],
             ],
             'org_finance' => [
@@ -632,6 +642,9 @@ class RolePermissionSeeder extends Seeder
                     // (activation evidence-gated; kill switches always
                     // available).
                     'cdss:view', 'cdss:manage', 'ai:view', 'ai:manage',
+                    // Phase 12 — Notifications: the hospital admin manages
+                    // notifications for their facility.
+                    'notification:view', 'notification:manage',
                 ],
             ],
             'branch_manager' => [
