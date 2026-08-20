@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { portalApi } from '../api/endpoints';
 import { ApiError } from '../api/client';
-import { Card, EmptyState, Spinner } from '../components/ui';
+import { Card, EmptyState, Spinner, StatusChip, Button, Input } from '../components/ui';
+import './portal.css';
 
 type PatientProfile = {
   id: string;
@@ -37,32 +38,18 @@ type NotifPrefs = {
 
 type Tab = 'overview' | 'medical' | 'results' | 'prescriptions' | 'documents' | 'messaging' | 'appointments' | 'billing' | 'consent' | 'preferences';
 
-const severityColors: Record<string, string> = {
-  mild: 'bg-yellow-100 text-yellow-800',
-  moderate: 'bg-orange-100 text-orange-800',
-  severe: 'bg-red-100 text-red-800',
-  life_threatening: 'bg-red-200 text-red-900',
+const SEVERITY_TONE: Record<string, 'warning' | 'danger' | 'neutral'> = {
+  mild: 'neutral',
+  moderate: 'warning',
+  severe: 'danger',
+  life_threatening: 'danger',
 };
-
-function Badge({ text, className }: { text: string; className?: string }) {
-  return <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${className ?? 'bg-gray-100 text-gray-700'}`}>{text}</span>;
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-2">
-      <h4 className="font-semibold text-sm text-gray-700 uppercase tracking-wide">{title}</h4>
-      {children}
-    </div>
-  );
-}
 
 export function PatientPortalPage() {
   const [tab, setTab] = useState<Tab>('overview');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Data
   const [profile, setProfile] = useState<PatientProfile | null>(null);
   const [medicalHistory, setMedicalHistory] = useState<MedicalHistory | null>(null);
   const [medications, setMedications] = useState<Medication[]>([]);
@@ -78,7 +65,6 @@ export function PatientPortalPage() {
   const [consents, setConsents] = useState<Consent[]>([]);
   const [notifPrefs, setNotifPrefs] = useState<NotifPrefs | null>(null);
 
-  // Messaging form
   const [msgSubject, setMsgSubject] = useState('');
   const [msgBody, setMsgBody] = useState('');
   const [msgRecipient, setMsgRecipient] = useState('');
@@ -92,7 +78,6 @@ export function PatientPortalPage() {
     try {
       const meRes = await portalApi.me() as unknown as { account: { patientId: string }; grants: Grant[] };
       setGrants(meRes.grants ?? []);
-
       const profileRes = await portalApi.profile() as unknown as { patient: PatientProfile };
       setProfile(profileRes.patient);
     } catch (err) {
@@ -204,8 +189,8 @@ export function PatientPortalPage() {
     }
   }
 
-  if (loading) return <div className="flex justify-center p-8"><Spinner /></div>;
-  if (error) return <div className="p-8 text-center text-red-600">{error}</div>;
+  if (loading) return <div className="state"><Spinner /></div>;
+  if (error) return <div className="state state--error"><p>{error}</p></div>;
 
   const tabs: { key: Tab; label: string; icon: string }[] = [
     { key: 'overview', label: 'Overview', icon: '🏠' },
@@ -221,369 +206,408 @@ export function PatientPortalPage() {
   ];
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 p-4">
-      {/* Header */}
+    <div className="portal">
+      {/* Patient header */}
       {profile && (
-        <Card className="p-6">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center text-2xl font-bold text-blue-600">
-              {profile.fullName?.charAt(0) ?? '?'}
-            </div>
-            <div>
-              <h1 className="text-xl font-bold">{profile.fullName}</h1>
-              <div className="text-sm text-gray-500">MRN: {profile.mrn} · DOB: {profile.dateOfBirth} · {profile.sex}</div>
+        <div className="portal__header">
+          <div className="portal__avatar">
+            {profile.fullName?.charAt(0) ?? '?'}
+          </div>
+          <div className="portal__info">
+            <h1>{profile.fullName}</h1>
+            <div className="portal__meta">
+              <span className="portal__meta-item mono">{profile.mrn}</span>
+              <span className="portal__meta-sep">·</span>
+              <span className="portal__meta-item">{profile.dateOfBirth}</span>
+              <span className="portal__meta-sep">·</span>
+              <span className="portal__meta-item capitalize">{profile.sex}</span>
             </div>
           </div>
-        </Card>
+        </div>
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 overflow-x-auto pb-2 -mx-4 px-4">
+      <div className="portal__tabs" role="tablist">
         {tabs.map((t) => (
           <button
             key={t.key}
+            role="tab"
+            aria-selected={tab === t.key}
             onClick={() => loadTab(t.key)}
-            className={`flex items-center gap-1 px-3 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${tab === t.key ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+            className={`portal__tab ${tab === t.key ? 'portal__tab--active' : ''}`}
           >
-            <span>{t.icon}</span> {t.label}
+            <span className="portal__tab-icon" aria-hidden="true">{t.icon}</span>
+            {t.label}
           </button>
         ))}
       </div>
 
-      {/* Error Banner */}
+      {/* Error banner */}
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-          {error}
-          <button onClick={() => setError(null)} className="ml-2 underline">Dismiss</button>
+        <div className="alert alert--danger portal__error" role="alert">
+          <span>{error}</span>
+          <button onClick={() => setError(null)} className="portal__error-dismiss">Dismiss</button>
         </div>
       )}
 
       {/* Overview Tab */}
       {tab === 'overview' && (
-        <div className="space-y-4">
-          <Section title="Access Grants">
+        <>
+          <Card title="Access Grants">
             {grants.length === 0 ? (
               <EmptyState title="No grants" body="No data access has been granted yet." />
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div className="portal__list">
                 {grants.map((g) => (
-                  <div key={g.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div key={g.id} className="portal__list-item">
                     <div>
-                      <span className="font-medium text-sm">{g.scope}</span>
-                      <span className="text-xs text-gray-500 ml-2">{g.status}</span>
+                      <span className="portal__list-label">{g.scope}</span>
+                      <span className="portal__list-detail" style={{ marginLeft: 8 }}>{g.status}</span>
                     </div>
                     {g.status === 'granted' && (
-                      <button onClick={() => handleRevokeGrant(g.id)} className="text-xs text-red-600 hover:underline">Revoke</button>
+                      <button onClick={() => handleRevokeGrant(g.id)} className="portal__revoke-btn">Revoke</button>
                     )}
                   </div>
                 ))}
               </div>
             )}
-          </Section>
+          </Card>
 
-          <Section title="Quick Access">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-              <button onClick={() => loadTab('medical')} className="p-4 bg-blue-50 rounded-lg text-left hover:bg-blue-100">
-                <div className="text-lg">📋</div><div className="text-sm font-medium">Medical History</div>
+          <Card title="Quick Access">
+            <div className="portal__quick-grid">
+              <button onClick={() => loadTab('medical')} className="portal__quick-card">
+                <span className="portal__quick-icon" aria-hidden="true">📋</span>
+                <span className="portal__quick-label">Medical History</span>
               </button>
-              <button onClick={() => loadTab('results')} className="p-4 bg-green-50 rounded-lg text-left hover:bg-green-100">
-                <div className="text-lg">🔬</div><div className="text-sm font-medium">Lab Results</div>
+              <button onClick={() => loadTab('results')} className="portal__quick-card">
+                <span className="portal__quick-icon" aria-hidden="true">🔬</span>
+                <span className="portal__quick-label">Lab Results</span>
               </button>
-              <button onClick={() => loadTab('prescriptions')} className="p-4 bg-purple-50 rounded-lg text-left hover:bg-purple-100">
-                <div className="text-lg">💊</div><div className="text-sm font-medium">Prescriptions</div>
+              <button onClick={() => loadTab('prescriptions')} className="portal__quick-card">
+                <span className="portal__quick-icon" aria-hidden="true">💊</span>
+                <span className="portal__quick-label">Prescriptions</span>
               </button>
-              <button onClick={() => loadTab('messaging')} className="p-4 bg-orange-50 rounded-lg text-left hover:bg-orange-100">
-                <div className="text-lg">💬</div><div className="text-sm font-medium">Messages</div>
+              <button onClick={() => loadTab('messaging')} className="portal__quick-card">
+                <span className="portal__quick-icon" aria-hidden="true">💬</span>
+                <span className="portal__quick-label">Messages</span>
               </button>
             </div>
-          </Section>
-        </div>
+          </Card>
+        </>
       )}
 
       {/* Medical History Tab */}
       {tab === 'medical' && (
-        <div className="space-y-6">
-          <Section title="Allergies">
+        <>
+          <Card title="Allergies">
             {medicalHistory?.allergies?.length === 0 ? (
               <EmptyState title="No allergies recorded" body="No allergy information on file." />
             ) : (
-              <div className="space-y-2">
+              <div className="portal__list">
                 {medicalHistory?.allergies?.map((a) => (
-                  <div key={a.id} className="p-3 bg-gray-50 rounded-lg flex justify-between items-center">
+                  <div key={a.id} className="portal__list-item">
                     <div>
-                      <span className="font-medium">{a.allergen}</span>
-                      {a.reaction && <span className="text-sm text-gray-500 ml-2">— {a.reaction}</span>}
+                      <span className="portal__list-label">{a.allergen}</span>
+                      {a.reaction && <span className="portal__list-detail"> — {a.reaction}</span>}
                     </div>
-                    {a.severity && <Badge text={a.severity} className={severityColors[a.severity] ?? ''} />}
+                    {a.severity && (
+                      <StatusChip tone={SEVERITY_TONE[a.severity] ?? 'neutral'} label={a.severity} />
+                    )}
                   </div>
                 ))}
               </div>
             )}
-          </Section>
+          </Card>
 
-          <Section title="Diagnoses">
+          <Card title="Diagnoses">
             {medicalHistory?.diagnoses?.length === 0 ? (
               <EmptyState title="No diagnoses" body="No diagnosis information on file." />
             ) : (
-              <div className="space-y-2">
+              <div className="portal__list">
                 {medicalHistory?.diagnoses?.map((d) => (
-                  <div key={d.id} className="p-3 bg-gray-50 rounded-lg">
-                    <div className="font-medium">{d.description}</div>
-                    {d.code && <div className="text-xs text-gray-500">{d.code}</div>}
+                  <div key={d.id} className="portal__list-item">
+                    <div>
+                      <span className="portal__list-label">{d.description}</span>
+                      {d.code && <span className="portal__list-detail mono" style={{ marginLeft: 8 }}>{d.code}</span>}
+                    </div>
                   </div>
                 ))}
               </div>
             )}
-          </Section>
+          </Card>
 
-          <Section title="Current Medications">
+          <Card title="Current Medications">
             {medications.length === 0 ? (
               <EmptyState title="No medications" body="No medication information on file." />
             ) : (
-              <div className="space-y-2">
+              <div className="portal__list">
                 {medications.map((m) => (
-                  <div key={m.id} className="p-3 bg-gray-50 rounded-lg">
-                    <div className="font-medium">{m.medicationName}</div>
-                    <div className="text-sm text-gray-500">{m.dosage} · {m.frequency}</div>
+                  <div key={m.id} className="portal__list-item">
+                    <div>
+                      <span className="portal__list-label">{m.medicationName}</span>
+                      <span className="portal__list-detail" style={{ marginLeft: 8 }}>{m.dosage} · {m.frequency}</span>
+                    </div>
                   </div>
                 ))}
               </div>
             )}
-          </Section>
-        </div>
+          </Card>
+        </>
       )}
 
       {/* Results Tab */}
       {tab === 'results' && (
-        <div className="space-y-6">
-          <Section title="Laboratory Results">
+        <>
+          <Card title="Laboratory Results">
             {labResults.length === 0 ? (
               <EmptyState title="No lab results" body="No laboratory results available." />
             ) : (
               <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead><tr className="text-left text-gray-500 border-b"><th className="pb-2">Test</th><th className="pb-2">Result</th><th className="pb-2">Range</th><th className="pb-2">Date</th></tr></thead>
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Test</th>
+                      <th>Result</th>
+                      <th>Range</th>
+                      <th>Date</th>
+                    </tr>
+                  </thead>
                   <tbody>
                     {labResults.map((r) => (
-                      <tr key={r.id} className="border-b border-gray-100">
-                        <td className="py-2 font-medium">{r.testName ?? '—'}</td>
-                        <td className="py-2">{r.resultValue ?? '—'} {r.resultUnit ?? ''}</td>
-                        <td className="py-2 text-gray-500">{r.referenceRange ?? '—'}</td>
-                        <td className="py-2 text-gray-500">{r.resultedAt ? new Date(r.resultedAt).toLocaleDateString() : '—'}</td>
+                      <tr key={r.id}>
+                        <td data-label="Test" className="mono">{r.testName ?? '—'}</td>
+                        <td data-label="Result">{r.resultValue ?? '—'} {r.resultUnit ?? ''}</td>
+                        <td data-label="Range" className="muted">{r.referenceRange ?? '—'}</td>
+                        <td data-label="Date" className="muted">{r.resultedAt ? new Date(r.resultedAt).toLocaleDateString() : '—'}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             )}
-          </Section>
+          </Card>
 
-          <Section title="Radiology Reports">
+          <Card title="Radiology Reports">
             {radiologyReports.length === 0 ? (
               <EmptyState title="No radiology reports" body="No imaging reports available." />
             ) : (
-              <div className="space-y-2">
+              <div className="portal__list">
                 {radiologyReports.map((r) => (
-                  <div key={r.id} className="p-3 bg-gray-50 rounded-lg">
-                    <div className="flex justify-between">
-                      <span className="font-medium">{r.reportType} Report</span>
-                      <Badge text={r.status} />
+                  <div key={r.id} className="portal__list-item" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span className="portal__list-label">{r.reportType} Report</span>
+                      <StatusChip tone={r.status === 'verified' ? 'success' : 'neutral'} label={r.status} />
                     </div>
-                    {r.impression && <div className="text-sm text-gray-600 mt-1">{r.impression}</div>}
-                    {r.criticalFindings && <div className="text-sm text-red-600 mt-1">⚠️ {r.criticalFindings}</div>}
+                    {r.impression && <p className="muted small" style={{ marginTop: 'var(--sp-2)' }}>{r.impression}</p>}
+                    {r.criticalFindings && (
+                      <div className="alert alert--danger" style={{ marginTop: 'var(--sp-2)', padding: 'var(--sp-2) var(--sp-3)' }}>
+                        ⚠️ {r.criticalFindings}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
             )}
-          </Section>
-        </div>
+          </Card>
+        </>
       )}
 
       {/* Prescriptions Tab */}
       {tab === 'prescriptions' && (
-        <Section title="Prescriptions">
+        <Card title="Prescriptions">
           {medications.length === 0 ? (
             <EmptyState title="No prescriptions" body="No prescription records available." />
           ) : (
-            <div className="space-y-2">
+            <div className="portal__list">
               {medications.map((p) => (
-                <div key={p.id} className="p-3 bg-gray-50 rounded-lg flex justify-between items-center">
+                <div key={p.id} className="portal__list-item">
                   <div>
-                    <div className="font-medium">{p.medicationName ?? 'Prescription'}</div>
-                    <div className="text-sm text-gray-500">{p.dosage} · {p.frequency}</div>
+                    <span className="portal__list-label">{p.medicationName ?? 'Prescription'}</span>
+                    <span className="portal__list-detail" style={{ marginLeft: 8 }}>{p.dosage} · {p.frequency}</span>
                   </div>
-                  <Badge text={p.status} />
+                  <StatusChip tone={p.status === 'active' ? 'success' : 'neutral'} label={p.status} />
                 </div>
               ))}
             </div>
           )}
-        </Section>
+        </Card>
       )}
 
       {/* Documents Tab */}
       {tab === 'documents' && (
-        <div className="space-y-6">
-          <Section title="Clinical Documents">
+        <>
+          <Card title="Clinical Documents">
             {documents.length === 0 ? (
               <EmptyState title="No documents" body="No clinical documents available." />
             ) : (
-              <div className="space-y-2">
+              <div className="portal__list">
                 {documents.map((d) => (
-                  <div key={d.id} className="p-3 bg-gray-50 rounded-lg flex justify-between">
+                  <div key={d.id} className="portal__list-item">
                     <div>
-                      <div className="font-medium">{d.title}</div>
-                      <div className="text-xs text-gray-500">{d.documentType} · {d.mimeType ?? ''}</div>
+                      <span className="portal__list-label">{d.title}</span>
+                      <span className="portal__list-detail" style={{ marginLeft: 8 }}>{d.documentType} · {d.mimeType ?? ''}</span>
                     </div>
-                    {d.createdAt && <div className="text-xs text-gray-400">{new Date(d.createdAt).toLocaleDateString()}</div>}
+                    {d.createdAt && <span className="caption">{new Date(d.createdAt).toLocaleDateString()}</span>}
                   </div>
                 ))}
               </div>
             )}
-          </Section>
+          </Card>
 
-          <Section title="Referrals">
+          <Card title="Referrals">
             {referrals.length === 0 ? (
               <EmptyState title="No referrals" body="No referral records available." />
             ) : (
-              <div className="space-y-2">
+              <div className="portal__list">
                 {referrals.map((r) => (
-                  <div key={r.id} className="p-3 bg-gray-50 rounded-lg flex justify-between">
-                    <div className="font-medium">{r.reason ?? 'Referral'}</div>
-                    <Badge text={r.status} />
+                  <div key={r.id} className="portal__list-item">
+                    <span className="portal__list-label">{r.reason ?? 'Referral'}</span>
+                    <StatusChip tone={r.status === 'completed' ? 'success' : 'info'} label={r.status} />
                   </div>
                 ))}
               </div>
             )}
-          </Section>
+          </Card>
 
-          <Section title="Immunization History">
+          <Card title="Immunization History">
             {immunizations.length === 0 ? (
               <EmptyState title="No immunizations" body="No immunization records available." />
             ) : (
-              <div className="space-y-2">
+              <div className="portal__list">
                 {immunizations.map((i) => (
-                  <div key={i.id} className="p-3 bg-gray-50 rounded-lg flex justify-between">
-                    <div>
-                      <div className="font-medium">{i.description ?? i.code ?? 'Immunization'}</div>
-                    </div>
-                    {i.observedAt && <div className="text-xs text-gray-400">{new Date(i.observedAt).toLocaleDateString()}</div>}
+                  <div key={i.id} className="portal__list-item">
+                    <span className="portal__list-label">{i.description ?? i.code ?? 'Immunization'}</span>
+                    {i.observedAt && <span className="caption">{new Date(i.observedAt).toLocaleDateString()}</span>}
                   </div>
                 ))}
               </div>
             )}
-          </Section>
-        </div>
+          </Card>
+        </>
       )}
 
       {/* Messaging Tab */}
       {tab === 'messaging' && (
-        <div className="space-y-6">
-          <Section title="Send Message">
-            <form onSubmit={handleSendMessage} className="space-y-3 p-4 bg-gray-50 rounded-lg">
-              <input value={msgRecipient} onChange={(e) => setMsgRecipient(e.target.value)} placeholder="Recipient Staff ID" className="w-full border rounded px-3 py-2 text-sm" required />
-              <input value={msgSubject} onChange={(e) => setMsgSubject(e.target.value)} placeholder="Subject" className="w-full border rounded px-3 py-2 text-sm" required />
-              <textarea value={msgBody} onChange={(e) => setMsgBody(e.target.value)} placeholder="Message..." rows={4} className="w-full border rounded px-3 py-2 text-sm" required />
-              <button type="submit" disabled={sending} className="px-4 py-2 bg-blue-600 text-white rounded text-sm disabled:opacity-50">
-                {sending ? 'Sending...' : 'Send Message'}
-              </button>
+        <>
+          <Card title="Send Message">
+            <form onSubmit={handleSendMessage} className="portal__compose">
+              <Input label="Recipient Staff ID" value={msgRecipient} onChange={(e) => setMsgRecipient(e.target.value)} required />
+              <Input label="Subject" value={msgSubject} onChange={(e) => setMsgSubject(e.target.value)} required />
+              <div className="field">
+                <label className="field__label" htmlFor="portal-msg-body">Message</label>
+                <textarea
+                  id="portal-msg-body"
+                  className="input input--area"
+                  value={msgBody}
+                  onChange={(e) => setMsgBody(e.target.value)}
+                  rows={4}
+                  required
+                />
+              </div>
+              <Button type="submit" loading={sending}>Send Message</Button>
             </form>
-          </Section>
+          </Card>
 
-          <Section title="Messages">
+          <Card title="Messages">
             {messages.length === 0 ? (
               <EmptyState title="No messages" body="No secure messages yet." />
             ) : (
-              <div className="space-y-2">
+              <div className="stack">
                 {messages.map((m) => (
-                  <div key={m.id} className={`p-3 rounded-lg ${m.senderIsPatient ? 'bg-blue-50 ml-8' : 'bg-gray-50 mr-8'}`}>
-                    <div className="flex justify-between">
-                      <span className="font-medium text-sm">{m.subject}</span>
-                      <Badge text={m.senderIsPatient ? 'Sent' : 'Received'} className={m.senderIsPatient ? 'bg-blue-100 text-blue-800' : ''} />
+                  <div key={m.id} className={`portal__message ${m.senderIsPatient ? 'portal__message--sent' : 'portal__message--received'}`}>
+                    <div className="portal__message-header">
+                      <span className="portal__list-label">{m.subject}</span>
+                      <StatusChip tone={m.senderIsPatient ? 'info' : 'neutral'} label={m.senderIsPatient ? 'Sent' : 'Received'} />
                     </div>
-                    <div className="text-sm text-gray-600 mt-1">{m.body}</div>
-                    {m.createdAt && <div className="text-xs text-gray-400 mt-1">{new Date(m.createdAt).toLocaleString()}</div>}
+                    <div className="portal__message-body">{m.body}</div>
+                    {m.createdAt && <div className="portal__message-time">{new Date(m.createdAt).toLocaleString()}</div>}
                   </div>
                 ))}
               </div>
             )}
-          </Section>
-        </div>
+          </Card>
+        </>
       )}
 
       {/* Appointments Tab */}
       {tab === 'appointments' && (
-        <Section title="Appointments">
+        <Card title="Appointments">
           {appointments.length === 0 ? (
             <EmptyState title="No appointments" body="No appointment records available." />
           ) : (
-            <div className="space-y-2">
+            <div className="portal__list">
               {appointments.map((a) => (
-                <div key={a.id} className="p-3 bg-gray-50 rounded-lg flex justify-between items-center">
+                <div key={a.id} className="portal__list-item">
                   <div>
-                    <div className="font-medium">Appointment</div>
-                    {a.scheduledAt && <div className="text-sm text-gray-500">{new Date(a.scheduledAt).toLocaleString()}</div>}
+                    <span className="portal__list-label">Appointment</span>
+                    {a.scheduledAt && <span className="portal__list-detail" style={{ marginLeft: 8 }}>{new Date(a.scheduledAt).toLocaleString()}</span>}
                   </div>
-                  <Badge text={a.status} />
+                  <StatusChip tone={a.status === 'completed' ? 'success' : 'info'} label={a.status} />
                 </div>
               ))}
             </div>
           )}
-        </Section>
+        </Card>
       )}
 
       {/* Billing Tab */}
       {tab === 'billing' && (
-        <Section title="Bills">
+        <Card title="Bills">
           {bills.length === 0 ? (
             <EmptyState title="No bills" body="No billing records available." />
           ) : (
-            <div className="space-y-2">
+            <div className="portal__list">
               {bills.map((b) => (
-                <div key={b.id} className="p-3 bg-gray-50 rounded-lg flex justify-between items-center">
+                <div key={b.id} className="portal__list-item">
                   <div>
-                    <div className="font-medium">Bill</div>
-                    <div className="text-sm text-gray-500">
+                    <span className="portal__list-label">Bill</span>
+                    <span className="portal__list-detail" style={{ marginLeft: 8 }}>
                       Total: Rs {(b.totalMinor / 100).toFixed(2)} · Paid: Rs {(b.paidMinor / 100).toFixed(2)}
-                    </div>
+                    </span>
                   </div>
-                  <Badge text={b.status} />
+                  <StatusChip
+                    tone={b.status === 'paid' ? 'success' : b.status === 'partially_paid' ? 'warning' : 'neutral'}
+                    label={b.status}
+                  />
                 </div>
               ))}
             </div>
           )}
-        </Section>
+        </Card>
       )}
 
       {/* Consent Tab */}
       {tab === 'consent' && (
-        <Section title="Consent Records">
+        <Card title="Consent Records">
           {consents.length === 0 ? (
             <EmptyState title="No consents" body="No consent records on file." />
           ) : (
-            <div className="space-y-2">
+            <div className="portal__list">
               {consents.map((c) => (
-                <div key={c.id} className="p-3 bg-gray-50 rounded-lg flex justify-between items-center">
+                <div key={c.id} className="portal__consent-row">
                   <div>
-                    <div className="font-medium text-sm">{c.dataCategory}</div>
-                    <div className="text-xs text-gray-500">{c.purpose ?? 'General'} · Granted: {c.grantedAt ? new Date(c.grantedAt).toLocaleDateString() : '—'}</div>
+                    <span className="portal__list-label">{c.dataCategory}</span>
+                    <span className="portal__list-detail" style={{ marginLeft: 8 }}>
+                      {c.purpose ?? 'General'} · Granted: {c.grantedAt ? new Date(c.grantedAt).toLocaleDateString() : '—'}
+                    </span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge text={c.consentStatus} className={c.consentStatus === 'granted' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'} />
+                  <div className="portal__consent-actions">
+                    <StatusChip tone={c.consentStatus === 'granted' ? 'success' : 'neutral'} label={c.consentStatus} />
                     {c.consentStatus === 'granted' && (
-                      <button onClick={() => handleRevokeConsent(c.id)} className="text-xs text-red-600 hover:underline">Revoke</button>
+                      <button onClick={() => handleRevokeConsent(c.id)} className="portal__revoke-btn">Revoke</button>
                     )}
                   </div>
                 </div>
               ))}
             </div>
           )}
-        </Section>
+        </Card>
       )}
 
       {/* Preferences Tab */}
       {tab === 'preferences' && notifPrefs && (
-        <Section title="Notification Preferences">
-          <div className="space-y-3 p-4 bg-gray-50 rounded-lg">
+        <Card title="Notification Preferences">
+          <div className="portal__prefs">
             {[
               { key: 'emailEnabled', label: 'Email Notifications', value: notifPrefs.emailEnabled },
               { key: 'smsEnabled', label: 'SMS Notifications', value: notifPrefs.smsEnabled },
@@ -594,18 +618,19 @@ export function PatientPortalPage() {
               { key: 'messagingNotifications', label: 'Messaging Notifications', value: notifPrefs.messagingNotifications },
               { key: 'marketingOptOut', label: 'Marketing Opt-out', value: notifPrefs.marketingOptOut },
             ].map((pref) => (
-              <label key={pref.key} className="flex items-center justify-between">
-                <span className="text-sm">{pref.label}</span>
+              <label key={pref.key} className="portal__pref-row">
+                <span className="portal__pref-label">{pref.label}</span>
                 <input
                   type="checkbox"
                   checked={pref.value}
                   onChange={(e) => handleUpdatePrefs({ [pref.key]: e.target.checked })}
-                  className="h-4 w-4 text-blue-600 rounded"
+                  className="input"
+                  style={{ width: 'auto', minHeight: 'auto' }}
                 />
               </label>
             ))}
           </div>
-        </Section>
+        </Card>
       )}
     </div>
   );

@@ -1,0 +1,50 @@
+/* ============================================================================
+   Patients list page styles.
+   ========================================================================== */
+
+/* ── Search bar ── */
+.patients__search {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-4) var(--sp-5);
+  background: var(--paper);
+  border: var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+}
+
+.patients__search .input {
+  border-radius: var(--radius-pill);
+  padding-left: var(--sp-5);
+  background: var(--paper-warm);
+}
+
+.patients__search .input:focus {
+  background: var(--paper);
+}
+
+/* ── Patient list table row hover ── */
+.patients__table tbody tr {
+  cursor: pointer;
+}
+
+.patients__table tbody tr:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
+}
+
+/* ── Patient count ── */
+.patients__count {
+  font-size: var(--fs-caption);
+  color: var(--ink-muted);
+  font-weight: 500;
+}
+
+/* ── Responsive ── */
+@media (max-width: 767px) {
+  .patients__search {
+    padding: var(--sp-3);
+  }
+}

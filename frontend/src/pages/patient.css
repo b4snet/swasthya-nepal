@@ -1,0 +1,195 @@
+/* ============================================================================
+   Patient profile/detail page styles.
+   ========================================================================== */
+
+/* ── Patient hero header ── */
+.patient-hero {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-5);
+  padding: var(--sp-6);
+  background: var(--gradient-brand-light);
+  border: 1px solid var(--teal-200);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+}
+
+.patient-hero__avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--gradient-brand);
+  color: var(--on-teal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--fs-title);
+  font-weight: 700;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(15, 118, 110, 0.2);
+}
+
+.patient-hero__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.patient-hero__name {
+  font-size: var(--fs-title);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: var(--ink);
+  margin: 0;
+}
+
+.patient-hero__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-top: var(--sp-1);
+  font-size: var(--fs-label);
+  color: var(--ink-muted);
+}
+
+.patient-hero__actions {
+  display: flex;
+  gap: var(--sp-2);
+  flex-shrink: 0;
+}
+
+/* ── Key-value display ── */
+.kv {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+}
+
+.kv > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  padding: var(--sp-3) 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.kv > div:last-child {
+  border-bottom: none;
+}
+
+.kv dt {
+  font-size: var(--fs-label);
+  font-weight: 600;
+  color: var(--ink-muted);
+  flex-shrink: 0;
+}
+
+.kv dd {
+  font-size: var(--fs-body);
+  color: var(--ink);
+  text-align: right;
+}
+
+/* ── Timeline ── */
+.timeline {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  position: relative;
+}
+
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 11px;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  background: var(--line);
+}
+
+.timeline__item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--sp-2) var(--sp-3);
+  padding: var(--sp-3) 0;
+  position: relative;
+}
+
+.timeline__item::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 14px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--teal-500);
+  border: 2px solid var(--paper);
+  box-shadow: 0 0 0 2px var(--teal-200);
+}
+
+.timeline__time {
+  font-size: var(--fs-caption);
+  color: var(--slate-400);
+  min-width: 100px;
+  padding-left: var(--sp-5);
+}
+
+.timeline__type {
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  color: var(--teal-700);
+  grid-column: 1 / -1;
+}
+
+.timeline__summary {
+  font-size: var(--fs-body);
+  color: var(--ink-soft);
+  grid-column: 1 / -1;
+  padding-left: var(--sp-5);
+}
+
+/* ── Responsive ── */
+@media (max-width: 767px) {
+  .patient-hero {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: var(--sp-4);
+  }
+
+  .patient-hero__avatar {
+    width: 48px;
+    height: 48px;
+    font-size: var(--fs-h2);
+  }
+
+  .patient-hero__name {
+    font-size: var(--fs-h2);
+  }
+
+  .patient-hero__actions {
+    width: 100%;
+  }
+
+  .patient-hero__actions .btn {
+    flex: 1;
+  }
+
+  .kv > div {
+    flex-direction: column;
+    gap: var(--sp-1);
+  }
+
+  .kv dd {
+    text-align: left;
+  }
+
+  .timeline__time {
+    min-width: auto;
+  }
+}

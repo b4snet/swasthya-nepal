@@ -6,6 +6,7 @@ import { useFetch } from '../hooks/useFetch';
 import { Alert, Button, Card, Dialog, EmptyState, ErrorState, Input, Select, Spinner, StatusChip, Tabs, formatDate, formatDateTime } from '../components/ui';
 import { ApiError } from '../api/client';
 import type { TimelineEntry, PatientIdentifier, PatientContact } from '../api/types';
+import './patient.css';
 
 /**
  * The backend stores structured summary metadata per timeline event (e.g.
@@ -55,11 +56,18 @@ export function PatientProfilePage() {
     <div className="page">
       {notice && <Alert tone={notice.tone}>{notice.text}</Alert>}
 
-      <div className="page__head">
-        <div className="page__title">
-          <h1>{patient.fullName}</h1>
-          <span className="page__sub">
-            <span className="mono">{patient.mrn}</span> · {formatDate(patient.dateOfBirth)} · {patient.sex}
+      <div className="patient-hero">
+        <div className="patient-hero__avatar">
+          {patient.fullName?.charAt(0) ?? '?'}
+        </div>
+        <div className="patient-hero__info">
+          <h1 className="patient-hero__name">{patient.fullName}</h1>
+          <div className="patient-hero__meta">
+            <span className="mono">{patient.mrn}</span>
+            <span style={{ color: 'var(--line)' }}>·</span>
+            <span>{formatDate(patient.dateOfBirth)}</span>
+            <span style={{ color: 'var(--line)' }}>·</span>
+            <span className="capitalize">{patient.sex}</span>
             {patient.status !== 'active' && (
               <StatusChip
                 tone={patient.status === 'deceased' ? 'danger' : 'neutral'}
@@ -67,9 +75,9 @@ export function PatientProfilePage() {
                 struck={patient.status === 'inactive'}
               />
             )}
-          </span>
+          </div>
         </div>
-        <div className="row">
+        <div className="patient-hero__actions">
           {canUpdate && (
             <EditPatientDialog patient={patient} facilityId={fac} onSaved={() => { void profile.refresh(); setNotice({ tone: 'success', text: 'Patient updated.' }); }} />
           )}

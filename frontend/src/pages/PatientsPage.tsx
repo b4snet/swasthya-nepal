@@ -4,6 +4,7 @@ import { useTenant } from '../context/TenantContext';
 import { patientsApi } from '../api/endpoints';
 import { useFetch } from '../hooks/useFetch';
 import { Button, Card, EmptyState, ErrorState, Spinner, StatusChip, formatDate } from '../components/ui';
+import './patients.css';
 
 export function PatientsPage() {
   const { selectedFacilityId, organizationId, hasRole } = useTenant();
@@ -42,7 +43,7 @@ export function PatientsPage() {
         )}
       </div>
 
-      <div className="searchbar">
+      <div className="patients__search">
         <label className="visually-hidden" htmlFor="patient-search">
           Search patients
         </label>
@@ -50,7 +51,7 @@ export function PatientsPage() {
           id="patient-search"
           className="input"
           type="search"
-          placeholder="Search by name or MRN"
+          placeholder="Search by name or MRN..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           aria-describedby="patient-search-hint"
@@ -72,7 +73,7 @@ export function PatientsPage() {
         />
       ) : (
         <Card>
-          <table className="data-table" aria-label="Patient list">
+          <table className="data-table patients__table" aria-label="Patient list">
             <thead>
               <tr>
                 <th scope="col">MRN</th>
@@ -83,11 +84,9 @@ export function PatientsPage() {
               </tr>
             </thead>
             <tbody>
-              {(list.data ?? []).map((p) => (
-                <tr
+              {(list.data ?? []).map((p) => (                  <tr
                   key={p.id}
                   onClick={() => navigate(`/patients/${p.id}`)}
-                  style={{ cursor: 'pointer' }}
                   tabIndex={0}
                   onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/patients/${p.id}`); }}
                   role="link"
