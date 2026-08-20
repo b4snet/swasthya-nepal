@@ -315,6 +315,44 @@ export const adminPermissionsApi = {
   list: () => api.request<Permission[]>('/api/v1/permissions'),
 };
 
+export const icuApi = {
+  beds: () => api.request<Array<{
+    id: string; bedCode: string; status: string; acuitySupported: string;
+  }>>('/api/v1/icu-beds'),
+  createBed: (payload: { bedCode: string; acuitySupported?: string }) =>
+    api.request<{ id: string; bedCode: string; status: string }>(
+      '/api/v1/icu-beds', { method: 'POST', body: payload },
+    ),
+  admit: (payload: {
+    patientId: string; icuBedId: string; source?: string; acuity?: string;
+    observationIntervalMinutes?: number; admissionId?: string; handoverNotes?: string;
+  }) => api.request<{ id: string; patientId: string; acuity: string; status: string }>(
+    '/api/v1/icu-admissions', { method: 'POST', body: payload },
+  ),
+  show: (admissionId: string) => api.request<{
+    id: string; patientId: string; acuity: string; status: string;
+    nextObservationDueAt: string | null;
+    recentScores: Array<{ id: string; total: number; severity: string; computedAt: string }>;
+    openAlerts: Array<{ id: string; alertType: string; severity: string; message: string; status: string }>;
+  }>(`/api/v1/icu-admissions/${admissionId}`),
+  recordObservation: (admissionId: string, payload: {
+    values: Record<string, number>; notes?: string; observedAt?: string;
+  }) => api.request<{ observationSetId: string; score: { total: number; severity: string }; alerts: Array<{ id: string; severity: string; message: string }> }>(
+    `/api/v1/icu-admissions/${admissionId}/observations`, { method: 'POST', body: payload },
+  ),
+  acknowledgeAlert: (alertId: string) => api.request<{ id: string; status: string; acknowledgedAt: string }>(
+    `/api/v1/icu-alerts/${alertId}/acknowledge`, { method: 'POST' },
+  ),
+  documentCare: (admissionId: string, payload: { noteType: string; content: string; authoredAt?: string }) =>
+    api.request<{ id: string; noteType: string }>(
+      `/api/v1/icu-admissions/${admissionId}/notes`, { method: 'POST', body: payload },
+    ),
+  transferOut: (admissionId: string, payload: { handoverNotes?: string }) =>
+    api.request<{ id: string; status: string }>(
+      `/api/v1/icu-admissions/${admissionId}/transfer`, { method: 'POST', body: payload },
+    ),
+};
+
 export const erApi = {
   register: (payload: {
     facilityId: string;

@@ -220,6 +220,7 @@ export const messages = {
   'nav.analytics': 'Analytics',
   'nav.notifications': 'Notifications',
   'nav.emergency': 'Emergency',
+  'nav.icu': 'ICU',
   'nav.radiology': 'Radiology',
   'nav.oncology': 'Oncology',
   'nav.portal': 'Patient Portal',
