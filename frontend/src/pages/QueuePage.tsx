@@ -3,8 +3,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useTenant } from '../context/TenantContext';
 import { appointmentsApi, encountersApi } from '../api/endpoints';
 import { useFetch } from '../hooks/useFetch';
-import { Alert, AppointmentStatus, Button, Card, EmptyState, ErrorState, Spinner } from '../components/ui';
+import { Alert, AppointmentStatus, Button, Card, ErrorState, SkeletonCard, SkeletonTable, Spinner } from '../components/ui';
 import { ApiError } from '../api/client';
+import './queue.css';
+import './patients.css';
 
 function today(): string {
   return new Date().toISOString().slice(0, 10);
@@ -38,7 +40,18 @@ export function QueuePage() {
   // would unmount the check-in panel and lose its confirmation notice.
   const initialLoading = queue.loading && queue.data === null;
   const initialError = queue.error && queue.data === null;
-  if (initialLoading) return <Spinner />;
+  if (initialLoading) return (
+    <div className="page">
+      <div className="page__head">
+        <div className="page__title">
+          <div className="skeleton skeleton--heading" style={{ width: 120, height: 28 }} />
+          <div className="skeleton skeleton--text-sm" style={{ width: 200, height: 10 }} />
+        </div>
+      </div>
+      <SkeletonCard rows={1} />
+      <SkeletonTable rows={4} cols={3} />
+    </div>
+  );
   if (initialError) return <ErrorState error={queue.error} onRetry={() => void queue.refresh()} />;
 
   const entries = queue.data ?? [];
@@ -50,9 +63,7 @@ export function QueuePage() {
           <h1>Queue</h1>
           <span className="page__sub">{today()} · {entries.length} in queue</span>
         </div>
-      </div>
-
-      <div className="searchbar">
+      </div>        <div className="patients__search">
         <label className="visually-hidden" htmlFor="queue-date">
           Queue date
         </label>
@@ -62,34 +73,47 @@ export function QueuePage() {
       {notice && <Alert tone={noticeTone}>{notice}</Alert>}
 
       {entries.length === 0 ? (
-        <EmptyState title="Queue is clear" body="Checked-in patients appear here with their token numbers." action={<Link className="btn btn--secondary" to="/appointments">Book appointment</Link>} />
-      ) : (
-        <div className="queue-list">
-          {entries.map((a) => (
-            <Card key={a.appointmentId} className="queue-card">
-              <div className="queue-card__token mono">{a.tokenNo ? `#${a.tokenNo}` : '—'}</div>
-              <div className="queue-card__body">
-                <Link to={`/patients/${a.patient?.id}`}>
-                  <strong>{a.patient?.fullName ?? 'Unknown'}</strong>
-                </Link>
-                <span className="muted small">{a.patient?.mrn ?? ''}</span>
-                <AppointmentStatus status={a.status} />
-              </div>
-              <div className="queue-card__actions">
-                {canStartEncounter && a.status === 'checked_in' && (
-                  <Button onClick={() => void startEncounter(a.appointmentId)}>
-                    Start consultation
-                  </Button>
-                )}
-                {canStartEncounter && a.status === 'in_consultation' && a.encounterId && (
-                  <Link className="btn btn--secondary" to={`/encounters/${a.encounterId}`}>
-                    Open encounter
-                  </Link>
-                )}
-              </div>
-            </Card>
-          ))}
+        <div className="queue__empty">
+          <span className="queue__empty-icon" aria-hidden="true">≣</span>
+          <h3>Queue is clear</h3>
+          <p className="muted">Checked-in patients appear here with their token numbers.</p>
+          <Link className="btn btn--secondary" to="/appointments">Book appointment</Link>
         </div>
+      ) : (
+        <>
+          <div className="queue__status">
+            <span className="queue__count">
+              <span className="queue__count-dot" aria-hidden="true" />
+              {entries.length} in queue
+            </span>
+          </div>
+          <div className="queue-list">
+            {entries.map((a) => (
+              <Card key={a.appointmentId} className="queue__card">
+                <div className="queue__token" aria-label={`Token ${a.tokenNo ?? 'none'}`}>{a.tokenNo ? `#${a.tokenNo}` : '—'}</div>
+                <div className="queue__info">
+                  <Link to={`/patients/${a.patient?.id}`} className="queue__name">
+                    {a.patient?.fullName ?? 'Unknown'}
+                  </Link>
+                  <span className="queue__meta">{a.patient?.mrn ?? ''}</span>
+                  <AppointmentStatus status={a.status} />
+                </div>
+                <div className="queue-card__actions">
+                  {canStartEncounter && a.status === 'checked_in' && (
+                    <Button onClick={() => void startEncounter(a.appointmentId)}>
+                      Start consultation
+                    </Button>
+                  )}
+                  {canStartEncounter && a.status === 'in_consultation' && a.encounterId && (
+                    <Link className="btn btn--secondary" to={`/encounters/${a.encounterId}`}>
+                      Open encounter
+                    </Link>
+                  )}
+                </div>
+              </Card>
+            ))}
+          </div>
+        </>
       )}
 
       {canCheckIn && <CheckInPanel date={date} onDone={() => void queue.refresh()} />}

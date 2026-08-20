@@ -1,0 +1,125 @@
+/* ============================================================================
+   Encounters — clinical workspace, notes, orders, tabs.
+   ========================================================================== */
+
+/* ── Encounter header ── */
+.encounter__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  padding: var(--sp-6);
+  background: linear-gradient(135deg, var(--tint-info) 0%, var(--paper) 50%, var(--tint-teal) 100%);
+  border: 1px solid rgba(37, 99, 235, 0.12);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+}
+
+.encounter__header h1 {
+  font-size: var(--fs-h2);
+}
+
+.encounter__patient-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  color: var(--teal-700);
+  font-weight: 600;
+  font-size: var(--fs-label);
+  text-decoration: none;
+  padding: var(--sp-1) var(--sp-3);
+  border-radius: var(--radius-pill);
+  background: var(--paper);
+  border: 1px solid var(--teal-200);
+  transition: all var(--dur-fast) var(--ease);
+}
+
+.encounter__patient-link:hover {
+  background: var(--tint-teal);
+  border-color: var(--teal-400);
+}
+
+/* ── Signed banner ── */
+.encounter__signed {
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--tint-info);
+  border: 1px solid rgba(37, 99, 235, 0.1);
+  border-radius: var(--radius-md);
+  font-size: var(--fs-label);
+  font-weight: 500;
+  color: var(--semantic-info);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+/* ── Clinical note card ── */
+.encounter__note {
+  padding: var(--sp-5);
+  background: var(--paper);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-lg);
+  border-left: 3px solid var(--teal-500);
+}
+
+.encounter__note-section {
+  padding: var(--sp-3) 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.encounter__note-section:last-child {
+  border-bottom: none;
+}
+
+.encounter__note-label {
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: var(--sp-1);
+}
+
+.encounter__note-content {
+  font-size: var(--fs-body);
+  color: var(--ink);
+  line-height: var(--lh-body);
+  white-space: pre-wrap;
+}
+
+/* ── Lab order card ── */
+.encounter__lab-card {
+  border-left: 3px solid var(--semantic-info);
+  transition: border-color var(--dur-fast) var(--ease);
+}
+
+.encounter__lab-card:hover {
+  border-left-color: var(--teal-500);
+}
+
+/* ── Clinical tabs ── */
+.encounter__tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--line);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.encounter__tabs::-webkit-scrollbar {
+  display: none;
+}
+
+/* ── Billing card accent ── */
+.encounter__billing {
+  background: linear-gradient(135deg, var(--tint-success) 0%, var(--paper) 100%);
+  border: 1px solid rgba(22, 163, 74, 0.12);
+}
+
+/* ── Responsive ── */
+@media (max-width: 767px) {
+  .encounter__header {
+    flex-direction: column;
+    padding: var(--sp-4);
+  }
+}

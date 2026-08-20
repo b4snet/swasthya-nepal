@@ -3,7 +3,7 @@ import { useTenant } from '../../context/TenantContext';
 import { useI18n } from '../../i18n/I18nProvider';
 import { useFetch } from '../../hooks/useFetch';
 import { adminUsersApi, adminRolesApi, adminFacilitiesApi } from '../../api/endpoints';
-import { Alert, Button, Card, Dialog, EmptyState, ErrorState, Input, Select, Spinner, StatusChip } from '../../components/ui';
+import { Alert, Button, Card, Dialog, EmptyState, ErrorState, Input, Select, SkeletonTable, StatusChip } from '../../components/ui';
 import { ApiError } from '../../api/client';
 
 export function AdminUsersPage() {
@@ -18,7 +18,12 @@ export function AdminUsersPage() {
     [organizationId],
   );
 
-  if (users.loading) return <Spinner />;
+  if (users.loading) return (
+    <div className="stack">
+      <div className="page__head"><h2>Users</h2></div>
+      <SkeletonTable rows={5} cols={3} />
+    </div>
+  );
   if (users.error) return <ErrorState error={users.error} onRetry={() => void users.refresh()} />;
 
   const data = Array.isArray(users.data) ? users.data : [];

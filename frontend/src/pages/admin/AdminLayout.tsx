@@ -2,6 +2,7 @@ import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useTenant } from '../../context/TenantContext';
 import { useI18n } from '../../i18n/I18nProvider';
 import { ADMIN_ROLES } from '../../auth/roles';
+import './admin.css';
 
 const ADMIN_NAV = [
   { to: '/admin/users', labelKey: 'admin.nav.users' as const, roles: [...ADMIN_ROLES] },

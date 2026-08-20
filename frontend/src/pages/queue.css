@@ -1,0 +1,167 @@
+/* ============================================================================
+   Queue page — token cards, check-in panel, queue status.
+   ========================================================================== */
+
+/* ── Queue status header ── */
+.queue__status {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-5);
+  background: var(--paper);
+  border: var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+}
+
+.queue__count {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 4px 14px;
+  background: var(--tint-teal);
+  border: 1px solid var(--teal-200);
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-caption);
+  font-weight: 700;
+  color: var(--teal-700);
+}
+
+.queue__count-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--teal-500);
+  animation: queuePulse 2s ease-in-out infinite;
+}
+
+@keyframes queuePulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ── Queue card enhanced ── */
+.queue__card {
+  display: flex;
+  gap: var(--sp-4);
+  align-items: center;
+  padding: var(--sp-4) var(--sp-5) !important;
+  transition: all var(--dur-fast) var(--ease);
+}
+
+.queue__card:hover {
+  border-color: var(--teal-200);
+  box-shadow: var(--shadow-md);
+}
+
+.queue__token {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 52px;
+  height: 52px;
+  background: var(--gradient-brand);
+  color: var(--on-teal);
+  border-radius: var(--radius-lg);
+  font-size: var(--fs-h3);
+  font-weight: 700;
+  flex-shrink: 0;
+  box-shadow: 0 2px 4px rgba(15, 118, 110, 0.2);
+  font-variant-numeric: tabular-nums;
+}
+
+.queue__info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  min-width: 0;
+}
+
+.queue__name {
+  font-weight: 650;
+  color: var(--ink);
+  font-size: var(--fs-body);
+}
+
+.queue__meta {
+  font-size: var(--fs-caption);
+  color: var(--ink-muted);
+}
+
+/* ── Check-in panel ── */
+.queue__checkin {
+  background: linear-gradient(135deg, var(--tint-teal) 0%, var(--paper) 100%);
+  border: 1px solid var(--teal-200);
+  border-radius: var(--radius-xl);
+}
+
+.queue__checkin-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.queue__checkin-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-3) 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.queue__checkin-item:last-child {
+  border-bottom: none;
+}
+
+.queue__checkin-name {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.queue__checkin-detail {
+  font-size: var(--fs-caption);
+  color: var(--ink-muted);
+}
+
+/* ── Empty queue state ── */
+.queue__empty {
+  padding: var(--sp-10);
+  background: var(--paper-warm);
+  border: 2px dashed var(--line);
+  border-radius: var(--radius-xl);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.queue__empty-icon {
+  font-size: 48px;
+  opacity: 0.3;
+}
+
+/* ── Responsive ── */
+@media (max-width: 767px) {
+  .queue__card {
+    flex-wrap: wrap;
+    padding: var(--sp-3) !important;
+  }
+
+  .queue__token {
+    min-width: 44px;
+    height: 44px;
+    font-size: var(--fs-h3);
+  }
+
+  .queue__checkin-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--sp-2);
+  }
+}

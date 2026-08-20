@@ -5,10 +5,11 @@ import { billingApi, catalogsApi, encountersApi, labOrdersApi, labTestsApi, radi
 import { FollowUpList } from '../components/FollowUpList';
 import { CreateFollowUpDialog } from '../components/CreateFollowUpDialog';
 import { useFetch } from '../hooks/useFetch';
-import { Alert, Button, Card, EmptyState, ErrorState, Input, Select, Spinner, Textarea } from '../components/ui';
+import { Alert, Button, Card, EmptyState, ErrorState, Input, Select, SkeletonCard, Spinner, Textarea } from '../components/ui';
 import { ApiError } from '../api/client';
 import { money } from '../components/ui';
 import { BILLING_ROLES } from '../auth/roles';
+import './encounters.css';
 
 export function EncounterPage() {
   const { id } = useParams<{ id: string }>();
@@ -25,7 +26,17 @@ export function EncounterPage() {
   const [tab, setTab] = useState<'note' | 'diagnosis' | 'prescription' | 'lab' | 'radiology' | 'followup'>('note');
   const [busy, setBusy] = useState(false);
 
-  if (encounter.loading) return <Spinner />;
+  if (encounter.loading) return (
+    <div className="page">
+      <div className="encounter__header" style={{ minHeight: 80 }}>
+        <div>
+          <div className="skeleton skeleton--heading" style={{ width: 160, height: 24 }} />
+          <div className="skeleton skeleton--text-sm" style={{ width: 320, height: 10, marginTop: 8 }} />
+        </div>
+      </div>
+      <SkeletonCard rows={6} />
+    </div>
+  );
   if (encounter.error) return <ErrorState error={encounter.error} onRetry={() => void encounter.refresh()} />;
   const enc = encounter.data!;
   const signed = enc.status === 'signed' || enc.status === 'closed';
@@ -59,7 +70,7 @@ export function EncounterPage() {
       {signed && <Alert tone="info">This encounter is signed and cannot be edited.</Alert>}
 
       {canBill && (
-        <Card title="Billing">
+        <Card title="Billing" className="encounter__billing">
           <p className="muted small">
             Issue the invoice from the signed encounter charges. The backend derives charges
             (consultation + prescription lines) and returns the invoice.

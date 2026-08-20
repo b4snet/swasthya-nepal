@@ -1,0 +1,71 @@
+/* ============================================================================
+   Admin pages — settings, users, staff, roles, departments, services, meds.
+   ========================================================================== */
+
+/* ── Settings key-value table ── */
+.admin-settings__table .data-table td:last-child {
+  white-space: nowrap;
+}
+
+.admin-settings__actions {
+  display: flex;
+  gap: var(--sp-1);
+}
+
+/* ── User role badges ── */
+.admin-users__roles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+}
+
+.admin-users__role-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  background: var(--tint-teal);
+  border: 1px solid var(--teal-200);
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  color: var(--teal-700);
+}
+
+/* ── Admin page header accent ── */
+.admin__header-card {
+  padding: var(--sp-5) var(--sp-6);
+  background: linear-gradient(135deg, var(--tint-teal) 0%, var(--paper) 100%);
+  border: 1px solid var(--teal-200);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+}
+
+.admin__header-card h1 {
+  font-size: var(--fs-h2);
+  margin-bottom: var(--sp-1);
+}
+
+/* ── Empty state enhancement ── */
+.admin__empty {
+  padding: var(--sp-8);
+  background: var(--paper-warm);
+  border: 2px dashed var(--line);
+  border-radius: var(--radius-xl);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.admin__empty-icon {
+  font-size: 36px;
+  opacity: 0.4;
+}
+
+/* ── Responsive ── */
+@media (max-width: 767px) {
+  .admin__header-card {
+    padding: var(--sp-4);
+  }
+}

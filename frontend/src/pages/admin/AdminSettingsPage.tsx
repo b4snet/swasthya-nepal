@@ -3,7 +3,7 @@ import { useTenant } from '../../context/TenantContext';
 import { useI18n } from '../../i18n/I18nProvider';
 import { useFetch } from '../../hooks/useFetch';
 import { adminFacilitySettingsApi } from '../../api/endpoints';
-import { Alert, Button, Card, Dialog, EmptyState, ErrorState, Input, Spinner } from '../../components/ui';
+import { Alert, Button, Card, Dialog, EmptyState, ErrorState, Input, SkeletonTable } from '../../components/ui';
 import { ApiError } from '../../api/client';
 import type { FacilitySetting } from '../../api/types';
 
@@ -22,7 +22,12 @@ export function AdminSettingsPage() {
     return <EmptyState title={t('admin.settings.selectFacility')} body={t('admin.settings.selectFacilityHint')} />;
   }
 
-  if (settings.loading) return <Spinner />;
+  if (settings.loading) return (
+    <div className="stack">
+      <div className="page__head"><h2>Settings</h2></div>
+      <SkeletonTable rows={4} cols={5} />
+    </div>
+  );
   if (settings.error) return <ErrorState error={settings.error} onRetry={() => void settings.refresh()} />;
 
   const data = settings.data ?? {};
