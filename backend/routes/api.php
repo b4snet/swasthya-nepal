@@ -54,6 +54,7 @@ use App\Http\Controllers\Api\PatientContactController;
 use App\Http\Controllers\Api\PatientController;
 use App\Http\Controllers\Api\PatientDocumentController;
 use App\Http\Controllers\Api\PatientIdentifierController;
+use App\Http\Controllers\Api\PatientImportController;
 use App\Http\Controllers\Api\PatientPortalController;
 use App\Http\Controllers\Api\PayerController;
 use App\Http\Controllers\Api\PermissionController;
@@ -331,6 +332,22 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
         ->middleware('authorize:patient:merge');
     Route::get('patients/{patient}/timeline', [PatientController::class, 'timeline'])
         ->middleware('authorize:patient:view');
+
+    // Patient CSV import (Phase 80).
+    Route::get('organizations/{organization}/patients/import/template', [PatientImportController::class, 'template'])
+        ->middleware('authorize:patient:register');
+    Route::get('organizations/{organization}/patient-imports', [PatientImportController::class, 'index'])
+        ->middleware('authorize:patient:view');
+    Route::post('organizations/{organization}/patients/import', [PatientImportController::class, 'upload'])
+        ->middleware('authorize:patient:register');
+    Route::get('patient-imports/{import}', [PatientImportController::class, 'show'])
+        ->middleware('authorize:patient:view');
+    Route::put('patient-imports/{import}/mapping', [PatientImportController::class, 'setMapping'])
+        ->middleware('authorize:patient:register');
+    Route::post('patient-imports/{import}/preview', [PatientImportController::class, 'preview'])
+        ->middleware('authorize:patient:register');
+    Route::post('patient-imports/{import}/import', [PatientImportController::class, 'import'])
+        ->middleware('authorize:patient:register');
 
     // Patient identifiers (encrypted at rest, duplicate-hashed).
     Route::get('patients/{patient}/identifiers', [PatientIdentifierController::class, 'index'])

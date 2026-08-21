@@ -10,6 +10,7 @@ export const messages = {
   'app.name': 'Swasthya',
   'nav.dashboard': 'Dashboard',
   'nav.patients': 'Patients',
+  'nav.patientImport': 'Import',
   'nav.appointments': 'Appointments',
   'nav.queue': 'Queue',
   'nav.billing': 'Billing',

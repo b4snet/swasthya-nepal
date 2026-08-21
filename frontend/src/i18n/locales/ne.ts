@@ -11,6 +11,7 @@ export const messages: Record<MessageKey, string> = {
   'app.name': 'स्वास्थ्य',
   'nav.dashboard': 'ड्यासबोर्ड',
   'nav.patients': 'बिरामीहरू',
+  'nav.patientImport': 'आयात',
   'nav.appointments': 'अपोइन्टमेन्टहरू',
   'nav.queue': 'कतार',
   'nav.billing': 'बिलिङ',

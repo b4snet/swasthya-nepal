@@ -126,6 +126,35 @@ export const patientsApi = {
 
   updateContact: (patientId: string, contactId: string, payload: Partial<{ value: string; isPrimary: boolean; status: string }>, facilityId?: string | null) =>
     api.request<PatientContact>(`/api/v1/patients/${patientId}/contacts/${contactId}`, { method: 'PATCH', body: payload, ...opt(facilityId) }),
+
+  // Patient CSV import (Phase 80)
+  importTemplate: (organizationId: string) =>
+    api.request<{ csv: string; columns: Record<string, string>; fileName: string }>(
+      `${orgUrl(organizationId)}/patients/import/template`,
+    ),
+  importUpload: (organizationId: string, file: File, facilityId?: string | null) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    if (facilityId) fd.append('facilityId', facilityId);
+    return api.request<{ importId: string; headers: string[]; totalRows: number }>(
+      `${orgUrl(organizationId)}/patients/import`,
+      { method: 'POST', body: fd as unknown as Record<string, unknown> },
+    );
+  },
+  importShow: (importId: string) =>
+    api.request<Record<string, unknown>>(`/api/v1/patient-imports/${importId}`),
+  importMapping: (importId: string, fieldMapping: Record<string, string>) =>
+    api.request<{ mapping: Record<string, string> }>(`/api/v1/patient-imports/${importId}/mapping`, { method: 'PUT', body: { fieldMapping } }),
+  importPreview: (importId: string) =>
+    api.request<{ totalRows: number; validRows: number; errorRows: number; preview: Array<Record<string, unknown>>; errorSummary: Array<Record<string, unknown>> }>(
+      `/api/v1/patient-imports/${importId}/preview`, { method: 'POST', body: {} },
+    ),
+  importExecute: (importId: string) =>
+    api.request<{ success: number; errors: number; errorDetails: Array<Record<string, unknown>> }>(
+      `/api/v1/patient-imports/${importId}/import`, { method: 'POST', body: {} },
+    ),
+  importList: (organizationId: string) =>
+    api.request<Array<Record<string, unknown>>>(`${orgUrl(organizationId)}/patient-imports`),
 };
 
 export const appointmentsApi = {

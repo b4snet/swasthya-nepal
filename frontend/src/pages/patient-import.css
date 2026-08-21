@@ -1,0 +1,319 @@
+/* ============================================================
+   PATIENT IMPORT PAGE
+   ============================================================ */
+
+.import-page__header {
+  margin-bottom: 1.5rem;
+}
+
+.import-page__header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.import-page__subtitle {
+  margin: 0.25rem 0 0;
+  font-size: 0.875rem;
+  color: var(--ink-muted, #64748b);
+}
+
+/* --- Progress bar --- */
+.import-progress {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-bottom: 2rem;
+  padding: 1rem 1.5rem;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 12px;
+}
+
+.import-progress__step {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.import-progress__step:not(:last-child)::after {
+  content: '';
+  flex: 1;
+  height: 2px;
+  background: var(--border, #e2e8f0);
+  margin: 0 0.75rem;
+}
+
+.import-progress__step--done:not(:last-child)::after {
+  background: var(--green-400, #4ade80);
+}
+
+.import-progress__circle {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--border, #e2e8f0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--ink-muted, #94a3b8);
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.import-progress__step--active .import-progress__circle {
+  border-color: var(--primary, #0891b2);
+  background: var(--primary-50, #f0f9ff);
+  color: var(--primary, #0891b2);
+}
+
+.import-progress__step--done .import-progress__circle {
+  border-color: var(--green-400, #4ade80);
+  background: var(--green-50, #f0fdf4);
+  color: var(--green-600, #16a34a);
+}
+
+.import-progress__label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--ink-muted, #94a3b8);
+  white-space: nowrap;
+}
+
+.import-progress__step--active .import-progress__label {
+  color: var(--primary, #0891b2);
+  font-weight: 600;
+}
+
+/* --- Card --- */
+.import-card {
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 16px;
+}
+
+.import-card h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--ink, #0f172a);
+}
+
+.import-card__desc {
+  margin: 0 0 1.25rem 0;
+  font-size: 0.8125rem;
+  color: var(--ink-muted, #64748b);
+  line-height: 1.5;
+}
+
+.import-card__info {
+  margin: 0 0 1rem 0;
+  font-size: 0.8125rem;
+  color: var(--primary, #0891b2);
+  font-weight: 500;
+}
+
+.import-card__actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+/* --- Upload zone --- */
+.import-upload-zone {
+  border: 2px dashed var(--border, #e2e8f0);
+  border-radius: 12px;
+  padding: 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+  margin-bottom: 1.5rem;
+}
+
+.import-upload-zone:hover {
+  border-color: var(--primary, #0891b2);
+  background: var(--primary-50, #f0f9ff);
+}
+
+.import-upload-input {
+  display: none;
+}
+
+.import-upload-icon {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--primary, #0891b2);
+  margin-bottom: 0.5rem;
+}
+
+.import-upload-text {
+  margin: 0 0 0.25rem 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--ink, #0f172a);
+}
+
+.import-upload-hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--ink-muted, #94a3b8);
+}
+
+/* --- Mapping grid --- */
+.import-mapping-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.import-mapping-header {
+  display: grid;
+  grid-template-columns: 1fr 32px 1fr;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border, #e2e8f0);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-muted, #64748b);
+}
+
+.import-mapping-row {
+  display: grid;
+  grid-template-columns: 1fr 32px 1fr;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.375rem 0;
+}
+
+.import-mapping-csv {
+  font-size: 0.8125rem;
+  font-family: monospace;
+  color: var(--ink, #0f172a);
+  background: var(--surface-secondary, #f8fafc);
+  padding: 0.375rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid var(--border, #e2e8f0);
+}
+
+.import-mapping-arrow {
+  text-align: center;
+  color: var(--ink-muted, #94a3b8);
+  font-size: 0.875rem;
+}
+
+.import-mapping-select {
+  padding: 0.375rem 0.5rem;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  background: var(--surface, #fff);
+  color: var(--ink, #0f172a);
+}
+
+/* --- Stats --- */
+.import-stats {
+  display: flex;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.import-stat {
+  flex: 1;
+  padding: 1rem;
+  border-radius: 10px;
+  text-align: center;
+  border: 1px solid var(--border, #e2e8f0);
+}
+
+.import-stat--total {
+  background: var(--surface-secondary, #f8fafc);
+}
+
+.import-stat--valid {
+  background: var(--green-50, #f0fdf4);
+  border-color: var(--green-200, #bbf7d0);
+}
+
+.import-stat--error {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.import-stat__num {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--ink, #0f172a);
+}
+
+.import-stat--valid .import-stat__num { color: var(--green-600, #16a34a); }
+.import-stat--error .import-stat__num { color: #dc2626; }
+
+.import-stat__label {
+  display: block;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--ink-muted, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 0.25rem;
+}
+
+/* --- Errors --- */
+.import-errors {
+  margin: 1rem 0;
+  padding: 1rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+}
+
+.import-errors h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #dc2626;
+}
+
+.import-errors__list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.import-errors__item {
+  display: flex;
+  gap: 0.75rem;
+  font-size: 0.75rem;
+  padding: 0.25rem 0;
+  border-bottom: 1px solid #fecaca;
+}
+
+.import-errors__row {
+  font-weight: 600;
+  color: #dc2626;
+  min-width: 60px;
+}
+
+.import-errors__msg {
+  color: #991b1b;
+}
+
+.import-errors__more {
+  font-size: 0.75rem;
+  color: #991b1b;
+  font-style: italic;
+}
+
+/* --- Preview table --- */
+.import-preview-table {
+  margin: 1rem 0;
+  overflow-x: auto;
+}

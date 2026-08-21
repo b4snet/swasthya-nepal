@@ -26,6 +26,7 @@ import {
   Siren,
   HeartPulse,
   Stethoscope,
+  Upload,
   Scissors,
   Droplets,
   ClipboardList,
@@ -47,6 +48,7 @@ import './shell.css';
 const NAV: Array<{ to: string; labelKey: MessageKey; Icon: LucideIcon; roles: string[]; group?: string }> = [
   { to: '/', labelKey: 'nav.dashboard', Icon: LayoutDashboard, roles: [], group: 'overview' },
   { to: '/patients', labelKey: 'nav.patients', Icon: Users, roles: [], group: 'clinical' },
+  { to: '/patients/import', labelKey: 'nav.patientImport', Icon: Upload, roles: [], group: 'clinical' },
   { to: '/appointments', labelKey: 'nav.appointments', Icon: CalendarDays, roles: [], group: 'clinical' },
   { to: '/queue', labelKey: 'nav.queue', Icon: ListOrdered, roles: [...QUEUE_ROLES], group: 'clinical' },
   { to: '/pharmacy', labelKey: 'nav.pharmacy', Icon: Pill, roles: [], group: 'operations' },
