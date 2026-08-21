@@ -63,6 +63,7 @@ use App\Http\Controllers\Api\PharmacyController;
 use App\Http\Controllers\Api\PharmacyReturnController;
 use App\Http\Controllers\Api\PlatformAssignmentController;
 use App\Http\Controllers\Api\PlatformSupportController;
+use App\Http\Controllers\Api\PortalActivationController;
 use App\Http\Controllers\Api\ProcurementController;
 use App\Http\Controllers\Api\RadiologyController;
 use App\Http\Controllers\Api\RefundController;
@@ -124,6 +125,11 @@ Route::post('auth/password/reset', [PasswordResetController::class, 'reset'])->m
 // code. Behind the strict auth throttle like staff login; the service
 // layers DB-backed per-account lockout on top (SECURITY.md §18).
 Route::post('portal/login', [PatientPortalController::class, 'login'])->middleware('throttle:auth');
+
+// Phase 82 — Portal activation (public, no auth required).
+Route::post('portal/activate/{token}', [PortalActivationController::class, 'activate'])->middleware('throttle:auth');
+Route::get('portal/activate/{token}', [PortalActivationController::class, 'verifyToken'])->middleware('throttle:auth');
+Route::post('portal/forgot-password', [PortalActivationController::class, 'requestPasswordReset'])->middleware('throttle:auth');
 
 // The whole API surface is rate-limited per IP (throttle:api,
 // SWASTHYA_RATE_LIMIT_API, config/swasthya.php §rate_limits) BEFORE
@@ -393,6 +399,8 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
     // consent-bound access grants, and disabling accounts. All gated by
     // portal:manage; the patient is resolved inside the tenant context so
     // a cross-tenant/cross-facility patient is a 404 (no existence leak).
+    Route::post('patients/{patient}/portal/invite', [PortalActivationController::class, 'sendInvitation'])
+        ->middleware('authorize:portal:manage');
     Route::post('organizations/{organization}/patients/{patient}/portal', [PatientPortalController::class, 'provisionAccount'])
         ->middleware('authorize:portal:manage');
     Route::post('portal-accounts/{portalAccount}/grants', [PatientPortalController::class, 'grantAccess'])

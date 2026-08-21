@@ -155,6 +155,33 @@ export const patientsApi = {
     ),
   importList: (organizationId: string) =>
     api.request<Array<Record<string, unknown>>>(`${orgUrl(organizationId)}/patient-imports`),
+
+  // Portal invitation (Phase 82)
+  sendPortalInvite: (patientId: string, payload: { email?: string; phone?: string }) =>
+    api.request<{ invitationId: string; token: string; expiresAt: string }>(
+      `/api/v1/patients/${patientId}/portal/invite`,
+      { method: 'POST', body: payload },
+    ),
+};
+
+/* ------------------------------------------------------------------
+   Portal Activation (Phase 82 — public, no auth)
+   ------------------------------------------------------------------ */
+export const portalActivationApi = {
+  verifyToken: (token: string) =>
+    api.request<{ invitationId: string; patientName: string; expiresAt: string; email: string | null }>(
+      `/api/v1/portal/activate/${token}`,
+    ),
+  activate: (token: string, password: string, passwordConfirmation: string) =>
+    api.request<{ token: string; session: { id: string; expiresAt: string } }>(
+      `/api/v1/portal/activate/${token}`,
+      { method: 'POST', body: { password, password_confirmation: passwordConfirmation } },
+    ),
+  forgotPassword: (organizationCode: string, identifier: string) =>
+    api.request<{ message: string }>(
+      '/api/v1/portal/forgot-password',
+      { method: 'POST', body: { organizationCode, identifier } },
+    ),
 };
 
 export const appointmentsApi = {
