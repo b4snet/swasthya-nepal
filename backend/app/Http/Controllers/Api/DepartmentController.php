@@ -45,16 +45,8 @@ final class DepartmentController extends Controller
             $query->where('facility_id', $context->facilityId());
         }
 
-        $departments = $query->get(['id', 'facility_id', 'branch_id', 'name', 'code', 'status', 'parent_department_id'])
-            ->map(fn (Department $department): array => [
-                'id' => $department->getKey(),
-                'facilityId' => $department->facility_id,
-                'branchId' => $department->branch_id,
-                'name' => $department->name,
-                'code' => $department->code,
-                'status' => $department->status,
-                'parentDepartmentId' => $department->parent_department_id,
-            ])
+        $departments = $query->get()
+            ->map(fn (Department $department): array => self::present($department))
             ->values();
 
         return Envelope::success(data: $departments, request: $request);
@@ -75,6 +67,15 @@ final class DepartmentController extends Controller
             'code' => $request->validated('code'),
             'parent_department_id' => $request->validated('parentDepartmentId'),
             'status' => $request->validated('status', 'active'),
+            'department_type' => $request->validated('departmentType', 'medical'),
+            'description' => $request->validated('description'),
+            'phone' => $request->validated('phone'),
+            'location' => $request->validated('location'),
+            'operating_hours' => $request->validated('operatingHours'),
+            'appointment_availability' => $request->validated('appointmentAvailability'),
+            'queue_settings' => $request->validated('queueSettings'),
+            'responsible_roles' => $request->validated('responsibleRoles'),
+            'sort_order' => $request->validated('sortOrder', 0),
             'created_by' => $context->user?->getKey(),
         ]);
 
@@ -114,7 +115,7 @@ final class DepartmentController extends Controller
         AccessCheck::scoped($department, write: true);
 
         $changes = [];
-        foreach (['name', 'code', 'status'] as $field) {
+        foreach (['name', 'code', 'status', 'departmentType', 'description', 'phone', 'location', 'sortOrder'] as $field) {
             if ($request->has($field)) {
                 $changes[$field] = [$department->getAttribute($field), $request->validated($field)];
                 $department->setAttribute($field, $request->validated($field));
@@ -133,6 +134,14 @@ final class DepartmentController extends Controller
         if ($request->has('parentDepartmentId')) {
             $changes['parentDepartmentId'] = [$department->parent_department_id, $request->validated('parentDepartmentId')];
             $department->parent_department_id = $request->validated('parentDepartmentId');
+        }
+
+        // JSON fields
+        foreach (['operatingHours' => 'operating_hours', 'appointmentAvailability' => 'appointment_availability', 'queueSettings' => 'queue_settings', 'responsibleRoles' => 'responsible_roles'] as $requestKey => $dbColumn) {
+            if ($request->has($requestKey)) {
+                $changes[$requestKey] = [$department->getAttribute($dbColumn), $request->validated($requestKey)];
+                $department->setAttribute($dbColumn, $request->validated($requestKey));
+            }
         }
 
         $department->updated_by = TenantContext::current()->user?->getKey();
@@ -203,6 +212,15 @@ final class DepartmentController extends Controller
             'name' => $department->name,
             'code' => $department->code,
             'status' => $department->status,
+            'departmentType' => $department->department_type,
+            'description' => $department->description,
+            'phone' => $department->phone,
+            'location' => $department->location,
+            'operatingHours' => $department->operating_hours,
+            'appointmentAvailability' => $department->appointment_availability,
+            'queueSettings' => $department->queue_settings,
+            'responsibleRoles' => $department->responsible_roles,
+            'sortOrder' => $department->sort_order,
             'parentDepartmentId' => $department->parent_department_id,
         ];
     }

@@ -76,6 +76,19 @@ class StoreDepartmentRequest extends ApiRequest
                 },
             ],
             'status' => ['sometimes', 'in:active,inactive'],
+            'departmentType' => ['sometimes', 'string', 'in:'.implode(',', Department::TYPES)],
+            'description' => ['nullable', 'string', 'max:1000'],
+            'phone' => ['nullable', 'string', 'max:50'],
+            'location' => ['nullable', 'string', 'max:200'],
+            'operatingHours' => ['nullable', 'array'],
+            'operatingHours.*.day' => ['string', 'in:monday,tuesday,wednesday,thursday,friday,saturday,sunday'],
+            'operatingHours.*.open' => ['string', 'regex:/^\d{2}:\d{2}$/'],
+            'operatingHours.*.close' => ['string', 'regex:/^\d{2}:\d{2}$/'],
+            'appointmentAvailability' => ['nullable', 'array'],
+            'queueSettings' => ['nullable', 'array'],
+            'responsibleRoles' => ['nullable', 'array'],
+            'responsibleRoles.*' => ['string', 'max:50'],
+            'sortOrder' => ['sometimes', 'integer', 'min:0'],
         ];
     }
 }

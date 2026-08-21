@@ -617,9 +617,21 @@ export const adminDepartmentsApi = {
   list: (orgId: string, facilityId?: string | null) =>
     api.request<Department[]>(`/api/v1/organizations/${orgId}/departments`, opt(facilityId)),
   show: (id: string) => api.request<Department>(`/api/v1/departments/${id}`),
-  create: (orgId: string, payload: { name: string; code: string; facilityId?: string; branchId?: string; parentDepartmentId?: string }) =>
+  create: (orgId: string, payload: {
+    name: string; code: string; facilityId?: string; branchId?: string;
+    parentDepartmentId?: string; departmentType?: string; description?: string;
+    phone?: string; location?: string; operatingHours?: Array<{ day: string; open: string; close: string }>;
+    appointmentAvailability?: Record<string, unknown>; queueSettings?: Record<string, unknown>;
+    responsibleRoles?: string[]; sortOrder?: number;
+  }) =>
     api.request<Department>(`/api/v1/organizations/${orgId}/departments`, { method: 'POST', body: payload }),
-  update: (id: string, payload: Partial<{ name: string; code: string; status: string }>) =>
+  update: (id: string, payload: Partial<{
+    name: string; code: string; status: string; departmentType: string;
+    description: string; phone: string; location: string;
+    operatingHours: Array<{ day: string; open: string; close: string }>;
+    appointmentAvailability: Record<string, unknown>; queueSettings: Record<string, unknown>;
+    responsibleRoles: string[]; sortOrder: number;
+  }>) =>
     api.request<Department>(`/api/v1/departments/${id}`, { method: 'PATCH', body: payload }),
   remove: (id: string) => api.request<void>(`/api/v1/departments/${id}`, { method: 'DELETE' }),
 };

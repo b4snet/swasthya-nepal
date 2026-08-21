@@ -339,6 +339,15 @@ export interface Department {
   name: string;
   code: string;
   status: string;
+  departmentType: string;
+  description: string | null;
+  phone: string | null;
+  location: string | null;
+  operatingHours: Array<{ day: string; open: string; close: string }> | null;
+  appointmentAvailability: Record<string, unknown> | null;
+  queueSettings: Record<string, unknown> | null;
+  responsibleRoles: string[] | null;
+  sortOrder: number;
   parentDepartmentId: string | null;
 }
 

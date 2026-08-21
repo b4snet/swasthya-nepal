@@ -62,6 +62,16 @@ class UpdateDepartmentRequest extends ApiRequest
                 },
             ],
             'status' => ['sometimes', 'in:active,inactive'],
+            'departmentType' => ['sometimes', 'string', 'in:'.implode(',', Department::TYPES)],
+            'description' => ['nullable', 'string', 'max:1000'],
+            'phone' => ['nullable', 'string', 'max:50'],
+            'location' => ['nullable', 'string', 'max:200'],
+            'operatingHours' => ['nullable', 'array'],
+            'appointmentAvailability' => ['nullable', 'array'],
+            'queueSettings' => ['nullable', 'array'],
+            'responsibleRoles' => ['nullable', 'array'],
+            'responsibleRoles.*' => ['string', 'max:50'],
+            'sortOrder' => ['sometimes', 'integer', 'min:0'],
         ];
     }
 }

@@ -28,18 +28,81 @@ class Department extends Model
     public const STATUS_INACTIVE = 'inactive';
 
     /**
+     * Department types — configurable hospital structure.
+     */
+    public const TYPES = [
+        'medical', 'supportive', 'surgical', 'administrative',
+        'emergency', 'diagnostic', 'pharmacy', 'laboratory',
+        'radiology', 'other',
+    ];
+
+    /**
+     * Pre-defined medical departments (configurable by admin).
+     */
+    public const MEDICAL_DEPARTMENTS = [
+        'gynecology_obstetrics' => 'Gynaecology and Obstetrics',
+        'psychiatry' => 'Psychiatry',
+        'neurology' => 'Neurology',
+        'cardiology' => 'Cardiology',
+        'pediatrics' => 'Paediatrics',
+        'rheumatology' => 'Rheumatology',
+        'internal_medicine' => 'Internal Medicine',
+        'dermatology' => 'Dermatology',
+        'nephrology' => 'Nephrology',
+        'gastroenterology' => 'Gastroenterology',
+        'acupuncture' => 'Acupuncture',
+        'endocrinology' => 'Endocrinology',
+        'ophthalmology' => 'Ophthalmology',
+        'ent' => 'ENT',
+        'urology' => 'Urology',
+        'oncology' => 'Oncology',
+        'pulmonology' => 'Pulmonology',
+        'hematology' => 'Hematology',
+    ];
+
+    /**
+     * Pre-defined surgical departments.
+     */
+    public const SURGICAL_DEPARTMENTS = [
+        'general_surgery' => 'General Surgery',
+        'cardiovascular_surgery' => 'Cardiovascular Surgery',
+        'pediatric_surgery' => 'Paediatric Surgery',
+        'spine_surgery' => 'Spine Surgery',
+        'neurosurgery' => 'Neurosurgery',
+        'plastic_surgery' => 'Plastic Surgery',
+        'orthopedic_surgery' => 'Orthopedic Surgery',
+        'gi_laparoscopic' => 'GI/Laparoscopic Surgery',
+        'dental' => 'Dental',
+    ];
+
+    /**
+     * Pre-defined supportive service departments.
+     */
+    public const SUPPORTIVE_DEPARTMENTS = [
+        'radiology_imaging' => 'Radiology & Imaging',
+        'physiotherapy' => 'Physiotherapy',
+        'vaccination' => 'Vaccination',
+        'laboratory' => 'Laboratory',
+        'dietician' => 'Dietician/Nutrition',
+        'pharmacy' => 'Pharmacy',
+    ];
+
+    /**
      * @var list<string>
      */
     protected $fillable = [
-        'tenant_id',
-        'facility_id',
-        'branch_id',
-        'name',
-        'code',
-        'status',
-        'parent_department_id',
-        'created_by',
-        'updated_by',
+        'tenant_id', 'facility_id', 'branch_id', 'name', 'code', 'status',
+        'parent_department_id', 'department_type', 'description', 'phone', 'location',
+        'operating_hours', 'appointment_availability', 'queue_settings',
+        'responsible_roles', 'sort_order', 'created_by', 'updated_by',
+    ];
+
+    protected $casts = [
+        'operating_hours' => 'array',
+        'appointment_availability' => 'array',
+        'queue_settings' => 'array',
+        'responsible_roles' => 'array',
+        'sort_order' => 'integer',
     ];
 
     /**
