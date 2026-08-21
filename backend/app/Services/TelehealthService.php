@@ -397,6 +397,39 @@ final class TelehealthService
     }
 
     /**
+     * Get the waiting room: teleconsults in scheduled/ready status for
+     * a facility, ordered by scheduled time.
+     *
+     * @return Collection<int, Teleconsult>
+     */
+    public function waitingRoom(string $tenantId, string $facilityId): \Illuminate\Support\Collection
+    {
+        return Teleconsult::query()
+            ->where('tenant_id', $tenantId)
+            ->where('facility_id', $facilityId)
+            ->whereIn('status', [Teleconsult::STATUS_SCHEDULED, Teleconsult::STATUS_READY])
+            ->with(['patient:id,full_name,mrn', 'provider:id,full_name'])
+            ->orderBy('scheduled_at')
+            ->get();
+    }
+
+    /**
+     * Get teleconsults for a specific patient (patient portal view).
+     *
+     * @return Collection<int, Teleconsult>
+     */
+    public function patientTeleconsults(string $tenantId, string $patientId): \Illuminate\Support\Collection
+    {
+        return Teleconsult::query()
+            ->where('tenant_id', $tenantId)
+            ->where('patient_id', $patientId)
+            ->with(['provider:id,full_name'])
+            ->orderByDesc('scheduled_at')
+            ->limit(20)
+            ->get();
+    }
+
+    /**
      * The facility's recording policy (default disabled — recording is
      * NEVER implicit).
      */

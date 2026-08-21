@@ -314,6 +314,42 @@ final class TelehealthController extends Controller
         return Envelope::success(data: self::presentTeleconsult($cancelled), request: $request);
     }
 
+    // ───────────────────────── Waiting Room (Phase 83) ──────────────────────
+
+    /**
+     * GET telehealth/waiting-room — provider view of the waiting room.
+     */
+    public function waitingRoom(Request $request): JsonResponse
+    {
+        $context = TenantContext::current();
+        $facilityId = (string) $context->facilityId();
+
+        $waiting = $this->telehealth->waitingRoom((string) $context->tenantId(), $facilityId)
+            ->map(fn (Teleconsult $t): array => self::presentTeleconsult($t, includeNames: true))
+            ->values();
+
+        return Envelope::success(data: $waiting, request: $request);
+    }
+
+    /**
+     * GET telehealth/my-consults — patient view of their teleconsults.
+     */
+    public function myConsults(Request $request): JsonResponse
+    {
+        $context = TenantContext::current();
+        $patientId = $request->attributes->get('patient_id');
+
+        if ($patientId === null) {
+            return Envelope::error('FORBIDDEN', 'Patient context required.', 403, request: $request);
+        }
+
+        $consults = $this->telehealth->patientTeleconsults((string) $context->tenantId(), (string) $patientId)
+            ->map(fn (Teleconsult $t): array => self::presentTeleconsult($t, includeNames: true))
+            ->values();
+
+        return Envelope::success(data: $consults, request: $request);
+    }
+
     // ───────────────────────────── Helpers ───────────────────────────────
 
     /**

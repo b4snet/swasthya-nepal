@@ -281,6 +281,36 @@ export const communicationApi = {
     api.request<Record<string, Array<Record<string, unknown>>>>('/api/v1/communication-templates/variable-presets'),
 };
 
+/* ------------------------------------------------------------------
+   Telehealth (Phase 83)
+   ------------------------------------------------------------------ */
+export const telehealthApi = {
+  list: () =>
+    api.request<Array<Record<string, unknown>>>('/api/v1/telehealth/teleconsults'),
+  show: (id: string) =>
+    api.request<Record<string, unknown>>(`/api/v1/telehealth/teleconsults/${id}`),
+  schedule: (appointmentId: string) =>
+    api.request<Record<string, unknown>>('/api/v1/telehealth/schedule', { method: 'POST', body: { appointmentId } }),
+  markReady: (id: string) =>
+    api.request<Record<string, unknown>>(`/api/v1/telehealth/teleconsults/${id}/ready`, { method: 'POST', body: {} }),
+  start: (id: string, medium: string = 'video') =>
+    api.request<Record<string, unknown>>(`/api/v1/telehealth/teleconsults/${id}/start`, { method: 'POST', body: { medium } }),
+  openVideoSession: (id: string, participantType: string = 'provider', recordingRequested: boolean = false) =>
+    api.request<Record<string, unknown>>(`/api/v1/telehealth/teleconsults/${id}/video-sessions`, { method: 'POST', body: { participantType, recordingRequested } }),
+  endVideoSession: (sessionId: string) =>
+    api.request<Record<string, unknown>>(`/api/v1/telehealth/video-sessions/${sessionId}/end`, { method: 'POST', body: {} }),
+  failVideoSession: (sessionId: string, fallbackMode: string, fallbackReason: string) =>
+    api.request<Record<string, unknown>>(`/api/v1/telehealth/video-sessions/${sessionId}/fail`, { method: 'POST', body: { fallbackMode, fallbackReason } }),
+  complete: (id: string) =>
+    api.request<Record<string, unknown>>(`/api/v1/telehealth/teleconsults/${id}/complete`, { method: 'POST', body: {} }),
+  cancel: (id: string) =>
+    api.request<Record<string, unknown>>(`/api/v1/telehealth/teleconsults/${id}/cancel`, { method: 'POST', body: {} }),
+  waitingRoom: () =>
+    api.request<Array<Record<string, unknown>>>('/api/v1/telehealth/waiting-room'),
+  myConsults: () =>
+    api.request<Array<Record<string, unknown>>>('/api/v1/telehealth/my-consults'),
+};
+
 export const encountersApi = {
   start: (appointmentId: string, facilityId?: string | null) =>
     api.request<Encounter>(`/api/v1/appointments/${appointmentId}/start-encounter`, { method: 'POST', body: {}, ...opt(facilityId) }),

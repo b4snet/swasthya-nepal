@@ -224,6 +224,7 @@ export const messages = {
   'nav.communications': 'Communications',
   'nav.forms': 'Forms',
   'nav.physicianScheduling': 'Physicians',
+  'nav.telehealth': 'Telehealth',
   'nav.beds': 'Beds',
   'nav.emergency': 'Emergency',
   'nav.icu': 'ICU',

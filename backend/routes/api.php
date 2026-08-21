@@ -1236,6 +1236,12 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
     Route::post('telehealth/teleconsults/{teleconsult}/cancel', [TelehealthController::class, 'cancel'])
         ->middleware('authorize:telehealth:schedule');
 
+    // Phase 83 — Waiting room + patient teleconsult view.
+    Route::get('telehealth/waiting-room', [TelehealthController::class, 'waitingRoom'])
+        ->middleware('authorize:telehealth:conduct');
+    Route::get('telehealth/my-consults', [TelehealthController::class, 'myConsults'])
+        ->middleware('authorize:telehealth:conduct');
+
     // Phase 3 slice 25 — Remote Patient Monitoring (ROADMAP Phase 20):
     // device enrollment (consent-gated), validated+labeled ingestion
     // (idempotent batch), monitoring views, and human-mediated alerts with

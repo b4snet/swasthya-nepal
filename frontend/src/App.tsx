@@ -37,6 +37,7 @@ const RadiologyPage = lazy(() => import('./pages/RadiologyPage').then(m => ({ de
 const OncologyPage = lazy(() => import('./pages/OncologyPage').then(m => ({ default: m.OncologyPage })));
 const PatientPortalPage = lazy(() => import('./pages/PatientPortalPage').then(m => ({ default: m.PatientPortalPage })));
 const PortalActivationPage = lazy(() => import('./pages/PortalActivationPage').then(m => ({ default: m.PortalActivationPage })));
+const TelehealthPage = lazy(() => import('./pages/TelehealthPage').then(m => ({ default: m.TelehealthPage })));
 
 // Admin pages — lazily loaded as a group
 const AdminLayout = lazy(() => import('./pages/admin/AdminLayout').then(m => ({ default: m.AdminLayout })));
@@ -154,6 +155,7 @@ export function App() {
                <Route path="/forms" element={<LazySuspense><FormsPage /></LazySuspense>} />
                <Route path="/physician-scheduling" element={<LazySuspense><PhysicianSchedulingPage /></LazySuspense>} />
                <Route path="/beds" element={<LazySuspense><BedOccupancyPage /></LazySuspense>} />
+               <Route path="/telehealth" element={<LazySuspense><TelehealthPage /></LazySuspense>} />
                <Route path="/emergency" element={<LazySuspense><EmergencyPage /></LazySuspense>} />
                <Route path="/icu" element={<LazySuspense><IcuPage /></LazySuspense>} />
                <Route path="/ot" element={<LazySuspense><OperatingTheatrePage /></LazySuspense>} />
