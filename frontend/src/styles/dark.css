@@ -1,0 +1,393 @@
+/**
+ * Dark mode overrides for Swasthya.
+ *
+ * Activated via CSS prefers-color-scheme and the .dark class
+ * on <html> for manual toggle.
+ */
+
+/* ── Automatic dark mode via OS preference ── */
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    --color-bg: #0f1117;
+    --color-surface: #1a1d27;
+    --color-surface-2: #22263a;
+    --color-border: #2a2e3e;
+    --color-text: #e4e7ee;
+    --color-text-secondary: #8b8fa3;
+    --color-text-muted: #6b7080;
+
+    /* Primary blue accent — retained for brand recognition */
+    --primary-50: rgba(79, 169, 255, 0.08);
+    --primary-100: rgba(79, 169, 255, 0.15);
+    --primary-200: rgba(79, 169, 255, 0.25);
+    --primary-300: #4FA9FF;
+    --primary-400: #3d91e0;
+    --primary-500: #2b79c1;
+    --primary-600: #1a61a2;
+    --primary-700: #155088;
+
+    /* Semantic colors — muted for dark surfaces */
+    --success-bg: rgba(16, 185, 129, 0.12);
+    --success-text: #6ee7b7;
+    --warning-bg: rgba(245, 158, 11, 0.12);
+    --warning-text: #fbbf24;
+    --danger-bg: rgba(239, 68, 68, 0.12);
+    --danger-text: #fca5a5;
+    --info-bg: rgba(79, 169, 255, 0.12);
+    --info-text: #93c5fd;
+
+    /* Gray scale — dark */
+    --gray-50: #1a1d27;
+    --gray-100: #22263a;
+    --gray-200: #2a2e3e;
+    --gray-300: #363b4e;
+    --gray-400: #5a5f73;
+    --gray-500: #8b8fa3;
+    --gray-600: #a3a7b8;
+    --gray-700: #c4c7d4;
+    --gray-800: #e4e7ee;
+    --gray-900: #f0f2f5;
+
+    /* Card and surfaces */
+    --white: #1a1d27;
+    --black: #f0f2f5;
+
+    /* Sidebar */
+    --sidebar-bg: #141620;
+    --sidebar-text: #8b8fa3;
+    --sidebar-text-active: #e4e7ee;
+    --sidebar-active-bg: rgba(79, 169, 255, 0.1);
+    --sidebar-hover-bg: rgba(255, 255, 255, 0.04);
+
+    /* Input */
+    --input-bg: #22263a;
+    --input-border: #2a2e3e;
+    --input-focus-border: #4FA9FF;
+    --input-text: #e4e7ee;
+    --input-placeholder: #5a5f73;
+
+    /* Shadow adjustments */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.4);
+
+    /* Status chip backgrounds */
+    --status-info-bg: rgba(79, 169, 255, 0.15);
+    --status-success-bg: rgba(16, 185, 129, 0.15);
+    --status-warning-bg: rgba(245, 158, 11, 0.15);
+    --status-danger-bg: rgba(239, 68, 68, 0.15);
+    --status-neutral-bg: rgba(139, 143, 163, 0.1);
+
+    /* Chart colors stay the same — they're already muted */
+
+    /* Dialog / overlay */
+    --dialog-bg: #1a1d27;
+    --backdrop-bg: rgba(0, 0, 0, 0.6);
+
+    /* Table */
+    --table-header-bg: #22263a;
+    --table-row-hover: rgba(255, 255, 255, 0.03);
+    --table-border: #2a2e3e;
+
+    /* Badge */
+    --badge-bg: rgba(139, 143, 163, 0.12);
+
+    /* Scrollbar */
+    --scrollbar-thumb: #363b4e;
+    --scrollbar-track: transparent;
+
+    color-scheme: dark;
+  }
+}
+
+/* ── Manual toggle via .dark class ── */
+html.dark {
+  --color-bg: #0f1117;
+  --color-surface: #1a1d27;
+  --color-surface-2: #22263a;
+  --color-border: #2a2e3e;
+  --color-text: #e4e7ee;
+  --color-text-secondary: #8b8fa3;
+  --color-text-muted: #6b7080;
+
+  --primary-50: rgba(79, 169, 255, 0.08);
+  --primary-100: rgba(79, 169, 255, 0.15);
+  --primary-200: rgba(79, 169, 255, 0.25);
+  --primary-300: #4FA9FF;
+  --primary-400: #3d91e0;
+  --primary-500: #2b79c1;
+  --primary-600: #1a61a2;
+  --primary-700: #155088;
+
+  --success-bg: rgba(16, 185, 129, 0.12);
+  --success-text: #6ee7b7;
+  --warning-bg: rgba(245, 158, 11, 0.12);
+  --warning-text: #fbbf24;
+  --danger-bg: rgba(239, 68, 68, 0.12);
+  --danger-text: #fca5a5;
+  --info-bg: rgba(79, 169, 255, 0.12);
+  --info-text: #93c5fd;
+
+  --gray-50: #1a1d27;
+  --gray-100: #22263a;
+  --gray-200: #2a2e3e;
+  --gray-300: #363b4e;
+  --gray-400: #5a5f73;
+  --gray-500: #8b8fa3;
+  --gray-600: #a3a7b8;
+  --gray-700: #c4c7d4;
+  --gray-800: #e4e7ee;
+  --gray-900: #f0f2f5;
+
+  --white: #1a1d27;
+  --black: #f0f2f5;
+
+  --sidebar-bg: #141620;
+  --sidebar-text: #8b8fa3;
+  --sidebar-text-active: #e4e7ee;
+  --sidebar-active-bg: rgba(79, 169, 255, 0.1);
+  --sidebar-hover-bg: rgba(255, 255, 255, 0.04);
+
+  --input-bg: #22263a;
+  --input-border: #2a2e3e;
+  --input-focus-border: #4FA9FF;
+  --input-text: #e4e7ee;
+  --input-placeholder: #5a5f73;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.4);
+
+  --status-info-bg: rgba(79, 169, 255, 0.15);
+  --status-success-bg: rgba(16, 185, 129, 0.15);
+  --status-warning-bg: rgba(245, 158, 11, 0.15);
+  --status-danger-bg: rgba(239, 68, 68, 0.15);
+  --status-neutral-bg: rgba(139, 143, 163, 0.1);
+
+  --dialog-bg: #1a1d27;
+  --backdrop-bg: rgba(0, 0, 0, 0.6);
+
+  --table-header-bg: #22263a;
+  --table-row-hover: rgba(255, 255, 255, 0.03);
+  --table-border: #2a2e3e;
+
+  --badge-bg: rgba(139, 143, 163, 0.12);
+
+  --scrollbar-thumb: #363b4e;
+  --scrollbar-track: transparent;
+
+  color-scheme: dark;
+}
+
+/* ── Dark mode overrides for existing components ── */
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) .app-shell,
+  html.dark .app-shell {
+    background: var(--color-bg);
+    color: var(--color-text);
+  }
+
+  :root:not(.light) .card,
+  html.dark .card {
+    background: var(--color-surface);
+    border-color: var(--color-border);
+    color: var(--color-text);
+  }
+
+  :root:not(.light) .app-header,
+  html.dark .app-header {
+    background: var(--color-surface);
+    border-color: var(--color-border);
+    color: var(--color-text);
+  }
+
+  :root:not(.light) .app-sidebar,
+  html.dark .app-sidebar {
+    background: var(--sidebar-bg);
+    border-color: var(--color-border);
+  }
+
+  :root:not(.light) .sidebar-link,
+  html.dark .sidebar-link {
+    color: var(--sidebar-text);
+  }
+
+  :root:not(.light) .sidebar-link--active,
+  html.dark .sidebar-link--active {
+    color: var(--sidebar-text-active);
+    background: var(--sidebar-active-bg);
+  }
+
+  :root:not(.light) .sidebar-link:hover,
+  html.dark .sidebar-link:hover {
+    background: var(--sidebar-hover-bg);
+    color: var(--color-text);
+  }
+
+  :root:not(.light) input,
+  :root:not(.light) select,
+  :root:not(.light) textarea,
+  html.dark input,
+  html.dark select,
+  html.dark textarea {
+    background: var(--input-bg);
+    border-color: var(--input-border);
+    color: var(--input-text);
+  }
+
+  :root:not(.light) input::placeholder,
+  :root:not(.light) textarea::placeholder,
+  html.dark input::placeholder,
+  html.dark textarea::placeholder {
+    color: var(--input-placeholder);
+  }
+
+  :root:not(.light) .input,
+  html.dark .input {
+    background: var(--input-bg);
+    border-color: var(--input-border);
+    color: var(--input-text);
+  }
+
+  :root:not(.light) .dialog,
+  html.dark .dialog {
+    background: var(--dialog-bg);
+    border-color: var(--color-border);
+    color: var(--color-text);
+  }
+
+  :root:not(.light) .dialog-backdrop,
+  html.dark .dialog-backdrop {
+    background: var(--backdrop-bg);
+  }
+
+  /* Tables */
+  :root:not(.light) .referrals-table thead th,
+  html.dark .referrals-table thead th {
+    background: var(--table-header-bg);
+    border-color: var(--table-border);
+    color: var(--gray-500);
+  }
+
+  :root:not(.light) .referrals-table tbody td,
+  html.dark .referrals-table tbody td {
+    border-color: var(--table-border);
+  }
+
+  :root:not(.light) .referrals-table tbody tr:hover,
+  html.dark .referrals-table tbody tr:hover {
+    background: var(--table-row-hover);
+  }
+
+  /* Scrollbar */
+  :root:not(.light) ::-webkit-scrollbar-thumb,
+  html.dark ::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+  }
+
+  :root:not(.light) ::-webkit-scrollbar-track,
+  html.dark ::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+  }
+
+  /* Badge overrides */
+  :root:not(.light) .badge,
+  html.dark .badge {
+    background: var(--badge-bg);
+  }
+
+  /* Filter pills */
+  :root:not(.light) .filter-pill,
+  html.dark .filter-pill {
+    border-color: var(--color-border);
+    background: var(--color-surface);
+    color: var(--gray-600);
+  }
+
+  :root:not(.light) .filter-pill:hover,
+  html.dark .filter-pill:hover {
+    background: var(--color-surface-2);
+  }
+
+  /* Status chips */
+  :root:not(.light) .status--info,
+  html.dark .status--info {
+    background: var(--status-info-bg);
+  }
+
+  :root:not(.light) .status--success,
+  html.dark .status--success {
+    background: var(--status-success-bg);
+  }
+
+  :root:not(.light) .status--warning,
+  html.dark .status--warning {
+    background: var(--status-warning-bg);
+  }
+
+  :root:not(.light) .status--danger,
+  html.dark .status--danger {
+    background: var(--status-danger-bg);
+  }
+
+  :root:not(.light) .status--neutral,
+  html.dark .status--neutral {
+    background: var(--status-neutral-bg);
+  }
+
+  /* Tables - generic */
+  :root:not(.light) table,
+  html.dark table {
+    color: var(--color-text);
+  }
+
+  :root:not(.light) th,
+  html.dark th {
+    color: var(--gray-500);
+  }
+
+  /* Buttons - secondary in dark mode */
+  :root:not(.light) .btn--secondary,
+  html.dark .btn--secondary {
+    background: var(--color-surface-2);
+    border-color: var(--color-border);
+    color: var(--color-text);
+  }
+
+  :root:not(.light) .btn--secondary:hover,
+  html.dark .btn--secondary:hover {
+    background: var(--gray-300);
+  }
+
+  /* Command palette dark mode */
+  :root:not(.light) .cmd-palette,
+  html.dark .cmd-palette {
+    background: var(--color-surface);
+    box-shadow: 0 0 0 1px var(--color-border), 0 16px 70px rgba(0, 0, 0, 0.5);
+  }
+
+  :root:not(.light) .cmd-input-wrap,
+  html.dark .cmd-input-wrap {
+    border-color: var(--color-border);
+  }
+
+  :root:not(.light) .cmd-input,
+  html.dark .cmd-input {
+    color: var(--color-text);
+  }
+
+  :root:not(.light) .cmd-item:hover,
+  :root:not(.light) .cmd-item--selected,
+  html.dark .cmd-item:hover,
+  html.dark .cmd-item--selected {
+    background: rgba(79, 169, 255, 0.1);
+    color: var(--color-text);
+  }
+
+  :root:not(.light) .cmd-footer,
+  html.dark .cmd-footer {
+    border-color: var(--color-border);
+    color: var(--gray-400);
+  }
+}

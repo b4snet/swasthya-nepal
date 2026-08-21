@@ -46,6 +46,8 @@ import {
   Building2,
   MoreHorizontal,
   GitPullRequestArrow,
+  Sun,
+  Moon,
   type LucideIcon,
 } from 'lucide-react';
 import './shell.css';
@@ -140,6 +142,35 @@ function LanguageToggle() {
     >
       <Globe size={15} />
       {locale === 'en' ? 'नेपाली' : 'EN'}
+    </button>
+  );
+}
+
+// ── Dark mode toggle ──
+function DarkModeToggle() {
+  const [dark, setDark] = useState(() => {
+    const saved = localStorage.getItem('swasthya-theme');
+    if (saved === 'dark') return true;
+    if (saved === 'light') return false;
+    return typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches;
+  });
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', dark);
+    document.documentElement.classList.toggle('light', !dark);
+    localStorage.setItem('swasthya-theme', dark ? 'dark' : 'light');
+  }, [dark]);
+
+  return (
+    <button
+      type="button"
+      className="lang-btn"
+      onClick={() => setDark((d) => !d)}
+      aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+      title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+      data-testid="dark-mode-toggle"
+    >
+      {dark ? <Sun size={15} /> : <Moon size={15} />}
     </button>
   );
 }
@@ -305,6 +336,7 @@ export function AppShell() {
         <div className="app-header__right">
           <FacilitySwitcher />
           <LanguageToggle />
+          <DarkModeToggle />
           <UserMenu />
         </div>
       </header>
