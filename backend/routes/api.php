@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\ComplianceController;
 use App\Http\Controllers\Api\ConsentController;
 use App\Http\Controllers\Api\CriticalValueEventController;
 use App\Http\Controllers\Api\DepartmentController;
+use App\Http\Controllers\Api\DoctorScheduleController;
 use App\Http\Controllers\Api\EncounterController;
 use App\Http\Controllers\Api\ErController;
 use App\Http\Controllers\Api\ExpenseController;
@@ -1057,6 +1058,16 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
         ->middleware('authorize:branding:manage');
     Route::get('facilities/{facility}/branding/document', [HospitalBrandingController::class, 'forDocument'])
         ->middleware('authorize:branding:view');
+
+    // Phase 79 — Doctor Schedule Management
+    Route::get('organizations/{organization}/doctors', [DoctorScheduleController::class, 'index'])
+        ->middleware('authorize:schedule:view');
+    Route::get('doctors/{staff}/weekly-schedule', [DoctorScheduleController::class, 'weeklySchedule'])
+        ->middleware('authorize:schedule:view');
+    Route::post('organizations/{organization}/doctors/{staff}/weekly-schedule', [DoctorScheduleController::class, 'updateWeeklySchedule'])
+        ->middleware('authorize:schedule:manage');
+    Route::get('organizations/{organization}/departments/{department}/schedule', [DoctorScheduleController::class, 'departmentSchedule'])
+        ->middleware('authorize:schedule:view');
 
     // Phase 3 slice 21 — Analytics and Reporting (ROADMAP Phase 17, PRODUCT
     // REQUIREMENTS §6.19, DATABASE.md §3.51): versioned metric definitions,

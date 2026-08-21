@@ -213,10 +213,25 @@ export interface Payment {
 
 export interface Staff {
   id: string;
+  facilityId?: string;
+  departmentId?: string;
+  department?: { id: string; name: string } | null;
   fullName: string;
   employeeCode: string;
   designation: string | null;
   status: string;
+  userId?: string;
+  hireDate?: string | null;
+  // Doctor profile fields
+  specialty?: string | null;
+  subSpecialty?: string | null;
+  consultationFee?: number | null;
+  consultationDurationMinutes?: number | null;
+  bio?: string | null;
+  acceptsNewPatients?: boolean;
+  profileImageUrl?: string | null;
+  availableDays?: number[] | null;
+  consultationTypes?: string[] | null;
 }
 
 export interface Service {

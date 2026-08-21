@@ -48,6 +48,16 @@ class Staff extends Model
         'status',
         'hire_date',
         'settings',
+        // Doctor profile fields (Phase 79)
+        'specialty',
+        'sub_specialty',
+        'consultation_fee',
+        'consultation_duration_minutes',
+        'bio',
+        'accepts_new_patients',
+        'profile_image_url',
+        'available_days',
+        'consultation_types',
         'created_by',
         'updated_by',
     ];
@@ -61,6 +71,11 @@ class Staff extends Model
             'license_number_encrypted' => EncryptedString::class,
             'settings' => 'array',
             'hire_date' => 'date',
+            'consultation_fee' => 'decimal:2',
+            'consultation_duration_minutes' => 'integer',
+            'accepts_new_patients' => 'boolean',
+            'available_days' => 'array',
+            'consultation_types' => 'array',
         ];
     }
 

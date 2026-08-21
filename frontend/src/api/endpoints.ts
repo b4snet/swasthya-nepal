@@ -173,6 +173,26 @@ export const scheduleApi = {
     api.request<AvailabilitySlot[]>(`/api/v1/staff/${staffId}/availability?date=${date}`, opt(facilityId)),
 };
 
+/* ------------------------------------------------------------------
+   Doctor Schedule Management (Phase 79)
+   ------------------------------------------------------------------ */
+export const doctorScheduleApi = {
+  listDoctors: (organizationId: string, facilityId?: string | null, params?: Record<string, string>) => {
+    const qs = params ? '?' + new URLSearchParams(params).toString() : '';
+    return api.request<Staff[]>(`${orgUrl(organizationId)}/doctors${qs}`, opt(facilityId));
+  },
+  weeklySchedule: (staffId: string, weekStart?: string) => {
+    const qs = weekStart ? `?weekStart=${weekStart}` : '';
+    return api.request<Record<string, unknown>>(`/api/v1/doctors/${staffId}/weekly-schedule${qs}`);
+  },
+  updateWeeklySchedule: (organizationId: string, staffId: string, schedule: Record<string, unknown>[]) =>
+    api.request<{ created: number }>(`${orgUrl(organizationId)}/doctors/${staffId}/weekly-schedule`, { method: 'POST', body: { schedule } }),
+  departmentSchedule: (organizationId: string, departmentId: string, date?: string) => {
+    const qs = date ? `?date=${date}` : '';
+    return api.request<Record<string, unknown>>(`${orgUrl(organizationId)}/departments/${departmentId}/schedule${qs}`);
+  },
+};
+
 export const encountersApi = {
   start: (appointmentId: string, facilityId?: string | null) =>
     api.request<Encounter>(`/api/v1/appointments/${appointmentId}/start-encounter`, { method: 'POST', body: {}, ...opt(facilityId) }),

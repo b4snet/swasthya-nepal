@@ -1,0 +1,411 @@
+/* ============================================================
+   PHYSICIAN SCHEDULING PAGE
+   ============================================================ */
+
+.phys-sched {
+  padding: 0;
+}
+
+.phys-sched__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.phys-sched__header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+
+.phys-sched__subtitle {
+  margin: 0.25rem 0 0;
+  font-size: 0.875rem;
+  color: var(--ink-muted, #64748b);
+}
+
+.phys-sched__loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  color: var(--ink-muted, #64748b);
+  font-size: 0.875rem;
+}
+
+/* --- Layout --- */
+.phys-sched__layout {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .phys-sched__layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* --- Sidebar --- */
+.phys-sched__sidebar {
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 16px;
+  overflow: hidden;
+  position: sticky;
+  top: 1rem;
+}
+
+.phys-sched__sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem 0.75rem;
+  border-bottom: 1px solid var(--border, #e2e8f0);
+}
+
+.phys-sched__sidebar-header h3 {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ink, #0f172a);
+}
+
+.phys-sched__filter {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 6px;
+  background: var(--surface, #fff);
+  color: var(--ink-muted, #64748b);
+}
+
+.phys-sched__doctor-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0.5rem;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.phys-sched__doctor-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+  width: 100%;
+}
+
+.phys-sched__doctor-card:hover {
+  background: var(--hover-bg, #f1f5f9);
+}
+
+.phys-sched__doctor-card--active {
+  background: var(--primary-50, #f0f9ff);
+  border-color: var(--primary, #0891b2);
+}
+
+.phys-sched__doctor-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.phys-sched__doctor-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.phys-sched__doctor-name {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--ink, #0f172a);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.phys-sched__doctor-specialty {
+  font-size: 0.6875rem;
+  color: var(--primary, #0891b2);
+  font-weight: 500;
+}
+
+.phys-sched__doctor-dept {
+  font-size: 0.6875rem;
+  color: var(--ink-muted, #94a3b8);
+}
+
+.phys-sched__doctor-status {
+  flex-shrink: 0;
+}
+
+/* --- Main area --- */
+.phys-sched__main {
+  min-width: 0;
+}
+
+.phys-sched__empty {
+  padding: 3rem 0;
+}
+
+/* --- Week navigation --- */
+.phys-sched__week-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.phys-sched__week-info {
+  text-align: center;
+}
+
+.phys-sched__week-info h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--ink, #0f172a);
+}
+
+.phys-sched__week-info span {
+  font-size: 0.8125rem;
+  color: var(--ink-muted, #64748b);
+}
+
+/* --- Doctor profile --- */
+.phys-sched__profile {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 14px;
+  margin-bottom: 1.25rem;
+}
+
+.phys-sched__profile-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.phys-sched__profile-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.phys-sched__profile-details h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--ink, #0f172a);
+}
+
+.phys-sched__profile-details > span {
+  font-size: 0.8125rem;
+  color: var(--ink-muted, #64748b);
+}
+
+.phys-sched__fee {
+  color: var(--green-600, #16a34a) !important;
+  font-weight: 500;
+}
+
+.phys-sched__duration {
+  font-size: 0.75rem !important;
+  color: var(--ink-muted, #94a3b8) !important;
+}
+
+/* --- Calendar grid --- */
+.phys-sched__calendar {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+
+@media (max-width: 900px) {
+  .phys-sched__calendar {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .phys-sched__calendar {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.phys-sched__day {
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 120px;
+  transition: border-color 0.15s ease;
+}
+
+.phys-sched__day--available {
+  border-top: 3px solid var(--green-400, #4ade80);
+}
+
+.phys-sched__day--unavailable {
+  border-top: 3px solid var(--border, #e2e8f0);
+  opacity: 0.75;
+}
+
+.phys-sched__day--exception {
+  border-top: 3px solid var(--amber-400, #fbbf24);
+}
+
+.phys-sched__day-header {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 0.625rem 0.375rem;
+  background: var(--surface-secondary, #f8fafc);
+  border-bottom: 1px solid var(--border, #e2e8f0);
+}
+
+.phys-sched__day-name {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-muted, #64748b);
+}
+
+.phys-sched__day-date {
+  font-size: 0.6875rem;
+  color: var(--ink-muted, #94a3b8);
+}
+
+.phys-sched__day-body {
+  flex: 1;
+  padding: 0.5rem 0.625rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.phys-sched__slots {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.phys-sched__slot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.25rem 0.375rem;
+  background: var(--primary-50, #f0f9ff);
+  border-radius: 5px;
+  font-size: 0.625rem;
+}
+
+.phys-sched__slot-time {
+  font-weight: 600;
+  color: var(--primary, #0891b2);
+}
+
+.phys-sched__slot-meta {
+  color: var(--ink-muted, #94a3b8);
+}
+
+.phys-sched__off-day {
+  text-align: center;
+  font-size: 0.6875rem;
+  color: var(--ink-muted, #94a3b8);
+  padding: 1rem 0;
+}
+
+.phys-sched__exception-badge {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  padding: 0.375rem;
+  background: var(--amber-50, #fffbeb);
+  border-radius: 5px;
+  font-size: 0.625rem;
+  text-align: center;
+}
+
+.phys-sched__exception-badge > span:first-child {
+  font-weight: 600;
+  color: var(--amber-700, #b45309);
+}
+
+.phys-sched__exception-reason {
+  color: var(--amber-600, #d97706);
+}
+
+.phys-sched__day-edit {
+  display: block;
+  width: 100%;
+  padding: 0.375rem;
+  border: none;
+  border-top: 1px solid var(--border, #e2e8f0);
+  background: transparent;
+  color: var(--primary, #0891b2);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.phys-sched__day-edit:hover {
+  background: var(--hover-bg, #f1f5f9);
+}
+
+/* --- Edit dialog slots --- */
+.phys-sched__edit-slots {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.phys-sched__edit-slot {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.phys-sched__edit-slot-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 0.5rem;
+  flex: 1;
+}

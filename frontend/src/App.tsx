@@ -46,6 +46,7 @@ const AdminServicesPage = lazy(() => import('./pages/admin/AdminServicesPage').t
 const AdminMedicationsPage = lazy(() => import('./pages/admin/AdminMedicationsPage').then(m => ({ default: m.AdminMedicationsPage })));
 const AdminSettingsPage = lazy(() => import('./pages/admin/AdminSettingsPage').then(m => ({ default: m.AdminSettingsPage })));
 const AdminBrandingPage = lazy(() => import('./pages/admin/AdminBrandingPage').then(m => ({ default: m.AdminBrandingPage })));
+const PhysicianSchedulingPage = lazy(() => import('./pages/PhysicianSchedulingPage').then(m => ({ default: m.PhysicianSchedulingPage })));
 const EmergencyPage = lazy(() => import('./pages/EmergencyPage').then(m => ({ default: m.EmergencyPage })));
 const IcuPage = lazy(() => import('./pages/IcuPage').then(m => ({ default: m.IcuPage })));
 const OperatingTheatrePage = lazy(() => import('./pages/OperatingTheatrePage').then(m => ({ default: m.OperatingTheatrePage })));
@@ -146,6 +147,7 @@ export function App() {
               <Route path="/audit" element={<LazySuspense><AuditPage /></LazySuspense>} />
               <Route path="/analytics" element={<LazySuspense><AnalyticsPage /></LazySuspense>} />               <Route path="/notifications" element={<LazySuspense><NotificationsPage /></LazySuspense>} />
                <Route path="/forms" element={<LazySuspense><FormsPage /></LazySuspense>} />
+               <Route path="/physician-scheduling" element={<LazySuspense><PhysicianSchedulingPage /></LazySuspense>} />
                <Route path="/beds" element={<LazySuspense><BedOccupancyPage /></LazySuspense>} />
                <Route path="/emergency" element={<LazySuspense><EmergencyPage /></LazySuspense>} />
                <Route path="/icu" element={<LazySuspense><IcuPage /></LazySuspense>} />

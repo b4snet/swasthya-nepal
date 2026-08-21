@@ -150,6 +150,34 @@ final class StaffController extends Controller
             $staff->license_number_encrypted = $request->validated('licenseNumber');
         }
 
+        // Doctor profile fields
+        foreach (['specialty' => 'specialty', 'subSpecialty' => 'sub_specialty', 'bio' => 'bio', 'profileImageUrl' => 'profile_image_url'] as $input => $field) {
+            if ($request->has($input)) {
+                $changes[$field] = [$staff->getAttribute($field), $request->validated($input)];
+                $staff->setAttribute($field, $request->validated($input));
+            }
+        }
+        if ($request->has('consultationFee')) {
+            $changes['consultationFee'] = [$staff->consultation_fee, $request->validated('consultationFee')];
+            $staff->consultation_fee = $request->validated('consultationFee');
+        }
+        if ($request->has('consultationDurationMinutes')) {
+            $changes['consultationDurationMinutes'] = [$staff->consultation_duration_minutes, $request->validated('consultationDurationMinutes')];
+            $staff->consultation_duration_minutes = $request->validated('consultationDurationMinutes');
+        }
+        if ($request->has('acceptsNewPatients')) {
+            $changes['acceptsNewPatients'] = [$staff->accepts_new_patients, $request->validated('acceptsNewPatients')];
+            $staff->accepts_new_patients = $request->validated('acceptsNewPatients');
+        }
+        if ($request->has('availableDays')) {
+            $changes['availableDays'] = [$staff->available_days, $request->validated('availableDays')];
+            $staff->available_days = $request->validated('availableDays');
+        }
+        if ($request->has('consultationTypes')) {
+            $changes['consultationTypes'] = [$staff->consultation_types, $request->validated('consultationTypes')];
+            $staff->consultation_types = $request->validated('consultationTypes');
+        }
+
         $staff->updated_by = TenantContext::current()->user?->getKey();
         $staff->save();
 
@@ -182,6 +210,16 @@ final class StaffController extends Controller
             'status' => $staff->status,
             'userId' => $staff->user_id,
             'hireDate' => $staff->hire_date?->toDateString(),
+            // Doctor profile fields
+            'specialty' => $staff->specialty,
+            'subSpecialty' => $staff->sub_specialty,
+            'consultationFee' => $staff->consultation_fee,
+            'consultationDurationMinutes' => $staff->consultation_duration_minutes,
+            'bio' => $staff->bio,
+            'acceptsNewPatients' => $staff->accepts_new_patients,
+            'profileImageUrl' => $staff->profile_image_url,
+            'availableDays' => $staff->available_days,
+            'consultationTypes' => $staff->consultation_types,
         ];
 
         if ($includeLicense) {
