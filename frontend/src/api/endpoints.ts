@@ -856,6 +856,12 @@ export const adminFacilitySettingsApi = {
     api.request<void>(`/api/v1/facilities/${facilityId}/settings/${encodeURIComponent(key)}`, { method: 'DELETE' }),
 };
 
+export const modulesApi = {
+  catalog: () => api.request<{ modules: Array<{ code: string; name: string; description: string }> }>('/api/v1/modules/catalog'),
+  enabled: () => api.request<{ modules: Array<{ code: string; name: string; enabled: boolean }> }>('/api/v1/modules/enabled'),
+  check: (code: string) => api.request<{ module: string; enabled: boolean }>(`/api/v1/modules/${code}/check`),
+};
+
 /* ------------------------------------------------------------------
    Hospital Branding & Document Configuration (Phase 78)
    ------------------------------------------------------------------ */

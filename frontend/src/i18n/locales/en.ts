@@ -48,6 +48,7 @@ export const messages = {
   'forbidden.backToDashboard': 'Back to dashboard',
   'admin.title': 'Administration',
   'admin.subtitle': 'Manage users, roles, staff, and facility configuration',
+  'admin.nav.console': 'Console',
   'admin.nav.users': 'Users',
   'admin.nav.roles': 'Roles',
   'admin.nav.staff': 'Staff',

@@ -49,6 +49,7 @@ export const messages: Record<MessageKey, string> = {
   'forbidden.backToDashboard': 'ड्यासबोर्डमा फर्कनुहोस्',
   'admin.title': 'प्रशासन',
   'admin.subtitle': 'प्रयोगकर्ता, भूमिका, कर्मचारी र सुविधा कन्फिगरेसन व्यवस्थापन गर्नुहोस्',
+  'admin.nav.console': 'कन्सोल',
   'admin.nav.users': 'प्रयोगकर्ता',
   'admin.nav.roles': 'भूमिका',
   'admin.nav.staff': 'कर्मचारी',

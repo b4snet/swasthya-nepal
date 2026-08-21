@@ -5,6 +5,7 @@ import { ADMIN_ROLES } from '../../auth/roles';
 import './admin.css';
 
 const ADMIN_NAV = [
+  { to: '/admin', labelKey: 'admin.nav.console' as const, roles: [...ADMIN_ROLES] },
   { to: '/admin/users', labelKey: 'admin.nav.users' as const, roles: [...ADMIN_ROLES] },
   { to: '/admin/roles', labelKey: 'admin.nav.roles' as const, roles: [...ADMIN_ROLES] },
   { to: '/admin/staff', labelKey: 'admin.nav.staff' as const, roles: [...ADMIN_ROLES] },
