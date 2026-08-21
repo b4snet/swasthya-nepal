@@ -162,48 +162,17 @@ return new class extends Migration
         // and has fixed search_path
         // ══════════════════════════════════════════════════════════════
 
-        // Drop then recreate to handle return type changes
-        DB::statement('DROP FUNCTION IF EXISTS public.swasthya_rls_is_platform()');
-        DB::statement("
-            CREATE OR REPLACE FUNCTION public.swasthya_rls_is_platform()
-            RETURNS boolean
-            LANGUAGE plpgsql
-            SECURITY DEFINER
-            SET search_path = public
-            AS \$$
-            BEGIN
-                RETURN current_setting('app.is_platform', true) = 'true';
-            END;
-            \$$
-        ");
+        // Drop and recreate RLS functions with SECURITY DEFINER + search_path.
+        // DROP CASCADE is required when return types changed; it drops dependent
+        // policies, so the subsequent migration step that creates policies must run.
+        DB::unprepared('DROP FUNCTION IF EXISTS public.swasthya_rls_is_platform() CASCADE');
+        DB::unprepared("CREATE FUNCTION public.swasthya_rls_is_platform() RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS \$\$ BEGIN RETURN current_setting('app.is_platform', true) = 'true'; END; \$\$");
 
-        DB::statement('DROP FUNCTION IF EXISTS public.swasthya_rls_tenant_id()');
-        DB::statement("
-            CREATE OR REPLACE FUNCTION public.swasthya_rls_tenant_id()
-            RETURNS text
-            LANGUAGE plpgsql
-            SECURITY DEFINER
-            SET search_path = public
-            AS \$$
-            BEGIN
-                RETURN current_setting('app.current_tenant', true);
-            END;
-            \$$
-        ");
+        DB::unprepared('DROP FUNCTION IF EXISTS public.swasthya_rls_tenant_id() CASCADE');
+        DB::unprepared("CREATE FUNCTION public.swasthya_rls_tenant_id() RETURNS text LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS \$\$ BEGIN RETURN current_setting('app.current_tenant', true); END; \$\$");
 
-        DB::statement('DROP FUNCTION IF EXISTS public.swasthya_rls_facility_id()');
-        DB::statement("
-            CREATE OR REPLACE FUNCTION public.swasthya_rls_facility_id()
-            RETURNS text
-            LANGUAGE plpgsql
-            SECURITY DEFINER
-            SET search_path = public
-            AS \$$
-            BEGIN
-                RETURN current_setting('app.current_facility', true);
-            END;
-            \$$
-        ");
+        DB::unprepared('DROP FUNCTION IF EXISTS public.swasthya_rls_facility_id() CASCADE');
+        DB::unprepared("CREATE FUNCTION public.swasthya_rls_facility_id() RETURNS text LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS \$\$ BEGIN RETURN current_setting('app.current_facility', true); END; \$\$");
     }
 
     public function down(): void
