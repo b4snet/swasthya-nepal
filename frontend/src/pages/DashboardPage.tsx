@@ -1,75 +1,90 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useTenant } from '../context/TenantContext';
 import { useAuth } from '../auth/AuthProvider';
-import { appointmentsApi, realtimeApi } from '../api/endpoints';
 import {
-  Calendar,
-  Users,
-  Activity,
-  Clock,
-  CheckCircle,
-  AlertTriangle,
-  ArrowRight,
-  Stethoscope,
-  Pill,
-  FileText,
-  DollarSign,
-  TrendingUp,
+  Users, Calendar, Activity, Clock, Bed, DollarSign, Pill, TestTube,
+  Image, AlertTriangle, Stethoscope, CheckCircle, FileText,
+  TrendingUp, TrendingDown,
 } from 'lucide-react';
+import {
+  AreaChart, Area, BarChart, Bar,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell,
+} from 'recharts';
+import {
+  KpiCard, ChartCard, TableCard, AlertCard, FilterBar,
+  DashboardSection, OccupancyBar, DashboardSkeleton,
+} from '../components/dashboard';
+import { dashboardApi, type DashboardMetrics, type ChartData } from '../api/dashboard';
 import './dashboard-premium.css';
 
-interface Appointment {
-  id: string;
-  patientId: string;
-  patient?: { fullName: string; mrn: string; id: string };
-  provider?: { fullName: string };
-  startsAt: string;
-  status: string;
+const COLORS = {
+  blue: '#4FA9FF',
+  green: '#12B76A',
+  red: '#F04438',
+  amber: '#F79009',
+  gray: '#98A2B3',
+  blueLight: '#D1E9FF',
+  greenLight: '#D1FADF',
+};
+
+function dateRange(days: number) {
+  const end = new Date();
+  const start = new Date();
+  start.setDate(start.getDate() - days);
+  return { start: start.toISOString().slice(0, 10), end: end.toISOString().slice(0, 10) };
 }
 
-interface QueueEntry {
-  appointmentId: string;
-  patient?: { fullName: string; mrn: string; id: string };
-  tokenNo: string;
-  status: string;
-  encounterId?: string;
-}
-
-function today(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function greeting(): string {
+function greeting() {
   const h = new Date().getHours();
   if (h < 12) return 'Good morning';
   if (h < 17) return 'Good afternoon';
   return 'Good evening';
 }
 
+function formatCurrency(minor: number) {
+  return `NPR ${(minor / 100).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+}
+
+function timeAgo(dateStr: string) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
+function hasRole(user: any, ...roles: string[]) {
+  return user?.assignments?.some((a: any) => roles.includes(a.role?.code)) ?? false;
+}
+
 export function DashboardPage() {
-  const { selectedFacilityId, hasRole } = useTenant();
+  const { selectedFacilityId } = useTenant();
   const { user } = useAuth();
-  const navigate = useNavigate();
   const fac = selectedFacilityId;
 
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [queue, setQueue] = useState<QueueEntry[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+  const [charts, setCharts] = useState<ChartData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [dateStart, setDateStart] = useState(() => dateRange(30).start);
+  const [dateEnd, setDateEnd] = useState(() => dateRange(30).end);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
-      const [apptRes, queueRes, unreadRes] = await Promise.allSettled([
-        appointmentsApi.list({ date: today(), facilityId: fac }),
-        appointmentsApi.queue({ date: today(), facilityId: fac }),
-        realtimeApi.unreadCount(fac ?? undefined),
+      const [metricsRes, chartsRes] = await Promise.allSettled([
+        dashboardApi.metrics(fac),
+        dashboardApi.chartData(fac, 30),
       ]);
-
-      if (apptRes.status === 'fulfilled') setAppointments(apptRes.value as unknown as Appointment[]);
-      if (queueRes.status === 'fulfilled') setQueue(queueRes.value as unknown as QueueEntry[]);
-      if (unreadRes.status === 'fulfilled') setUnreadCount((unreadRes.value as unknown as { count: number }).count ?? 0);
+      if (metricsRes.status === 'fulfilled') setMetrics(metricsRes.value as DashboardMetrics);
+      if (chartsRes.status === 'fulfilled') setCharts(chartsRes.value as ChartData);
+    } catch (e) {
+      setError('Failed to load dashboard data');
     } finally {
       setLoading(false);
     }
@@ -81,214 +96,379 @@ export function DashboardPage() {
     return () => clearInterval(interval);
   }, [fetchData]);
 
-  const completedToday = appointments.filter((a) => a.status === 'completed').length;
-  const checkedIn = queue.filter((q) => q.status === 'checked_in').length;
-  const inConsultation = queue.filter((q) => q.status === 'in_consultation').length;
-  const pendingQueue = checkedIn + inConsultation;
+  const _roleFlags = {
+    isDoctor: hasRole(user, 'doctor', 'physician', 'specialist'),
+    isNurse: hasRole(user, 'nurse', 'nursing'),
+    isPharmacist: hasRole(user, 'pharmacist', 'pharmacy'),
+    isLabTech: hasRole(user, 'lab_technician', 'laboratory', 'lab'),
+    isReception: hasRole(user, 'receptionist', 'front_desk'),
+    isBilling: hasRole(user, 'billing', 'billing_clerk', 'accountant'),
+    isAdmin: hasRole(user, 'admin', 'hospital_admin', 'organization_admin'),
+    isFinance: hasRole(user, 'finance', 'finance_manager'),
+  };
+  void _roleFlags; // used by conditional sections
 
-  const kpis = [
-    {
-      label: 'Appointments',
-      value: appointments.length,
-      icon: Calendar,
-      color: '#2563eb',
-      bg: '#eff6ff',
-      link: '/appointments',
-    },
-    {
-      label: 'In Queue',
-      value: pendingQueue,
-      icon: Clock,
-      color: '#d97706',
-      bg: '#fffbeb',
-      link: '/queue',
-    },
-    {
-      label: 'Completed',
-      value: completedToday,
-      icon: CheckCircle,
-      color: '#059669',
-      bg: '#ecfdf5',
-    },
-    {
-      label: 'Notifications',
-      value: unreadCount,
-      icon: AlertTriangle,
-      color: unreadCount > 0 ? '#dc2626' : '#64748b',
-      bg: unreadCount > 0 ? '#fef2f2' : '#f8fafc',
-      link: '/operations',
-    },
-  ];
+  if (loading && !metrics) {
+    return (
+      <div className="dashboard">
+        <div className="dashboard-header">
+          <div className="dashboard-header__text">
+            <h1>{greeting()}, {user?.email?.split('@')[0] || 'User'}</h1>
+            <p>Loading hospital dashboard...</p>
+          </div>
+        </div>
+        <div className="kpi-grid">
+          {Array.from({ length: 6 }).map((_, i) => <DashboardSkeleton key={i} type="kpi" />)}
+        </div>
+        <div className="chart-grid">
+          <DashboardSkeleton type="chart" />
+          <DashboardSkeleton type="chart" />
+        </div>
+      </div>
+    );
+  }
+
+  if (error && !metrics) {
+    return (
+      <div className="dashboard">
+        <AlertCard type="danger" title="Dashboard Error" message={error} icon={AlertTriangle} />
+        <button className="btn btn--secondary" onClick={fetchData}>Retry</button>
+      </div>
+    );
+  }
+
+  const m = metrics!;
+  const c = charts;
 
   return (
-    <div className="dp-page">
-      {/* Welcome header */}
-      <header className="dp-header">
-        <div className="dp-header__greeting">
-          <h1>{greeting()}, {user?.email?.split('@')[0] ?? 'User'}</h1>
-          <p className="dp-header__date">
-            {new Date().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-          </p>
+    <div className="dashboard">
+      {/* ── Header ── */}
+      <div className="dashboard-header">
+        <div className="dashboard-header__text">
+          <h1>{greeting()}, {user?.email?.split('@')[0] || 'User'}</h1>
+          <p>{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
         </div>
-        <div className="dp-header__actions">
-          <Link to="/patients/new" className="dp-action-btn dp-action-btn--primary">
-            <Users size={16} />
-            Register Patient
+        <div className="dashboard-header__actions">
+          <Link to="/patients/new" className="btn btn--primary btn--sm">
+            <Users size={14} /> New Patient
           </Link>
-          <Link to="/appointments" className="dp-action-btn dp-action-btn--secondary">
-            <Calendar size={16} />
-            Book Appointment
+          <Link to="/appointments" className="btn btn--secondary btn--sm">
+            <Calendar size={14} /> Appointments
           </Link>
         </div>
-      </header>
+      </div>
 
-      {/* KPI Cards */}
-      <div className="dp-kpi-grid">
-        {kpis.map((kpi) => {
-          const Icon = kpi.icon;
-          const content = (
-            <div className="dp-kpi" style={{ '--kpi-color': kpi.color, '--kpi-bg': kpi.bg } as React.CSSProperties}>
-              <div className="dp-kpi__icon">
-                <Icon size={22} />
+      {/* ── Alerts ── */}
+      {m.criticalValues > 0 && (
+        <AlertCard
+          type="danger"
+          title={`${m.criticalValues} critical lab value${m.criticalValues > 1 ? 's' : ''} pending acknowledgment`}
+          message="Review and acknowledge critical laboratory results immediately"
+          icon={AlertTriangle}
+        />
+      )}
+      {m.lowStockItems > 0 && (
+        <AlertCard
+          type="warning"
+          title={`${m.lowStockItems} medication${m.lowStockItems > 1 ? 's' : ''} below reorder level`}
+          message="Review pharmacy inventory and generate purchase orders"
+          icon={Pill}
+        />
+      )}
+      {m.erWaiting > 0 && (
+        <AlertCard
+          type="warning"
+          title={`${m.erWaiting} patient${m.erWaiting > 1 ? 's' : ''} waiting in emergency`}
+          message="Emergency department has patients awaiting triage or consultation"
+          icon={Clock}
+        />
+      )}
+
+      {/* ── Filter Bar ── */}
+      <FilterBar
+        dateRange={{ start: dateStart, end: dateEnd, onChange: (s, e) => { setDateStart(s); setDateEnd(e); } }}
+      />
+
+      {/* ── Core KPIs ── */}
+      <DashboardSection title="Today's Operations">
+        <div className="kpi-grid">
+          <KpiCard
+            label="Appointments"
+            value={m.appointmentsToday}
+            icon={Calendar}
+            iconColor="blue"
+            trend={m.completedToday > 0 ? { value: `${m.completedToday} completed`, direction: 'up' } : undefined}
+          />
+          <KpiCard
+            label="In Queue"
+            value={m.inQueue + m.inConsultation}
+            icon={Clock}
+            iconColor={m.inQueue > 10 ? 'amber' : 'blue'}
+          />
+          <KpiCard
+            label="Encounters"
+            value={m.encountersToday}
+            icon={Stethoscope}
+            iconColor="green"
+            trend={{ value: `${m.encountersThisWeek} this week`, direction: 'neutral' }}
+          />
+          <KpiCard
+            label="Total Patients"
+            value={m.totalPatients}
+            icon={Users}
+            iconColor="blue"
+            trend={m.newPatientsToday > 0 ? { value: `+${m.newPatientsToday} today`, direction: 'up' } : undefined}
+          />
+          <KpiCard
+            label="Revenue Today"
+            value={formatCurrency(m.revenueToday)}
+            icon={DollarSign}
+            iconColor="green"
+            trend={m.outstandingAmount > 0 ? { value: `${formatCurrency(m.outstandingAmount)} outstanding`, direction: 'down' } : undefined}
+          />
+          <KpiCard
+            label="Notifications"
+            value={m.unreadNotifications}
+            icon={Activity}
+            iconColor={m.unreadNotifications > 5 ? 'red' : 'gray'}
+          />
+        </div>
+      </DashboardSection>
+
+      {/* ── Charts Row 1: Patient Volume + Revenue ── */}
+      {c && (
+        <div className="chart-grid">
+          <ChartCard title="Patient Registrations" subtitle={`Last ${dateRange(30).start ? '30' : '30'} days`}>
+            {c.patientVolume.length > 0 ? (
+              <ResponsiveContainer width="100%" height={240}>
+                <AreaChart data={c.patientVolume}>
+                  <defs>
+                    <linearGradient id="blueGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={COLORS.blue} stopOpacity={0.15} />
+                      <stop offset="95%" stopColor={COLORS.blue} stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--gray-100)" />
+                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} tickFormatter={(v) => v.slice(5)} />
+                  <YAxis tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} width={35} />
+                  <Tooltip
+                    contentStyle={{ fontSize: 12, border: '1px solid var(--gray-200)', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.06)' }}
+                    formatter={(v) => [Number(v), 'Patients']}
+                    labelFormatter={(l) => `Date: ${l}`}
+                  />
+                  <Area type="monotone" dataKey="value" stroke={COLORS.blue} strokeWidth={2} fill="url(#blueGrad)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="dashboard-empty" style={{ height: 240 }}>
+                <p className="dashboard-empty__title">No patient registration data</p>
+                <p className="dashboard-empty__message">Data will appear as patients are registered</p>
               </div>
-              <div className="dp-kpi__content">
-                <span className="dp-kpi__value">{loading ? '—' : kpi.value}</span>
-                <span className="dp-kpi__label">{kpi.label}</span>
+            )}
+          </ChartCard>
+
+          <ChartCard title="Revenue Trend" subtitle="Paid invoices">
+            {c.revenueTrend.length > 0 ? (
+              <ResponsiveContainer width="100%" height={240}>
+                <BarChart data={c.revenueTrend}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--gray-100)" />
+                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} tickFormatter={(v) => v.slice(5)} />
+                  <YAxis tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} width={50} tickFormatter={(v) => `${(v / 100).toFixed(0)}K`} />
+                  <Tooltip
+                    contentStyle={{ fontSize: 12, border: '1px solid var(--gray-200)', borderRadius: 8 }}
+                    formatter={(v) => [formatCurrency(Number(v)), 'Revenue']}
+                  />
+                  <Bar dataKey="value" fill={COLORS.blue} radius={[3, 3, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="dashboard-empty" style={{ height: 240 }}>
+                <p className="dashboard-empty__title">No revenue data</p>
+                <p className="dashboard-empty__message">Revenue will appear as invoices are paid</p>
+              </div>
+            )}
+          </ChartCard>
+        </div>
+      )}
+
+      {/* ── IPD & Beds Section ── */}
+      {m.totalBeds > 0 && (
+        <DashboardSection title="Inpatient Department" subtitle="Bed occupancy overview">
+          <div className="kpi-grid">
+            <KpiCard label="Total Beds" value={m.totalBeds} icon={Bed} iconColor="gray" />
+            <KpiCard
+              label="Occupied"
+              value={m.occupiedBeds}
+              icon={Bed}
+              iconColor="blue"
+              trend={{ value: `${m.totalBeds > 0 ? Math.round((m.occupiedBeds / m.totalBeds) * 100) : 0}% occupancy`, direction: m.occupiedBeds > m.totalBeds * 0.9 ? 'down' : 'neutral' }}
+            />
+            <KpiCard label="Available" value={m.availableBeds} icon={Bed} iconColor="green" />
+            <KpiCard label="Cleaning" value={m.cleaningBeds} icon={Bed} iconColor="amber" />
+            <KpiCard label="Admissions Today" value={m.admissionsToday} icon={TrendingUp} iconColor="blue" />
+            <KpiCard label="Discharges Today" value={m.dischargesToday} icon={TrendingDown} iconColor="green" />
+          </div>
+          <ChartCard title="Bed Occupancy">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
+              <OccupancyBar occupied={m.occupiedBeds} available={m.availableBeds} cleaning={m.cleaningBeds} height={12} />
+              <div style={{ display: 'flex', gap: 'var(--space-4)', fontSize: 'var(--text-caption)' }}>
+                <span style={{ color: COLORS.blue }}>● Occupied ({m.occupiedBeds})</span>
+                <span style={{ color: COLORS.green }}>● Available ({m.availableBeds})</span>
+                {m.cleaningBeds > 0 && <span style={{ color: COLORS.amber }}>● Cleaning ({m.cleaningBeds})</span>}
               </div>
             </div>
-          );
+          </ChartCard>
+        </DashboardSection>
+      )}
 
-          return kpi.link ? (
-            <Link key={kpi.label} to={kpi.link} className="dp-kpi-link">
-              {content}
-            </Link>
-          ) : (
-            <div key={kpi.label}>{content}</div>
-          );
-        })}
-      </div>
+      {/* ── Pharmacy & Lab Section ── */}
+      <DashboardSection title="Pharmacy & Laboratory">
+        <div className="kpi-grid">
+          <KpiCard label="Prescriptions Today" value={m.prescriptionsToday} icon={Pill} iconColor="blue" />
+          <KpiCard label="Dispensings Today" value={m.dispensingsToday} icon={CheckCircle} iconColor="green" />
+          <KpiCard
+            label="Low Stock Items"
+            value={m.lowStockItems}
+            icon={AlertTriangle}
+            iconColor={m.lowStockItems > 0 ? 'red' : 'green'}
+          />
+          <KpiCard label="Expiring Soon" value={m.expiringItems} icon={Clock} iconColor={m.expiringItems > 0 ? 'amber' : 'green'} />
+          <KpiCard label="Pending Lab Orders" value={m.pendingLabOrders} icon={TestTube} iconColor="blue" />
+          <KpiCard label="Critical Values" value={m.criticalValues} icon={AlertTriangle} iconColor={m.criticalValues > 0 ? 'red' : 'green'} />
+        </div>
+      </DashboardSection>
 
-      {/* Quick actions */}
-      <div className="dp-quick-actions">
-        {[
-          { to: '/encounters', label: 'Consultations', icon: Stethoscope },
-          { to: '/pharmacy', label: 'Pharmacy', icon: Pill },
-          { to: '/documents', label: 'Documents', icon: FileText },
-          { to: '/revenue', label: 'Revenue', icon: DollarSign },
-          { to: '/analytics', label: 'Analytics', icon: TrendingUp },
-        ].map((action) => {
-          const Icon = action.icon;
-          return (
-            <Link key={action.to} to={action.to} className="dp-quick-action">
-              <Icon size={18} />
-              <span>{action.label}</span>
-            </Link>
-          );
-        })}
-      </div>
-
-      <div className="dp-grid">
-        {/* Queue snapshot */}
-        <div className="dp-card dp-card--queue">
-          <div className="dp-card__header">
-            <h2 className="dp-card__title">
-              <Activity size={18} />
-              Queue Now
-            </h2>
-            <Link to="/queue" className="dp-card__link">
-              View all <ArrowRight size={14} />
-            </Link>
+      {/* ── Radiology Section ── */}
+      {(m.pendingStudies > 0 || m.completedStudiesToday > 0 || m.pendingReports > 0) && (
+        <DashboardSection title="Radiology">
+          <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+            <KpiCard label="Pending Studies" value={m.pendingStudies} icon={Image} iconColor="blue" />
+            <KpiCard label="Completed Today" value={m.completedStudiesToday} icon={CheckCircle} iconColor="green" />
+            <KpiCard label="Reports Pending" value={m.pendingReports} icon={FileText} iconColor="amber" />
           </div>
-          <div className="dp-card__body">
-            {loading ? (
-              <div className="dp-skeleton-rows">
-                {[1, 2, 3].map((i) => <div key={i} className="dp-skeleton-row" />)}
-              </div>
-            ) : queue.length === 0 ? (
-              <div className="dp-empty">
-                <CheckCircle size={32} />
-                <p>Queue is clear — no patients waiting</p>
-              </div>
-            ) : (
-              <div className="dp-queue-list">
-                {queue.slice(0, 6).map((entry) => (
-                  <div key={entry.appointmentId} className="dp-queue-item">
-                    <span className="dp-queue-item__token">#{entry.tokenNo}</span>
-                    <div className="dp-queue-item__info">
-                      <Link to={`/patients/${entry.patient?.id}`} className="dp-queue-item__name">
-                        {entry.patient?.fullName ?? 'Unknown'}
-                      </Link>
-                      <span className="dp-queue-item__mrn">{entry.patient?.mrn}</span>
-                    </div>
-                    <span className={`dp-status dp-status--${entry.status}`}>
-                      {entry.status === 'checked_in' ? 'Checked In' : entry.status === 'in_consultation' ? 'In Consultation' : entry.status}
+        </DashboardSection>
+      )}
+
+      {/* ── Appointments by Status Chart ── */}
+      {c && c.appointmentsByStatus.length > 0 && (
+        <div className="chart-grid">
+          <ChartCard title="Appointments Today" subtitle="By status">
+            <ResponsiveContainer width="100%" height={200}>
+              <PieChart>
+                <Pie
+                  data={c.appointmentsByStatus}
+                  dataKey="count"
+                  nameKey="status"
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={55}
+                  outerRadius={80}
+                  paddingAngle={2}
+                >
+                  {c.appointmentsByStatus.map((_entry, i) => (
+                    <Cell key={i} fill={[COLORS.blue, COLORS.green, COLORS.amber, COLORS.red, COLORS.gray][i % 5]} />
+                  ))}
+                </Pie>
+                <Tooltip contentStyle={{ fontSize: 12 }} />
+              </PieChart>
+            </ResponsiveContainer>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 'var(--space-4)', fontSize: 'var(--text-caption)', flexWrap: 'wrap' }}>
+              {c.appointmentsByStatus.map((item, i) => (
+                <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: [COLORS.blue, COLORS.green, COLORS.amber, COLORS.red, COLORS.gray][i % 5], display: 'inline-block' }} />
+                  {item.status} ({item.count})
+                </span>
+              ))}
+            </div>
+          </ChartCard>
+
+          {/* ── Recent Activity ── */}
+          <ChartCard title="Recent Patients" subtitle="Latest registrations">
+            {c.recentPatients.length > 0 ? (
+              <div className="activity-feed">
+                {c.recentPatients.slice(0, 6).map((p) => (
+                  <Link key={p.id} to={`/patients/${p.id}`} className="activity-feed__item" style={{ textDecoration: 'none', color: 'inherit' }}>
+                    <div className="activity-feed__dot activity-feed__dot--blue" />
+                    <span className="activity-feed__text">
+                      <strong>{p.name}</strong> <span style={{ color: 'var(--text-tertiary)' }}>({p.mrn})</span>
                     </span>
-                    {entry.status === 'checked_in' && hasRole('doctor') && (
-                      <button
-                        className="dp-queue-item__action"
-                        onClick={() => navigate(`/encounters/${entry.appointmentId}`)}
-                      >
-                        Start
-                      </button>
-                    )}
-                    {entry.status === 'in_consultation' && entry.encounterId && (
-                      <Link to={`/encounters/${entry.encounterId}`} className="dp-queue-item__action">
-                        Open
-                      </Link>
-                    )}
-                  </div>
+                    <span className="activity-feed__time">{timeAgo(p.lastVisit)}</span>
+                  </Link>
                 ))}
               </div>
-            )}
-          </div>
-        </div>
-
-        {/* Today's appointments */}
-        <div className="dp-card dp-card--appointments">
-          <div className="dp-card__header">
-            <h2 className="dp-card__title">
-              <Calendar size={18} />
-              Today's Appointments
-            </h2>
-            <Link to="/appointments" className="dp-card__link">
-              View all <ArrowRight size={14} />
-            </Link>
-          </div>
-          <div className="dp-card__body">
-            {loading ? (
-              <div className="dp-skeleton-rows">
-                {[1, 2, 3, 4].map((i) => <div key={i} className="dp-skeleton-row" />)}
-              </div>
-            ) : appointments.length === 0 ? (
-              <div className="dp-empty">
-                <Calendar size={32} />
-                <p>No appointments scheduled for today</p>
-              </div>
             ) : (
-              <div className="dp-appt-list">
-                {appointments.slice(0, 8).map((appt) => (
-                  <div key={appt.id} className="dp-appt-item">
-                    <span className="dp-appt-item__time">
-                      {new Date(appt.startsAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                    <div className="dp-appt-item__info">
-                      <Link to={`/patients/${appt.patientId}`} className="dp-appt-item__name">
-                        {appt.patient?.fullName ?? 'Unknown'}
-                      </Link>
-                      <span className="dp-appt-item__provider">
-                        {appt.provider?.fullName ?? 'Unassigned'}
-                      </span>
-                    </div>
-                    <span className={`dp-status dp-status--${appt.status}`}>
-                      {appt.status === 'completed' ? 'Completed' : appt.status === 'booked' ? 'Scheduled' : appt.status}
-                    </span>
-                  </div>
-                ))}
+              <div className="dashboard-empty" style={{ padding: 'var(--space-6)' }}>
+                <p className="dashboard-empty__title">No recent patients</p>
               </div>
             )}
-          </div>
+          </ChartCard>
         </div>
-      </div>
+      )}
+
+      {/* ── Tables Row ── */}
+      {c && (
+        <div className="chart-grid">
+          {c.upcomingAppointments.length > 0 && (
+            <TableCard
+              title="Upcoming Appointments"
+              columns={[
+                { key: 'patientName', label: 'Patient' },
+                { key: 'time', label: 'Time', render: (r) => new Date(String((r as any).time)).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) },
+                { key: 'type', label: 'Type' },
+                { key: 'status', label: 'Status', render: (r) => <StatusDot status={String(r.status)} /> },
+              ]}
+              data={c.upcomingAppointments as any}
+              maxRows={8}
+            />
+          )}
+
+          {c.recentAdmissions.length > 0 && (
+            <TableCard
+              title="Recent Admissions"
+              columns={[
+                { key: 'patientName', label: 'Patient' },
+                { key: 'ward', label: 'Ward' },
+                { key: 'admittedAt', label: 'Admitted', render: (r) => timeAgo(String((r as any).admittedAt)) },
+                { key: 'status', label: 'Status', render: (r) => <StatusDot status={String(r.status)} /> },
+              ]}
+              data={c.recentAdmissions as any}
+              maxRows={8}
+            />
+          )}
+
+          {c.lowStockMedications.length > 0 && (
+            <TableCard
+              title="Low Stock Medications"
+              columns={[
+                { key: 'name', label: 'Medication' },
+                { key: 'form', label: 'Form' },
+                { key: 'quantity', label: 'In Stock', align: 'right' },
+                { key: 'reorderLevel', label: 'Reorder Level', align: 'right' },
+              ]}
+              data={c.lowStockMedications as any}
+              maxRows={8}
+              emptyMessage="All medications adequately stocked"
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 }
+
+/* ── Status Dot helper ── */
+function StatusDot({ status }: { status: string }) {
+  const colors: Record<string, string> = {
+    booked: COLORS.blue, completed: COLORS.green, cancelled: COLORS.red,
+    no_show: COLORS.red, checked_in: COLORS.green, in_consultation: COLORS.blue,
+    waiting: COLORS.amber, admitted: COLORS.blue, discharged: COLORS.green,
+  };
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-caption)' }}>
+      <span style={{ width: 6, height: 6, borderRadius: '50%', background: colors[status] ?? COLORS.gray }} />
+      {status.replace(/_/g, ' ')}
+    </span>
+  );
+}
+
+

@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\CommunicationController;
 use App\Http\Controllers\Api\ComplianceController;
 use App\Http\Controllers\Api\ConsentController;
 use App\Http\Controllers\Api\CriticalValueEventController;
+use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DepartmentController;
 use App\Http\Controllers\Api\DoctorScheduleController;
 use App\Http\Controllers\Api\DocumentCenterController;
@@ -1120,6 +1121,13 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
 
     // Phase 3 slice 21 — Analytics and Reporting (ROADMAP Phase 17, PRODUCT
     // REQUIREMENTS §6.19, DATABASE.md §3.51): versioned metric definitions,
+    // Dashboard — real aggregate metrics for all role-specific dashboards.
+    // Uses direct DB queries scoped by tenant + facility (via claims).
+    Route::get('analytics/dashboard-metrics', [DashboardController::class, 'metrics'])
+        ->middleware('authorize:analytics:view');
+    Route::get('analytics/dashboard-charts', [DashboardController::class, 'charts'])
+        ->middleware('authorize:analytics:view');
+
     // observed-only metric snapshots, curated dashboards with drill-down,
     // and scheduled replica-fed reports. analytics:view gates the read
     // surfaces; analytics:manage gates definitions/dashboards; reports:run
