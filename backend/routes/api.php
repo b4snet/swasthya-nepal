@@ -67,6 +67,7 @@ use App\Http\Controllers\Api\PlatformSupportController;
 use App\Http\Controllers\Api\PortalActivationController;
 use App\Http\Controllers\Api\ProcurementController;
 use App\Http\Controllers\Api\RadiologyController;
+use App\Http\Controllers\Api\RealtimeController;
 use App\Http\Controllers\Api\RefundController;
 use App\Http\Controllers\Api\RevenueController;
 use App\Http\Controllers\Api\RoleAssignmentController;
@@ -1493,6 +1494,17 @@ Route::post('billing-adjustments/{adjustment}/apply', [RevenueController::class,
     ->middleware('authorize:billing:refund-approve');
 Route::post('billing-adjustments/{adjustment}/reject', [RevenueController::class, 'rejectAdjustment'])
     ->middleware('authorize:billing:refund-approve');
+
+// Phase 86 — Realtime Operations Center: SSE streaming, polling, and receipt management.
+Route::get('realtime/events', [RealtimeController::class, 'index']);
+Route::post('realtime/events', [RealtimeController::class, 'store']);
+Route::get('realtime/unread-count', [RealtimeController::class, 'unreadCount']);
+Route::get('realtime/severity-counts', [RealtimeController::class, 'severityCounts']);
+Route::post('realtime/events/mark-read', [RealtimeController::class, 'markRead']);
+Route::post('realtime/events/mark-all-read', [RealtimeController::class, 'markAllRead']);
+Route::post('realtime/events/{eventId}/acknowledge', [RealtimeController::class, 'acknowledge']);
+Route::post('realtime/events/{eventId}/dismiss', [RealtimeController::class, 'dismiss']);
+Route::get('realtime/stream', [RealtimeController::class, 'stream']);
 
 // ── Phase 12: National Mass Notification Platform ──
 Route::middleware(['throttle:api', ResolveTenantContext::class])->prefix('notifications')->group(function (): void {

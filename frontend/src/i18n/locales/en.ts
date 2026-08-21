@@ -227,6 +227,7 @@ export const messages = {
   'nav.telehealth': 'Telehealth',
   'nav.documentCenter': 'Documents',
   'nav.revenueCycle': 'Revenue Cycle',
+  'nav.operationsCenter': 'Operations Center',
   'nav.beds': 'Beds',
   'nav.emergency': 'Emergency',
   'nav.icu': 'ICU',

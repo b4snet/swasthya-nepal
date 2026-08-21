@@ -1412,3 +1412,31 @@ export const revenueApi = {
   rejectAdjustment: (adjustmentId: string, reason: string) =>
     api.request<Record<string, unknown>>(`/api/v1/billing-adjustments/${adjustmentId}/reject`, { method: 'POST', body: { reason } }),
 };
+
+export const realtimeApi = {
+  events: (params?: { facilityId?: string; category?: string; severity?: string; limit?: number; offset?: number }) => {
+    const qs = params ? '?' + new URLSearchParams(
+      Object.entries(params).filter(([, v]) => v !== undefined && v !== null).map(([k, v]) => [k, String(v)])
+    ).toString() : '';
+    return api.request<{ events: Array<Record<string, unknown>>; total: number; unreadCount: number }>(`/api/v1/realtime/events${qs}`);
+  },
+  unreadCount: (facilityId?: string) => {
+    const qs = facilityId ? `?facilityId=${facilityId}` : '';
+    return api.request<{ count: number }>(`/api/v1/realtime/unread-count${qs}`);
+  },
+  severityCounts: (facilityId?: string) => {
+    const qs = facilityId ? `?facilityId=${facilityId}` : '';
+    return api.request<Record<string, number>>(`/api/v1/realtime/severity-counts${qs}`);
+  },
+  markRead: (eventIds: string[]) =>
+    api.request<{ markedCount: number }>('/api/v1/realtime/events/mark-read', { method: 'POST', body: { eventIds } }),
+  markAllRead: (facilityId?: string) => {
+    const qs = facilityId ? `?facilityId=${facilityId}` : '';
+    return api.request<{ markedCount: number }>(`/api/v1/realtime/events/mark-all-read${qs}`, { method: 'POST', body: {} });
+  },
+  acknowledge: (eventId: string, note?: string) =>
+    api.request<Record<string, unknown>>(`/api/v1/realtime/events/${eventId}/acknowledge`, { method: 'POST', body: { note } }),
+  dismiss: (eventId: string) =>
+    api.request<Record<string, unknown>>(`/api/v1/realtime/events/${eventId}/dismiss`, { method: 'POST', body: {} }),
+  stream: () => new EventSource('/api/v1/realtime/stream'),
+};
