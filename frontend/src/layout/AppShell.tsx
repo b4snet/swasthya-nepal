@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { CommandPalette } from '../components/CommandPalette';
 import { useAuth } from '../auth/AuthProvider';
 import { useTenant } from '../context/TenantContext';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
@@ -281,6 +282,7 @@ export function AppShell() {
 
   return (
     <div className="app-shell">
+      <CommandPalette />
       <a className="skip-link" href="#content">{t('shell.skipToContent')}</a>
 
       {!network.online && (
