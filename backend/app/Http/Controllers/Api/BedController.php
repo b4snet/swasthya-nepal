@@ -164,6 +164,84 @@ final class BedController extends Controller
     }
 
     /**
+     * Bed occupancy overview for the command center.
+     * Returns ward → room → bed hierarchy with counts.
+     */
+    public function occupancy(Request $request, Organization $organization): JsonResponse
+    {
+        AccessCheck::organization($organization->getKey(), write: false);
+
+        $context = TenantContext::current();
+        $query = Bed::query()
+            ->with(['room:id,code,name,ward_id,room_type', 'room.ward:id,name,code,ward_type'])
+            ->where('tenant_id', $organization->getKey());
+
+        if (! $context->isPlatform && $context->facilityId() !== null) {
+            $query->where('facility_id', $context->facilityId());
+        }
+
+        $beds = $query->get();
+
+        // Group by ward → room
+        $wards = [];
+        foreach ($beds as $bed) {
+            $wardId = $bed->room?->ward_id ?? 'unassigned';
+            $wardName = $bed->room?->ward?->name ?? 'Unassigned';
+            $wardType = $bed->room?->ward?->ward_type ?? 'general';
+            $roomId = $bed->room_id ?? 'unassigned';
+            $roomName = $bed->room?->name ?? 'Unassigned';
+            $roomType = $bed->room?->room_type ?? 'general';
+
+            if (! isset($wards[$wardId])) {
+                $wards[$wardId] = [
+                    'id' => $wardId,
+                    'name' => $wardName,
+                    'wardType' => $wardType,
+                    'rooms' => [],
+                    'counts' => ['available' => 0, 'occupied' => 0, 'reserved' => 0, 'cleaning' => 0, 'maintenance' => 0, 'out_of_service' => 0, 'total' => 0],
+                ];
+            }
+
+            if (! isset($wards[$wardId]['rooms'][$roomId])) {
+                $wards[$wardId]['rooms'][$roomId] = [
+                    'id' => $roomId,
+                    'name' => $roomName,
+                    'roomType' => $roomType,
+                    'beds' => [],
+                    'counts' => ['available' => 0, 'occupied' => 0, 'reserved' => 0, 'cleaning' => 0, 'maintenance' => 0, 'out_of_service' => 0, 'total' => 0],
+                ];
+            }
+
+            $wards[$wardId]['rooms'][$roomId]['beds'][] = [
+                'id' => $bed->getKey(),
+                'bedCode' => $bed->bed_code,
+                'status' => $bed->status,
+                'lockVersion' => $bed->lock_version,
+                'admissionId' => $bed->current_admission_id,
+            ];
+
+            $status = $bed->status;
+            $wards[$wardId]['rooms'][$roomId]['counts'][$status] = ($wards[$wardId]['rooms'][$roomId]['counts'][$status] ?? 0) + 1;
+            $wards[$wardId]['rooms'][$roomId]['counts']['total']++;
+            $wards[$wardId]['counts'][$status] = ($wards[$wardId]['counts'][$status] ?? 0) + 1;
+            $wards[$wardId]['counts']['total']++;
+        }
+
+        // Facility-level summary
+        $summary = [
+            'total' => $beds->count(),
+            'available' => $beds->where('status', 'available')->count(),
+            'occupied' => $beds->where('status', 'occupied')->count(),
+            'reserved' => $beds->where('status', 'reserved')->count(),
+            'cleaning' => $beds->where('status', 'cleaning')->count(),
+            'maintenance' => $beds->where('status', 'maintenance')->count(),
+            'out_of_service' => $beds->where('status', 'out_of_service')->count(),
+        ];
+
+        return Envelope::success(data: ['summary' => $summary, 'wards' => array_values($wards)], request: $request);
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private static function present(Bed $bed): array
@@ -175,6 +253,7 @@ final class BedController extends Controller
             'roomId' => $bed->room_id,
             'bedCode' => $bed->bed_code,
             'status' => $bed->status,
+            'currentAdmissionId' => $bed->current_admission_id,
             'lockVersion' => $bed->lock_version,
         ];
     }

@@ -262,6 +262,8 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
         ->middleware('authorize:room:manage');
 
     // Beds (created inside a room; state transitions optimistic-locked).
+    Route::get('organizations/{organization}/beds/occupancy', [BedController::class, 'occupancy'])
+        ->middleware('authorize:bed:view');
     Route::get('organizations/{organization}/beds', [BedController::class, 'index'])
         ->middleware('authorize:bed:view');
     Route::post('rooms/{room}/beds', [BedController::class, 'store'])

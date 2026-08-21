@@ -315,6 +315,28 @@ export const adminPermissionsApi = {
   list: () => api.request<Permission[]>('/api/v1/permissions'),
 };
 
+export const bedWardApi = {
+  occupancy: (orgId: string) =>
+    api.request<{ summary: Record<string, number>; wards: Array<{
+      id: string; name: string; wardType: string;
+      counts: Record<string, number>;
+      rooms: Array<{
+        id: string; name: string; roomType: string;
+        counts: Record<string, number>;
+        beds: Array<{ id: string; bedCode: string; status: string; lockVersion: number; admissionId: string | null }>;
+      }>;
+    }> }>(`/api/v1/organizations/${orgId}/beds/occupancy`),
+  list: (orgId: string) =>
+    api.request<Array<{
+      id: string; facilityId: string; roomId: string; room: { id: string; code: string; name: string } | null;
+      bedCode: string; status: string; lockVersion: number; currentAdmissionId: string | null;
+    }>>(`/api/v1/organizations/${orgId}/beds`),
+  updateStatus: (bedId: string, payload: { status: string; lockVersion: number }) =>
+    api.request<{ id: string; status: string; lockVersion: number }>(
+      `/api/v1/beds/${bedId}`, { method: 'PATCH', body: payload },
+    ),
+};
+
 export const icuApi = {
   beds: () => api.request<Array<{
     id: string; bedCode: string; status: string; acuitySupported: string;
