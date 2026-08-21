@@ -402,6 +402,7 @@ export function DocumentCenterPage() {
                   srcDoc={selectedDoc.contentHtml}
                   title="Document Preview"
                   className="dc-preview__iframe"
+                  sandbox="allow-same-origin"
                 />
               ) : (
                 <div className="dc-preview__placeholder">

@@ -96,7 +96,9 @@ final class DocumentCenterService
         $header = $branding['documentHeader'] ?? '';
         $footer = $branding['documentFooter'] ?? '';
         $now = now()->format('Y-m-d H:i');
-        $primaryColor = $branding['primaryColor'] ?? '#0891b2';
+        $rawColor = $branding['primaryColor'] ?? '#0891b2';
+        // Sanitize to valid hex color to prevent CSS injection
+        $primaryColor = preg_match('/^#[0-9a-fA-F]{3,8}$/', $rawColor) ? $rawColor : '#0891b2';
 
         $safeHospitalName = htmlspecialchars($hospitalName, ENT_QUOTES, 'UTF-8');
         $safeAddress = htmlspecialchars($address, ENT_QUOTES, 'UTF-8');

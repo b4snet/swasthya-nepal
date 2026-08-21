@@ -8,6 +8,7 @@ use App\Models\NursingAlert;
 use App\Models\NursingTask;
 use App\Models\ShiftHandover;
 use App\Models\VitalObservation;
+use App\Support\AccessCheck;
 use App\Support\AuditLogger;
 use App\Support\Envelope;
 use App\Support\TenantContext;
@@ -63,6 +64,7 @@ final class NursingController extends Controller
 
     public function completeTask(Request $request, NursingTask $nursingTask): JsonResponse
     {
+        AccessCheck::scoped($nursingTask, write: true);
         $request->validate(['completionNotes' => 'nullable|string|max:2000']);
         $nursingTask->update([
             'status' => 'completed',
@@ -213,6 +215,7 @@ final class NursingController extends Controller
 
     public function acceptHandover(Request $request, ShiftHandover $shiftHandover): JsonResponse
     {
+        AccessCheck::scoped($shiftHandover, write: true);
         $shiftHandover->update([
             'status' => 'accepted',
             'accepted_by' => $request->input('acceptedBy'),
@@ -261,6 +264,7 @@ final class NursingController extends Controller
 
     public function acknowledgeAlert(Request $request, NursingAlert $nursingAlert): JsonResponse
     {
+        AccessCheck::scoped($nursingAlert, write: true);
         $nursingAlert->update([
             'status' => 'acknowledged',
             'acknowledged_at' => now(),
