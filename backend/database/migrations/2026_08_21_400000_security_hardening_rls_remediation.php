@@ -152,9 +152,9 @@ return new class extends Migration
         foreach ($internalTables as $table) {
             // Revoke Data API (supabase_auth_admin / anon / authenticated) access
             // These tables should only be accessed by the Laravel backend
-            DB::statement("REVOKE ALL ON public.\"{$table}\" FROM anon");
-            DB::statement("REVOKE ALL ON public.\"{$table}\" FROM authenticated");
-            // Grant minimal access needed for Laravel (postgres role handles this)
+            foreach ($this->getExistingApiRoles() as $role) {
+                DB::statement("REVOKE ALL ON public.\"{$table}\" FROM \"{$role}\"");
+            }
         }
 
         // ══════════════════════════════════════════════════════════════
@@ -162,7 +162,8 @@ return new class extends Migration
         // and has fixed search_path
         // ══════════════════════════════════════════════════════════════
 
-        // Recreate the function with explicit SECURITY DEFINER and search_path
+        // Drop then recreate to handle return type changes
+        DB::statement('DROP FUNCTION IF EXISTS public.swasthya_rls_is_platform()');
         DB::statement("
             CREATE OR REPLACE FUNCTION public.swasthya_rls_is_platform()
             RETURNS boolean
@@ -176,7 +177,7 @@ return new class extends Migration
             \$$
         ");
 
-        // Recreate swasthya_rls_tenant_id with fixed search_path
+        DB::statement('DROP FUNCTION IF EXISTS public.swasthya_rls_tenant_id()');
         DB::statement("
             CREATE OR REPLACE FUNCTION public.swasthya_rls_tenant_id()
             RETURNS text
@@ -190,7 +191,7 @@ return new class extends Migration
             \$$
         ");
 
-        // Recreate swasthya_rls_facility_id with fixed search_path
+        DB::statement('DROP FUNCTION IF EXISTS public.swasthya_rls_facility_id()');
         DB::statement("
             CREATE OR REPLACE FUNCTION public.swasthya_rls_facility_id()
             RETURNS text
@@ -229,8 +230,21 @@ return new class extends Migration
         ];
 
         foreach ($internalTables as $table) {
-            DB::statement("GRANT ALL ON public.\"{$table}\" TO anon");
-            DB::statement("GRANT ALL ON public.\"{$table}\" TO authenticated");
+            foreach ($this->getExistingApiRoles() as $role) {
+                DB::statement("GRANT ALL ON public.\"{$table}\" TO \"{$role}\"");
+            }
         }
+    }
+
+    private function getExistingApiRoles(): array
+    {
+        $existing = [];
+        foreach (['anon', 'authenticated'] as $role) {
+            if (! empty(DB::select('SELECT 1 FROM pg_roles WHERE rolname = ?', [$role]))) {
+                $existing[] = $role;
+            }
+        }
+
+        return $existing;
     }
 };

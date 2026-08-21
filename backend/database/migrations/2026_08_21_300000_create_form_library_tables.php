@@ -210,13 +210,26 @@ return new class extends Migration
         $facilityUsing = "(facility_id = NULLIF(current_setting('app.facility_id', true), '')::uuid OR facility_id IS NULL)";
         $combinedUsing = $tenantUsing.' AND '.$facilityUsing;
 
-        foreach (['form_templates', 'form_submissions', 'form_signatures', 'csv_imports', 'form_template_categories'] as $table) {
+        // Tables WITH facility_id: use combined tenant+facility RLS
+        foreach (['form_templates', 'form_submissions', 'csv_imports'] as $table) {
             DB::statement("DROP POLICY IF EXISTS p_rls_{$table}_select ON {$table}");
             DB::statement("CREATE POLICY p_rls_{$table}_select ON {$table} FOR SELECT USING ({$combinedUsing})");
             DB::statement("DROP POLICY IF EXISTS p_rls_{$table}_insert ON {$table}");
             DB::statement("CREATE POLICY p_rls_{$table}_insert ON {$table} FOR INSERT WITH CHECK (true)");
             DB::statement("DROP POLICY IF EXISTS p_rls_{$table}_update ON {$table}");
             DB::statement("CREATE POLICY p_rls_{$table}_update ON {$table} FOR UPDATE USING ({$combinedUsing}) WITH CHECK ({$combinedUsing})");
+            DB::statement("DROP POLICY IF EXISTS p_rls_{$table}_delete ON {$table}");
+            DB::statement("CREATE POLICY p_rls_{$table}_delete ON {$table} FOR DELETE USING ({$tenantUsing})");
+        }
+
+        // Tables WITHOUT facility_id: tenant-only RLS
+        foreach (['form_signatures', 'form_template_categories'] as $table) {
+            DB::statement("DROP POLICY IF EXISTS p_rls_{$table}_select ON {$table}");
+            DB::statement("CREATE POLICY p_rls_{$table}_select ON {$table} FOR SELECT USING ({$tenantUsing})");
+            DB::statement("DROP POLICY IF EXISTS p_rls_{$table}_insert ON {$table}");
+            DB::statement("CREATE POLICY p_rls_{$table}_insert ON {$table} FOR INSERT WITH CHECK (true)");
+            DB::statement("DROP POLICY IF EXISTS p_rls_{$table}_update ON {$table}");
+            DB::statement("CREATE POLICY p_rls_{$table}_update ON {$table} FOR UPDATE USING ({$tenantUsing}) WITH CHECK ({$tenantUsing})");
             DB::statement("DROP POLICY IF EXISTS p_rls_{$table}_delete ON {$table}");
             DB::statement("CREATE POLICY p_rls_{$table}_delete ON {$table} FOR DELETE USING ({$tenantUsing})");
         }
