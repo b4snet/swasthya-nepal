@@ -82,6 +82,10 @@ export interface DashboardMetrics {
 
   // Notifications
   unreadNotifications: number;
+
+  // Platform mode (superadmin)
+  totalOrganizations?: number;
+  totalFacilities?: number;
 }
 
 export interface TimeSeriesPoint {
