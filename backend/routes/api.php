@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DepartmentController;
 use App\Http\Controllers\Api\DoctorScheduleController;
 use App\Http\Controllers\Api\DocumentCenterController;
+use App\Http\Controllers\Api\DocumentPrefillController;
 use App\Http\Controllers\Api\EncounterController;
 use App\Http\Controllers\Api\ErController;
 use App\Http\Controllers\Api\ExpenseController;
@@ -447,6 +448,8 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
     Route::post('appointments/{appointment}/start-encounter', [EncounterController::class, 'start'])
         ->middleware('authorize:encounter:create');
     Route::get('encounters/{encounter}', [EncounterController::class, 'show'])
+        ->middleware('authorize:encounter:view');
+    Route::get('patients/{patientId}/encounters', [EncounterController::class, 'byPatient'])
         ->middleware('authorize:encounter:view');
     Route::get('encounters/{encounter}/notes', [EncounterController::class, 'notes'])
         ->middleware('authorize:encounter:view');
@@ -1575,6 +1578,8 @@ Route::middleware(['throttle:api', ResolveTenantContext::class])->prefix('notifi
 // Phase 84 — Centralized Document Center: browse, generate, verify,
 // sign, share, and download documents with hospital branding.
 Route::get('organizations/{organization}/documents', [DocumentCenterController::class, 'index'])
+    ->middleware('authorize:document:view');
+Route::get('documents/prefill', DocumentPrefillController::class)
     ->middleware('authorize:document:view');
 Route::get('organizations/{organization}/documents/stats', [DocumentCenterController::class, 'stats'])
     ->middleware('authorize:document:view');

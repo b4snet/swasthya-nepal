@@ -318,6 +318,9 @@ export const encountersApi = {
 
   show: (id: string, facilityId?: string | null) => api.request<Encounter>(`/api/v1/encounters/${id}`, opt(facilityId)),
 
+  forPatient: (patientId: string, facilityId?: string | null) =>
+    api.request<Array<{ id: string; type: string; status: string; providerName: string; serviceName: string; startedAt: string }>>(`/api/v1/patients/${patientId}/encounters`, opt(facilityId)),
+
   notes: (id: string, facilityId?: string | null) => api.request<ClinicalNote[]>(`/api/v1/encounters/${id}/notes`, opt(facilityId)),
 
   storeNote: (id: string, noteType: string, content: Record<string, string>, facilityId?: string | null) =>

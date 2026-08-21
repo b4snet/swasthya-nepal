@@ -609,6 +609,34 @@ final class EncounterController extends Controller
     }
 
     /**
+     * GET /patients/{patient}/encounters — list encounters for a patient.
+     */
+    public function byPatient(Request $request, string $patientId): JsonResponse
+    {
+        $tenantId = TenantContext::current()->tenantId;
+        $facilityId = $request->header('X-Facility-Id');
+
+        $encounters = Encounter::query()
+            ->where('tenant_id', $tenantId)
+            ->where('patient_id', $patientId)
+            ->when($facilityId, fn ($q) => $q->where('facility_id', $facilityId))
+            ->with(['provider:id,full_name', 'service:id,name'])
+            ->orderByDesc('created_at')
+            ->limit(20)
+            ->get()
+            ->map(fn (Encounter $e) => [
+                'id' => $e->getKey(),
+                'type' => $e->type,
+                'status' => $e->status,
+                'providerName' => $e->provider?->full_name,
+                'serviceName' => $e->service?->name,
+                'startedAt' => $e->started_at?->toIso8601String(),
+            ]);
+
+        return Envelope::success(data: $encounters, request: $request);
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private static function present(Encounter $encounter): array

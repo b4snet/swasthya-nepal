@@ -4,6 +4,7 @@ import { documentCenterApi } from '../api/endpoints';
 import type { GeneratedDocument } from '../api/types';
 import { Button, Dialog, EmptyState, ErrorState, StatusChip } from '../components/ui';
 import { useI18n } from '../i18n/I18nProvider';
+import { DocumentWizard } from '../components/DocumentWizard';
 import {
   FileText,
   Download,
@@ -18,6 +19,7 @@ import {
   Eye,
   RefreshCw,
   X,
+  Plus,
 } from 'lucide-react';
 import './document-center.css';
 
@@ -60,6 +62,7 @@ export function DocumentCenterPage() {
   const [selectedDoc, setSelectedDoc] = useState<GeneratedDocument | null>(null);
   const [stats, setStats] = useState<Record<string, unknown> | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [wizardOpen, setWizardOpen] = useState(false);
 
   const fetchDocuments = useCallback(async () => {
     if (!organizationId) return;
@@ -188,6 +191,9 @@ export function DocumentCenterPage() {
           </div>
         </div>
         <div className="dc-header__actions">
+          <Button onClick={() => setWizardOpen(true)} variant="primary" size="sm">
+            <Plus size={16} /> Generate Document
+          </Button>
           <Button onClick={fetchDocuments} variant="ghost" size="sm">
             <RefreshCw size={16} />
             Refresh
@@ -414,6 +420,17 @@ export function DocumentCenterPage() {
           </div>
         )}
       </Dialog>
+
+      {/* Document Generation Wizard */}
+      <DocumentWizard
+        open={wizardOpen}
+        onClose={() => setWizardOpen(false)}
+        onGenerated={() => {
+          setWizardOpen(false);
+          fetchDocuments();
+          fetchStats();
+        }}
+      />
     </div>
   );
 }

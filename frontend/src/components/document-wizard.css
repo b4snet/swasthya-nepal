@@ -1,0 +1,444 @@
+/* ── Document Generation Wizard ── */
+.dw-wizard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-height: 420px;
+}
+
+/* ── Step indicator ── */
+.dw-steps {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 var(--space-2);
+}
+
+.dw-step {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  opacity: 0.4;
+  transition: opacity 150ms ease;
+}
+
+.dw-step--active {
+  opacity: 1;
+}
+
+.dw-step--done {
+  opacity: 0.7;
+}
+
+.dw-step__dot {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--gray-100);
+  color: var(--gray-500);
+  flex-shrink: 0;
+}
+
+.dw-step--active .dw-step__dot {
+  background: var(--primary-300);
+  color: var(--white);
+}
+
+.dw-step--done .dw-step__dot {
+  background: var(--success-bg, #dcfce7);
+  color: #16a34a;
+}
+
+.dw-step__label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--gray-500);
+}
+
+.dw-step--active .dw-step__label {
+  color: var(--gray-900);
+  font-weight: 600;
+}
+
+.dw-step + .dw-step::before {
+  content: '';
+  display: block;
+  width: 24px;
+  height: 1px;
+  background: var(--gray-200);
+  margin-right: var(--space-2);
+}
+
+/* ── Error ── */
+.dw-error {
+  padding: var(--space-3);
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: var(--radius-md);
+  color: #991b1b;
+  font-size: 0.8125rem;
+}
+
+/* ── Template grid ── */
+.dw-template-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-3);
+}
+
+.dw-template-card {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  background: var(--white);
+  cursor: pointer;
+  text-align: left;
+  transition: all 150ms ease;
+}
+
+.dw-template-card:hover {
+  border-color: var(--primary-200);
+  background: var(--gray-50);
+}
+
+.dw-template-card--selected {
+  border-color: var(--primary-300);
+  background: var(--primary-50);
+  box-shadow: 0 0 0 1px var(--primary-200);
+}
+
+.dw-template-card__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: var(--gray-50);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary-300);
+  flex-shrink: 0;
+}
+
+.dw-template-card--selected .dw-template-card__icon {
+  background: var(--primary-100);
+}
+
+.dw-template-card__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.dw-template-card__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.dw-template-card__header strong {
+  font-size: 0.875rem;
+}
+
+.dw-template-card__desc {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--gray-500);
+  line-height: 1.5;
+}
+
+/* ── Patient search ── */
+.dw-patient-search {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.dw-search-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  background: var(--white);
+}
+
+.dw-search-input-wrap svg {
+  color: var(--gray-400);
+  flex-shrink: 0;
+}
+
+.dw-search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 0.875rem;
+  font-family: inherit;
+  background: transparent;
+  color: var(--gray-900);
+}
+
+.dw-search-input::placeholder {
+  color: var(--gray-400);
+}
+
+.dw-selected-patient {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  background: var(--primary-50);
+  border: 1px solid var(--primary-200);
+  border-radius: var(--radius-md);
+}
+
+.dw-patient-results {
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  max-height: 240px;
+  overflow-y: auto;
+  background: var(--white);
+}
+
+.dw-patient-result {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.875rem;
+  font-family: inherit;
+}
+
+.dw-patient-result:hover {
+  background: var(--gray-50);
+}
+
+.dw-hint {
+  font-size: 0.8125rem;
+  color: var(--gray-400);
+  text-align: center;
+  padding: var(--space-4) 0;
+}
+
+/* ── Encounter select ── */
+.dw-encounter-select {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.dw-encounter-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.dw-encounter-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  background: var(--white);
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: all 150ms ease;
+}
+
+.dw-encounter-card:hover {
+  border-color: var(--primary-200);
+  background: var(--gray-50);
+}
+
+.dw-encounter-card--selected {
+  border-color: var(--primary-300);
+  background: var(--primary-50);
+}
+
+.dw-encounter-card__info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dw-encounter-card__info strong {
+  font-size: 0.875rem;
+}
+
+/* ── Content editor ── */
+.dw-content-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.dw-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.dw-field__label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--gray-700);
+}
+
+.dw-input,
+.dw-textarea {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  font-family: inherit;
+  background: var(--white);
+  color: var(--gray-900);
+}
+
+.dw-input:focus,
+.dw-textarea:focus {
+  outline: 2px solid var(--primary-300);
+  outline-offset: -1px;
+  border-color: var(--primary-400);
+}
+
+.dw-textarea {
+  resize: vertical;
+  min-height: 200px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+
+/* ── Prefill sections (collapsible) ── */
+.dw-prefill-sections {
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.dw-prefill-sections summary {
+  padding: var(--space-3) var(--space-4);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--gray-600);
+  cursor: pointer;
+  background: var(--gray-50);
+}
+
+.dw-prefill-sections summary:hover {
+  background: var(--gray-100);
+}
+
+.dw-prefill-section {
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--gray-100);
+}
+
+.dw-prefill-section h4 {
+  margin: 0 0 var(--space-2);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--gray-700);
+}
+
+.dw-prefill-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.dw-prefill-table td {
+  padding: 4px var(--space-2);
+  border-bottom: 1px solid var(--gray-50);
+}
+
+.dw-prefill-table__label {
+  font-weight: 500;
+  color: var(--gray-500);
+  white-space: nowrap;
+  width: 140px;
+}
+
+.dw-prefill-table__value {
+  color: var(--gray-800);
+}
+
+/* ── Success ── */
+.dw-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-6) 0;
+}
+
+.dw-success__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.dw-success__icon {
+  color: #16a34a;
+}
+
+.dw-success__header h3 {
+  margin: 0;
+  font-size: 1.125rem;
+}
+
+.dw-success__actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* ── Navigation ── */
+.dw-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--gray-100);
+}
+
+.dw-nav__spacer {
+  flex: 1;
+}
+
+/* ── Responsive ── */
+@media (max-width: 640px) {
+  .dw-template-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dw-steps {
+    overflow-x: auto;
+    padding-bottom: var(--space-2);
+  }
+
+  .dw-step__label {
+    display: none;
+  }
+
+  .dw-success__actions {
+    flex-direction: column;
+  }
+}
