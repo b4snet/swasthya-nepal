@@ -1,11 +1,40 @@
-import { Link } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useTenant } from '../context/TenantContext';
 import { useAuth } from '../auth/AuthProvider';
-import { appointmentsApi } from '../api/endpoints';
-import { useFetch } from '../hooks/useFetch';
-import { AppointmentStatus, Card, EmptyState, ErrorState, SkeletonStats, SkeletonCard, formatDateTime } from '../components/ui';
-import { BILLING_ROLES } from '../auth/roles';
-import './dashboard.css';
+import { appointmentsApi, realtimeApi } from '../api/endpoints';
+import {
+  Calendar,
+  Users,
+  Activity,
+  Clock,
+  CheckCircle,
+  AlertTriangle,
+  ArrowRight,
+  Stethoscope,
+  Pill,
+  FileText,
+  DollarSign,
+  TrendingUp,
+} from 'lucide-react';
+import './dashboard-premium.css';
+
+interface Appointment {
+  id: string;
+  patientId: string;
+  patient?: { fullName: string; mrn: string; id: string };
+  provider?: { fullName: string };
+  startsAt: string;
+  status: string;
+}
+
+interface QueueEntry {
+  appointmentId: string;
+  patient?: { fullName: string; mrn: string; id: string };
+  tokenNo: string;
+  status: string;
+  encounterId?: string;
+}
 
 function today(): string {
   return new Date().toISOString().slice(0, 10);
@@ -21,132 +50,245 @@ function greeting(): string {
 export function DashboardPage() {
   const { selectedFacilityId, hasRole } = useTenant();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const fac = selectedFacilityId;
 
-  const todayAppts = useFetch(() => appointmentsApi.list({ date: today(), facilityId: fac }), [fac]);
-  const queue = useFetch(() => appointmentsApi.queue({ date: today(), facilityId: fac }), [fac]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [queue, setQueue] = useState<QueueEntry[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [loading, setLoading] = useState(true);
 
-  const paid = (a: { status: string }) => a.status === 'completed';
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [apptRes, queueRes, unreadRes] = await Promise.allSettled([
+        appointmentsApi.list({ date: today(), facilityId: fac }),
+        appointmentsApi.queue({ date: today(), facilityId: fac }),
+        realtimeApi.unreadCount(fac ?? undefined),
+      ]);
 
-  if (todayAppts.loading || queue.loading) return (
-    <div className="page dashboard">
-      <div className="dashboard__welcome" style={{ minHeight: 100 }}>
-        <div>
-          <div className="skeleton skeleton--heading" style={{ width: 200, height: 28, marginBottom: 8 }} />
-          <div className="skeleton skeleton--text-sm" style={{ width: 260, height: 12 }} />
-        </div>
-      </div>
-      <SkeletonStats />
-      <SkeletonCard rows={3} />
-      <SkeletonCard rows={4} />
-    </div>
-  );
-  const apptError = todayAppts.error ?? queue.error;
-  if (apptError) return <ErrorState error={apptError} onRetry={() => { void todayAppts.refresh(); void queue.refresh(); }} />;
+      if (apptRes.status === 'fulfilled') setAppointments(apptRes.value as unknown as Appointment[]);
+      if (queueRes.status === 'fulfilled') setQueue(queueRes.value as unknown as QueueEntry[]);
+      if (unreadRes.status === 'fulfilled') setUnreadCount((unreadRes.value as unknown as { count: number }).count ?? 0);
+    } finally {
+      setLoading(false);
+    }
+  }, [fac]);
 
-  const appointments = todayAppts.data ?? [];
-  const queueEntries = queue.data ?? [];
+  useEffect(() => {
+    fetchData();
+    const interval = setInterval(fetchData, 60000);
+    return () => clearInterval(interval);
+  }, [fetchData]);
+
+  const completedToday = appointments.filter((a) => a.status === 'completed').length;
+  const checkedIn = queue.filter((q) => q.status === 'checked_in').length;
+  const inConsultation = queue.filter((q) => q.status === 'in_consultation').length;
+  const pendingQueue = checkedIn + inConsultation;
+
+  const kpis = [
+    {
+      label: 'Appointments',
+      value: appointments.length,
+      icon: Calendar,
+      color: '#2563eb',
+      bg: '#eff6ff',
+      link: '/appointments',
+    },
+    {
+      label: 'In Queue',
+      value: pendingQueue,
+      icon: Clock,
+      color: '#d97706',
+      bg: '#fffbeb',
+      link: '/queue',
+    },
+    {
+      label: 'Completed',
+      value: completedToday,
+      icon: CheckCircle,
+      color: '#059669',
+      bg: '#ecfdf5',
+    },
+    {
+      label: 'Notifications',
+      value: unreadCount,
+      icon: AlertTriangle,
+      color: unreadCount > 0 ? '#dc2626' : '#64748b',
+      bg: unreadCount > 0 ? '#fef2f2' : '#f8fafc',
+      link: '/operations',
+    },
+  ];
 
   return (
-    <div className="page dashboard">
+    <div className="dp-page">
       {/* Welcome header */}
-      <div className="dashboard__welcome">
-        <div>
-          <h1 className="dashboard__greeting">{greeting()}</h1>
-          <p className="dashboard__date">{new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+      <header className="dp-header">
+        <div className="dp-header__greeting">
+          <h1>{greeting()}, {user?.email?.split('@')[0] ?? 'User'}</h1>
+          <p className="dp-header__date">
+            {new Date().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+          </p>
         </div>
-        {user?.email && (
-          <span className="dashboard__user-badge">{user.email.split('@')[0]}</span>
-        )}
+        <div className="dp-header__actions">
+          <Link to="/patients/new" className="dp-action-btn dp-action-btn--primary">
+            <Users size={16} />
+            Register Patient
+          </Link>
+          <Link to="/appointments" className="dp-action-btn dp-action-btn--secondary">
+            <Calendar size={16} />
+            Book Appointment
+          </Link>
+        </div>
+      </header>
+
+      {/* KPI Cards */}
+      <div className="dp-kpi-grid">
+        {kpis.map((kpi) => {
+          const Icon = kpi.icon;
+          const content = (
+            <div className="dp-kpi" style={{ '--kpi-color': kpi.color, '--kpi-bg': kpi.bg } as React.CSSProperties}>
+              <div className="dp-kpi__icon">
+                <Icon size={22} />
+              </div>
+              <div className="dp-kpi__content">
+                <span className="dp-kpi__value">{loading ? '—' : kpi.value}</span>
+                <span className="dp-kpi__label">{kpi.label}</span>
+              </div>
+            </div>
+          );
+
+          return kpi.link ? (
+            <Link key={kpi.label} to={kpi.link} className="dp-kpi-link">
+              {content}
+            </Link>
+          ) : (
+            <div key={kpi.label}>{content}</div>
+          );
+        })}
       </div>
 
-      {/* Quick stats */}
-      <div className="grid grid--3 dashboard__stats">
-        <div className="stat stat--teal">
-          <span className="stat__icon" aria-hidden="true">◷</span>
-          <div className="stat__content">
-            <span className="stat__value">{appointments.length}</span>
-            <span className="stat__label">Appointments today</span>
+      {/* Quick actions */}
+      <div className="dp-quick-actions">
+        {[
+          { to: '/encounters', label: 'Consultations', icon: Stethoscope },
+          { to: '/pharmacy', label: 'Pharmacy', icon: Pill },
+          { to: '/documents', label: 'Documents', icon: FileText },
+          { to: '/revenue', label: 'Revenue', icon: DollarSign },
+          { to: '/analytics', label: 'Analytics', icon: TrendingUp },
+        ].map((action) => {
+          const Icon = action.icon;
+          return (
+            <Link key={action.to} to={action.to} className="dp-quick-action">
+              <Icon size={18} />
+              <span>{action.label}</span>
+            </Link>
+          );
+        })}
+      </div>
+
+      <div className="dp-grid">
+        {/* Queue snapshot */}
+        <div className="dp-card dp-card--queue">
+          <div className="dp-card__header">
+            <h2 className="dp-card__title">
+              <Activity size={18} />
+              Queue Now
+            </h2>
+            <Link to="/queue" className="dp-card__link">
+              View all <ArrowRight size={14} />
+            </Link>
+          </div>
+          <div className="dp-card__body">
+            {loading ? (
+              <div className="dp-skeleton-rows">
+                {[1, 2, 3].map((i) => <div key={i} className="dp-skeleton-row" />)}
+              </div>
+            ) : queue.length === 0 ? (
+              <div className="dp-empty">
+                <CheckCircle size={32} />
+                <p>Queue is clear — no patients waiting</p>
+              </div>
+            ) : (
+              <div className="dp-queue-list">
+                {queue.slice(0, 6).map((entry) => (
+                  <div key={entry.appointmentId} className="dp-queue-item">
+                    <span className="dp-queue-item__token">#{entry.tokenNo}</span>
+                    <div className="dp-queue-item__info">
+                      <Link to={`/patients/${entry.patient?.id}`} className="dp-queue-item__name">
+                        {entry.patient?.fullName ?? 'Unknown'}
+                      </Link>
+                      <span className="dp-queue-item__mrn">{entry.patient?.mrn}</span>
+                    </div>
+                    <span className={`dp-status dp-status--${entry.status}`}>
+                      {entry.status === 'checked_in' ? 'Checked In' : entry.status === 'in_consultation' ? 'In Consultation' : entry.status}
+                    </span>
+                    {entry.status === 'checked_in' && hasRole('doctor') && (
+                      <button
+                        className="dp-queue-item__action"
+                        onClick={() => navigate(`/encounters/${entry.appointmentId}`)}
+                      >
+                        Start
+                      </button>
+                    )}
+                    {entry.status === 'in_consultation' && entry.encounterId && (
+                      <Link to={`/encounters/${entry.encounterId}`} className="dp-queue-item__action">
+                        Open
+                      </Link>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
-        <div className="stat stat--info">
-          <span className="stat__icon" aria-hidden="true">≣</span>
-          <div className="stat__content">
-            <span className="stat__value">{queueEntries.length}</span>
-            <span className="stat__label">In queue now</span>
+
+        {/* Today's appointments */}
+        <div className="dp-card dp-card--appointments">
+          <div className="dp-card__header">
+            <h2 className="dp-card__title">
+              <Calendar size={18} />
+              Today's Appointments
+            </h2>
+            <Link to="/appointments" className="dp-card__link">
+              View all <ArrowRight size={14} />
+            </Link>
           </div>
-        </div>
-        <div className="stat stat--success">
-          <span className="stat__icon" aria-hidden="true">✓</span>
-          <div className="stat__content">
-            <span className="stat__value">{appointments.filter(paid).length}</span>
-            <span className="stat__label">Completed today</span>
+          <div className="dp-card__body">
+            {loading ? (
+              <div className="dp-skeleton-rows">
+                {[1, 2, 3, 4].map((i) => <div key={i} className="dp-skeleton-row" />)}
+              </div>
+            ) : appointments.length === 0 ? (
+              <div className="dp-empty">
+                <Calendar size={32} />
+                <p>No appointments scheduled for today</p>
+              </div>
+            ) : (
+              <div className="dp-appt-list">
+                {appointments.slice(0, 8).map((appt) => (
+                  <div key={appt.id} className="dp-appt-item">
+                    <span className="dp-appt-item__time">
+                      {new Date(appt.startsAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                    <div className="dp-appt-item__info">
+                      <Link to={`/patients/${appt.patientId}`} className="dp-appt-item__name">
+                        {appt.patient?.fullName ?? 'Unknown'}
+                      </Link>
+                      <span className="dp-appt-item__provider">
+                        {appt.provider?.fullName ?? 'Unassigned'}
+                      </span>
+                    </div>
+                    <span className={`dp-status dp-status--${appt.status}`}>
+                      {appt.status === 'completed' ? 'Completed' : appt.status === 'booked' ? 'Scheduled' : appt.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
-
-      {/* Queue */}
-      <Card title="Waiting and in consultation" action={<Link to="/queue">Open queue →</Link>}>
-        {queueEntries.length === 0 ? (
-          <EmptyState title="Queue is clear" body="No patients are checked in right now." />
-        ) : (
-          <ul className="queue-mini">
-            {queueEntries.slice(0, 8).map((a) => (
-              <li key={a.appointmentId} className="queue-mini__item">
-                <span className="mono queue-mini__token">{a.tokenNo ? `#${a.tokenNo}` : '—'}</span>
-                <span className="queue-mini__name">{a.patient?.fullName ?? 'Unknown patient'}</span>
-                <AppointmentStatus status={a.status} />
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
-
-      {hasRole(...BILLING_ROLES) && <OutstandingCard facilityId={fac} />}
-
-      {/* Today's appointments */}
-      <Card title="Today's appointments" action={<Link to="/appointments">View all →</Link>}>
-        {appointments.length === 0 ? (
-          <EmptyState title="No appointments today" body="Book a patient at the front desk to get started." />
-        ) : (
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Time</th>
-                <th>Patient</th>
-                <th>Provider</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {appointments.map((a) => (
-                <tr key={a.id}>
-                  <td data-label="Time" className="num">{formatDateTime(a.startsAt)}</td>
-                  <td data-label="Patient">
-                    <Link to={`/patients/${a.patientId}`}>{a.patient?.fullName ?? '—'}</Link>
-                    <span className="mono muted small"> {a.patient?.mrn ?? ''}</span>
-                  </td>
-                  <td data-label="Provider">{a.provider?.fullName ?? '—'}</td>
-                  <td data-label="Status">
-                    <AppointmentStatus status={a.status} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </Card>
     </div>
-  );
-}
-
-function OutstandingCard({ facilityId: _facilityId }: { facilityId: string | null }) {
-  return (
-    <Card title="Billing today" action={<Link to="/billing">Billing →</Link>}>
-      <p className="muted small">
-        Invoice and payment capture happen at <Link to="/billing">Billing</Link>. Outstanding-balance
-        aggregation is a Phase 13 (Finance) item — the frontend does not invent it.
-      </p>
-    </Card>
   );
 }

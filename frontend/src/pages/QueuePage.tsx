@@ -4,6 +4,7 @@ import { useTenant } from '../context/TenantContext';
 import { appointmentsApi, encountersApi } from '../api/endpoints';
 import { useFetch } from '../hooks/useFetch';
 import { Alert, AppointmentStatus, Button, Card, ErrorState, SkeletonCard, SkeletonTable, Spinner } from '../components/ui';
+import { ListChecks } from 'lucide-react';
 import { ApiError } from '../api/client';
 import './queue.css';
 import './patients.css';
@@ -74,7 +75,7 @@ export function QueuePage() {
 
       {entries.length === 0 ? (
         <div className="queue__empty">
-          <span className="queue__empty-icon" aria-hidden="true">≣</span>
+          <span className="queue__empty-icon" aria-hidden="true"><ListChecks size={48} /></span>
           <h3>Queue is clear</h3>
           <p className="muted">Checked-in patients appear here with their token numbers.</p>
           <Link className="btn btn--secondary" to="/appointments">Book appointment</Link>

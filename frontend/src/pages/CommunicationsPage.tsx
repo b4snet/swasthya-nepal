@@ -35,13 +35,13 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 const CATEGORY_ICONS: Record<string, string> = {
-  appointment: '📅',
-  followup: '🔄',
-  result: '📋',
-  billing: '💳',
-  discharge: '🏥',
-  portal: '🌐',
-  general: '✉️',
+  appointment: 'AP',
+  followup: 'FU',
+  result: 'RS',
+  billing: 'BL',
+  discharge: 'DC',
+  portal: 'PT',
+  general: 'GN',
 };
 
 export function CommunicationsPage() {
@@ -156,7 +156,7 @@ export function CommunicationsPage() {
             <div key={t.id} className="comm__card" onClick={() => void openPreview(t)}>
               <div className="comm__card-header">
                 <span className="comm__card-icon" style={{ background: CATEGORY_COLORS[t.category] || '#64748b' }}>
-                  {CATEGORY_ICONS[t.category] || '✉️'}
+                  {CATEGORY_ICONS[t.category] || 'GN'}
                 </span>
                 <div className="comm__card-meta">
                   <span className="comm__card-name">{t.name}</span>
