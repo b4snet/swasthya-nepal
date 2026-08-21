@@ -44,6 +44,7 @@ import {
   Globe,
   Building2,
   MoreHorizontal,
+  GitPullRequestArrow,
   type LucideIcon,
 } from 'lucide-react';
 import './shell.css';
@@ -80,6 +81,7 @@ const NAV: Array<{ to: string; labelKey: MessageKey; Icon: LucideIcon; roles: st
   { to: '/documents', labelKey: 'nav.documentCenter', Icon: FileText, roles: [], group: 'clinical' },
   { to: '/radiology', labelKey: 'nav.radiology', Icon: ScanLine, roles: [], group: 'clinical' },
   { to: '/oncology', labelKey: 'nav.oncology', Icon: Crosshair, roles: [], group: 'clinical' },
+  { to: '/referrals', labelKey: 'nav.referrals', Icon: GitPullRequestArrow, roles: [], group: 'clinical' },
   { to: '/portal', labelKey: 'nav.portal', Icon: PanelsTopLeft, roles: [], group: 'insights' },
   { to: '/audit', labelKey: 'nav.audit', Icon: ShieldCheck, roles: [...AUDIT_ROLES], group: 'admin' },
   { to: '/admin', labelKey: 'nav.admin', Icon: Settings, roles: [...ADMIN_ROLES], group: 'admin' },

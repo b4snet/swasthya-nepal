@@ -237,6 +237,7 @@ export const messages = {
   'nav.nursing': 'Nursing',
   'nav.radiology': 'Radiology',
   'nav.oncology': 'Oncology',
+  'nav.referrals': 'Referrals',
   'nav.portal': 'Patient Portal',
   'nav.budgets': 'Budgets',
   'nav.expenses': 'Expenses',

@@ -35,6 +35,7 @@ const NotificationsPage = lazy(() => import('./pages/NotificationsPage').then(m 
 const CommunicationsPage = lazy(() => import('./pages/CommunicationsPage').then(m => ({ default: m.CommunicationsPage })));
 const RadiologyPage = lazy(() => import('./pages/RadiologyPage').then(m => ({ default: m.RadiologyPage })));
 const OncologyPage = lazy(() => import('./pages/OncologyPage').then(m => ({ default: m.OncologyPage })));
+const ReferralsPage = lazy(() => import('./pages/ReferralsPage').then(m => ({ default: m.ReferralsPage })));
 const PatientPortalPage = lazy(() => import('./pages/PatientPortalPage').then(m => ({ default: m.PatientPortalPage })));
 const PortalActivationPage = lazy(() => import('./pages/PortalActivationPage').then(m => ({ default: m.PortalActivationPage })));
 const TelehealthPage = lazy(() => import('./pages/TelehealthPage').then(m => ({ default: m.TelehealthPage })));
@@ -170,6 +171,7 @@ export function App() {
                <Route path="/nursing" element={<LazySuspense><NursingPage /></LazySuspense>} />
                <Route path="/radiology" element={<LazySuspense><RadiologyPage /></LazySuspense>} />
                <Route path="/oncology" element={<LazySuspense><OncologyPage /></LazySuspense>} />
+               <Route path="/referrals" element={<LazySuspense><ReferralsPage /></LazySuspense>} />
                <Route path="/portal" element={<LazySuspense><PatientPortalPage /></LazySuspense>} />
                <Route path="/portal/activate/:token" element={<LazySuspense><PortalActivationPage /></LazySuspense>} />
               <Route path="/admin" element={<LazySuspense><AdminLayout /></LazySuspense>}>

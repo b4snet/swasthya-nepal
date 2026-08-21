@@ -238,6 +238,7 @@ export const messages: Record<MessageKey, string> = {
   'nav.nursing': 'नर्सिङ',
   'nav.radiology': 'रेडियोलोजी',
   'nav.oncology': 'अङ्कोलोजी',
+  'nav.referrals': 'रेफरल',
   'nav.portal': 'बिरामी पोर्टल',
   'nav.budgets': 'बजेट',
   'nav.expenses': 'खर्च',

@@ -1446,3 +1446,83 @@ export const realtimeApi = {
     api.request<Record<string, unknown>>(`/api/v1/realtime/events/${eventId}/dismiss`, { method: 'POST', body: {} }),
   stream: () => new EventSource('/api/v1/realtime/stream'),
 };
+
+/* ------------------------------------------------------------------
+   Referrals (Phase 53)
+   ------------------------------------------------------------------ */
+
+export interface Referral {
+  id: string;
+  patient_id: string;
+  encounter_id: string | null;
+  referring_staff_id: string;
+  referring_department: string | null;
+  receiving_staff_id: string | null;
+  receiving_facility_name: string | null;
+  receiving_department: string | null;
+  reason: string;
+  clinical_summary: string | null;
+  urgency: string;
+  specialty: string | null;
+  attachments: string[] | null;
+  status: string;
+  rejection_reason: string | null;
+  completion_notes: string | null;
+  accepted_at: string | null;
+  rejected_at: string | null;
+  completed_at: string | null;
+  cancelled_at: string | null;
+  scheduled_appointment_id: string | null;
+  created_by: string;
+  updated_by: string | null;
+  created_at: string;
+  updated_at: string;
+  patient?: { id: string; full_name: string; mrn: string };
+  referringStaff?: { id: string; full_name: string };
+  receivingStaff?: { id: string; full_name: string };
+}
+
+export const referralsApi = {
+  list: (params: { patientId?: string; status?: string; page?: number; perPage?: number; facilityId?: string | null }) => {
+    const qs = new URLSearchParams();
+    if (params.patientId) qs.set('patient_id', params.patientId);
+    if (params.status) qs.set('status', params.status);
+    if (params.page) qs.set('page', String(params.page));
+    if (params.perPage) qs.set('per_page', String(params.perPage));
+    return api.request<{ data: Referral[]; current_page: number; last_page: number; total: number }>(
+      `/api/v1/referrals?${qs}`,
+      opt(params.facilityId),
+    );
+  },
+
+  show: (id: string, facilityId?: string | null) =>
+    api.request<Referral>(`/api/v1/referrals/${id}`, opt(facilityId)),
+
+  create: (payload: {
+    patient_id: string;
+    encounter_id?: string;
+    receiving_staff_id?: string;
+    receiving_facility_name?: string;
+    receiving_department?: string;
+    reason: string;
+    clinical_summary?: string;
+    urgency?: string;
+    specialty?: string;
+  }, facilityId?: string | null) =>
+    api.request<Referral>('/api/v1/referrals', { method: 'POST', body: payload, facilityId }),
+
+  accept: (id: string, facilityId?: string | null) =>
+    api.request<Referral>(`/api/v1/referrals/${id}/accept`, { method: 'POST', body: {}, facilityId }),
+
+  reject: (id: string, rejectionReason: string, facilityId?: string | null) =>
+    api.request<Referral>(`/api/v1/referrals/${id}/reject`, { method: 'POST', body: { rejection_reason: rejectionReason }, facilityId }),
+
+  schedule: (id: string, appointmentId: string, facilityId?: string | null) =>
+    api.request<Referral>(`/api/v1/referrals/${id}/schedule`, { method: 'POST', body: { appointment_id: appointmentId }, facilityId }),
+
+  complete: (id: string, completionNotes?: string, facilityId?: string | null) =>
+    api.request<Referral>(`/api/v1/referrals/${id}/complete`, { method: 'POST', body: { completion_notes: completionNotes }, facilityId }),
+
+  cancel: (id: string, cancellationReason?: string, facilityId?: string | null) =>
+    api.request<Referral>(`/api/v1/referrals/${id}/cancel`, { method: 'POST', body: { cancellation_reason: cancellationReason }, facilityId }),
+};

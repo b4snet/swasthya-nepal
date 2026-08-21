@@ -69,6 +69,7 @@ use App\Http\Controllers\Api\PortalActivationController;
 use App\Http\Controllers\Api\ProcurementController;
 use App\Http\Controllers\Api\RadiologyController;
 use App\Http\Controllers\Api\RealtimeController;
+use App\Http\Controllers\Api\ReferralController;
 use App\Http\Controllers\Api\RefundController;
 use App\Http\Controllers\Api\RevenueController;
 use App\Http\Controllers\Api\RoleAssignmentController;
@@ -691,6 +692,24 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
         ->middleware('authorize:followup:manage');
     Route::get('follow-ups/{followUp}/reminder', [FollowUpController::class, 'reminder'])
         ->middleware('authorize:followup:view');
+
+    // Phase 53 — referral lifecycle: internal + external destinations
+    Route::get('referrals', [ReferralController::class, 'index'])
+        ->middleware('authorize:referral:view');
+    Route::post('referrals', [ReferralController::class, 'store'])
+        ->middleware('authorize:referral:create');
+    Route::get('referrals/{referral}', [ReferralController::class, 'show'])
+        ->middleware('authorize:referral:view');
+    Route::post('referrals/{referral}/accept', [ReferralController::class, 'accept'])
+        ->middleware('authorize:referral:manage');
+    Route::post('referrals/{referral}/reject', [ReferralController::class, 'reject'])
+        ->middleware('authorize:referral:manage');
+    Route::post('referrals/{referral}/schedule', [ReferralController::class, 'schedule'])
+        ->middleware('authorize:referral:manage');
+    Route::post('referrals/{referral}/complete', [ReferralController::class, 'complete'])
+        ->middleware('authorize:referral:manage');
+    Route::post('referrals/{referral}/cancel', [ReferralController::class, 'cancel'])
+        ->middleware('authorize:referral:manage');
 
     Route::get('invoices/{invoice}', [BillingController::class, 'showInvoice'])
         ->middleware('authorize:billing:view');
