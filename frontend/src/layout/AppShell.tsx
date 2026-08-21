@@ -73,6 +73,7 @@ const NAV: Array<{ to: string; labelKey: MessageKey; Icon: LucideIcon; roles: st
   { to: '/ot', labelKey: 'nav.ot', Icon: Scissors, roles: [], group: 'clinical' },
   { to: '/blood-bank', labelKey: 'nav.bloodBank', Icon: Droplets, roles: [], group: 'clinical' },
   { to: '/nursing', labelKey: 'nav.nursing', Icon: ClipboardList, roles: [], group: 'clinical' },
+  { to: '/documents', labelKey: 'nav.documentCenter', Icon: FileText, roles: [], group: 'clinical' },
   { to: '/radiology', labelKey: 'nav.radiology', Icon: ScanLine, roles: [], group: 'clinical' },
   { to: '/oncology', labelKey: 'nav.oncology', Icon: Crosshair, roles: [], group: 'clinical' },
   { to: '/portal', labelKey: 'nav.portal', Icon: PanelsTopLeft, roles: [], group: 'insights' },

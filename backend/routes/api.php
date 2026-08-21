@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\ConsentController;
 use App\Http\Controllers\Api\CriticalValueEventController;
 use App\Http\Controllers\Api\DepartmentController;
 use App\Http\Controllers\Api\DoctorScheduleController;
+use App\Http\Controllers\Api\DocumentCenterController;
 use App\Http\Controllers\Api\EncounterController;
 use App\Http\Controllers\Api\ErController;
 use App\Http\Controllers\Api\ExpenseController;
@@ -1496,5 +1497,24 @@ Route::middleware(['throttle:api', ResolveTenantContext::class])->prefix('notifi
     Route::get('stats', [NotificationController::class, 'stats'])
         ->middleware('authorize:notification:view');
 });
+
+// Phase 84 — Centralized Document Center: browse, generate, verify,
+// sign, share, and download documents with hospital branding.
+Route::get('organizations/{organization}/documents', [DocumentCenterController::class, 'index'])
+    ->middleware('authorize:document:view');
+Route::get('organizations/{organization}/documents/stats', [DocumentCenterController::class, 'stats'])
+    ->middleware('authorize:document:view');
+Route::post('organizations/{organization}/documents/generate', [DocumentCenterController::class, 'generate'])
+    ->middleware('authorize:document:manage');
+Route::get('documents/{document}', [DocumentCenterController::class, 'show'])
+    ->middleware('authorize:document:view');
+Route::post('documents/{document}/verify', [DocumentCenterController::class, 'verify'])
+    ->middleware('authorize:document:manage');
+Route::post('documents/{document}/sign', [DocumentCenterController::class, 'sign'])
+    ->middleware('authorize:document:manage');
+Route::post('documents/{document}/share', [DocumentCenterController::class, 'share'])
+    ->middleware('authorize:document:manage');
+Route::get('documents/categories', [DocumentCenterController::class, 'categories'])
+    ->middleware('authorize:document:view');
 
 // (removed — module/onboarding routes moved inside main v1 group)

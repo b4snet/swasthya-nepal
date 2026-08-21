@@ -917,3 +917,35 @@ export interface ReportRun {
   outputChecksum: string | null;
   rows?: Record<string, unknown>[];
 }
+
+export interface GeneratedDocument {
+  id: string;
+  documentNumber: string;
+  documentType: string;
+  category: string;
+  title: string;
+  sourceType: string | null;
+  sourceId: string | null;
+  patientId: string | null;
+  patientName: string | null;
+  patientMrn: string | null;
+  providerName: string | null;
+  departmentName: string | null;
+  status: string;
+  verified: boolean;
+  verifiedAt: string | null;
+  signed: boolean;
+  signedAt: string | null;
+  printable: boolean;
+  pdfCapable: boolean;
+  hasPdf: boolean;
+  pageCount: number | null;
+  visibility: string;
+  sharedWithPatient: boolean;
+  sharedAt: string | null;
+  contentHtml?: string;
+  brandingSnapshot?: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}

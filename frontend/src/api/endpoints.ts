@@ -55,6 +55,7 @@ import type {
   Vendor,
   Deposit,
   AgingEntry,
+  GeneratedDocument,
 } from './types';
 
 const opt = (facilityId?: string | null): RequestOptions => ({ facilityId });
@@ -1340,4 +1341,25 @@ export const portalApi = {
 
   revokeConsent: (consentId: string, reason?: string) =>
     api.request('/api/v1/portal/consents/revoke', { method: 'POST', body: { consentId, reason } }),
+};
+
+export const documentCenterApi = {
+  list: (orgId: string, params?: { category?: string; documentType?: string; patientId?: string; status?: string; search?: string }) => {
+    const qs = params ? '?' + new URLSearchParams(Object.entries(params).filter(([, v]) => v)).toString() : '';
+    return api.request<{ data: GeneratedDocument[]; total: number; page: number; lastPage: number }>(`/api/v1/organizations/${orgId}/documents${qs}`);
+  },
+  show: (documentId: string) =>
+    api.request<GeneratedDocument>(`/api/v1/documents/${documentId}`),
+  generate: (orgId: string, payload: Record<string, unknown>) =>
+    api.request<GeneratedDocument>(`/api/v1/organizations/${orgId}/documents/generate`, { method: 'POST', body: payload }),
+  verify: (documentId: string) =>
+    api.request<GeneratedDocument>(`/api/v1/documents/${documentId}/verify`, { method: 'POST', body: {} }),
+  sign: (documentId: string) =>
+    api.request<GeneratedDocument>(`/api/v1/documents/${documentId}/sign`, { method: 'POST', body: {} }),
+  share: (documentId: string) =>
+    api.request<GeneratedDocument>(`/api/v1/documents/${documentId}/share`, { method: 'POST', body: {} }),
+  categories: () =>
+    api.request<{ types: Record<string, string>; categories: Record<string, string> }>('/api/v1/documents/categories'),
+  stats: (orgId: string) =>
+    api.request<Record<string, unknown>>(`/api/v1/organizations/${orgId}/documents/stats`),
 };

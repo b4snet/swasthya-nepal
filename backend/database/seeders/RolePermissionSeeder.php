@@ -244,6 +244,10 @@ class RolePermissionSeeder extends Seeder
             'branding:view' => ['domain' => 'branding', 'description' => 'View hospital branding, document header/footer, letterhead, and branding configuration'],
             'branding:manage' => ['domain' => 'branding', 'description' => 'Configure hospital branding, document templates, financial settings, and legal text'],
 
+            // Phase 84 — Document Center
+            'document:view' => ['domain' => 'document', 'description' => 'View generated documents, reports, and document history in the document center'],
+            'document:manage' => ['domain' => 'document', 'description' => 'Generate, verify, sign, share, and manage documents in the document center'],
+
             // Phase 3 slice 14 — Emergency (ROADMAP Phase 9,
             // PRODUCT_REQUIREMENTS §6.6): minimal-data registration,
             // configurable triage, time-stamped ER events, and audited
@@ -532,6 +536,8 @@ class RolePermissionSeeder extends Seeder
                     'forms:view', 'forms:create', 'forms:manage', 'forms:verify', 'forms:approve',
                     // Hospital Branding & Document Configuration (Phase 78)
                     'branding:view', 'branding:manage',
+                    // Document Center (Phase 84)
+                    'document:view', 'document:manage',
                     // Phase 12 — Notifications: the org admin manages the
                     // whole notification platform (templates, segments,
                     // campaigns, emergency broadcasts).
@@ -661,6 +667,8 @@ class RolePermissionSeeder extends Seeder
                     'forms:view', 'forms:create', 'forms:manage', 'forms:verify', 'forms:approve',
                     // Hospital Branding & Document Configuration (Phase 78)
                     'branding:view', 'branding:manage',
+                    // Document Center (Phase 84)
+                    'document:view', 'document:manage',
                     // Phase 12 — Notifications: the hospital admin manages
                     // notifications for their facility.
                     'notification:view', 'notification:manage',
