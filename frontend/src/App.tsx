@@ -32,6 +32,7 @@ const FinancialPeriodPage = lazy(() => import('./pages/FinancialPeriodPage').the
 const AuditPage = lazy(() => import('./pages/AuditPage').then(m => ({ default: m.AuditPage })));
 const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage').then(m => ({ default: m.AnalyticsPage })));
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage').then(m => ({ default: m.NotificationsPage })));
+const CommunicationsPage = lazy(() => import('./pages/CommunicationsPage').then(m => ({ default: m.CommunicationsPage })));
 const RadiologyPage = lazy(() => import('./pages/RadiologyPage').then(m => ({ default: m.RadiologyPage })));
 const OncologyPage = lazy(() => import('./pages/OncologyPage').then(m => ({ default: m.OncologyPage })));
 const PatientPortalPage = lazy(() => import('./pages/PatientPortalPage').then(m => ({ default: m.PatientPortalPage })));
@@ -145,8 +146,10 @@ export function App() {
               <Route path="/budgets" element={<LazySuspense><BudgetPage /></LazySuspense>} />
               <Route path="/expenses" element={<LazySuspense><ExpensePage /></LazySuspense>} />
               <Route path="/financial-periods" element={<LazySuspense><FinancialPeriodPage /></LazySuspense>} />
-              <Route path="/audit" element={<LazySuspense><AuditPage /></LazySuspense>} />
-              <Route path="/analytics" element={<LazySuspense><AnalyticsPage /></LazySuspense>} />               <Route path="/notifications" element={<LazySuspense><NotificationsPage /></LazySuspense>} />
+              <Route path="/audit" element={<LazySuspense><AuditPage /></LazySuspense>} />               <Route path="/analytics" element={<LazySuspense><AnalyticsPage /></LazySuspense>} />
+               <Route path="/notifications" element={<LazySuspense><NotificationsPage /></LazySuspense>} />
+               <Route path="/communications" element={<LazySuspense><CommunicationsPage /></LazySuspense>} />
+               <Route path="/communications" element={<LazySuspense><CommunicationsPage /></LazySuspense>} />
                <Route path="/forms" element={<LazySuspense><FormsPage /></LazySuspense>} />
                <Route path="/physician-scheduling" element={<LazySuspense><PhysicianSchedulingPage /></LazySuspense>} />
                <Route path="/beds" element={<LazySuspense><BedOccupancyPage /></LazySuspense>} />

@@ -222,6 +222,38 @@ export const doctorScheduleApi = {
   },
 };
 
+/* ------------------------------------------------------------------
+   Communication Templates (Phase 81)
+   ------------------------------------------------------------------ */
+export const communicationApi = {
+  list: (organizationId: string, params?: Record<string, string>) => {
+    const qs = params ? '?' + new URLSearchParams(params).toString() : '';
+    return api.request<Array<Record<string, unknown>>>(`${orgUrl(organizationId)}/communication-templates${qs}`);
+  },
+  show: (templateId: string) =>
+    api.request<Record<string, unknown>>(`/api/v1/communication-templates/${templateId}`),
+  create: (organizationId: string, payload: Record<string, unknown>) =>
+    api.request<Record<string, unknown>>(`${orgUrl(organizationId)}/communication-templates`, { method: 'POST', body: payload }),
+  update: (templateId: string, payload: Record<string, unknown>) =>
+    api.request<Record<string, unknown>>(`/api/v1/communication-templates/${templateId}`, { method: 'PUT', body: payload }),
+  delete: (templateId: string) =>
+    api.request<void>(`/api/v1/communication-templates/${templateId}`, { method: 'DELETE' }),
+  preview: (templateId: string, variables?: Record<string, string>) =>
+    api.request<{ subject: string; body: string; sms: string | null; whatsapp: string | null }>(
+      `/api/v1/communication-templates/${templateId}/preview`,
+      { method: 'POST', body: { variables: variables ?? {} } },
+    ),
+  send: (templateId: string, payload: { variables: Record<string, string>; patientId?: string; channel?: string }) =>
+    api.request<{ sent: string[]; failed: string[] }>(
+      `/api/v1/communication-templates/${templateId}/send`,
+      { method: 'POST', body: payload },
+    ),
+  categories: () =>
+    api.request<{ categories: Record<string, string>; types: Record<string, string> }>('/api/v1/communication-templates/categories'),
+  variablePresets: () =>
+    api.request<Record<string, Array<Record<string, unknown>>>>('/api/v1/communication-templates/variable-presets'),
+};
+
 export const encountersApi = {
   start: (appointmentId: string, facilityId?: string | null) =>
     api.request<Encounter>(`/api/v1/appointments/${appointmentId}/start-encounter`, { method: 'POST', body: {}, ...opt(facilityId) }),

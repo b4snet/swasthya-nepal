@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\BloodBankController;
 use App\Http\Controllers\Api\BranchController;
 use App\Http\Controllers\Api\BudgetController;
 use App\Http\Controllers\Api\CdssController;
+use App\Http\Controllers\Api\CommunicationController;
 use App\Http\Controllers\Api\ComplianceController;
 use App\Http\Controllers\Api\ConsentController;
 use App\Http\Controllers\Api\CriticalValueEventController;
@@ -1085,6 +1086,26 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
         ->middleware('authorize:schedule:manage');
     Route::get('organizations/{organization}/departments/{department}/schedule', [DoctorScheduleController::class, 'departmentSchedule'])
         ->middleware('authorize:schedule:view');
+
+    // Phase 81 — Communication Templates
+    Route::get('organizations/{organization}/communication-templates', [CommunicationController::class, 'index'])
+        ->middleware('authorize:notification:view');
+    Route::post('organizations/{organization}/communication-templates', [CommunicationController::class, 'store'])
+        ->middleware('authorize:notification:manage');
+    Route::get('communication-templates/{template}', [CommunicationController::class, 'show'])
+        ->middleware('authorize:notification:view');
+    Route::put('communication-templates/{template}', [CommunicationController::class, 'update'])
+        ->middleware('authorize:notification:manage');
+    Route::delete('communication-templates/{template}', [CommunicationController::class, 'destroy'])
+        ->middleware('authorize:notification:manage');
+    Route::post('communication-templates/{template}/preview', [CommunicationController::class, 'preview'])
+        ->middleware('authorize:notification:view');
+    Route::post('communication-templates/{template}/send', [CommunicationController::class, 'send'])
+        ->middleware('authorize:notification:manage');
+    Route::get('communication-templates/categories', [CommunicationController::class, 'categories'])
+        ->middleware('authorize:notification:view');
+    Route::get('communication-templates/variable-presets', [CommunicationController::class, 'variablePresets'])
+        ->middleware('authorize:notification:view');
 
     // Phase 3 slice 21 — Analytics and Reporting (ROADMAP Phase 17, PRODUCT
     // REQUIREMENTS §6.19, DATABASE.md §3.51): versioned metric definitions,

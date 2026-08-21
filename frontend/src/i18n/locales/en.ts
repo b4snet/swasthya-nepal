@@ -221,6 +221,7 @@ export const messages = {
   'nav.finance': 'Finance',
   'nav.analytics': 'Analytics',
   'nav.notifications': 'Notifications',
+  'nav.communications': 'Communications',
   'nav.forms': 'Forms',
   'nav.physicianScheduling': 'Physicians',
   'nav.beds': 'Beds',
