@@ -315,6 +315,32 @@ export const adminPermissionsApi = {
   list: () => api.request<Permission[]>('/api/v1/permissions'),
 };
 
+export const numberingApi = {
+  types: () => api.request<Array<{ type: string; label: string }>>('/api/v1/numbering/types'),
+  list: () => api.request<Array<{
+    id: string; documentType: string; prefix: string; sequenceLength: number;
+    dateFormat: string | null; resetPolicy: string; includeFacility: boolean;
+    separator: string; isActive: boolean;
+  }>>('/api/v1/numbering'),
+  create: (payload: {
+    documentType: string; prefix: string; sequenceLength?: number;
+    dateFormat?: string | null; resetPolicy?: string; includeFacility?: boolean;
+    separator?: string;
+  }) => api.request<{ id: string }>(
+    '/api/v1/numbering', { method: 'POST', body: payload },
+  ),
+  update: (id: string, payload: Partial<{
+    prefix: string; sequenceLength: number; dateFormat: string | null;
+    resetPolicy: string; includeFacility: boolean; separator: string; isActive: boolean;
+  }>) => api.request<{ id: string }>(
+    `/api/v1/numbering/${id}`, { method: 'PUT', body: payload },
+  ),
+  preview: (id: string) => api.request<{ preview: string }>(
+    `/api/v1/numbering/${id}/preview`),
+  generate: (id: string, facilityId?: string) => api.request<{ documentNumber: string }>(
+    `/api/v1/numbering/${id}/generate`, { method: 'POST', body: { facilityId } }),
+};
+
 export const bedWardApi = {
   occupancy: (orgId: string) =>
     api.request<{ summary: Record<string, number>; wards: Array<{

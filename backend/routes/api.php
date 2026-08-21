@@ -40,6 +40,7 @@ use App\Http\Controllers\Api\MedicationController;
 use App\Http\Controllers\Api\MfaController;
 use App\Http\Controllers\Api\ModuleController;
 use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\NumberingController;
 use App\Http\Controllers\Api\NursingController;
 use App\Http\Controllers\Api\OnboardingController;
 use App\Http\Controllers\Api\OnboardingProfileController;
@@ -1031,6 +1032,22 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
         ->middleware('authorize:forms:create');
     Route::get('forms/categories', [FormController::class, 'indexCategories'])
         ->middleware('authorize:forms:view');
+
+    // Phase 77 — Configurable Numbering System
+    Route::get('numbering/types', [NumberingController::class, 'types'])
+        ->middleware('authorize:forms:view');
+    Route::get('numbering', [NumberingController::class, 'index'])
+        ->middleware('authorize:forms:manage');
+    Route::post('numbering', [NumberingController::class, 'store'])
+        ->middleware('authorize:forms:manage');
+    Route::get('numbering/{id}', [NumberingController::class, 'show'])
+        ->middleware('authorize:forms:manage');
+    Route::put('numbering/{id}', [NumberingController::class, 'update'])
+        ->middleware('authorize:forms:manage');
+    Route::get('numbering/{id}/preview', [NumberingController::class, 'preview'])
+        ->middleware('authorize:forms:manage');
+    Route::post('numbering/{id}/generate', [NumberingController::class, 'generate'])
+        ->middleware('authorize:forms:create');
 
     // Phase 3 slice 21 — Analytics and Reporting (ROADMAP Phase 17, PRODUCT
     // REQUIREMENTS §6.19, DATABASE.md §3.51): versioned metric definitions,
