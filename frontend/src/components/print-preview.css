@@ -1,0 +1,316 @@
+/* ================================================================
+   Print Preview Modal
+   Full-screen overlay for viewing generated documents before printing
+   ================================================================ */
+
+/* ── Backdrop ── */
+.pp-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: ppFadeIn 150ms ease;
+}
+
+@keyframes ppFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ── Modal ── */
+.pp-modal {
+  width: calc(100vw - 48px);
+  height: calc(100vh - 48px);
+  max-width: 1200px;
+  display: flex;
+  flex-direction: column;
+  background: var(--white, #fff);
+  border-radius: 12px;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.05),
+    0 24px 80px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  animation: ppSlideIn 200ms ease;
+}
+
+@keyframes ppSlideIn {
+  from { opacity: 0; transform: scale(0.97) translateY(12px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* ── Toolbar ── */
+.pp-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--gray-100, #e2e8f0);
+  background: var(--gray-50, #f8fafc);
+  flex-shrink: 0;
+  gap: 12px;
+}
+
+.pp-toolbar__left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.pp-toolbar__icon {
+  color: var(--primary-300, #4FA9FF);
+  flex-shrink: 0;
+}
+
+.pp-toolbar__info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.pp-toolbar__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gray-900, #0f172a);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pp-toolbar__number {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 12px;
+  color: var(--gray-400, #94a3b8);
+  white-space: nowrap;
+}
+
+.pp-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.pp-status--generated {
+  background: rgba(79, 169, 255, 0.1);
+  color: #2563eb;
+}
+
+.pp-status--verified {
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+}
+
+.pp-status--final {
+  background: rgba(16, 185, 129, 0.15);
+  color: #047857;
+}
+
+.pp-status--archived {
+  background: rgba(107, 114, 128, 0.1);
+  color: #6b7280;
+}
+
+.pp-toolbar__right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* ── Close button ── */
+.pp-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--gray-400, #94a3b8);
+  cursor: pointer;
+  transition: all 120ms ease;
+  margin-left: 4px;
+}
+
+.pp-close:hover {
+  background: var(--gray-100, #f1f5f9);
+  color: var(--gray-700, #334155);
+}
+
+/* ── Frame ── */
+.pp-frame {
+  flex: 1;
+  overflow: hidden;
+  background: #fff;
+}
+
+.pp-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: #fff;
+}
+
+.pp-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--gray-400, #94a3b8);
+  gap: 12px;
+  font-size: 14px;
+}
+
+/* ── Footer ── */
+.pp-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 20px;
+  border-top: 1px solid var(--gray-100, #e2e8f0);
+  font-size: 11px;
+  color: var(--gray-400, #94a3b8);
+  flex-shrink: 0;
+}
+
+.pp-footer kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  border: 1px solid var(--gray-200, #e2e8f0);
+  border-radius: 3px;
+  background: var(--gray-50, #f8fafc);
+  font-size: 10px;
+  font-family: inherit;
+  line-height: 1.5;
+}
+
+/* ── Print styles — hide toolbar/footer in print ── */
+@media print {
+  .pp-backdrop {
+    position: static;
+    background: none;
+    backdrop-filter: none;
+    display: block;
+  }
+
+  .pp-modal {
+    width: 100%;
+    height: auto;
+    max-width: none;
+    border-radius: 0;
+    box-shadow: none;
+    animation: none;
+  }
+
+  .pp-toolbar,
+  .pp-footer {
+    display: none !important;
+  }
+
+  .pp-frame {
+    overflow: visible;
+  }
+
+  .pp-iframe {
+    height: auto;
+    min-height: 100vh;
+  }
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .pp-backdrop {
+    padding: 0;
+  }
+
+  .pp-modal {
+    width: 100vw;
+    height: 100vh;
+    max-width: none;
+    border-radius: 0;
+  }
+
+  .pp-toolbar {
+    padding: 10px 12px;
+    flex-wrap: wrap;
+  }
+
+  .pp-toolbar__title {
+    font-size: 13px;
+  }
+
+  .pp-toolbar__number {
+    display: none;
+  }
+
+  .pp-footer {
+    padding: 6px 12px;
+  }
+
+  .pp-footer span:last-child {
+    display: none;
+  }
+}
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .pp-backdrop,
+  .pp-modal {
+    animation: none;
+  }
+}
+
+/* ── Dark mode ── */
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) .pp-modal,
+  html.dark .pp-modal {
+    background: var(--color-surface, #1a1d27);
+  }
+
+  :root:not(.light) .pp-toolbar,
+  html.dark .pp-toolbar {
+    background: var(--gray-100, #22263a);
+    border-color: var(--color-border, #2a2e3e);
+  }
+
+  :root:not(.light) .pp-toolbar__title,
+  html.dark .pp-toolbar__title {
+    color: var(--color-text, #e4e7ee);
+  }
+
+  :root:not(.light) .pp-footer,
+  html.dark .pp-footer {
+    border-color: var(--color-border, #2a2e3e);
+    color: var(--gray-400, #5a5f73);
+  }
+
+  :root:not(.light) .pp-close:hover,
+  html.dark .pp-close:hover {
+    background: var(--gray-200, #2a2e3e);
+    color: var(--gray-600, #a3a7b8);
+  }
+
+  :root:not(.light) .pp-status--generated,
+  html.dark .pp-status--generated {
+    background: rgba(79, 169, 255, 0.15);
+  }
+
+  :root:not(.light) .pp-status--verified,
+  :root:not(.light) .pp-status--final,
+  html.dark .pp-status--verified,
+  html.dark .pp-status--final {
+    background: rgba(16, 185, 129, 0.15);
+  }
+}

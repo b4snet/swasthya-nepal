@@ -2,13 +2,12 @@ import { useState, useEffect, useCallback } from 'react';
 import { useTenant } from '../context/TenantContext';
 import { documentCenterApi } from '../api/endpoints';
 import type { GeneratedDocument } from '../api/types';
-import { Button, Dialog, EmptyState, ErrorState, StatusChip } from '../components/ui';
+import { Button, EmptyState, ErrorState, StatusChip } from '../components/ui';
 import { useI18n } from '../i18n/I18nProvider';
 import { DocumentWizard } from '../components/DocumentWizard';
+import { PrintPreviewModal } from '../components/PrintPreviewModal';
 import {
   FileText,
-  Download,
-  Printer,
   CheckCircle,
   Pen,
   Share2,
@@ -140,28 +139,7 @@ export function DocumentCenterPage() {
     }
   };
 
-  const handlePrint = () => {
-    if (selectedDoc?.contentHtml) {
-      const w = window.open('', '_blank');
-      if (w) {
-        w.document.write(selectedDoc.contentHtml);
-        w.document.close();
-        w.print();
-      }
-    }
-  };
 
-  const handleDownload = () => {
-    if (selectedDoc?.contentHtml) {
-      const blob = new Blob([selectedDoc.contentHtml], { type: 'text/html' });
-      const url = URL.createObjectURL(blob);
-      const a = window.document.createElement('a');
-      a.href = url;
-      a.download = `${selectedDoc.documentNumber || 'document'}.html`;
-      a.click();
-      URL.revokeObjectURL(url);
-    }
-  };
 
   const categoryCounts = stats && typeof stats === 'object' && stats.byCategory
     ? stats.byCategory as Record<string, number>
@@ -367,59 +345,19 @@ export function DocumentCenterPage() {
         )}
       </div>
 
-      {/* Preview dialog */}
-      <Dialog
+      {/* Print Preview Modal */}
+      <PrintPreviewModal
         open={previewOpen}
+        html={selectedDoc?.contentHtml ?? ''}
+        title={selectedDoc?.title}
+        documentNumber={selectedDoc?.documentNumber}
+        status={selectedDoc?.status}
         onClose={() => { setPreviewOpen(false); setSelectedDoc(null); }}
-        title={selectedDoc?.title ?? 'Document Preview'}
-      >
-        {selectedDoc && (
-          <div className="dc-preview">
-            <div className="dc-preview__toolbar">
-              <div className="dc-preview__doc-info">
-                <span className="dc-preview__doc-number">{selectedDoc.documentNumber}</span>
-                <StatusChip
-                  tone={selectedDoc.status === 'final' ? 'success' : selectedDoc.status === 'verified' ? 'success' : 'info'}
-                  label={selectedDoc.status}
-                />
-              </div>
-              <div className="dc-preview__actions">
-                <Button onClick={handlePrint} variant="ghost" size="sm">
-                  <Printer size={16} /> Print
-                </Button>
-                <Button onClick={handleDownload} variant="ghost" size="sm">
-                  <Download size={16} /> Download
-                </Button>
-                {!selectedDoc.verified && (
-                  <Button onClick={() => { handleVerify(selectedDoc); setPreviewOpen(false); }} size="sm">
-                    <CheckCircle size={16} /> Verify
-                  </Button>
-                )}
-                {!selectedDoc.signed && selectedDoc.verified && (
-                  <Button onClick={() => { handleSign(selectedDoc); setPreviewOpen(false); }} size="sm">
-                    <Pen size={16} /> Sign
-                  </Button>
-                )}
-              </div>
-            </div>
-            <div className="dc-preview__frame">
-              {selectedDoc.contentHtml ? (
-                <iframe
-                  srcDoc={selectedDoc.contentHtml}
-                  title="Document Preview"
-                  className="dc-preview__iframe"
-                  sandbox="allow-same-origin"
-                />
-              ) : (
-                <div className="dc-preview__placeholder">
-                  <FileText size={48} />
-                  <p>Document content not available for preview.</p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </Dialog>
+        showVerify={!!selectedDoc && !selectedDoc.verified}
+        onVerify={selectedDoc ? () => handleVerify(selectedDoc) : undefined}
+        showSign={!!selectedDoc && !selectedDoc.signed && !!selectedDoc.verified}
+        onSign={selectedDoc ? () => handleSign(selectedDoc) : undefined}
+      />
 
       {/* Document Generation Wizard */}
       <DocumentWizard

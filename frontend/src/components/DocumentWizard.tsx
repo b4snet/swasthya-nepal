@@ -7,6 +7,7 @@ import {
 } from '../api/endpoints';
 import type { GeneratedDocument } from '../api/types';
 import { Button, Dialog, EmptyState, Spinner, StatusChip } from '../components/ui';
+import { PrintPreviewModal } from './PrintPreviewModal';
 import {
   FileText,
   Stethoscope,
@@ -16,8 +17,7 @@ import {
   ArrowRight,
   ArrowLeft,
   Check,
-  Printer,
-  Download,
+  Eye,
   X,
   Search,
 } from 'lucide-react';
@@ -104,6 +104,7 @@ export function DocumentWizard({ open, onClose, onGenerated }: DocumentWizardPro
   // Generation
   const [generating, setGenerating] = useState(false);
   const [generatedDoc, setGeneratedDoc] = useState<GeneratedDocument | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const searchTimerRef = useRef<ReturnType<typeof setTimeout>>();
@@ -242,27 +243,7 @@ export function DocumentWizard({ open, onClose, onGenerated }: DocumentWizardPro
     }
   };
 
-  /* ── print/download ── */
-  const handlePrint = () => {
-    if (!generatedDoc) return;
-    const w = window.open('', '_blank');
-    if (w) {
-      w.document.write(generatedDoc.contentHtml ?? '');
-      w.document.close();
-      w.print();
-    }
-  };
 
-  const handleDownload = () => {
-    if (!generatedDoc) return;
-    const blob = new Blob([generatedDoc.contentHtml ?? ''], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${generatedDoc.documentNumber || 'document'}.html`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
 
   const canGoNext = (() => {
     if (step === 0) return selectedTemplate !== null;
@@ -447,11 +428,8 @@ export function DocumentWizard({ open, onClose, onGenerated }: DocumentWizardPro
               </div>
             </div>
             <div className="dw-success__actions">
-              <Button variant="primary" onClick={handlePrint}>
-                <Printer size={16} /> Print
-              </Button>
-              <Button variant="secondary" onClick={handleDownload}>
-                <Download size={16} /> Download
+              <Button variant="primary" onClick={() => setPreviewOpen(true)}>
+                <Eye size={16} /> Preview Document
               </Button>
               <Button variant="ghost" onClick={handleClose}>
                 <X size={16} /> Close
@@ -459,6 +437,16 @@ export function DocumentWizard({ open, onClose, onGenerated }: DocumentWizardPro
             </div>
           </div>
         )}
+
+        {/* Print preview modal for generated document */}
+        <PrintPreviewModal
+          open={previewOpen}
+          html={generatedDoc?.contentHtml ?? ''}
+          title={generatedDoc?.title}
+          documentNumber={generatedDoc?.documentNumber}
+          status={generatedDoc?.status}
+          onClose={() => setPreviewOpen(false)}
+        />
 
         {/* Navigation */}
         {step < 4 && (
