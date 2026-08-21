@@ -220,6 +220,7 @@ export const messages: Record<MessageKey, string> = {
   'nav.finance': 'वित्त',
   'nav.analytics': 'एनालिटिक्स',
   'nav.notifications': 'सूचनाहरू',
+  'nav.forms': 'फारमहरू',
   'nav.emergency': 'आपतकालीन',
   'nav.icu': 'आईसीयू',
   'nav.ot': 'अपरेटिङ थिएटर',

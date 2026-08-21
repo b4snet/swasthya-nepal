@@ -25,6 +25,7 @@ use App\Http\Controllers\Api\FacilitySettingsController;
 use App\Http\Controllers\Api\FinanceController;
 use App\Http\Controllers\Api\FinancialPeriodController;
 use App\Http\Controllers\Api\FollowUpController;
+use App\Http\Controllers\Api\FormController;
 use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\HrController;
 use App\Http\Controllers\Api\IcuController;
@@ -992,6 +993,42 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
         ->middleware('authorize:nursing:document');
     Route::post('nursing/alerts/{nursingAlert}/acknowledge', [NursingController::class, 'acknowledgeAlert'])
         ->middleware('authorize:nursing:document');
+
+    // Phase — Form Library & Document Workflow
+    Route::get('forms/templates', [FormController::class, 'indexTemplates'])
+        ->middleware('authorize:forms:view');
+    Route::get('forms/templates/{id}', [FormController::class, 'showTemplate'])
+        ->middleware('authorize:forms:view');
+    Route::post('forms/templates', [FormController::class, 'storeTemplate'])
+        ->middleware('authorize:forms:manage');
+    Route::put('forms/templates/{id}', [FormController::class, 'updateTemplate'])
+        ->middleware('authorize:forms:manage');
+    Route::post('forms/templates/{id}/publish', [FormController::class, 'publishTemplate'])
+        ->middleware('authorize:forms:manage');
+    Route::get('forms/submissions', [FormController::class, 'indexSubmissions'])
+        ->middleware('authorize:forms:view');
+    Route::get('forms/submissions/{id}', [FormController::class, 'showSubmission'])
+        ->middleware('authorize:forms:view');
+    Route::post('forms/submissions', [FormController::class, 'storeSubmission'])
+        ->middleware('authorize:forms:create');
+    Route::post('forms/submissions/{id}/submit', [FormController::class, 'submitForm'])
+        ->middleware('authorize:forms:create');
+    Route::post('forms/submissions/{id}/verify', [FormController::class, 'verifySubmission'])
+        ->middleware('authorize:forms:verify');
+    Route::post('forms/submissions/{id}/approve', [FormController::class, 'approveSubmission'])
+        ->middleware('authorize:forms:approve');
+    Route::post('forms/submissions/{id}/cancel', [FormController::class, 'cancelSubmission'])
+        ->middleware('authorize:forms:manage');
+    Route::post('forms/submissions/{id}/print', [FormController::class, 'recordPrint'])
+        ->middleware('authorize:forms:view');
+    Route::post('forms/submissions/{submissionId}/signatures', [FormController::class, 'addSignature'])
+        ->middleware('authorize:forms:create');
+    Route::get('forms/submissions/{submissionId}/signatures', [FormController::class, 'listSignatures'])
+        ->middleware('authorize:forms:view');
+    Route::post('forms/numbers', [FormController::class, 'generateNumber'])
+        ->middleware('authorize:forms:create');
+    Route::get('forms/categories', [FormController::class, 'indexCategories'])
+        ->middleware('authorize:forms:view');
 
     // Phase 3 slice 21 — Analytics and Reporting (ROADMAP Phase 17, PRODUCT
     // REQUIREMENTS §6.19, DATABASE.md §3.51): versioned metric definitions,

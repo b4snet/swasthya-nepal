@@ -233,6 +233,13 @@ class RolePermissionSeeder extends Seeder
             'nursing:document' => ['domain' => 'nursing', 'description' => 'Record and sign nursing notes and vital observations within scope'],
             'mar:administer' => ['domain' => 'mar', 'description' => 'Schedule and record medication administration on the MAR (identity-confirmed)'],
 
+            // Phase — Form Library & Document Workflow
+            'forms:view' => ['domain' => 'forms', 'description' => 'View form templates, submissions, and the form library within scope'],
+            'forms:create' => ['domain' => 'forms', 'description' => 'Create and submit form submissions'],
+            'forms:manage' => ['domain' => 'forms', 'description' => 'Manage form templates, publish, and configure form library'],
+            'forms:verify' => ['domain' => 'forms', 'description' => 'Verify submitted form data for accuracy'],
+            'forms:approve' => ['domain' => 'forms', 'description' => 'Approve verified forms and finalize submissions'],
+
             // Phase 3 slice 14 — Emergency (ROADMAP Phase 9,
             // PRODUCT_REQUIREMENTS §6.6): minimal-data registration,
             // configurable triage, time-stamped ER events, and audited
@@ -517,6 +524,8 @@ class RolePermissionSeeder extends Seeder
                     // knowledge base and governs the AI registry across
                     // facilities.
                     'cdss:view', 'cdss:manage', 'ai:view', 'ai:manage',
+                    // Phase — Form Library & Document Workflow
+                    'forms:view', 'forms:create', 'forms:manage', 'forms:verify', 'forms:approve',
                     // Phase 12 — Notifications: the org admin manages the
                     // whole notification platform (templates, segments,
                     // campaigns, emergency broadcasts).
@@ -642,6 +651,8 @@ class RolePermissionSeeder extends Seeder
                     // (activation evidence-gated; kill switches always
                     // available).
                     'cdss:view', 'cdss:manage', 'ai:view', 'ai:manage',
+                    // Phase — Form Library & Document Workflow
+                    'forms:view', 'forms:create', 'forms:manage', 'forms:verify', 'forms:approve',
                     // Phase 12 — Notifications: the hospital admin manages
                     // notifications for their facility.
                     'notification:view', 'notification:manage',
@@ -764,6 +775,8 @@ class RolePermissionSeeder extends Seeder
                     // Knowledge-base curation and kill switches stay with
                     // administration.
                     'cdss:view', 'ai:view', 'ai:invoke', 'ai:sign',
+                    // Phase — Form Library & Document Workflow
+                    'forms:view', 'forms:create',
                 ],
             ],
             'nurse' => [
@@ -803,6 +816,8 @@ class RolePermissionSeeder extends Seeder
                     // and may invoke assistive features, but cannot sign
                     // drafts (sign-off is the clinician's act).
                     'cdss:view', 'ai:view', 'ai:invoke',
+                    // Phase — Form Library & Document Workflow
+                    'forms:view', 'forms:create',
                 ],
             ],
             'pharmacist' => [
@@ -826,6 +841,8 @@ class RolePermissionSeeder extends Seeder
                     // during dispensing (DDI/allergy/dose alerts) and the
                     // AI registry; curation and sign-off stay elsewhere.
                     'cdss:view', 'ai:view',
+                    // Phase — Form Library & Document Workflow
+                    'forms:view', 'forms:create',
                 ],
             ],
             'lab_technician' => [
@@ -840,6 +857,8 @@ class RolePermissionSeeder extends Seeder
                     // Phase 3 slice 20 — Blood Bank: the technician is the
                     // phlebotomist and processor — donation and testing.
                     'bloodbank:register_donor', 'bloodbank:process',
+                    // Phase — Form Library & Document Workflow
+                    'forms:view', 'forms:create',
                 ],
             ],
             'lab_supervisor' => [
