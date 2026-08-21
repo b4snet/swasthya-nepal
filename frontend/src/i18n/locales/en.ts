@@ -54,6 +54,7 @@ export const messages = {
   'admin.nav.services': 'Services',
   'admin.nav.medications': 'Medications',
   'admin.nav.settings': 'Settings',
+  'admin.nav.branding': 'Branding',
   'admin.users.title': 'User management',
   'admin.users.create': 'Create user',
   'admin.users.empty': 'No users found',

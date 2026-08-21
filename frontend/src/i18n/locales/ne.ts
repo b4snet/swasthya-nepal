@@ -55,6 +55,7 @@ export const messages: Record<MessageKey, string> = {
   'admin.nav.services': 'सेवा',
   'admin.nav.medications': 'औषधि',
   'admin.nav.settings': 'सेटिङ',
+  'admin.nav.branding': 'ब्रान्डिङ',
   'admin.users.title': 'प्रयोगकर्ता व्यवस्थापन',
   'admin.users.create': 'प्रयोगकर्ता सिर्जना गर्नुहोस्',
   'admin.users.empty': 'कुनै प्रयोगकर्ता फेला भएन',

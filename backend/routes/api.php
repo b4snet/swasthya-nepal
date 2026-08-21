@@ -27,6 +27,7 @@ use App\Http\Controllers\Api\FinancialPeriodController;
 use App\Http\Controllers\Api\FollowUpController;
 use App\Http\Controllers\Api\FormController;
 use App\Http\Controllers\Api\HealthController;
+use App\Http\Controllers\Api\HospitalBrandingController;
 use App\Http\Controllers\Api\HrController;
 use App\Http\Controllers\Api\IcuController;
 use App\Http\Controllers\Api\InsurancePolicyController;
@@ -1048,6 +1049,14 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
         ->middleware('authorize:forms:manage');
     Route::post('numbering/{id}/generate', [NumberingController::class, 'generate'])
         ->middleware('authorize:forms:create');
+
+    // Hospital Branding & Document Configuration (Phase 78)
+    Route::get('facilities/{facility}/branding', [HospitalBrandingController::class, 'show'])
+        ->middleware('authorize:branding:view');
+    Route::put('facilities/{facility}/branding', [HospitalBrandingController::class, 'update'])
+        ->middleware('authorize:branding:manage');
+    Route::get('facilities/{facility}/branding/document', [HospitalBrandingController::class, 'forDocument'])
+        ->middleware('authorize:branding:view');
 
     // Phase 3 slice 21 — Analytics and Reporting (ROADMAP Phase 17, PRODUCT
     // REQUIREMENTS §6.19, DATABASE.md §3.51): versioned metric definitions,

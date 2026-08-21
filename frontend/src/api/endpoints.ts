@@ -24,6 +24,7 @@ import type {
   Encounter,
   FollowUp,
   FollowUpReminder,
+  HospitalBranding,
   InventoryAdjustmentRequest,
   InventoryItem,
   Invoice,
@@ -714,6 +715,25 @@ export const adminFacilitySettingsApi = {
     api.request<Record<string, FacilitySetting>>(`/api/v1/facilities/${facilityId}/settings`, { method: 'PUT', body: { settings } }),
   remove: (facilityId: string, key: string) =>
     api.request<void>(`/api/v1/facilities/${facilityId}/settings/${encodeURIComponent(key)}`, { method: 'DELETE' }),
+};
+
+/* ------------------------------------------------------------------
+   Hospital Branding & Document Configuration (Phase 78)
+   ------------------------------------------------------------------ */
+export const hospitalBrandingApi = {
+  get: (facilityId: string) =>
+    api.request<{ branding: HospitalBranding | null; defaults: Record<string, unknown> }>(
+      `/api/v1/facilities/${facilityId}/branding`,
+    ),
+  update: (facilityId: string, data: Partial<HospitalBranding>) =>
+    api.request<{ branding: HospitalBranding }>(
+      `/api/v1/facilities/${facilityId}/branding`,
+      { method: 'PUT', body: data },
+    ),
+  forDocument: (facilityId: string) =>
+    api.request<HospitalBranding>(
+      `/api/v1/facilities/${facilityId}/branding/document`,
+    ),
 };
 
 /* ------------------------------------------------------------------

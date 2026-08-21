@@ -45,6 +45,7 @@ const AdminDepartmentsPage = lazy(() => import('./pages/admin/AdminDepartmentsPa
 const AdminServicesPage = lazy(() => import('./pages/admin/AdminServicesPage').then(m => ({ default: m.AdminServicesPage })));
 const AdminMedicationsPage = lazy(() => import('./pages/admin/AdminMedicationsPage').then(m => ({ default: m.AdminMedicationsPage })));
 const AdminSettingsPage = lazy(() => import('./pages/admin/AdminSettingsPage').then(m => ({ default: m.AdminSettingsPage })));
+const AdminBrandingPage = lazy(() => import('./pages/admin/AdminBrandingPage').then(m => ({ default: m.AdminBrandingPage })));
 const EmergencyPage = lazy(() => import('./pages/EmergencyPage').then(m => ({ default: m.EmergencyPage })));
 const IcuPage = lazy(() => import('./pages/IcuPage').then(m => ({ default: m.IcuPage })));
 const OperatingTheatrePage = lazy(() => import('./pages/OperatingTheatrePage').then(m => ({ default: m.OperatingTheatrePage })));
@@ -163,6 +164,7 @@ export function App() {
                 <Route path="services" element={<LazySuspense><AdminServicesPage /></LazySuspense>} />
                 <Route path="medications" element={<LazySuspense><AdminMedicationsPage /></LazySuspense>} />
                 <Route path="settings" element={<LazySuspense><AdminSettingsPage /></LazySuspense>} />
+                <Route path="branding" element={<LazySuspense><AdminBrandingPage /></LazySuspense>} />
               </Route>
               <Route path="*" element={<Navigate to="/" replace />} />
             </Route>

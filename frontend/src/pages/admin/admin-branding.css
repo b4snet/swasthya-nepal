@@ -1,0 +1,351 @@
+/* ============================================================
+   ADMIN BRANDING PAGE — Hospital Configuration
+   ============================================================ */
+
+/* --- Page header --- */
+.branding-page__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4, 1rem);
+  margin-bottom: var(--space-6, 1.5rem);
+  flex-wrap: wrap;
+}
+
+.branding-page__head-info h2 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+
+.branding-page__head-info .text-muted {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--ink-muted, #64748b);
+}
+
+.branding-page__head-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3, 0.75rem);
+}
+
+.branding-saved {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--green-600, #16a34a);
+  background: var(--green-50, #f0fdf4);
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+}
+
+.branding-dirty {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--amber-600, #d97706);
+  background: var(--amber-50, #fffbeb);
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+}
+
+/* --- Layout: sidebar + content --- */
+.branding-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: var(--space-6, 1.5rem);
+  align-items: start;
+}
+
+@media (max-width: 768px) {
+  .branding-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* --- Sidebar nav --- */
+.branding-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--surface, #fff);
+  border-radius: 12px;
+  border: 1px solid var(--border, #e2e8f0);
+  padding: var(--space-2, 0.5rem);
+  position: sticky;
+  top: 1rem;
+}
+
+.branding-nav__item {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.625rem 0.875rem;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--ink-muted, #64748b);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+
+.branding-nav__item:hover {
+  background: var(--hover-bg, #f1f5f9);
+  color: var(--ink, #0f172a);
+}
+
+.branding-nav__item--active {
+  background: var(--primary-50, #f0f9ff);
+  color: var(--primary, #0891b2);
+  font-weight: 600;
+}
+
+.branding-nav__icon {
+  font-size: 1rem;
+  width: 1.25rem;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+/* --- Content area --- */
+.branding-content {
+  min-width: 0;
+}
+
+/* --- Card overrides --- */
+.branding-card {
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.branding-card__title {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--ink, #0f172a);
+}
+
+.branding-card__desc {
+  margin: 0 0 1.5rem 0;
+  font-size: 0.8125rem;
+  color: var(--ink-muted, #64748b);
+  line-height: 1.5;
+}
+
+/* --- Form grid --- */
+.branding-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem 1.25rem;
+}
+
+@media (max-width: 640px) {
+  .branding-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.branding-input--full {
+  grid-column: 1 / -1;
+}
+
+.branding-textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 80px;
+}
+
+/* --- Color picker row --- */
+.branding-color-row {
+  display: flex;
+  gap: 1.5rem;
+  grid-column: 1 / -1;
+}
+
+.branding-color-field {
+  flex: 1;
+}
+
+.branding-color-field label {
+  display: block;
+  margin-bottom: 0.375rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--ink, #0f172a);
+}
+
+.branding-color-picker {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.branding-color-picker input[type="color"] {
+  width: 40px;
+  height: 40px;
+  border: 2px solid var(--border, #e2e8f0);
+  border-radius: 8px;
+  cursor: pointer;
+  padding: 2px;
+}
+
+.branding-color-picker .form-input {
+  flex: 1;
+}
+
+/* --- Brand preview --- */
+.branding-preview {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border, #e2e8f0);
+}
+
+.branding-preview h4 {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-muted, #64748b);
+}
+
+.branding-preview__card {
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 12px;
+  overflow: hidden;
+  max-width: 360px;
+}
+
+.branding-preview__header {
+  padding: 1rem 1.25rem;
+  color: #fff;
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+
+.branding-preview__name {
+  display: block;
+}
+
+.branding-preview__body {
+  padding: 0.75rem 1.25rem;
+  background: var(--surface, #fff);
+  font-size: 0.875rem;
+  color: var(--ink-muted, #64748b);
+}
+
+/* --- Document preview --- */
+.branding-doc-preview {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border, #e2e8f0);
+}
+
+.branding-doc-preview h4 {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-muted, #64748b);
+}
+
+.branding-doc-preview__sheet {
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 8px;
+  overflow: hidden;
+  max-width: 480px;
+  background: #fff;
+}
+
+.branding-doc-preview__header {
+  padding: 1rem 1.25rem 0.75rem;
+  border-bottom: 2px solid var(--primary, #0891b2);
+  text-align: center;
+}
+
+.branding-doc-preview__header strong {
+  font-size: 1rem;
+  color: var(--ink, #0f172a);
+}
+
+.branding-doc-preview__subheader {
+  margin: 0.375rem 0 0;
+  font-size: 0.75rem;
+  color: var(--ink-muted, #64748b);
+}
+
+.branding-doc-preview__body {
+  padding: 1.25rem;
+}
+
+.branding-doc-preview__placeholder {
+  font-size: 0.8125rem;
+  color: var(--ink-muted, #94a3b8);
+  font-style: italic;
+}
+
+.branding-doc-preview__footer {
+  padding: 0.75rem 1.25rem;
+  border-top: 1px solid var(--border, #e2e8f0);
+  font-size: 0.75rem;
+  color: var(--ink-muted, #64748b);
+  text-align: center;
+}
+
+/* --- Invoice preview --- */
+.branding-invoice-preview {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border, #e2e8f0);
+}
+
+.branding-invoice-preview h4 {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-muted, #64748b);
+}
+
+.branding-invoice-preview__sheet {
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 8px;
+  overflow: hidden;
+  max-width: 400px;
+  background: #fff;
+}
+
+.branding-invoice-preview__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.875rem 1.25rem;
+  color: #fff;
+  font-size: 0.875rem;
+}
+
+.branding-invoice-preview__row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.625rem 1.25rem;
+  font-size: 0.8125rem;
+  color: var(--ink, #0f172a);
+  border-bottom: 1px solid var(--border-light, #f1f5f9);
+}
+
+.branding-invoice-preview__row--tax {
+  color: var(--ink-muted, #64748b);
+}
+
+.branding-invoice-preview__row--total {
+  border-top: 2px solid var(--primary, #0891b2);
+  border-bottom: none;
+  font-size: 0.9375rem;
+}

@@ -371,6 +371,43 @@ export interface FacilitySetting {
   updatedAt: string | null;
 }
 
+export interface HospitalBranding {
+  id: string;
+  tenantId: string;
+  facilityId: string;
+  hospitalName: string | null;
+  hospitalNameLocal: string | null;
+  logoUrl: string | null;
+  faviconUrl: string | null;
+  primaryColor: string | null;
+  secondaryColor: string | null;
+  phone: string | null;
+  emergencyPhone: string | null;
+  email: string | null;
+  website: string | null;
+  addressLine1: string | null;
+  addressLine2: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  postalCode: string | null;
+  documentHeader: string | null;
+  documentFooter: string | null;
+  letterheadText: string | null;
+  dateFormat: string | null;
+  timeFormat: string | null;
+  currency: string | null;
+  currencySymbol: string | null;
+  vatRate: number | null;
+  vatNumber: string | null;
+  registrationNumber: string | null;
+  panNumber: string | null;
+  termsAndConditions: string | null;
+  privacyPolicy: string | null;
+  version: number;
+  updatedAt: string | null;
+}
+
 export interface PatientIdentifier {
   id: string;
   type: string;

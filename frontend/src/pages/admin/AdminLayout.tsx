@@ -12,6 +12,7 @@ const ADMIN_NAV = [
   { to: '/admin/services', labelKey: 'admin.nav.services' as const, roles: [...ADMIN_ROLES] },
   { to: '/admin/medications', labelKey: 'admin.nav.medications' as const, roles: [...ADMIN_ROLES] },
   { to: '/admin/settings', labelKey: 'admin.nav.settings' as const, roles: [...ADMIN_ROLES] },
+  { to: '/admin/branding', labelKey: 'admin.nav.branding' as const, roles: [...ADMIN_ROLES] },
 ];
 
 export function AdminLayout() {

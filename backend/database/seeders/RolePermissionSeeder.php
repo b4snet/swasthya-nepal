@@ -240,6 +240,10 @@ class RolePermissionSeeder extends Seeder
             'forms:verify' => ['domain' => 'forms', 'description' => 'Verify submitted form data for accuracy'],
             'forms:approve' => ['domain' => 'forms', 'description' => 'Approve verified forms and finalize submissions'],
 
+            // Hospital Branding & Document Configuration (Phase 78)
+            'branding:view' => ['domain' => 'branding', 'description' => 'View hospital branding, document header/footer, letterhead, and branding configuration'],
+            'branding:manage' => ['domain' => 'branding', 'description' => 'Configure hospital branding, document templates, financial settings, and legal text'],
+
             // Phase 3 slice 14 — Emergency (ROADMAP Phase 9,
             // PRODUCT_REQUIREMENTS §6.6): minimal-data registration,
             // configurable triage, time-stamped ER events, and audited
@@ -526,6 +530,8 @@ class RolePermissionSeeder extends Seeder
                     'cdss:view', 'cdss:manage', 'ai:view', 'ai:manage',
                     // Phase — Form Library & Document Workflow
                     'forms:view', 'forms:create', 'forms:manage', 'forms:verify', 'forms:approve',
+                    // Hospital Branding & Document Configuration (Phase 78)
+                    'branding:view', 'branding:manage',
                     // Phase 12 — Notifications: the org admin manages the
                     // whole notification platform (templates, segments,
                     // campaigns, emergency broadcasts).
@@ -653,6 +659,8 @@ class RolePermissionSeeder extends Seeder
                     'cdss:view', 'cdss:manage', 'ai:view', 'ai:manage',
                     // Phase — Form Library & Document Workflow
                     'forms:view', 'forms:create', 'forms:manage', 'forms:verify', 'forms:approve',
+                    // Hospital Branding & Document Configuration (Phase 78)
+                    'branding:view', 'branding:manage',
                     // Phase 12 — Notifications: the hospital admin manages
                     // notifications for their facility.
                     'notification:view', 'notification:manage',
