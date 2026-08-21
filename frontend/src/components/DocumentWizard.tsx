@@ -444,6 +444,8 @@ export function DocumentWizard({ open, onClose, onGenerated }: DocumentWizardPro
           html={generatedDoc?.contentHtml ?? ''}
           title={generatedDoc?.title}
           documentNumber={generatedDoc?.documentNumber}
+          documentId={generatedDoc?.id}
+          hasPdf={!!generatedDoc?.hasPdf}
           status={generatedDoc?.status}
           onClose={() => setPreviewOpen(false)}
         />

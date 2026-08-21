@@ -351,6 +351,8 @@ export function DocumentCenterPage() {
         html={selectedDoc?.contentHtml ?? ''}
         title={selectedDoc?.title}
         documentNumber={selectedDoc?.documentNumber}
+        documentId={selectedDoc?.id}
+        hasPdf={!!selectedDoc?.hasPdf}
         status={selectedDoc?.status}
         onClose={() => { setPreviewOpen(false); setSelectedDoc(null); }}
         showVerify={!!selectedDoc && !selectedDoc.verified}

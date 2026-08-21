@@ -16,6 +16,7 @@ final class DocumentCenterService
 {
     public function __construct(
         private readonly DocumentNumberService $numbering,
+        private readonly PdfGenerator $pdf,
     ) {}
 
     /**
@@ -56,7 +57,7 @@ final class DocumentCenterService
             $params['category'],
         );
 
-        return GeneratedDocument::query()->create([
+        $document = GeneratedDocument::query()->create([
             'tenant_id' => $tenantId,
             'facility_id' => $facilityId,
             'document_number' => $documentNumber,
@@ -78,6 +79,19 @@ final class DocumentCenterService
             'pdf_capable' => true,
             'visibility' => $params['visibility'] ?? 'staff',
         ]);
+
+        // Generate PDF asynchronously (best-effort — document is usable without PDF)
+        try {
+            $pdfResult = $this->pdf->generate($renderedHtml, $document->getKey(), $tenantId);
+            $document->update([
+                'pdf_path' => $pdfResult['path'],
+                'page_count' => $pdfResult['pageCount'],
+            ]);
+        } catch (\Throwable) {
+            // PDF generation failure is non-fatal — document remains accessible as HTML
+        }
+
+        return $document;
     }
 
     /**

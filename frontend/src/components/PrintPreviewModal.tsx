@@ -8,7 +8,9 @@ interface PrintPreviewModalProps {
   html: string;
   title?: string;
   documentNumber?: string;
+  documentId?: string;
   status?: string;
+  hasPdf?: boolean;
   onClose: () => void;
   onPrint?: () => void;
   onDownload?: () => void;
@@ -38,6 +40,8 @@ export function PrintPreviewModal({
   onSign,
   showVerify = false,
   showSign = false,
+  documentId,
+  hasPdf = false,
 }: PrintPreviewModalProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
@@ -128,8 +132,17 @@ export function PrintPreviewModal({
               <Printer size={14} /> Print
             </Button>
             <Button size="sm" variant="ghost" onClick={handleDownload}>
-              <Download size={14} /> Download
+              <Download size={14} /> Download HTML
             </Button>
+            {documentId && (
+              <Button
+                size="sm"
+                variant="primary"
+                onClick={() => window.open(`/api/v1/documents/${documentId}/pdf`, '_blank')}
+              >
+                <Download size={14} /> {hasPdf ? 'Download PDF' : 'Generate PDF'}
+              </Button>
+            )}
             <button className="pp-close" onClick={onClose} aria-label="Close preview">
               <X size={18} />
             </button>

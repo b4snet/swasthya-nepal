@@ -1371,6 +1371,13 @@ export const documentCenterApi = {
     api.request<{ types: Record<string, string>; categories: Record<string, string> }>('/api/v1/documents/categories'),
   stats: (orgId: string) =>
     api.request<Record<string, unknown>>(`/api/v1/organizations/${orgId}/documents/stats`),
+
+  /** Get the PDF download URL for a document */
+  pdfUrl: (documentId: string) => `/api/v1/documents/${documentId}/pdf`,
+
+  /** Regenerate the PDF for a document (force re-render) */
+  regeneratePdf: (documentId: string) =>
+    api.request<{ pdfPath: string; pageCount: number; sizeBytes: number }>(`/api/v1/documents/${documentId}/pdf`, { method: 'POST', body: {} }),
 };
 
 export const revenueApi = {

@@ -1593,6 +1593,10 @@ Route::post('documents/{document}/sign', [DocumentCenterController::class, 'sign
     ->middleware('authorize:document:manage');
 Route::post('documents/{document}/share', [DocumentCenterController::class, 'share'])
     ->middleware('authorize:document:manage');
+Route::get('documents/{document}/pdf', [DocumentCenterController::class, 'downloadPdf'])
+    ->middleware('authorize:document:view');
+Route::post('documents/{document}/pdf', [DocumentCenterController::class, 'regeneratePdf'])
+    ->middleware('authorize:document:manage');
 Route::get('documents/categories', [DocumentCenterController::class, 'categories'])
     ->middleware('authorize:document:view');
 

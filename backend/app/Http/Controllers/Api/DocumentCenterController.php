@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\GeneratedDocument;
 use App\Models\Organization;
 use App\Services\DocumentCenterService;
+use App\Services\PdfGenerator;
 use App\Support\AccessCheck;
 use App\Support\AuditLogger;
 use App\Support\Envelope;
@@ -22,6 +23,7 @@ final class DocumentCenterController extends Controller
     public function __construct(
         private readonly AuditLogger $audit,
         private readonly DocumentCenterService $docService,
+        private readonly PdfGenerator $pdf,
     ) {}
 
     /**
@@ -261,6 +263,105 @@ final class DocumentCenterController extends Controller
             'recent7Days' => $recent,
             'byCategory' => $byCategory,
             'byType' => $byType,
+        ], request: $request);
+    }
+
+    /**
+     * GET /documents/{document}/pdf — download the document as PDF.
+     *
+     * If the PDF already exists on disk, stream it directly.
+     * Otherwise, generate it on-the-fly from the stored HTML.
+     */
+    public function downloadPdf(Request $request, GeneratedDocument $document)
+    {
+        AccessCheck::scoped($document, write: false);
+
+        // If PDF exists, stream it
+        if ($document->pdf_path && $this->pdf->exists($document->pdf_path)) {
+            $this->audit->record(
+                'document.pdf.downloaded',
+                'generated_documents',
+                $document->getKey(),
+                ['documentNumber' => $document->document_number],
+                $request,
+            );
+
+            return response()->file(
+                storage_path('app/' . $document->pdf_path),
+                [
+                    'Content-Type' => 'application/pdf',
+                    'Content-Disposition' => 'inline; filename="'.$document->document_number.'.pdf"',
+                ],
+            );
+        }
+
+        // Generate on-the-fly if HTML exists
+        if (! $document->content_html) {
+            return response()->json(['message' => 'Document has no content to convert to PDF'], 404);
+        }
+
+        $result = $this->pdf->generate(
+            $document->content_html,
+            $document->getKey(),
+            $document->tenant_id,
+        );
+
+        $document->update([
+            'pdf_path' => $result['path'],
+            'page_count' => $result['pageCount'],
+        ]);
+
+        $this->audit->record(
+            'document.pdf.generated',
+            'generated_documents',
+            $document->getKey(),
+            ['documentNumber' => $document->document_number, 'pageCount' => $result['pageCount']],
+            $request,
+        );
+
+        return response()->file(
+            storage_path('app/' . $result['path']),
+            [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="'.$document->document_number.'.pdf"',
+            ],
+        );
+    }
+
+    /**
+     * POST /documents/{document}/pdf — force-regenerate the PDF.
+     */
+    public function regeneratePdf(Request $request, GeneratedDocument $document): JsonResponse
+    {
+        AccessCheck::scoped($document, write: true);
+
+        if (! $document->content_html) {
+            return response()->json(['message' => 'Document has no content to convert to PDF'], 422);
+        }
+
+        $result = $this->pdf->generate(
+            $document->content_html,
+            $document->getKey(),
+            $document->tenant_id,
+        );
+
+        $document->update([
+            'pdf_path' => $result['path'],
+            'page_count' => $result['pageCount'],
+        ]);
+
+        $this->audit->record(
+            'document.pdf.regenerated',
+            'generated_documents',
+            $document->getKey(),
+            ['documentNumber' => $document->document_number, 'pageCount' => $result['pageCount']],
+            $request,
+        );
+
+        return Envelope::success(data: [
+            'pdfPath' => $result['path'],
+            'pageCount' => $result['pageCount'],
+            'sizeBytes' => $result['sizeBytes'],
         ], request: $request);
     }
 }
