@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
@@ -216,4 +217,107 @@ it('total policies >= 570 (143+ tables with policies)', function () {
     );
 
     expect($count->cnt)->toBeGreaterThanOrEqual(570);
+});
+
+/*
+|--------------------------------------------------------------------------
+| Supabase Data API exposure tests (Phase: Security Advisor Remediation)
+|--------------------------------------------------------------------------
+|
+| The Supabase Data API (PostgREST) routes through the `anon` and
+| `authenticated` roles. The swasthya_app role connects directly, so
+| REVOKEs from anon/authenticated do NOT affect application functionality.
+|
+| These tests verify that infrastructure and auth tables are NOT exposed
+| through the Data API, and that RBAC metadata tables are read-only.
+*/
+
+it('infra tables have no Data API access for anon role', function () {
+    $hidden = [
+        'cache', 'cache_locks', 'failed_jobs', 'job_batches', 'jobs', 'migrations',
+        'users', 'refresh_tokens', 'mfa_challenges', 'password_reset_tokens',
+        'personal_access_tokens',
+    ];
+
+    foreach ($hidden as $table) {
+        $grants = DB::select(
+            'SELECT privilege_type FROM information_schema.table_privileges'
+            ." WHERE table_schema = 'public' AND table_name = ?"
+            ." AND grantee = 'anon' ORDER BY privilege_type",
+            [$table]
+        );
+        expect(count($grants))->toBe(0, "Table {$table} must have no anon access (Supabase Data API)");
+    }
+});
+
+it('infra tables have no Data API access for authenticated role', function () {
+    $hidden = [
+        'cache', 'cache_locks', 'failed_jobs', 'job_batches', 'jobs', 'migrations',
+        'users', 'refresh_tokens', 'mfa_challenges', 'password_reset_tokens',
+        'personal_access_tokens',
+    ];
+
+    foreach ($hidden as $table) {
+        $grants = DB::select(
+            'SELECT privilege_type FROM information_schema.table_privileges'
+            ." WHERE table_schema = 'public' AND table_name = ?"
+            ." AND grantee = 'authenticated' ORDER BY privilege_type",
+            [$table]
+        );
+        expect(count($grants))->toBe(0, "Table {$table} must have no authenticated access (Supabase Data API)");
+    }
+});
+
+it('rbac metadata tables are read-only via Data API', function () {
+    $readonly = ['roles', 'permissions', 'role_permissions'];
+
+    foreach ($readonly as $table) {
+        foreach (['anon', 'authenticated'] as $role) {
+            $grants = DB::select(
+                'SELECT privilege_type FROM information_schema.table_privileges'
+                ." WHERE table_schema = 'public' AND table_name = ?"
+                .' AND grantee = ? ORDER BY privilege_type',
+                [$table, $role]
+            );
+
+            $privileges = array_map(fn ($g) => $g->privilege_type, $grants);
+
+            // Must have SELECT (readable)
+            expect($privileges)->toContain('SELECT', "Table {$table} must be readable by {$role}");
+
+            // Must NOT have INSERT, UPDATE, DELETE (writable)
+            expect($privileges)->not->toContain('INSERT', "Table {$table} must not be writable by {$role}");
+            expect($privileges)->not->toContain('UPDATE', "Table {$table} must not be writable by {$role}");
+            expect($privileges)->not->toContain('DELETE', "Table {$table} must not be deletable by {$role}");
+        }
+    }
+});
+
+it('personal_access_tokens.token column has no Data API access', function () {
+    foreach (['anon', 'authenticated'] as $role) {
+        $grants = DB::select(
+            'SELECT privilege_type FROM information_schema.column_privileges'
+            ." WHERE table_schema = 'public' AND table_name = 'personal_access_tokens'"
+            ." AND column_name = 'token' AND grantee = ?",
+            [$role]
+        );
+        expect(count($grants))->toBe(0, "personal_access_tokens.token must have no {$role} column access");
+    }
+});
+
+it('swasthya_app role retains access to all tables (application backend)', function () {
+    // The swasthya_app role connects directly, not through PostgREST.
+    // Verify it can still SELECT from the previously hidden tables.
+    $c = rlsConn();
+
+    foreach (['cache', 'users', 'personal_access_tokens'] as $table) {
+        $grants = DB::select(
+            'SELECT privilege_type FROM information_schema.table_privileges'
+            ." WHERE table_schema = 'public' AND table_name = ?"
+            ." AND grantee = 'swasthya_app' ORDER BY privilege_type",
+            [$table]
+        );
+        $privileges = array_map(fn ($g) => $g->privilege_type, $grants);
+        expect($privileges)->toContain('SELECT', "swasthya_app must retain SELECT on {$table}");
+    }
 });
