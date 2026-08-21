@@ -1363,3 +1363,52 @@ export const documentCenterApi = {
   stats: (orgId: string) =>
     api.request<Record<string, unknown>>(`/api/v1/organizations/${orgId}/documents/stats`),
 };
+
+export const revenueApi = {
+  summary: (orgId: string, facilityId: string, from?: string, to?: string) => {
+    const params = new URLSearchParams({ facilityId });
+    if (from) params.set('from', from);
+    if (to) params.set('to', to);
+    return api.request<Record<string, unknown>>(`/api/v1/organizations/${orgId}/revenue/summary?${params}`);
+  },
+  bySource: (orgId: string, facilityId: string, from?: string, to?: string) => {
+    const params = new URLSearchParams({ facilityId });
+    if (from) params.set('from', from);
+    if (to) params.set('to', to);
+    return api.request<Array<Record<string, unknown>>>(`/api/v1/organizations/${orgId}/revenue/by-source?${params}`);
+  },
+  dailyTrend: (orgId: string, facilityId: string, from?: string, to?: string) => {
+    const params = new URLSearchParams({ facilityId });
+    if (from) params.set('from', from);
+    if (to) params.set('to', to);
+    return api.request<Array<Record<string, unknown>>>(`/api/v1/organizations/${orgId}/revenue/daily-trend?${params}`);
+  },
+  expenseSummary: (orgId: string, facilityId: string, from?: string, to?: string) => {
+    const params = new URLSearchParams({ facilityId });
+    if (from) params.set('from', from);
+    if (to) params.set('to', to);
+    return api.request<Record<string, unknown>>(`/api/v1/organizations/${orgId}/revenue/expense-summary?${params}`);
+  },
+  aging: (orgId: string, facilityId: string) =>
+    api.request<Array<Record<string, unknown>>>(`/api/v1/organizations/${orgId}/revenue/aging?facilityId=${facilityId}`),
+  budgetVsActual: (budgetId: string) =>
+    api.request<Record<string, unknown>>(`/api/v1/budgets/${budgetId}/vs-actual`),
+  periodSummary: (periodId: string) =>
+    api.request<Record<string, unknown>>(`/api/v1/financial-periods/${periodId}/summary`),
+  receipt: (paymentId: string) =>
+    api.request<Record<string, unknown> | null>(`/api/v1/payments/${paymentId}/receipt`),
+  generateReceipt: (paymentId: string) =>
+    api.request<Record<string, unknown>>(`/api/v1/payments/${paymentId}/receipt`, { method: 'POST', body: {} }),
+  printReceipt: (receiptId: string) =>
+    api.request<Record<string, unknown>>(`/api/v1/receipts/${receiptId}/print`, { method: 'POST', body: {} }),
+  adjustments: (invoiceId: string) =>
+    api.request<Array<Record<string, unknown>>>(`/api/v1/invoices/${invoiceId}/adjustments`),
+  requestAdjustment: (invoiceId: string, payload: Record<string, unknown>) =>
+    api.request<Record<string, unknown>>(`/api/v1/invoices/${invoiceId}/adjustments`, { method: 'POST', body: payload }),
+  approveAdjustment: (adjustmentId: string) =>
+    api.request<Record<string, unknown>>(`/api/v1/billing-adjustments/${adjustmentId}/approve`, { method: 'POST', body: {} }),
+  applyAdjustment: (adjustmentId: string) =>
+    api.request<Record<string, unknown>>(`/api/v1/billing-adjustments/${adjustmentId}/apply`, { method: 'POST', body: {} }),
+  rejectAdjustment: (adjustmentId: string, reason: string) =>
+    api.request<Record<string, unknown>>(`/api/v1/billing-adjustments/${adjustmentId}/reject`, { method: 'POST', body: { reason } }),
+};

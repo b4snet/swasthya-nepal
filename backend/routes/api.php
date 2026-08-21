@@ -68,6 +68,7 @@ use App\Http\Controllers\Api\PortalActivationController;
 use App\Http\Controllers\Api\ProcurementController;
 use App\Http\Controllers\Api\RadiologyController;
 use App\Http\Controllers\Api\RefundController;
+use App\Http\Controllers\Api\RevenueController;
 use App\Http\Controllers\Api\RoleAssignmentController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\RoomController;
@@ -1458,6 +1459,40 @@ Route::middleware(['throttle:api', ResolveTenantContext::class])->prefix('enterp
     Route::post('financial-periods/{period}/close', [FinancialPeriodController::class, 'close']);
     Route::post('financial-periods/{period}/lock', [FinancialPeriodController::class, 'lock']);
 });
+
+// Phase 85 — Complete Revenue Cycle: reports, receipts, adjustments.
+Route::get('organizations/{organization}/revenue/summary', [RevenueController::class, 'revenueSummary'])
+    ->middleware('authorize:billing:view');
+Route::get('organizations/{organization}/revenue/by-source', [RevenueController::class, 'revenueBySource'])
+    ->middleware('authorize:billing:view');
+Route::get('organizations/{organization}/revenue/daily-trend', [RevenueController::class, 'dailyTrend'])
+    ->middleware('authorize:billing:view');
+Route::get('organizations/{organization}/revenue/expense-summary', [RevenueController::class, 'expenseSummary'])
+    ->middleware('authorize:billing:view');
+Route::get('organizations/{organization}/revenue/aging', [RevenueController::class, 'agingAnalysis'])
+    ->middleware('authorize:billing:view');
+Route::get('budgets/{budget}/vs-actual', [RevenueController::class, 'budgetVsActual'])
+    ->middleware('authorize:budget:view');
+Route::get('financial-periods/{period}/summary', [RevenueController::class, 'periodSummary'])
+    ->middleware('authorize:budget:view');
+
+Route::get('payments/{payment}/receipt', [RevenueController::class, 'receipt'])
+    ->middleware('authorize:billing:view');
+Route::post('payments/{payment}/receipt', [RevenueController::class, 'generateReceipt'])
+    ->middleware('authorize:billing:collect');
+Route::post('receipts/{receipt}/print', [RevenueController::class, 'printReceipt'])
+    ->middleware('authorize:billing:collect');
+
+Route::get('invoices/{invoice}/adjustments', [RevenueController::class, 'adjustments'])
+    ->middleware('authorize:billing:view');
+Route::post('invoices/{invoice}/adjustments', [RevenueController::class, 'requestAdjustment'])
+    ->middleware('authorize:billing:refund');
+Route::post('billing-adjustments/{adjustment}/approve', [RevenueController::class, 'approveAdjustment'])
+    ->middleware('authorize:billing:refund-approve');
+Route::post('billing-adjustments/{adjustment}/apply', [RevenueController::class, 'applyAdjustment'])
+    ->middleware('authorize:billing:refund-approve');
+Route::post('billing-adjustments/{adjustment}/reject', [RevenueController::class, 'rejectAdjustment'])
+    ->middleware('authorize:billing:refund-approve');
 
 // ── Phase 12: National Mass Notification Platform ──
 Route::middleware(['throttle:api', ResolveTenantContext::class])->prefix('notifications')->group(function (): void {

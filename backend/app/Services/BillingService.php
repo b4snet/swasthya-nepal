@@ -5,11 +5,13 @@ namespace App\Services;
 use App\Exceptions\ApiException;
 use App\Models\Charge;
 use App\Models\DepositAllocation;
+use App\Models\HospitalBranding;
 use App\Models\InsuranceClaim;
 use App\Models\Invoice;
 use App\Models\InvoiceLine;
 use App\Models\Payment;
 use App\Models\PaymentAllocation;
+use App\Models\Receipt;
 use App\Models\RefundRequest;
 use App\Support\ErrorCodes;
 use Illuminate\Support\Facades\DB;
@@ -644,11 +646,103 @@ final class BillingService
             ->sum('amount_minor');
     }
 
+    /**
+     * Generate a receipt for a completed payment. The receipt is an immutable
+     * document capturing the payment details, hospital branding snapshot,
+     * and line items from the invoice.
+     */
+    public function generateReceipt(
+        string $tenantId,
+        string $paymentId,
+        ?string $issuedBy = null,
+    ): Receipt {
+        $payment = Payment::query()
+            ->where('tenant_id', $tenantId)
+            ->where('id', $paymentId)
+            ->first();
+
+        if ($payment === null) {
+            throw new ApiException(ErrorCodes::NOT_FOUND, 'Payment not found.', 404);
+        }
+
+        // Check if receipt already exists for this payment
+        $existing = Receipt::query()
+            ->where('tenant_id', $tenantId)
+            ->where('payment_id', $paymentId)
+            ->first();
+
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        // Get the allocation to find the invoice
+        $allocation = PaymentAllocation::query()
+            ->where('tenant_id', $tenantId)
+            ->where('payment_id', $paymentId)
+            ->first();
+
+        if ($allocation === null) {
+            throw new ApiException(ErrorCodes::NOT_FOUND, 'No allocation found for this payment.', 404);
+        }
+
+        $invoice = Invoice::query()
+            ->where('tenant_id', $tenantId)
+            ->where('id', $allocation->invoice_id)
+            ->first();
+
+        // Build line items from the invoice
+        $items = $invoice !== null
+            ? $invoice->lines()->orderBy('line_no')->get()->map(fn ($line): array => [
+                'description' => $line->description,
+                'amountMinor' => $line->amount_minor,
+                'taxMinor' => $line->tax_minor,
+            ])->values()->all()
+            : [];
+
+        // Capture branding snapshot
+        $branding = HospitalBranding::query()
+            ->where('tenant_id', $tenantId)
+            ->where('facility_id', $payment->facility_id)
+            ->first();
+
+        $brandingSnapshot = $branding?->present() ?? [
+            'hospitalName' => null,
+            'currency' => 'NPR',
+            'currencySymbol' => 'Rs.',
+        ];
+
+        return Receipt::query()->create([
+            'tenant_id' => $tenantId,
+            'facility_id' => $payment->facility_id,
+            'payment_id' => $paymentId,
+            'invoice_id' => $allocation->invoice_id,
+            'patient_id' => $payment->patient_id,
+            'receipt_number' => $this->nextReceiptNumber($tenantId),
+            'status' => Receipt::STATUS_ISSUED,
+            'amount_minor' => $payment->amount_minor,
+            'currency' => $payment->currency ?? 'NPR',
+            'method' => $payment->method,
+            'payment_method_label' => ucfirst(str_replace('_', ' ', $payment->method)),
+            'items' => $items,
+            'branding_snapshot' => $brandingSnapshot,
+            'issued_by' => $issuedBy,
+        ]);
+    }
+
     private function nextNumber(string $tenantId): string
     {
         do {
             $number = 'INV-'.date('Ymd').'-'.random_int(10000, 99999);
         } while (Invoice::query()->where('tenant_id', $tenantId)->where('invoice_number', $number)->exists());
+
+        return $number;
+    }
+
+    private function nextReceiptNumber(string $tenantId): string
+    {
+        do {
+            $number = 'RCP-'.date('Ymd').'-'.random_int(10000, 99999);
+        } while (Receipt::query()->where('tenant_id', $tenantId)->where('receipt_number', $number)->exists());
 
         return $number;
     }
