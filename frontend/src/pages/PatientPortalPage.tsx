@@ -34,7 +34,7 @@ type MedicalHistory = {
 type Medication = { id: string; medicationName: string; dosage: string | null; frequency: string | null; status: string };
 type LabResult = { id: string; testName: string | null; resultValue: string | null; resultUnit: string | null; referenceRange: string | null; status: string; resultedAt: string | null };
 type RadiologyReport = { id: string; reportType: string; status: string; impression: string | null; criticalFindings: string | null; verifiedAt: string | null };
-type Document = { id: string; documentType: string; title: string; description: string | null; mimeType: string | null; createdAt: string | null };
+type Document = { id: string; source?: string; documentType: string; title: string; description: string | null; mimeType: string | null; category: string | null; providerName: string | null; departmentName: string | null; documentNumber: string | null; status: string | null; hasPdf: boolean; createdAt: string | null };
 type Referral = { id: string; reason: string | null; status: string; createdAt: string | null };
 type Immunization = { id: string; code: string | null; description: string | null; observedAt: string | null };
 type Appointment = { id: string; status: string; scheduledAt: string | null };
@@ -69,6 +69,9 @@ export function PatientPortalPage() {
   const [labResults, setLabResults] = useState<LabResult[]>([]);
   const [radiologyReports, setRadiologyReports] = useState<RadiologyReport[]>([]);
   const [documents, setDocuments] = useState<Document[]>([]);
+  const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
+  const [docPreviewHtml, setDocPreviewHtml] = useState<string | null>(null);
+  const [loadingDoc, setLoadingDoc] = useState(false);
   const [referrals, setReferrals] = useState<Referral[]>([]);
   const [immunizations, setImmunizations] = useState<Immunization[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -97,6 +100,20 @@ export function PatientPortalPage() {
       setError(err instanceof ApiError ? err.message : 'Failed to load portal data');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleViewDocument(doc: Document) {
+    setSelectedDoc(doc);
+    setDocPreviewHtml(null);
+    setLoadingDoc(true);
+    try {
+      const res = await portalApi.showDocument(doc.id) as unknown as { contentHtml: string };
+      setDocPreviewHtml(res.contentHtml ?? null);
+    } catch {
+      setDocPreviewHtml(null);
+    } finally {
+      setLoadingDoc(false);
     }
   }
 
@@ -468,16 +485,80 @@ export function PatientPortalPage() {
               <div className="portal__list">
                 {documents.map((d) => (
                   <div key={d.id} className="portal__list-item">
-                    <div>
-                      <span className="portal__list-label">{d.title}</span>
-                      <span className="portal__list-detail" style={{ marginLeft: 8 }}>{d.documentType} · {d.mimeType ?? ''}</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span className="portal__list-label">{d.title}</span>
+                        {d.documentNumber && (
+                          <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#94a3b8' }}>{d.documentNumber}</span>
+                        )}
+                        {d.status && (
+                          <StatusChip
+                            tone={d.status === 'final' ? 'success' : d.status === 'verified' ? 'success' : 'info'}
+                            label={d.status}
+                          />
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', gap: 12, marginTop: 4, fontSize: 12, color: '#64748b' }}>
+                        <span>{d.documentType.replace(/_/g, ' ')}</span>
+                        {d.category && <span>· {d.category}</span>}
+                        {d.providerName && <span>· {d.providerName}</span>}
+                        {d.departmentName && <span>· {d.departmentName}</span>}
+                      </div>
                     </div>
-                    {d.createdAt && <span className="caption">{new Date(d.createdAt).toLocaleDateString()}</span>}
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      {d.source === 'generated' && (
+                        <button
+                          className="btn btn--ghost btn--sm"
+                          onClick={() => handleViewDocument(d)}
+                          style={{ fontSize: 12 }}
+                        >
+                          View
+                        </button>
+                      )}
+                      {d.source === 'generated' && (
+                        <button
+                          className="btn btn--primary btn--sm"
+                          onClick={() => window.open(portalApi.documentPdfUrl(d.id), '_blank')}
+                          style={{ fontSize: 12 }}
+                        >
+                          {d.hasPdf ? 'Download PDF' : 'Get PDF'}
+                        </button>
+                      )}
+                      {d.createdAt && <span className="caption" style={{ marginLeft: 8 }}>{new Date(d.createdAt).toLocaleDateString()}</span>}
+                    </div>
                   </div>
                 ))}
               </div>
             )}
           </Card>
+
+          {/* Document preview overlay */}
+          {selectedDoc && (
+            <Card title={selectedDoc.title}>
+              {loadingDoc ? (
+                <div style={{ padding: 24, textAlign: 'center', color: '#94a3b8' }}>Loading document…</div>
+              ) : docPreviewHtml ? (
+                <div>
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                    <button className="btn btn--primary btn--sm" onClick={() => window.open(portalApi.documentPdfUrl(selectedDoc.id), '_blank')}>
+                      {selectedDoc.hasPdf ? 'Download PDF' : 'Generate PDF'}
+                    </button>
+                    <button className="btn btn--ghost btn--sm" onClick={() => { setSelectedDoc(null); setDocPreviewHtml(null); }}>
+                      Close
+                    </button>
+                  </div>
+                  <iframe
+                    srcDoc={docPreviewHtml}
+                    title={selectedDoc.title}
+                    style={{ width: '100%', height: 500, border: '1px solid #e2e8f0', borderRadius: 8 }}
+                    sandbox="allow-same-origin"
+                  />
+                </div>
+              ) : (
+                <div style={{ padding: 24, textAlign: 'center', color: '#94a3b8' }}>No content available</div>
+              )}
+            </Card>
+          )}
 
           <Card title="Referrals">
             {referrals.length === 0 ? (

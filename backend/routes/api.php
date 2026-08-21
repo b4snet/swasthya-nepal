@@ -1377,6 +1377,8 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolvePortalContext::class])
     Route::get('radiology-reports', [PatientPortalController::class, 'radiologyReports']);
     Route::get('prescriptions', [PatientPortalController::class, 'prescriptions']);
     Route::get('documents', [PatientPortalController::class, 'documents']);
+    Route::get('documents/{documentId}', [PatientPortalController::class, 'showDocument']);
+    Route::get('documents/{documentId}/pdf', [PatientPortalController::class, 'downloadDocumentPdf']);
     Route::get('referrals', [PatientPortalController::class, 'referrals']);
     Route::get('immunizations', [PatientPortalController::class, 'immunizations']);
     // Messaging

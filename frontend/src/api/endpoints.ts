@@ -1323,6 +1323,13 @@ export const portalApi = {
 
   documents: () => api.request('/api/v1/portal/documents'),
 
+  /** View a shared document's HTML content */
+  showDocument: (documentId: string) =>
+    api.request<{ id: string; documentNumber: string; documentType: string; category: string; title: string; providerName: string; departmentName: string; status: string; contentHtml: string; hasPdf: boolean; createdAt: string }>(`/api/v1/portal/documents/${documentId}`),
+
+  /** Get the PDF download URL for a shared document */
+  documentPdfUrl: (documentId: string) => `/api/v1/portal/documents/${documentId}/pdf`,
+
   referrals: () => api.request('/api/v1/portal/referrals'),
 
   immunizations: () => api.request('/api/v1/portal/immunizations'),

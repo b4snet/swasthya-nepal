@@ -163,6 +163,100 @@ final class PatientPortalController extends Controller
         return Envelope::success(['documents' => $this->portal->selfDocuments($this->currentAccount($request))]);
     }
 
+    /**
+     * GET /portal/documents/{documentId} — view a shared document's content.
+     *
+     * Only returns documents where shared_with_patient = true and the
+     * patient owns the record.
+     */
+    public function showDocument(Request $request, string $documentId)
+    {
+        $account = $this->currentAccount($request);
+
+        $doc = \App\Models\GeneratedDocument::query()
+            ->where('tenant_id', $account->tenant_id)
+            ->where('patient_id', $account->patient_id)
+            ->where('id', $documentId)
+            ->where('shared_with_patient', true)
+            ->whereIn('visibility', ['patient', 'both'])
+            ->first();
+
+        if (! $doc) {
+            return response()->json(['message' => 'Document not found or not shared with you'], 404);
+        }
+
+        return Envelope::success(data: [
+            'id' => $doc->getKey(),
+            'documentNumber' => $doc->document_number,
+            'documentType' => $doc->document_type,
+            'category' => $doc->category,
+            'title' => $doc->title,
+            'providerName' => $doc->provider_name,
+            'departmentName' => $doc->department_name,
+            'status' => $doc->status,
+            'contentHtml' => $doc->content_html,
+            'hasPdf' => $doc->pdf_path !== null,
+            'createdAt' => $doc->created_at?->toIso8601String(),
+        ], request: $request);
+    }
+
+    /**
+     * GET /portal/documents/{documentId}/pdf — download a shared document as PDF.
+     *
+     * Only serves documents where shared_with_patient = true.
+     */
+    public function downloadDocumentPdf(Request $request, string $documentId)
+    {
+        $account = $this->currentAccount($request);
+
+        $doc = \App\Models\GeneratedDocument::query()
+            ->where('tenant_id', $account->tenant_id)
+            ->where('patient_id', $account->patient_id)
+            ->where('id', $documentId)
+            ->where('shared_with_patient', true)
+            ->whereIn('visibility', ['patient', 'both'])
+            ->first();
+
+        if (! $doc) {
+            return response()->json(['message' => 'Document not found or not shared with you'], 404);
+        }
+
+        // Serve existing PDF
+        if ($doc->pdf_path) {
+            $pdfService = app(\App\Services\PdfGenerator::class);
+            if ($pdfService->exists($doc->pdf_path)) {
+                return response()->file(
+                    storage_path('app/' . $doc->pdf_path),
+                    [
+                        'Content-Type' => 'application/pdf',
+                        'Content-Disposition' => 'inline; filename="'.$doc->document_number.'.pdf"',
+                    ],
+                );
+            }
+        }
+
+        // Generate on-the-fly from HTML
+        if (! $doc->content_html) {
+            return response()->json(['message' => 'Document content not available'], 404);
+        }
+
+        $pdfService = app(\App\Services\PdfGenerator::class);
+        $result = $pdfService->generate($doc->content_html, $doc->getKey(), $doc->tenant_id);
+
+        $doc->update([
+            'pdf_path' => $result['path'],
+            'page_count' => $result['pageCount'],
+        ]);
+
+        return response()->file(
+            storage_path('app/' . $result['path']),
+            [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="'.$doc->document_number.'.pdf"',
+            ],
+        );
+    }
+
     public function referrals(Request $request): JsonResponse
     {
         return Envelope::success(['referrals' => $this->portal->selfReferrals($this->currentAccount($request))]);

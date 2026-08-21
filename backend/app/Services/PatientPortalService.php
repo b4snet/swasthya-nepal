@@ -538,7 +538,8 @@ final class PatientPortalService
         $this->assertScope($account, PortalAccessGrant::SCOPE_DOCUMENTS);
 
         try {
-            return PatientDocument::query()
+            // Patient-uploaded documents
+            $patientDocs = PatientDocument::query()
                 ->where('tenant_id', $account->tenant_id)
                 ->where('patient_id', $account->patient_id)
                 ->orderByDesc('created_at')
@@ -546,12 +547,47 @@ final class PatientPortalService
                 ->get()
                 ->map(fn ($d) => [
                     'id' => $d->getKey(),
+                    'source' => 'patient_document',
                     'documentType' => $d->document_type,
                     'title' => $d->getAttribute('title') ?? $d->document_type,
                     'description' => $d->getAttribute('description') ?? null,
                     'mimeType' => $d->mime_type,
+                    'category' => null,
+                    'providerName' => null,
+                    'departmentName' => null,
+                    'documentNumber' => null,
+                    'status' => null,
+                    'hasPdf' => false,
                     'createdAt' => $d->created_at?->toIso8601String(),
-                ])
+                ]);
+
+            // Staff-generated documents shared with this patient
+            $sharedDocs = \App\Models\GeneratedDocument::query()
+                ->where('tenant_id', $account->tenant_id)
+                ->where('patient_id', $account->patient_id)
+                ->where('shared_with_patient', true)
+                ->whereIn('visibility', ['patient', 'both'])
+                ->orderByDesc('created_at')
+                ->limit(100)
+                ->get()
+                ->map(fn ($d) => [
+                    'id' => $d->getKey(),
+                    'source' => 'generated',
+                    'documentType' => $d->document_type,
+                    'title' => $d->title,
+                    'description' => null,
+                    'mimeType' => 'application/pdf',
+                    'category' => $d->category,
+                    'providerName' => $d->provider_name,
+                    'departmentName' => $d->department_name,
+                    'documentNumber' => $d->document_number,
+                    'status' => $d->status,
+                    'hasPdf' => $d->pdf_path !== null,
+                    'createdAt' => $d->created_at?->toIso8601String(),
+                ]);
+
+            return $patientDocs->concat($sharedDocs)
+                ->sortByDesc('createdAt')
                 ->values()
                 ->all();
         } catch (\Throwable) {
