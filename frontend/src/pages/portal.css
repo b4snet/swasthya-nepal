@@ -388,3 +388,48 @@
     margin-right: var(--sp-4);
   }
 }
+
+/* ── Dark mode ── */
+@media (prefers-color-scheme: dark) {
+  .portal__hero {
+    background: linear-gradient(135deg, var(--teal-50) 0%, var(--paper) 50%, #0c2a4a 100%);
+    border-color: var(--teal-200);
+  }
+
+  .portal__nav-item:hover {
+    background: var(--gray-100);
+  }
+
+  .portal__tab:hover {
+    background: var(--gray-100);
+  }
+
+  .portal__tab--active {
+    background: var(--blue-50);
+    color: var(--blue-700);
+  }
+
+  .portal__record-card {
+    background: var(--surface-card);
+    border-color: var(--border-subtle);
+  }
+
+  .portal__record-card:hover {
+    border-color: var(--border-default);
+  }
+
+  .portal__message {
+    background: var(--gray-100);
+    border-color: var(--border-subtle);
+  }
+
+  .portal__message--sent {
+    background: var(--blue-50);
+    border-color: var(--blue-100);
+  }
+
+  .portal__section-heading {
+    color: var(--text-primary);
+    border-bottom-color: var(--border-subtle);
+  }
+}

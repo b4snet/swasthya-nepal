@@ -155,9 +155,243 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-/* ── Dark mode support ── */
+/* ── Legacy design-system aliases (used by page-specific CSS) ── */
+:root {
+  /* Teal palette */
+  --teal-50: #f0fdfa;
+  --teal-100: #ccfbf1;
+  --teal-200: #99f6e4;
+  --teal-400: #2dd4bf;
+  --teal-500: #14b8a6;
+  --teal-600: #0d9488;
+  --teal-700: #0f766e;
+  --teal-800: #115e59;
+
+  /* Slate palette */
+  --slate-400: #94a3b8;
+  --slate-500: #64748b;
+
+  /* Surface aliases */
+  --paper: #ffffff;
+  --paper-warm: #f9fafb;
+  --mist: #f1f5f9;
+
+  /* Ink aliases */
+  --ink: #101828;
+  --ink-soft: #475467;
+  --ink-muted: #667085;
+
+  /* Lines */
+  --line: #eaecf0;
+  --line-soft: #f2f4f7;
+
+  /* Semantic */
+  --semantic-info: #2e90fa;
+  --semantic-success: #12b76a;
+  --semantic-warning: #f79009;
+  --semantic-danger: #f04438;
+
+  /* Tints */
+  --tint-teal: #f0fdfa;
+  --tint-info: #eff8ff;
+  --tint-success: #ecfdf3;
+  --tint-warning: #fefbe8;
+  --tint-danger: #fef3f2;
+  --tint-neutral: #f9fafb;
+
+  /* On-color */
+  --on-teal: #ffffff;
+
+  /* Gradients */
+  --gradient-brand: linear-gradient(135deg, #0d9488 0%, #0f766e 100%);
+  --gradient-brand-light: linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 50%, #e0f2fe 100%);
+
+  /* Radius extra */
+  --radius-pill: 9999px;
+}
+
+/* ── Legacy aliases — spacing (sp) ── */
+:root {
+  --sp-1: var(--space-1);
+  --sp-1-5: 6px;
+  --sp-2: var(--space-2);
+  --sp-2-5: 10px;
+  --sp-3: var(--space-3);
+  --sp-4: var(--space-4);
+  --sp-5: var(--space-5);
+  --sp-6: var(--space-6);
+  --sp-8: var(--space-8);
+  --sp-10: var(--space-10);
+  --sp-12: var(--space-12);
+  --sp-16: var(--space-16);
+  --sp-20: var(--space-20);
+}
+
+/* ── Legacy aliases — type scale (fs) ── */
+:root {
+  --fs-caption: var(--text-xs);
+  --fs-small: var(--text-small);
+  --fs-label: var(--text-label);
+  --fs-body: var(--text-body);
+  --fs-h3: var(--text-h3);
+  --fs-h2: var(--text-h2);
+  --fs-title: var(--text-title);
+  --fs-display: var(--text-display);
+}
+
+/* ── Legacy aliases — line-height ── */
+:root {
+  --lh-label: 1.4;
+}
+
+/* ── Legacy aliases — duration ── */
+:root {
+  --dur-fast: var(--duration-fast);
+  --dur-med: var(--duration-normal);
+  --dur-slow: var(--duration-slow);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   DARK MODE
+   Override every semantic token so the entire UI transforms —
+   shell, sidebar, tables, cards, dialogs, inputs, toasts —
+   with a single media-query gate.
+   ══════════════════════════════════════════════════════════════════════════ */
+
 @media (prefers-color-scheme: dark) {
   :root {
-    /* Future: override tokens for dark mode */
+    /* ── Neutrals ── */
+    --gray-25: #0f1118;
+    --gray-50: #141620;
+    --gray-100: #1c1f2e;
+    --gray-200: #272a3a;
+    --gray-300: #3a3e52;
+    --gray-400: #5c6178;
+    --gray-500: #8b90a5;
+    --gray-600: #b0b4c6;
+    --gray-700: #c8ccd8;
+    --gray-800: #e2e5ed;
+    --gray-900: #f0f2f7;
+    --gray-950: #f8f9fc;
+
+    /* ── Primary — brighter for dark surfaces ── */
+    --blue-50: #0c2a4a;
+    --blue-100: #0e3360;
+    --blue-200: #1a4d8a;
+    --blue-300: #3b82f6;
+    --blue-400: #60a5fa;
+    --blue-500: #60a5fa;
+    --blue-600: #60a5fa;
+    --blue-700: #93c5fd;
+    --blue-800: #bfdbfe;
+    --blue-900: #dbeafe;
+
+    /* ── Semantic — brighter for dark ── */
+    --red-50: #3a1418;
+    --red-100: #4a1c1e;
+    --red-500: #f87171;
+    --red-600: #f87171;
+    --red-700: #fca5a5;
+
+    --amber-50: #3d2e0a;
+    --amber-100: #4d3b0e;
+    --amber-500: #fbbf24;
+    --amber-600: #fbbf24;
+    --amber-700: #fcd34d;
+
+    --green-50: #0a3024;
+    --green-100: #0e3d2e;
+    --green-500: #34d399;
+    --green-600: #34d399;
+    --green-700: #6ee7b7;
+
+    /* ── Teal palette — dark ── */
+    --teal-50: #0a2e28;
+    --teal-100: #0e3d36;
+    --teal-200: #1a5c52;
+    --teal-400: #2dd4bf;
+    --teal-500: #2dd4bf;
+    --teal-600: #5eead4;
+    --teal-700: #99f6e4;
+    --teal-800: #ccfbf1;
+
+    /* ── Slate — dark ── */
+    --slate-400: #94a3b8;
+    --slate-500: #94a3b8;
+
+    /* ── Surface ── */
+    --surface-bg: #0f1118;
+    --surface-card: #141620;
+    --surface-raised: #1c1f2e;
+    --surface-overlay: rgba(0, 0, 0, 0.65);
+
+    /* ── Surface aliases (legacy) ── */
+    --paper: #141620;
+    --paper-warm: #1c1f2e;
+    --mist: #272a3a;
+
+    /* ── Border ── */
+    --border-subtle: #272a3a;
+    --border-default: #3a3e52;
+    --border-strong: #5c6178;
+
+    /* ── Lines (legacy) ── */
+    --line: #272a3a;
+    --line-soft: #1c1f2e;
+
+    /* ── Text ── */
+    --text-primary: #f0f2f7;
+    --text-secondary: #b0b4c6;
+    --text-tertiary: #8b90a5;
+    --text-disabled: #5c6178;
+    --text-inverse: #0f1118;
+    --text-link: #60a5fa;
+    --text-link-hover: #93c5fd;
+
+    /* ── Ink aliases (legacy) ── */
+    --ink: #f0f2f7;
+    --ink-soft: #b0b4c6;
+    --ink-muted: #8b90a5;
+
+    /* ── Interactive ── */
+    --interactive-primary: #3b82f6;
+    --interactive-primary-hover: #60a5fa;
+    --interactive-primary-active: #93c5fd;
+    --interactive-primary-disabled: #1a4d8a;
+    --interactive-secondary-bg: #1c1f2e;
+    --interactive-secondary-border: #3a3e52;
+    --interactive-secondary-hover: #272a3a;
+    --interactive-quiet-hover: #1c1f2e;
+
+    /* ── Focus ── */
+    --focus-ring: 0 0 0 2px #141620, 0 0 0 4px #3b82f6;
+
+    /* ── Semantic colors — dark ── */
+    --semantic-info: #60a5fa;
+    --semantic-success: #34d399;
+    --semantic-warning: #fbbf24;
+    --semantic-danger: #f87171;
+
+    /* ── Tint backgrounds — dark ── */
+    --tint-teal: #0a2e28;
+    --tint-info: #0c2a4a;
+    --tint-success: #0a3024;
+    --tint-warning: #3d2e0a;
+    --tint-danger: #3a1418;
+    --tint-neutral: #1c1f2e;
+
+    /* ── Gradients — dark ── */
+    --gradient-brand: linear-gradient(135deg, #0d9488 0%, #115e59 100%);
+    --gradient-brand-light: linear-gradient(135deg, #0a2e28 0%, #0e3d36 50%, #0c2a4a 100%);
+
+    /* ── On-color ── */
+    --on-teal: #ffffff;
+
+    /* ── Shadows — deeper for dark ── */
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.2);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.35), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
+    --shadow-lg: 0 12px 16px -4px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
   }
 }
+

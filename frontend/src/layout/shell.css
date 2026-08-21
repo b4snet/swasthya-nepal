@@ -519,3 +519,114 @@
 .skip-link:focus {
   left: 0;
 }
+
+/* ── Dark mode ── */
+@media (prefers-color-scheme: dark) {
+  .app-header {
+    background: var(--surface-card);
+    border-bottom-color: var(--border-subtle);
+  }
+
+  .app-sidebar {
+    background: var(--surface-card);
+    border-right-color: var(--border-subtle);
+  }
+
+  .sidebar-link:hover {
+    background: var(--gray-100);
+    color: var(--text-primary);
+  }
+
+  .sidebar-link--active {
+    background: var(--blue-50);
+    color: var(--blue-700);
+  }
+
+  .sidebar-link--active::before {
+    background: var(--blue-500);
+  }
+
+  .facility-badge {
+    background: var(--blue-50);
+    color: var(--blue-700);
+  }
+
+  .facility-select,
+  .lang-btn {
+    background: var(--surface-card);
+    color: var(--text-secondary);
+    border-color: var(--border-subtle);
+  }
+
+  .facility-select:hover,
+  .lang-btn:hover {
+    background: var(--gray-100);
+    color: var(--text-primary);
+  }
+
+  .user-avatar {
+    background: var(--gray-800);
+    color: var(--gray-100);
+  }
+
+  .user-avatar:hover {
+    box-shadow: 0 0 0 2px var(--surface-card), 0 0 0 4px var(--gray-600);
+  }
+
+  .user-dropdown {
+    background: var(--surface-card);
+    border-color: var(--border-subtle);
+  }
+
+  .user-dropdown__header {
+    background: var(--gray-50);
+  }
+
+  .user-dropdown__item:hover {
+    background: var(--gray-100);
+  }
+
+  .user-dropdown__item--danger:hover {
+    background: var(--red-50);
+  }
+
+  .bottom-nav {
+    background: var(--surface-card);
+    border-top-color: var(--border-subtle);
+  }
+
+  .bottom-nav__item--active {
+    color: var(--blue-500);
+  }
+
+  .bottom-nav__item--active::after {
+    background: var(--blue-500);
+  }
+
+  .mobile-sheet {
+    background: var(--surface-card);
+    border-top-color: var(--border-subtle);
+  }
+
+  .mobile-sheet__item:hover {
+    background: var(--gray-100);
+    color: var(--text-primary);
+  }
+
+  .facility-required {
+    background: var(--amber-50);
+    color: var(--amber-700);
+    border-color: var(--amber-100);
+  }
+
+  .offline-bar {
+    background: var(--red-50);
+    color: var(--red-700);
+    border-bottom-color: var(--red-100);
+  }
+
+  .skip-link {
+    background: var(--gray-800);
+    color: var(--gray-100);
+  }
+}
