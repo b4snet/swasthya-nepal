@@ -1,0 +1,501 @@
+/* ── Operating Theatre Command Center ──────────────────────────────── */
+
+.ot-page {
+  max-width: 1400px;
+}
+
+.ot-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* ── Census Dashboard ─────────────────────────────────────────────── */
+
+.ot-census {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.ot-census-card {
+  background: #fff;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.ot-census-card--theatres { border-top: 3px solid var(--primary, #4FA9FF); }
+.ot-census-card--pending { border-top: 3px solid #f59e0b; }
+.ot-census-card--scheduled { border-top: 3px solid #3b82f6; }
+.ot-census-card--active { border-top: 3px solid #ef4444; }
+.ot-census-card--completed { border-top: 3px solid #10b981; }
+
+.ot-census-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary, #111827);
+  line-height: 1;
+}
+
+.ot-census-label {
+  font-size: 12px;
+  color: var(--text-secondary, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 500;
+}
+
+/* ── Tabs ─────────────────────────────────────────────────────────── */
+
+.ot-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--border, #e5e7eb);
+  margin-bottom: 16px;
+}
+
+.ot-tab {
+  padding: 10px 20px;
+  border: none;
+  background: none;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary, #6b7280);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.ot-tab:hover { color: var(--text-primary, #111827); }
+
+.ot-tab--active {
+  color: var(--primary, #4FA9FF);
+  border-bottom-color: var(--primary, #4FA9FF);
+  font-weight: 600;
+}
+
+/* ── Section Card ─────────────────────────────────────────────────── */
+
+.ot-section-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.ot-section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+}
+
+.ot-section-header h3 {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+  margin: 0;
+}
+
+.ot-badge {
+  background: var(--bg-secondary, #f3f4f6);
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary, #6b7280);
+}
+
+/* ── Case List ────────────────────────────────────────────────────── */
+
+.ot-case-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.ot-case-row {
+  display: grid;
+  grid-template-columns: 100px 1fr auto auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.ot-case-row:hover { background: var(--bg-secondary, #f9fafb); }
+.ot-case-row--selected { background: #eff6ff; }
+.ot-case-row--active { background: #fef2f2; border-left: 3px solid #ef4444; }
+
+.ot-case-row:last-child { border-bottom: none; }
+
+.ot-case-time {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.ot-case-date {
+  font-size: 11px;
+  color: var(--text-tertiary, #9ca3af);
+}
+
+.ot-case-hour {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary, #111827);
+}
+
+.ot-case-hour--unscheduled {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-tertiary, #9ca3af);
+}
+
+.ot-case-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ot-case-procedure {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-primary, #111827);
+}
+
+.ot-case-patient {
+  font-size: 12px;
+  color: var(--text-secondary, #6b7280);
+}
+
+.ot-case-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ot-case-priority {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.ot-case-duration {
+  font-size: 12px;
+  color: var(--text-tertiary, #9ca3af);
+}
+
+.ot-case-status {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  text-transform: capitalize;
+}
+
+.ot-case-actions {
+  display: flex;
+  gap: 6px;
+}
+
+/* ── Theatre Board ────────────────────────────────────────────────── */
+
+.ot-theatre-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.ot-theatre-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.ot-theatre-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 16px;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+}
+
+.ot-theatre-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+  margin: 0;
+}
+
+.ot-theatre-code {
+  font-size: 12px;
+  color: var(--text-secondary, #6b7280);
+}
+
+.ot-theatre-status {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  text-transform: capitalize;
+}
+
+.ot-theatre-active {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: #fef2f2;
+}
+
+.ot-theatre-active-label {
+  font-size: 11px;
+  color: #ef4444;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ot-theatre-active-procedure {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+}
+
+.ot-theatre-active-patient {
+  font-size: 12px;
+  color: var(--text-secondary, #6b7280);
+}
+
+.ot-theatre-queue {
+  padding: 8px 16px;
+}
+
+.ot-theatre-queue-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+}
+
+.ot-theatre-queue-item:last-child { border-bottom: none; }
+
+.ot-theatre-queue-time {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primary, #4FA9FF);
+  min-width: 50px;
+}
+
+.ot-theatre-queue-proc {
+  font-size: 13px;
+  color: var(--text-primary, #111827);
+}
+
+.ot-theatre-empty {
+  padding: 16px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-tertiary, #9ca3af);
+}
+
+/* ── Detail Panel ─────────────────────────────────────────────────── */
+
+.ot-detail {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.ot-detail h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+  margin: 16px 0 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border, #e5e7eb);
+}
+
+.ot-detail-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+}
+
+.ot-detail-label {
+  font-size: 12px;
+  color: var(--text-tertiary, #9ca3af);
+  min-width: 60px;
+}
+
+.ot-detail-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border, #e5e7eb);
+}
+
+/* ── Team List ────────────────────────────────────────────────────── */
+
+.ot-team-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ot-team-item {
+  display: grid;
+  grid-template-columns: 100px 1fr auto;
+  gap: 8px;
+  padding: 6px 8px;
+  background: var(--bg-secondary, #f9fafb);
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.ot-team-role {
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+}
+
+.ot-team-staff {
+  color: var(--text-secondary, #6b7280);
+}
+
+.ot-team-time {
+  color: var(--text-tertiary, #9ca3af);
+}
+
+/* ── Checklist ────────────────────────────────────────────────────── */
+
+.ot-checklist {
+  display: flex;
+  flex-direction: column;
+}
+
+.ot-checklist-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+  font-size: 13px;
+}
+
+.ot-checklist-item:last-child { border-bottom: none; }
+
+.ot-checklist-item--done {
+  color: var(--text-secondary, #6b7280);
+}
+
+.ot-checklist-icon {
+  font-size: 16px;
+  width: 20px;
+  text-align: center;
+}
+
+.ot-checklist-item--done .ot-checklist-icon {
+  color: #10b981;
+}
+
+.ot-checklist-label {
+  flex: 1;
+}
+
+/* ── Event List ───────────────────────────────────────────────────── */
+
+.ot-event-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.ot-event-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+}
+
+.ot-event-item:last-child { border-bottom: none; }
+
+.ot-event-type {
+  font-weight: 500;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--bg-secondary, #f3f4f6);
+  color: var(--text-primary, #111827);
+}
+
+.ot-event-time {
+  color: var(--text-tertiary, #9ca3af);
+}
+
+/* ── Recovery ─────────────────────────────────────────────────────── */
+
+.ot-recovery {
+  margin-top: 12px;
+  padding: 12px;
+  background: #f0fdf4;
+  border-radius: 6px;
+  border: 1px solid #d1fae5;
+}
+
+.ot-recovery h4 {
+  margin: 0 0 8px;
+  border: none;
+  padding: 0;
+}
+
+/* ── Muted ────────────────────────────────────────────────────────── */
+
+.ot-muted {
+  font-size: 13px;
+  color: var(--text-tertiary, #9ca3af);
+  margin: 4px 0;
+}
+
+/* ── Responsive ───────────────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .ot-census {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .ot-case-row {
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+  }
+
+  .ot-case-time,
+  .ot-case-meta {
+    display: none;
+  }
+
+  .ot-theatre-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .ot-census {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .ot-tabs {
+    overflow-x: auto;
+  }
+}
