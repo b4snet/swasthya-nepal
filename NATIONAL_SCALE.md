@@ -293,3 +293,71 @@ Recorded here so nothing in this document reads as a production claim:
 | `docs/national-scale/*.log` | Raw measured evidence (incl. `*-1M-current-schema-2026-08-17.log` re-verification logs) |
 | `NATIONAL_SCALE.md`, `LEGAL_COMPLIANCE_ASSESSMENT.md` | Evidence register + compliance assessment |
 | `DEPLOYMENT.md`, `DISASTER_RECOVERY.md`, `OBSERVABILITY.md`, `MASTER_RULES.md`, `INTEROPERABILITY.md`, `DEVELOPMENT_LOG.md` | Updated contracts/evidence |
+| `frontend/src/pages/OperationsPage.tsx` | Operations Command Center (Phase 121) |
+| `frontend/src/pages/operations.css` | Operations page styles (Phase 121) |
+
+---
+
+## 9. Phase 121 — Operations Command Center
+
+**Commit:** `perf/ops: validate swasthya national scale readiness`
+
+Added the Operations Command Center — a premium frontend workspace that
+consolidates all infrastructure-readiness evidence into a single
+operational dashboard.
+
+### 9.1 System Health
+
+- 8 health checks: Database, Cache, Queue, Storage, Auth/MFA, Realtime, FHIR, Service Worker
+- Live/ready endpoint integration (`/health/live`, `/health/ready`)
+- Check-all button with async status feedback
+
+### 9.2 Capacity & Scale Evidence
+
+- Scale targets with measured values from `backend/ci/load-benchmark.sh`
+- Hot query performance table (all 20 benchmark statements)
+- Known hot spot documented: tenant-scoped ILIKE name search at 147-158ms
+- Point lookups at 0.29ms under RLS at 1M patients
+
+### 9.3 Disaster Recovery & Backups
+
+- RPO/RTO targets with measured drill results
+- Backup configuration: base backup, WAL, cross-region, object storage
+- Drill results: 144s restore (33s backup + 110s restore + role fixup)
+- Failover drill: 1s config switch + HTTP check + RLS verify
+- Run-restore-drill button for interactive verification
+
+### 9.4 Observability
+
+- Three pillars: structured logging, metrics (RED/USE), distributed tracing
+- PHI-safe logging: no patient names, no secrets, no financial identifiers
+- Structured log schema: 12 fields with correlation IDs
+- Alert routing design (PagerDuty/Slack integration)
+
+### 9.5 Incidents & Runbooks
+
+- 4 severity levels (P1-P4) with response time targets
+- 8 runbooks: Deployment, Rollback, Backup/Restore, Failover, Incident Response, Security Incident, Integration Failure, Capacity Alert
+- Active incident tracking (currently none)
+
+### 9.6 Security Ops
+
+- Rate limits: 6 endpoint groups with per-IP and per-account throttling
+- 8 security controls: RLS (508 policies), Auth throttle, CAS locking, IDOR protection, tenant isolation, MFA, password policy, audit trail
+
+### 9.7 Honest Classification
+
+| Capability | Status |
+|---|---|
+| Health checks (liveness + readiness) | ✅ IMPLEMENTED (backend) |
+| Load testing (1M patients) | ✅ MEASURED (local cluster) |
+| Backup/restore drill | ✅ MEASURED (144s at 1M rows) |
+| Failover drill | ✅ MEASURED (single env) |
+| Observability design | ✅ DOCUMENTED (21KB spec) |
+| DR design | ✅ DOCUMENTED (22KB spec) |
+| National scale ops dashboard | ✅ IMPLEMENTED (frontend) |
+| Production SLOs | ⬜ NOT PROVEN (deployment-phase) |
+| Production multi-region failover | ⬜ NOT PROVEN (annual drill pending) |
+| Production PITR (RPO ≤ 15min) | ⬜ NOT PROVEN (WAL archiving pending) |
+| Production monitoring stack | ⬜ DESIGNED (not deployed) |
+| Live alert routing | ⬜ DESIGNED (not deployed) |

@@ -1,0 +1,539 @@
+/* ═══════════════════════════════════════════════════════
+   Operations Command Center — Phase 121
+   Premium white-first clinical design
+   ═══════════════════════════════════════════════════════ */
+
+.operations-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+/* ── Header ── */
+.ops-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+}
+.ops-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+}
+.ops-subtitle {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 4px 0 0;
+}
+.ops-header__right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ops-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.ops-status-pill--ok {
+  background: #ecfdf5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+}
+
+/* ── Census ── */
+.ops-census {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.ops-census-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+}
+.ops-census-card__icon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+.ops-census-card__info {
+  display: flex;
+  flex-direction: column;
+}
+.ops-census-card__value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.2;
+}
+.ops-census-card__label {
+  font-size: 11px;
+  color: #6b7280;
+  white-space: nowrap;
+}
+
+/* ── Tabs ── */
+.ops-tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 20px;
+}
+.ops-tab {
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6b7280;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.ops-tab:hover {
+  color: #111827;
+  background: #f9fafb;
+}
+.ops-tab--active {
+  color: #2563eb;
+  border-bottom-color: #2563eb;
+  font-weight: 600;
+}
+
+/* ── Sections ── */
+.ops-section {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+.ops-section__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 16px;
+}
+.ops-section__head svg {
+  color: #6b7280;
+}
+.ops-section__actions {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+}
+.ops-subhead {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  margin: 16px 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #f3f4f6;
+}
+.ops-subhead:first-of-type {
+  margin-top: 0;
+}
+
+/* ── Buttons ── */
+.ops-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.ops-btn:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
+}
+.ops-btn--primary {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+}
+.ops-btn--primary:hover {
+  background: #1d4ed8;
+}
+.ops-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ── Health Dot ── */
+.ops-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+/* ── Health Grid ── */
+.ops-health-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ops-health-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+.ops-health-card__icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: #f0f5ff;
+  color: #2563eb;
+  flex-shrink: 0;
+}
+.ops-health-card__info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ops-health-card__top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ops-health-card__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+}
+.ops-health-card__latency {
+  margin-left: auto;
+  font-size: 11px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  color: #059669;
+}
+.ops-health-card__desc {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+/* ── Tables ── */
+.ops-table-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ops-table {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr 40px;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 12px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #374151;
+}
+.ops-table--head {
+  background: #f3f4f6;
+  font-weight: 600;
+  color: #374151;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.ops-tcell--bold {
+  font-weight: 600;
+  color: #111827;
+}
+.ops-tcell--mono {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 11px;
+}
+.ops-tcell--muted {
+  color: #6b7280;
+}
+.ops-icon-ok {
+  color: #059669;
+}
+.ops-icon-fail {
+  color: #dc2626;
+}
+
+/* ── Pillars Grid ── */
+.ops-pillars-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ops-pillar-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+.ops-pillar-card__icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: #f0f5ff;
+  color: #2563eb;
+  flex-shrink: 0;
+}
+.ops-pillar-card__info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.ops-pillar-card__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+}
+.ops-pillar-card__desc {
+  font-size: 11px;
+  color: #6b7280;
+}
+.ops-pillar-status {
+  display: inline-flex;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: 10px;
+}
+.ops-pillar-status--implemented {
+  background: #ecfdf5;
+  color: #059669;
+}
+.ops-pillar-status--designed {
+  background: #fffbeb;
+  color: #d97706;
+}
+
+/* ── Drill Grid ── */
+.ops-drill-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.ops-drill-card {
+  padding: 12px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+.ops-drill-card__top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.ops-drill-card__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+  flex: 1;
+}
+.ops-drill-card__date {
+  font-size: 10px;
+  color: #9ca3af;
+}
+.ops-drill-card__details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ops-drill-detail {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+}
+.ops-drill-detail__key {
+  color: #6b7280;
+}
+.ops-drill-detail__value {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  color: #111827;
+  font-weight: 500;
+}
+
+/* ── Severity Grid ── */
+.ops-severity-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.ops-severity-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-left: 3px solid;
+  border-radius: 8px;
+}
+.ops-severity-card__level {
+  font-size: 12px;
+  font-weight: 700;
+}
+.ops-severity-card__desc {
+  font-size: 11px;
+  color: #6b7280;
+}
+.ops-severity-card__response {
+  font-size: 10px;
+  color: #374151;
+  font-weight: 500;
+}
+
+/* ── Runbook Grid ── */
+.ops-runbook-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+.ops-runbook-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+.ops-runbook-card__icon {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: #f0f5ff;
+  color: #2563eb;
+  flex-shrink: 0;
+}
+.ops-runbook-card__info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.ops-runbook-card__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+}
+.ops-runbook-card__desc {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+/* ── Security Grid ── */
+.ops-security-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+.ops-security-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 14px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+.ops-security-card__top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ops-security-card__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+}
+.ops-security-card__desc {
+  font-size: 11px;
+  color: #6b7280;
+  padding-left: 14px;
+}
+
+/* ── Empty inline ── */
+.ops-empty-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #059669;
+  font-weight: 500;
+}
+
+/* ── Spin animation ── */
+@keyframes ops-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.ops-spin {
+  animation: ops-spin 1s linear infinite;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .operations-page { padding: 16px; }
+  .ops-header { flex-direction: column; gap: 12px; }
+  .ops-census { grid-template-columns: repeat(2, 1fr); }
+  .ops-tabs { overflow-x: auto; }
+  .ops-table { grid-template-columns: 1fr 1fr; }
+  .ops-table--head { display: none; }
+  .ops-drill-grid { grid-template-columns: 1fr; }
+  .ops-severity-grid { grid-template-columns: repeat(2, 1fr); }
+  .ops-runbook-grid { grid-template-columns: 1fr; }
+  .ops-security-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 480px) {
+  .ops-census { grid-template-columns: 1fr 1fr; }
+  .ops-severity-grid { grid-template-columns: 1fr; }
+}
