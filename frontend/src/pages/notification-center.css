@@ -1,0 +1,130 @@
+/* ── Notification Center ──────────────────────────────────────────── */
+
+/* Census */
+.nc-census { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+.nc-census-card {
+  background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px;
+  display: flex; flex-direction: column; gap: 4px; min-width: 0;
+}
+.nc-census-card--total { border-left: 3px solid #3b82f6; }
+.nc-census-card--unread { border-left: 3px solid #ef4444; }
+.nc-census-card--templates { border-left: 3px solid #8b5cf6; }
+.nc-census-card--channels { border-left: 3px solid #10b981; }
+.nc-census-value { font-size: 1.75rem; font-weight: 700; color: #111827; }
+.nc-census-label { font-size: 0.75rem; color: #6b7280; font-weight: 500; text-transform: uppercase; letter-spacing: 0.03em; }
+
+/* Tabs */
+.nc-tabs { display: flex; gap: 2px; border-bottom: 1px solid #e5e7eb; margin-bottom: 16px; }
+.nc-tab {
+  padding: 8px 16px; font-size: 0.8125rem; font-weight: 500; color: #6b7280;
+  background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer;
+  transition: all 0.15s ease;
+}
+.nc-tab:hover { color: #374151; }
+.nc-tab--active { color: #2563eb; border-bottom-color: #2563eb; }
+
+/* Section Card */
+.nc-section-card { border-radius: 8px; overflow: hidden; }
+.nc-section-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid #f3f4f6; }
+.nc-section-header h3 { font-size: 0.9375rem; font-weight: 600; color: #111827; margin: 0; }
+.nc-section-actions { display: flex; gap: 8px; align-items: center; }
+
+/* Badge */
+.nc-type-badge {
+  display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 12px;
+  font-size: 0.6875rem; font-weight: 600; text-transform: capitalize; white-space: nowrap;
+}
+
+/* Toggle */
+.nc-toggle {
+  display: flex; align-items: center; gap: 6px; font-size: 0.8125rem; color: #374151; cursor: pointer;
+}
+.nc-toggle input { width: 14px; height: 14px; }
+
+/* Select */
+.nc-select {
+  padding: 6px 28px 6px 10px; font-size: 0.8125rem; border: 1px solid #d1d5db;
+  border-radius: 6px; background: #fff; color: #374151; cursor: pointer;
+  appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 8px center;
+}
+
+/* Notification List */
+.nc-notif-list { padding: 0; }
+.nc-notif-item {
+  display: flex; align-items: flex-start; gap: 12px; padding: 14px 20px;
+  border-bottom: 1px solid #f3f4f6; transition: background 0.1s ease; position: relative;
+}
+.nc-notif-item:hover { background: #f9fafb; }
+.nc-notif-item--unread { background: #f0f9ff; }
+.nc-notif-item--unread:hover { background: #e0f2fe; }
+.nc-notif-icon {
+  width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center;
+  justify-content: center; font-size: 0.75rem; font-weight: 700; flex-shrink: 0;
+}
+.nc-notif-content { flex: 1; min-width: 0; }
+.nc-notif-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.nc-notif-subject { font-size: 0.875rem; font-weight: 500; color: #111827; }
+.nc-notif-body { font-size: 0.8125rem; color: #6b7280; margin: 0 0 4px; line-height: 1.4; }
+.nc-notif-time { font-size: 0.6875rem; color: #9ca3af; }
+.nc-unread-dot {
+  width: 8px; height: 8px; border-radius: 50%; background: #3b82f6;
+  flex-shrink: 0; margin-top: 6px;
+}
+
+/* Channel Badge */
+.nc-channel-badge {
+  display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 12px;
+  font-size: 0.6875rem; font-weight: 600; background: #f3f4f6; text-transform: capitalize;
+}
+
+/* Template List */
+.nc-template-list { padding: 0; }
+.nc-template-item {
+  padding: 16px 20px; border-bottom: 1px solid #f3f4f6;
+}
+.nc-template-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.nc-template-name { font-size: 0.875rem; font-weight: 500; color: #111827; }
+.nc-template-meta { display: flex; gap: 8px; align-items: center; }
+.nc-template-category { font-size: 0.6875rem; color: #9ca3af; background: #f3f4f6; padding: 2px 8px; border-radius: 8px; }
+.nc-template-preview { font-size: 0.8125rem; color: #6b7280; margin: 0 0 8px; line-height: 1.4; }
+.nc-template-actions { display: flex; gap: 8px; }
+
+/* Preferences */
+.nc-prefs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; padding: 16px 20px; }
+.nc-pref-item {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 16px; background: #f9fafb; border-radius: 8px;
+}
+.nc-pref-label { font-size: 0.8125rem; font-weight: 500; color: #374151; }
+.nc-pref-status { font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: 12px; }
+.nc-pref-status--enabled { color: #10b981; background: #ecfdf5; }
+.nc-pref-status--disabled { color: #6b7280; background: #f3f4f6; }
+
+/* Form */
+.nc-form { display: flex; flex-direction: column; gap: 12px; }
+.nc-form-field { display: flex; flex-direction: column; gap: 4px; }
+.nc-label { font-size: 0.75rem; font-weight: 500; color: #374151; }
+.nc-input {
+  padding: 8px 12px; font-size: 0.8125rem; border: 1px solid #d1d5db;
+  border-radius: 6px; background: #fff; color: #111827; width: 100%;
+  box-sizing: border-box;
+}
+.nc-input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.1); }
+.nc-textarea {
+  padding: 8px 12px; font-size: 0.8125rem; border: 1px solid #d1d5db;
+  border-radius: 6px; background: #fff; color: #111827; resize: vertical; width: 100%;
+  box-sizing: border-box; font-family: inherit;
+}
+.nc-textarea:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.1); }
+.nc-actions { display: flex; gap: 8px; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .nc-census { grid-template-columns: repeat(2, 1fr); }
+  .nc-prefs-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 480px) {
+  .nc-census { grid-template-columns: 1fr; }
+  .nc-tabs { overflow-x: auto; }
+}
