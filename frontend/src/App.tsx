@@ -61,6 +61,7 @@ const OperationsCenterPage = lazy(() => import('./pages/OperationsCenterPage').t
 const PatientImportPage = lazy(() => import('./pages/PatientImportPage').then(m => ({ default: m.PatientImportPage })));
 const PhysicianSchedulingPage = lazy(() => import('./pages/PhysicianSchedulingPage').then(m => ({ default: m.PhysicianSchedulingPage })));
 const ClinicalWorkspace = lazy(() => import('./pages/ClinicalWorkspace').then(m => ({ default: m.ClinicalWorkspace })));
+const HospitalOnboarding = lazy(() => import('./pages/HospitalOnboarding').then(m => ({ default: m.HospitalOnboarding })));
 
 // Admin pages
 const AdminLayout = lazy(() => import('./pages/admin/AdminLayout').then(m => ({ default: m.AdminLayout })));
@@ -150,6 +151,7 @@ export function App() {
             <Route element={<Gate />}>
               {/* ── Global dashboard ── */}
               <Route path="/" element={<DashboardPage />} />
+              <Route path="/onboarding" element={<LazySuspense><HospitalOnboarding /></LazySuspense>} />
 
               {/* ═══ HOSPITAL MODULE ═══ */}
               <Route path="/hospital" element={<LazySuspense><HospitalDashboard /></LazySuspense>} />

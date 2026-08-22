@@ -12,6 +12,7 @@ import './pages/pages.css';
 import './styles/dashboard.css';
 import './pages/clinical-workspace.css';
 import './components/needs-attention.css';
+import './pages/onboarding.css';
 
 // PWA service worker — register in production only
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
