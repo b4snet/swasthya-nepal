@@ -1,0 +1,329 @@
+/* ── Laboratory Information System ─────────────────────────────────── */
+
+.lab-page {
+  max-width: 1400px;
+}
+
+.lab-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* ── Census Dashboard ─────────────────────────────────────────────── */
+
+.lab-census {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.lab-census-card {
+  background: #fff;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.lab-census-card--total { border-top: 3px solid var(--primary, #4FA9FF); }
+.lab-census-card--ordered { border-top: 3px solid #f59e0b; }
+.lab-census-card--collected { border-top: 3px solid #3b82f6; }
+.lab-census-card--processing { border-top: 3px solid #8b5cf6; }
+.lab-census-card--results { border-top: 3px solid #ea580c; }
+.lab-census-card--critical { border-top: 3px solid #dc2626; }
+
+.lab-census-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary, #111827);
+  line-height: 1;
+}
+
+.lab-census-label {
+  font-size: 12px;
+  color: var(--text-secondary, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 500;
+}
+
+/* ── Tabs ─────────────────────────────────────────────────────────── */
+
+.lab-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--border, #e5e7eb);
+  margin-bottom: 16px;
+}
+
+.lab-tab {
+  padding: 10px 20px;
+  border: none;
+  background: none;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary, #6b7280);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.15s, border-color 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.lab-tab:hover { color: var(--text-primary, #111827); }
+
+.lab-tab--active {
+  color: var(--primary, #4FA9FF);
+  border-bottom-color: var(--primary, #4FA9FF);
+  font-weight: 600;
+}
+
+.lab-tab-badge {
+  background: var(--bg-secondary, #f3f4f6);
+  padding: 1px 7px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.lab-tab-badge--danger {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* ── Section Card ─────────────────────────────────────────────────── */
+
+.lab-section-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.lab-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+}
+
+.lab-section-header h3 {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+  margin: 0;
+}
+
+.lab-section-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.lab-badge {
+  background: var(--bg-secondary, #f3f4f6);
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary, #6b7280);
+}
+
+.lab-badge--danger {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* ── Patient Link ─────────────────────────────────────────────────── */
+
+.lab-patient-link {
+  font-weight: 600;
+  color: var(--primary, #4FA9FF);
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.lab-patient-link:hover { text-decoration: underline; }
+
+/* ── Tests Cell ───────────────────────────────────────────────────── */
+
+.lab-tests-cell {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--text-secondary, #6b7280);
+}
+
+/* ── Status / Priority Badges ─────────────────────────────────────── */
+
+.lab-status-badge {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 4px;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.lab-priority-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+/* ── Row Actions ──────────────────────────────────────────────────── */
+
+.lab-row-actions {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.lab-time {
+  font-size: 12px;
+  color: var(--text-tertiary, #9ca3af);
+  white-space: nowrap;
+}
+
+/* ── Result List ──────────────────────────────────────────────────── */
+
+.lab-result-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.lab-result-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+}
+
+.lab-result-item:last-child { border-bottom: none; }
+
+.lab-result-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.lab-result-patient {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-primary, #111827);
+}
+
+.lab-result-tests {
+  font-size: 13px;
+  color: var(--text-secondary, #6b7280);
+}
+
+/* ── Critical Values ──────────────────────────────────────────────── */
+
+.lab-critical-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.lab-critical-item {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+  border-left: 3px solid;
+}
+
+.lab-critical-item:last-child { border-bottom: none; }
+
+.lab-critical-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.lab-critical-test {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-primary, #111827);
+}
+
+.lab-critical-value {
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.lab-critical-severity {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.lab-critical-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--text-secondary, #6b7280);
+}
+
+.lab-critical-status {
+  text-transform: capitalize;
+}
+
+.lab-critical-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* ── Result Form ──────────────────────────────────────────────────── */
+
+.lab-result-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding: 8px;
+  background: var(--bg-secondary, #f9fafb);
+  border-radius: 6px;
+}
+
+/* ── Responsive ───────────────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .lab-census {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .lab-result-form-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .lab-census {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .lab-tabs {
+    overflow-x: auto;
+  }
+
+  .lab-result-form-row {
+    grid-template-columns: 1fr;
+  }
+}
