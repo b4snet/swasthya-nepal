@@ -1316,6 +1316,9 @@ export const oncologyApi = {
   storeTreatmentPlan: (profileId: string, payload: Record<string, unknown>, facilityId?: string | null) =>
     api.request(`/api/v1/oncology/profiles/${profileId}/treatment-plans`, { method: 'POST', body: payload, ...opt(facilityId) }),
 
+  showTreatmentPlan: (planId: string, facilityId?: string | null) =>
+    api.request(`/api/v1/oncology/treatment-plans/${planId}`, opt(facilityId)),
+
   startCycle: (planId: string, facilityId?: string | null) =>
     api.request(`/api/v1/oncology/treatment-plans/${planId}/start`, { method: 'POST', ...opt(facilityId) }),
 

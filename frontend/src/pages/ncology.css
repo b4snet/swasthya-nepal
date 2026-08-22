@@ -1,0 +1,156 @@
+/* ── Oncology Command Center ──────────────────────────────────────── */
+
+/* Census */
+.onc-census { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 16px; }
+.onc-census-card {
+  background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px;
+  display: flex; flex-direction: column; gap: 4px; min-width: 0;
+}
+.onc-census-card--profiles { border-left: 3px solid #10b981; }
+.onc-census-card--remission { border-left: 3px solid #3b82f6; }
+.onc-census-card--plans { border-left: 3px solid #f59e0b; }
+.onc-census-card--rt { border-left: 3px solid #8b5cf6; }
+.onc-census-card--machines { border-left: 3px solid #6b7280; }
+.onc-census-value { font-size: 1.75rem; font-weight: 700; color: #111827; }
+.onc-census-label { font-size: 0.75rem; color: #6b7280; font-weight: 500; text-transform: uppercase; letter-spacing: 0.03em; }
+
+/* Tabs */
+.onc-tabs { display: flex; gap: 2px; border-bottom: 1px solid #e5e7eb; margin-bottom: 16px; }
+.onc-tab {
+  padding: 8px 16px; font-size: 0.8125rem; font-weight: 500; color: #6b7280;
+  background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer;
+  transition: all 0.15s ease;
+}
+.onc-tab:hover { color: #374151; }
+.onc-tab--active { color: #2563eb; border-bottom-color: #2563eb; }
+
+/* Section Card */
+.onc-section-card { border-radius: 8px; overflow: hidden; }
+.onc-section-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid #f3f4f6; }
+.onc-section-header h3 { font-size: 0.9375rem; font-weight: 600; color: #111827; margin: 0; }
+.onc-section-actions { display: flex; gap: 8px; align-items: center; }
+.onc-section-subheader { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.onc-section-subheader h4 { font-size: 0.8125rem; font-weight: 600; color: #374151; margin: 0; }
+
+/* Badge */
+.onc-badge {
+  display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 12px;
+  font-size: 0.6875rem; font-weight: 600; text-transform: capitalize; white-space: nowrap;
+}
+
+/* Select */
+.onc-select {
+  padding: 6px 28px 6px 10px; font-size: 0.8125rem; border: 1px solid #d1d5db;
+  border-radius: 6px; background: #fff; color: #374151; cursor: pointer;
+  appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 8px center;
+}
+
+/* Profile Grid */
+.onc-profile-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; padding: 16px; }
+.onc-profile-card {
+  background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px;
+  cursor: pointer; transition: all 0.15s ease;
+}
+.onc-profile-card:hover { border-color: #d1d5db; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+.onc-profile-card--selected { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.15); }
+.onc-profile-card__header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+.onc-profile-card__diagnosis { font-size: 0.875rem; font-weight: 600; color: #111827; }
+.onc-profile-card__meta { display: flex; gap: 12px; font-size: 0.75rem; color: #6b7280; margin-bottom: 8px; }
+.onc-profile-card__footer { display: flex; gap: 8px; margin-top: 4px; }
+
+/* Plan Detail */
+.onc-plan-detail { padding: 20px; }
+.onc-plan-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+.onc-plan-name { font-size: 1.125rem; font-weight: 600; color: #111827; display: block; }
+.onc-plan-meta { font-size: 0.75rem; color: #6b7280; display: block; margin-top: 4px; }
+
+/* Cycle Progress */
+.onc-cycle-progress { margin-bottom: 16px; }
+.onc-cycle-bar { width: 100%; height: 8px; background: #f3f4f6; border-radius: 4px; overflow: hidden; }
+.onc-cycle-fill { height: 100%; background: #3b82f6; border-radius: 4px; transition: width 0.3s ease; }
+.onc-cycle-text { font-size: 0.75rem; color: #6b7280; margin-top: 4px; display: block; }
+
+/* Medications */
+.onc-meds { margin-bottom: 16px; }
+.onc-meds h4 { font-size: 0.8125rem; font-weight: 600; color: #374151; margin: 0 0 8px; }
+.onc-med {
+  display: flex; justify-content: space-between; padding: 8px 12px; background: #f9fafb;
+  border-radius: 6px; margin-bottom: 4px; font-size: 0.8125rem;
+}
+.onc-med-name { font-weight: 500; color: #111827; }
+.onc-med-rx { color: #6b7280; }
+
+/* Actions */
+.onc-actions-row { display: flex; gap: 8px; margin-top: 12px; }
+
+/* RT Detail */
+.onc-rt-detail { padding: 20px; }
+.onc-back-link { background: none; border: none; color: #3b82f6; font-size: 0.8125rem; cursor: pointer; margin-bottom: 12px; padding: 0; }
+.onc-back-link:hover { text-decoration: underline; }
+.onc-rt-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+.onc-rt-name { font-size: 1.125rem; font-weight: 600; color: #111827; display: block; }
+.onc-rt-meta { font-size: 0.75rem; color: #6b7280; display: block; margin-top: 4px; }
+.onc-rt-plans { display: flex; flex-direction: column; gap: 12px; }
+.onc-rt-plan {
+  background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px;
+}
+.onc-rt-plan__header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+.onc-rt-plan__name { font-size: 0.875rem; font-weight: 600; color: #111827; display: block; }
+.onc-rt-plan__dose { font-size: 0.75rem; color: #6b7280; display: block; margin-top: 2px; }
+.onc-rt-plan__approvals { font-size: 0.6875rem; color: #9ca3af; display: block; margin-top: 2px; }
+.onc-rt-plan__actions { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+
+/* Fractions */
+.onc-fractions { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 6px; }
+.onc-fraction {
+  display: flex; align-items: center; gap: 8px; padding: 6px 10px;
+  background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 0.75rem;
+}
+.onc-fraction__num { font-weight: 600; color: #374151; min-width: 24px; }
+.onc-fraction__dose { color: #111827; }
+.onc-fraction__delivered { color: #6b7280; margin-left: auto; }
+
+/* Machine Grid */
+.onc-machine-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; padding: 16px; }
+.onc-machine-card {
+  background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px;
+}
+.onc-machine-card__header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+.onc-machine-card__name { font-size: 0.875rem; font-weight: 600; color: #111827; }
+.onc-machine-card__meta { display: flex; gap: 12px; font-size: 0.75rem; color: #6b7280; }
+
+/* Form */
+.onc-form { display: flex; flex-direction: column; gap: 12px; }
+.onc-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.onc-form-field { display: flex; flex-direction: column; gap: 4px; }
+.onc-label { font-size: 0.75rem; font-weight: 500; color: #374151; }
+.onc-input {
+  padding: 8px 12px; font-size: 0.8125rem; border: 1px solid #d1d5db;
+  border-radius: 6px; background: #fff; color: #111827; width: 100%;
+  box-sizing: border-box;
+}
+.onc-input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.1); }
+.onc-textarea {
+  padding: 8px 12px; font-size: 0.8125rem; border: 1px solid #d1d5db;
+  border-radius: 6px; background: #fff; color: #111827; resize: vertical; width: 100%;
+  box-sizing: border-box; font-family: inherit;
+}
+.onc-textarea:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.1); }
+.onc-actions { display: flex; gap: 8px; }
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .onc-census { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 768px) {
+  .onc-census { grid-template-columns: repeat(2, 1fr); }
+  .onc-profile-grid { grid-template-columns: 1fr; }
+  .onc-machine-grid { grid-template-columns: 1fr; }
+  .onc-form-row { grid-template-columns: 1fr; }
+  .onc-fractions { grid-template-columns: 1fr; }
+}
+@media (max-width: 480px) {
+  .onc-census { grid-template-columns: 1fr; }
+  .onc-tabs { overflow-x: auto; }
+}
