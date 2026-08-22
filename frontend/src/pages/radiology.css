@@ -1,0 +1,330 @@
+/* ── Radiology Information System ──────────────────────────────────── */
+
+.rad-page {
+  max-width: 1400px;
+}
+
+.rad-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* ── Census Dashboard ─────────────────────────────────────────────── */
+
+.rad-census {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.rad-census-card {
+  background: #fff;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.rad-census-card--total { border-top: 3px solid var(--primary, #4FA9FF); }
+.rad-census-card--ordered { border-top: 3px solid #f59e0b; }
+.rad-census-card--scheduled { border-top: 3px solid #3b82f6; }
+.rad-census-card--progress { border-top: 3px solid #ea580c; }
+.rad-census-card--reported { border-top: 3px solid #10b981; }
+.rad-census-card--critical { border-top: 3px solid #dc2626; }
+
+.rad-census-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary, #111827);
+  line-height: 1;
+}
+
+.rad-census-label {
+  font-size: 12px;
+  color: var(--text-secondary, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 500;
+}
+
+/* ── Tabs ─────────────────────────────────────────────────────────── */
+
+.rad-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--border, #e5e7eb);
+  margin-bottom: 16px;
+}
+
+.rad-tab {
+  padding: 10px 20px;
+  border: none;
+  background: none;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary, #6b7280);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.rad-tab:hover { color: var(--text-primary, #111827); }
+
+.rad-tab--active {
+  color: var(--primary, #4FA9FF);
+  border-bottom-color: var(--primary, #4FA9FF);
+  font-weight: 600;
+}
+
+/* ── Section Card ─────────────────────────────────────────────────── */
+
+.rad-section-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.rad-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+}
+
+.rad-section-header h3 {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+  margin: 0;
+}
+
+.rad-section-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* ── Patient Link ─────────────────────────────────────────────────── */
+
+.rad-patient-link {
+  font-weight: 600;
+  color: var(--primary, #4FA9FF);
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.rad-patient-link:hover { text-decoration: underline; }
+
+/* ── Badges ───────────────────────────────────────────────────────── */
+
+.rad-status-badge {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 4px;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.rad-modality-badge {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--bg-secondary, #f3f4f6);
+  color: var(--text-primary, #111827);
+}
+
+.rad-report-badge {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+/* ── Row Actions ──────────────────────────────────────────────────── */
+
+.rad-row-actions {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.rad-time {
+  font-size: 12px;
+  color: var(--text-tertiary, #9ca3af);
+  white-space: nowrap;
+}
+
+/* ── Modality Grid ────────────────────────────────────────────────── */
+
+.rad-modality-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  padding: 16px;
+}
+
+.rad-modality-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 16px;
+  background: #fff;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+}
+
+.rad-modality-icon {
+  font-size: 24px;
+}
+
+.rad-modality-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+}
+
+.rad-modality-code {
+  font-size: 12px;
+  color: var(--text-secondary, #6b7280);
+}
+
+.rad-modality-status {
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+/* ── Detail Panel ─────────────────────────────────────────────────── */
+
+.rad-detail {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.rad-detail h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+  margin: 16px 0 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border, #e5e7eb);
+}
+
+.rad-detail-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+}
+
+.rad-detail-label {
+  font-size: 12px;
+  color: var(--text-tertiary, #9ca3af);
+  min-width: 80px;
+}
+
+/* ── Report Items ─────────────────────────────────────────────────── */
+
+.rad-report-item {
+  padding: 12px;
+  background: var(--bg-secondary, #f9fafb);
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+
+.rad-report-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.rad-report-type {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+  text-transform: capitalize;
+}
+
+.rad-report-status {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 1px 6px;
+  border-radius: 4px;
+  text-transform: capitalize;
+}
+
+.rad-report-content {
+  font-size: 13px;
+  color: var(--text-primary, #111827);
+  margin: 0 0 6px;
+  line-height: 1.5;
+}
+
+.rad-report-impression {
+  font-size: 13px;
+  color: var(--text-secondary, #6b7280);
+  margin: 0;
+}
+
+/* ── Critical Finding ─────────────────────────────────────────────── */
+
+.rad-critical-finding {
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: #fee2e2;
+  border-radius: 6px;
+  border-left: 3px solid #dc2626;
+}
+
+.rad-critical-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #dc2626;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.rad-critical-finding p {
+  font-size: 13px;
+  color: #991b1b;
+  margin: 4px 0 0;
+}
+
+/* ── Muted ────────────────────────────────────────────────────────── */
+
+.rad-muted {
+  font-size: 13px;
+  color: var(--text-tertiary, #9ca3af);
+}
+
+/* ── Responsive ───────────────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .rad-census {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .rad-modality-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .rad-census {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .rad-tabs {
+    overflow-x: auto;
+  }
+}
