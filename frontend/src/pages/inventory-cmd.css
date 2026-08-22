@@ -1,0 +1,112 @@
+/* ── Supply Chain Command Center ──────────────────────────────────── */
+
+/* Census */
+.inv-census { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 16px; }
+.inv-census-card {
+  background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px;
+  display: flex; flex-direction: column; gap: 4px; min-width: 0;
+}
+.inv-census-card--items { border-left: 3px solid #3b82f6; }
+.inv-census-card--stock { border-left: 3px solid #10b981; }
+.inv-census-card--alerts { border-left: 3px solid #f59e0b; }
+.inv-census-card--requests { border-left: 3px solid #8b5cf6; }
+.inv-census-card--orders { border-left: 3px solid #06b6d4; }
+.inv-census-card--vendors { border-left: 3px solid #6b7280; }
+.inv-census-value { font-size: 1.75rem; font-weight: 700; color: #111827; }
+.inv-census-label { font-size: 0.75rem; color: #6b7280; font-weight: 500; text-transform: uppercase; letter-spacing: 0.03em; }
+
+/* Tabs */
+.inv-tabs { display: flex; gap: 2px; border-bottom: 1px solid #e5e7eb; margin-bottom: 16px; }
+.inv-tab {
+  padding: 8px 16px; font-size: 0.8125rem; font-weight: 500; color: #6b7280;
+  background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer;
+  transition: all 0.15s ease;
+}
+.inv-tab:hover { color: #374151; }
+.inv-tab--active { color: #2563eb; border-bottom-color: #2563eb; }
+
+/* Section Card */
+.inv-section-card { border-radius: 8px; overflow: hidden; }
+.inv-section-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid #f3f4f6; }
+.inv-section-header h3 { font-size: 0.9375rem; font-weight: 600; color: #111827; margin: 0; }
+.inv-section-actions { display: flex; gap: 8px; align-items: center; }
+.inv-proc-section { padding: 16px 20px; border-bottom: 1px solid #f3f4f6; }
+.inv-proc-section:last-child { border-bottom: none; }
+.inv-proc-section h4 { font-size: 0.8125rem; font-weight: 600; color: #374151; margin: 0 0 12px; }
+
+/* Badge */
+.inv-badge {
+  display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 12px;
+  font-size: 0.6875rem; font-weight: 600; text-transform: capitalize; white-space: nowrap;
+}
+
+/* Select */
+.inv-select {
+  padding: 6px 28px 6px 10px; font-size: 0.8125rem; border: 1px solid #d1d5db;
+  border-radius: 6px; background: #fff; color: #374151; cursor: pointer;
+  appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 8px center;
+}
+
+/* Stock Table */
+.inv-stock-table { padding: 0; }
+.inv-stock-header {
+  display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr; gap: 12px;
+  padding: 10px 20px; font-size: 0.6875rem; font-weight: 600; color: #9ca3af;
+  text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid #e5e7eb;
+}
+.inv-stock-row {
+  display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr; gap: 12px;
+  padding: 12px 20px; font-size: 0.8125rem; color: #374151;
+  border-bottom: 1px solid #f3f4f6; transition: background 0.1s ease;
+}
+.inv-stock-row:hover { background: #f9fafb; }
+.inv-stock-row--low { background: #fffbeb; }
+.inv-stock-row--low:hover { background: #fef3c7; }
+.inv-stock-med { display: flex; flex-direction: column; gap: 2px; }
+.inv-stock-med-name { font-weight: 500; color: #111827; }
+.inv-stock-med-detail { font-size: 0.75rem; color: #9ca3af; }
+.inv-num { text-align: right; font-variant-numeric: tabular-nums; }
+.inv-mono { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.8125rem; color: #374151; }
+.inv-stock-actions { display: flex; gap: 6px; }
+
+/* Procurement Sections */
+.inv-receive-header {
+  display: flex; justify-content: space-between; padding: 12px 16px;
+  background: #f9fafb; border-radius: 6px; font-size: 0.8125rem; font-weight: 500;
+  margin-bottom: 12px;
+}
+.inv-receive-line {
+  display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px;
+  padding: 10px 12px; background: #f9fafb; border-radius: 6px;
+  margin-bottom: 8px; font-size: 0.8125rem; align-items: center;
+}
+
+/* Form */
+.inv-form { display: flex; flex-direction: column; gap: 12px; }
+.inv-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.inv-form-field { display: flex; flex-direction: column; gap: 4px; }
+.inv-label { font-size: 0.75rem; font-weight: 500; color: #374151; }
+.inv-input {
+  padding: 8px 12px; font-size: 0.8125rem; border: 1px solid #d1d5db;
+  border-radius: 6px; background: #fff; color: #111827; width: 100%;
+  box-sizing: border-box;
+}
+.inv-input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.1); }
+.inv-actions { display: flex; gap: 8px; }
+
+/* Responsive */
+@media (max-width: 1280px) {
+  .inv-census { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 768px) {
+  .inv-census { grid-template-columns: repeat(2, 1fr); }
+  .inv-stock-header { grid-template-columns: 2fr 1fr 1fr; }
+  .inv-stock-row { grid-template-columns: 2fr 1fr 1fr; }
+  .inv-stock-actions { display: none; }
+  .inv-receive-line { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 480px) {
+  .inv-census { grid-template-columns: 1fr; }
+  .inv-tabs { overflow-x: auto; }
+}

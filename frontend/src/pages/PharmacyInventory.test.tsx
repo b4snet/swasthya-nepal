@@ -58,7 +58,7 @@ describe('InventoryPage', () => {
   it('renders inventory heading', async () => {
     stubFetch(sessionResponse(), jsonOk([]), jsonOk([]));
     renderWithProviders(<InventoryPage />);
-    const heading = await screen.findByText('Inventory');
+    const heading = await screen.findByText('Supply Chain');
     expect(heading).toBeTruthy();
   });
 
