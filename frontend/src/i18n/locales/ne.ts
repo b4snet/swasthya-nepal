@@ -262,6 +262,7 @@ export const messages: Record<MessageKey, string> = {
   'nav.hospitalDashboard': 'अवलोकन',
   'nav.opd': 'ओपीडी',
   'nav.ipd': 'आईपीडी',
+  'nav.clinicalWorkspace': 'कार्यस्थान',
   'nav.clinicalDashboard': 'अवलोकन',
   'nav.encounters': 'भेटघाट',
   'nav.pharmacyDashboard': 'अवलोकन',

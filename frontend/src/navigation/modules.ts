@@ -105,6 +105,7 @@ export const MODULES: NavModule[] = [
     defaultTo: '/clinical',
     routePrefix: '/clinical',
     children: [
+      { key: 'clin-workspace', labelKey: 'nav.clinicalWorkspace', to: '/clinical/workspace', Icon: Stethoscope, roles: ALL },
       { key: 'clin-dashboard', labelKey: 'nav.clinicalDashboard', to: '/clinical', Icon: LayoutDashboard, roles: ALL },
       { key: 'clin-patients', labelKey: 'nav.patients', to: '/clinical/patients', Icon: Users, roles: ALL },
       { key: 'clin-import', labelKey: 'nav.patientImport', to: '/clinical/patients/import', Icon: Upload, roles: ALL },

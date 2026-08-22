@@ -60,6 +60,7 @@ const RevenueCyclePage = lazy(() => import('./pages/RevenueCyclePage').then(m =>
 const OperationsCenterPage = lazy(() => import('./pages/OperationsCenterPage').then(m => ({ default: m.OperationsCenterPage })));
 const PatientImportPage = lazy(() => import('./pages/PatientImportPage').then(m => ({ default: m.PatientImportPage })));
 const PhysicianSchedulingPage = lazy(() => import('./pages/PhysicianSchedulingPage').then(m => ({ default: m.PhysicianSchedulingPage })));
+const ClinicalWorkspace = lazy(() => import('./pages/ClinicalWorkspace').then(m => ({ default: m.ClinicalWorkspace })));
 
 // Admin pages
 const AdminLayout = lazy(() => import('./pages/admin/AdminLayout').then(m => ({ default: m.AdminLayout })));
@@ -162,6 +163,7 @@ export function App() {
 
               {/* ═══ CLINICAL MODULE ═══ */}
               <Route path="/clinical" element={<LazySuspense><ClinicalDashboard /></LazySuspense>} />
+              <Route path="/clinical/workspace" element={<LazySuspense><ClinicalWorkspace /></LazySuspense>} />
               <Route path="/clinical/patients" element={<LazySuspense><PatientsPage /></LazySuspense>} />
               <Route path="/clinical/patients/new" element={<LazySuspense><PatientRegisterPage /></LazySuspense>} />
               <Route path="/clinical/patients/:id" element={<LazySuspense><PatientProfilePage /></LazySuspense>} />

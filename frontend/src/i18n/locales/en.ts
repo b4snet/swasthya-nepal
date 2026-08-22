@@ -261,6 +261,7 @@ export const messages = {
   'nav.hospitalDashboard': 'Overview',
   'nav.opd': 'OPD',
   'nav.ipd': 'IPD',
+  'nav.clinicalWorkspace': 'Workspace',
   'nav.clinicalDashboard': 'Overview',
   'nav.encounters': 'Encounters',
   'nav.pharmacyDashboard': 'Overview',
