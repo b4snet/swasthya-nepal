@@ -1,393 +1,211 @@
 /**
- * Dark mode overrides for Swasthya.
+ * Dark mode component overrides for Swasthya.
  *
- * Activated via CSS prefers-color-scheme and the .dark class
- * on <html> for manual toggle.
+ * Core dark tokens are defined in tokens.css via :root:not(.light) media query.
+ * This file handles component-specific dark overrides that tokens.css doesn't cover.
+ *
+ * Theme is controlled by:
+ * - Blocking script in index.html (prevents flash)
+ * - DarkModeToggle in AppShell.tsx (manual toggle)
+ * - localStorage('swasthya-theme') = 'dark' | 'light'
  */
 
-/* ── Automatic dark mode via OS preference ── */
-@media (prefers-color-scheme: dark) {
-  :root:not(.light) {
-    --color-bg: #0f1117;
-    --color-surface: #1a1d27;
-    --color-surface-2: #22263a;
-    --color-border: #2a2e3e;
-    --color-text: #e4e7ee;
-    --color-text-secondary: #8b8fa3;
-    --color-text-muted: #6b7080;
+/* ════════════════════════════════════════════════════════════════════════════
+   Component-specific dark overrides
+   These styles use html.dark for manual toggle only.
+   The @media (prefers-color-scheme: dark) rule is NOT used here because
+   tokens.css already handles core token dark variants via :root:not(.light).
+   ════════════════════════════════════════════════════════════════════════════ */
 
-    /* Primary blue accent — retained for brand recognition */
-    --primary-50: rgba(79, 169, 255, 0.08);
-    --primary-100: rgba(79, 169, 255, 0.15);
-    --primary-200: rgba(79, 169, 255, 0.25);
-    --primary-300: #4FA9FF;
-    --primary-400: #3d91e0;
-    --primary-500: #2b79c1;
-    --primary-600: #1a61a2;
-    --primary-700: #155088;
-
-    /* Semantic colors — muted for dark surfaces */
-    --success-bg: rgba(16, 185, 129, 0.12);
-    --success-text: #6ee7b7;
-    --warning-bg: rgba(245, 158, 11, 0.12);
-    --warning-text: #fbbf24;
-    --danger-bg: rgba(239, 68, 68, 0.12);
-    --danger-text: #fca5a5;
-    --info-bg: rgba(79, 169, 255, 0.12);
-    --info-text: #93c5fd;
-
-    /* Gray scale — dark */
-    --gray-50: #1a1d27;
-    --gray-100: #22263a;
-    --gray-200: #2a2e3e;
-    --gray-300: #363b4e;
-    --gray-400: #5a5f73;
-    --gray-500: #8b8fa3;
-    --gray-600: #a3a7b8;
-    --gray-700: #c4c7d4;
-    --gray-800: #e4e7ee;
-    --gray-900: #f0f2f5;
-
-    /* Card and surfaces */
-    --white: #1a1d27;
-    --black: #f0f2f5;
-
-    /* Sidebar */
-    --sidebar-bg: #141620;
-    --sidebar-text: #8b8fa3;
-    --sidebar-text-active: #e4e7ee;
-    --sidebar-active-bg: rgba(79, 169, 255, 0.1);
-    --sidebar-hover-bg: rgba(255, 255, 255, 0.04);
-
-    /* Input */
-    --input-bg: #22263a;
-    --input-border: #2a2e3e;
-    --input-focus-border: #4FA9FF;
-    --input-text: #e4e7ee;
-    --input-placeholder: #5a5f73;
-
-    /* Shadow adjustments */
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
-    --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.4);
-
-    /* Status chip backgrounds */
-    --status-info-bg: rgba(79, 169, 255, 0.15);
-    --status-success-bg: rgba(16, 185, 129, 0.15);
-    --status-warning-bg: rgba(245, 158, 11, 0.15);
-    --status-danger-bg: rgba(239, 68, 68, 0.15);
-    --status-neutral-bg: rgba(139, 143, 163, 0.1);
-
-    /* Chart colors stay the same — they're already muted */
-
-    /* Dialog / overlay */
-    --dialog-bg: #1a1d27;
-    --backdrop-bg: rgba(0, 0, 0, 0.6);
-
-    /* Table */
-    --table-header-bg: #22263a;
-    --table-row-hover: rgba(255, 255, 255, 0.03);
-    --table-border: #2a2e3e;
-
-    /* Badge */
-    --badge-bg: rgba(139, 143, 163, 0.12);
-
-    /* Scrollbar */
-    --scrollbar-thumb: #363b4e;
-    --scrollbar-track: transparent;
-
-    color-scheme: dark;
-  }
+/* ── App shell ── */
+html.dark .app-shell,
+html.dark .app-header,
+html.dark .app-body {
+  background: var(--surface-bg);
+  color: var(--text-primary);
 }
 
-/* ── Manual toggle via .dark class ── */
-html.dark {
-  --color-bg: #0f1117;
-  --color-surface: #1a1d27;
-  --color-surface-2: #22263a;
-  --color-border: #2a2e3e;
-  --color-text: #e4e7ee;
-  --color-text-secondary: #8b8fa3;
-  --color-text-muted: #6b7080;
-
-  --primary-50: rgba(79, 169, 255, 0.08);
-  --primary-100: rgba(79, 169, 255, 0.15);
-  --primary-200: rgba(79, 169, 255, 0.25);
-  --primary-300: #4FA9FF;
-  --primary-400: #3d91e0;
-  --primary-500: #2b79c1;
-  --primary-600: #1a61a2;
-  --primary-700: #155088;
-
-  --success-bg: rgba(16, 185, 129, 0.12);
-  --success-text: #6ee7b7;
-  --warning-bg: rgba(245, 158, 11, 0.12);
-  --warning-text: #fbbf24;
-  --danger-bg: rgba(239, 68, 68, 0.12);
-  --danger-text: #fca5a5;
-  --info-bg: rgba(79, 169, 255, 0.12);
-  --info-text: #93c5fd;
-
-  --gray-50: #1a1d27;
-  --gray-100: #22263a;
-  --gray-200: #2a2e3e;
-  --gray-300: #363b4e;
-  --gray-400: #5a5f73;
-  --gray-500: #8b8fa3;
-  --gray-600: #a3a7b8;
-  --gray-700: #c4c7d4;
-  --gray-800: #e4e7ee;
-  --gray-900: #f0f2f5;
-
-  --white: #1a1d27;
-  --black: #f0f2f5;
-
-  --sidebar-bg: #141620;
-  --sidebar-text: #8b8fa3;
-  --sidebar-text-active: #e4e7ee;
-  --sidebar-active-bg: rgba(79, 169, 255, 0.1);
-  --sidebar-hover-bg: rgba(255, 255, 255, 0.04);
-
-  --input-bg: #22263a;
-  --input-border: #2a2e3e;
-  --input-focus-border: #4FA9FF;
-  --input-text: #e4e7ee;
-  --input-placeholder: #5a5f73;
-
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.4);
-
-  --status-info-bg: rgba(79, 169, 255, 0.15);
-  --status-success-bg: rgba(16, 185, 129, 0.15);
-  --status-warning-bg: rgba(245, 158, 11, 0.15);
-  --status-danger-bg: rgba(239, 68, 68, 0.15);
-  --status-neutral-bg: rgba(139, 143, 163, 0.1);
-
-  --dialog-bg: #1a1d27;
-  --backdrop-bg: rgba(0, 0, 0, 0.6);
-
-  --table-header-bg: #22263a;
-  --table-row-hover: rgba(255, 255, 255, 0.03);
-  --table-border: #2a2e3e;
-
-  --badge-bg: rgba(139, 143, 163, 0.12);
-
-  --scrollbar-thumb: #363b4e;
-  --scrollbar-track: transparent;
-
-  color-scheme: dark;
+html.dark .card {
+  background: var(--surface-card);
+  border-color: var(--border-subtle);
+  color: var(--text-primary);
 }
 
-/* ── Dark mode overrides for existing components ── */
+/* ── Sidebar / module rail ── */
+html.dark .module-rail {
+  background: var(--gray-25);
+  border-color: var(--border-subtle);
+}
 
-@media (prefers-color-scheme: dark) {
-  :root:not(.light) .app-shell,
-  html.dark .app-shell {
-    background: var(--color-bg);
-    color: var(--color-text);
-  }
+html.dark .subnav {
+  background: var(--white);
+  border-color: var(--border-subtle);
+}
 
-  :root:not(.light) .card,
-  html.dark .card {
-    background: var(--color-surface);
-    border-color: var(--color-border);
-    color: var(--color-text);
-  }
+/* ── Inputs ── */
+html.dark input,
+html.dark select,
+html.dark textarea,
+html.dark .input {
+  background: var(--interactive-secondary-bg);
+  border-color: var(--interactive-secondary-border);
+  color: var(--text-primary);
+}
 
-  :root:not(.light) .app-header,
-  html.dark .app-header {
-    background: var(--color-surface);
-    border-color: var(--color-border);
-    color: var(--color-text);
-  }
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: var(--text-tertiary);
+}
 
-  :root:not(.light) .app-sidebar,
-  html.dark .app-sidebar {
-    background: var(--sidebar-bg);
-    border-color: var(--color-border);
-  }
+/* ── Dialogs ── */
+html.dark .dialog {
+  background: var(--surface-card);
+  border-color: var(--border-subtle);
+  color: var(--text-primary);
+}
 
-  :root:not(.light) .sidebar-link,
-  html.dark .sidebar-link {
-    color: var(--sidebar-text);
-  }
+html.dark .dialog-backdrop {
+  background: var(--surface-overlay);
+}
 
-  :root:not(.light) .sidebar-link--active,
-  html.dark .sidebar-link--active {
-    color: var(--sidebar-text-active);
-    background: var(--sidebar-active-bg);
-  }
+/* ── Tables ── */
+html.dark .data-table thead th {
+  background: var(--gray-100);
+  color: var(--text-tertiary);
+  border-color: var(--border-subtle);
+}
 
-  :root:not(.light) .sidebar-link:hover,
-  html.dark .sidebar-link:hover {
-    background: var(--sidebar-hover-bg);
-    color: var(--color-text);
-  }
+html.dark .data-table tbody td {
+  border-color: var(--border-subtle);
+}
 
-  :root:not(.light) input,
-  :root:not(.light) select,
-  :root:not(.light) textarea,
-  html.dark input,
-  html.dark select,
-  html.dark textarea {
-    background: var(--input-bg);
-    border-color: var(--input-border);
-    color: var(--input-text);
-  }
+html.dark .data-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
 
-  :root:not(.light) input::placeholder,
-  :root:not(.light) textarea::placeholder,
-  html.dark input::placeholder,
-  html.dark textarea::placeholder {
-    color: var(--input-placeholder);
-  }
+html.dark table {
+  color: var(--text-primary);
+}
 
-  :root:not(.light) .input,
-  html.dark .input {
-    background: var(--input-bg);
-    border-color: var(--input-border);
-    color: var(--input-text);
-  }
+html.dark th {
+  color: var(--text-tertiary);
+}
 
-  :root:not(.light) .dialog,
-  html.dark .dialog {
-    background: var(--dialog-bg);
-    border-color: var(--color-border);
-    color: var(--color-text);
-  }
+/* ── Buttons ── */
+html.dark .btn--secondary,
+html.dark button.secondary {
+  background: var(--interactive-secondary-bg);
+  border-color: var(--interactive-secondary-border);
+  color: var(--text-primary);
+}
 
-  :root:not(.light) .dialog-backdrop,
-  html.dark .dialog-backdrop {
-    background: var(--backdrop-bg);
-  }
+html.dark .btn--secondary:hover,
+html.dark button.secondary:hover {
+  background: var(--gray-200);
+}
 
-  /* Tables */
-  :root:not(.light) .referrals-table thead th,
-  html.dark .referrals-table thead th {
-    background: var(--table-header-bg);
-    border-color: var(--table-border);
-    color: var(--gray-500);
-  }
+/* ── Status chips ── */
+html.dark .status--info { background: rgba(79, 169, 255, 0.15); }
+html.dark .status--success { background: rgba(16, 185, 129, 0.15); }
+html.dark .status--warning { background: rgba(245, 158, 11, 0.15); }
+html.dark .status--danger { background: rgba(239, 68, 68, 0.15); }
+html.dark .status--neutral { background: rgba(139, 143, 163, 0.1); }
 
-  :root:not(.light) .referrals-table tbody td,
-  html.dark .referrals-table tbody td {
-    border-color: var(--table-border);
-  }
+/* ── Command palette ── */
+html.dark .cmd-palette {
+  background: var(--surface-card);
+  box-shadow: 0 0 0 1px var(--border-subtle), 0 16px 70px rgba(0, 0, 0, 0.5);
+}
 
-  :root:not(.light) .referrals-table tbody tr:hover,
-  html.dark .referrals-table tbody tr:hover {
-    background: var(--table-row-hover);
-  }
+html.dark .cmd-input-wrap {
+  border-color: var(--border-subtle);
+}
 
-  /* Scrollbar */
-  :root:not(.light) ::-webkit-scrollbar-thumb,
-  html.dark ::-webkit-scrollbar-thumb {
-    background: var(--scrollbar-thumb);
-  }
+html.dark .cmd-input {
+  color: var(--text-primary);
+}
 
-  :root:not(.light) ::-webkit-scrollbar-track,
-  html.dark ::-webkit-scrollbar-track {
-    background: var(--scrollbar-track);
-  }
+html.dark .cmd-item:hover,
+html.dark .cmd-item--selected {
+  background: rgba(79, 169, 255, 0.1);
+  color: var(--text-primary);
+}
 
-  /* Badge overrides */
-  :root:not(.light) .badge,
-  html.dark .badge {
-    background: var(--badge-bg);
-  }
+html.dark .cmd-footer {
+  border-color: var(--border-subtle);
+  color: var(--text-tertiary);
+}
 
-  /* Filter pills */
-  :root:not(.light) .filter-pill,
-  html.dark .filter-pill {
-    border-color: var(--color-border);
-    background: var(--color-surface);
-    color: var(--gray-600);
-  }
+/* ── Filter pills ── */
+html.dark .filter-pill {
+  border-color: var(--border-subtle);
+  background: var(--surface-card);
+  color: var(--text-secondary);
+}
 
-  :root:not(.light) .filter-pill:hover,
-  html.dark .filter-pill:hover {
-    background: var(--color-surface-2);
-  }
+html.dark .filter-pill:hover {
+  background: var(--gray-100);
+}
 
-  /* Status chips */
-  :root:not(.light) .status--info,
-  html.dark .status--info {
-    background: var(--status-info-bg);
-  }
+/* ── Badge ── */
+html.dark .badge {
+  background: rgba(139, 143, 163, 0.12);
+}
 
-  :root:not(.light) .status--success,
-  html.dark .status--success {
-    background: var(--status-success-bg);
-  }
+/* ── Scrollbar ── */
+html.dark ::-webkit-scrollbar-thumb {
+  background: var(--gray-300);
+}
 
-  :root:not(.light) .status--warning,
-  html.dark .status--warning {
-    background: var(--status-warning-bg);
-  }
+html.dark ::-webkit-scrollbar-track {
+  background: transparent;
+}
 
-  :root:not(.light) .status--danger,
-  html.dark .status--danger {
-    background: var(--status-danger-bg);
-  }
+/* ── Page backgrounds ── */
+html.dark .page,
+html.dark .stack {
+  color: var(--text-primary);
+}
 
-  :root:not(.light) .status--neutral,
-  html.dark .status--neutral {
-    background: var(--status-neutral-bg);
-  }
+/* ── Data table specific overrides ── */
+html.dark .referrals-table thead th {
+  background: var(--gray-100);
+  border-color: var(--border-subtle);
+  color: var(--text-tertiary);
+}
 
-  /* Tables - generic */
-  :root:not(.light) table,
-  html.dark table {
-    color: var(--color-text);
-  }
+html.dark .referrals-table tbody td {
+  border-color: var(--border-subtle);
+}
 
-  :root:not(.light) th,
-  html.dark th {
-    color: var(--gray-500);
-  }
+html.dark .referrals-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
 
-  /* Buttons - secondary in dark mode */
-  :root:not(.light) .btn--secondary,
-  html.dark .btn--secondary {
-    background: var(--color-surface-2);
-    border-color: var(--color-border);
-    color: var(--color-text);
-  }
+/* ── Chart containers ── */
+html.dark .chart-container {
+  background: var(--surface-card);
+  border-color: var(--border-subtle);
+}
 
-  :root:not(.light) .btn--secondary:hover,
-  html.dark .btn--secondary:hover {
-    background: var(--gray-300);
-  }
+/* ── Module rail dark ── */
+html.dark .module-rail__item:hover {
+  background: var(--gray-100);
+  color: var(--text-primary);
+}
 
-  /* Command palette dark mode */
-  :root:not(.light) .cmd-palette,
-  html.dark .cmd-palette {
-    background: var(--color-surface);
-    box-shadow: 0 0 0 1px var(--color-border), 0 16px 70px rgba(0, 0, 0, 0.5);
-  }
+html.dark .module-rail__item--active {
+  background: var(--blue-50);
+  color: var(--blue-700);
+}
 
-  :root:not(.light) .cmd-input-wrap,
-  html.dark .cmd-input-wrap {
-    border-color: var(--color-border);
-  }
+/* ── Sub-nav dark ── */
+html.dark .subnav__link:hover {
+  background: var(--gray-100);
+  color: var(--text-primary);
+}
 
-  :root:not(.light) .cmd-input,
-  html.dark .cmd-input {
-    color: var(--color-text);
-  }
-
-  :root:not(.light) .cmd-item:hover,
-  :root:not(.light) .cmd-item--selected,
-  html.dark .cmd-item:hover,
-  html.dark .cmd-item--selected {
-    background: rgba(79, 169, 255, 0.1);
-    color: var(--color-text);
-  }
-
-  :root:not(.light) .cmd-footer,
-  html.dark .cmd-footer {
-    border-color: var(--color-border);
-    color: var(--gray-400);
-  }
+html.dark .subnav__link--active {
+  background: var(--blue-50);
+  color: var(--blue-700);
 }

@@ -482,7 +482,7 @@ button {
 }
 
 /* ── Dark mode ── */
-@media (prefers-color-scheme: dark) {
+html.dark {
   /* Selection */
   ::selection {
     background: var(--blue-100);

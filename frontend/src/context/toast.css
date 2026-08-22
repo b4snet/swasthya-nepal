@@ -99,7 +99,7 @@
 }
 
 /* ── Dark mode ── */
-@media (prefers-color-scheme: dark) {
+html.dark {
   .toast--success {
     background: var(--green-50);
     color: var(--green-700);

@@ -345,7 +345,7 @@
 }
 
 /* ── Dark mode ── */
-@media (prefers-color-scheme: dark) {
+html.dark {
   /* Inputs */
   .input {
     background: var(--gray-100);

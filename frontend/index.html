@@ -20,6 +20,15 @@
     />
   </head>
   <body>
+    <script>
+      /* Prevent flash of wrong theme — runs before CSS parses */
+      (function(){
+        var s=localStorage.getItem('swasthya-theme');
+        if(s==='dark'){document.documentElement.classList.add('dark');document.documentElement.classList.remove('light');}
+        else if(s==='light'){document.documentElement.classList.add('light');document.documentElement.classList.remove('dark');}
+        else{document.documentElement.classList.add('light');}
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

@@ -100,6 +100,8 @@ function DarkModeToggle() {
     document.documentElement.classList.toggle('dark', dark);
     document.documentElement.classList.toggle('light', !dark);
     localStorage.setItem('swasthya-theme', dark ? 'dark' : 'light');
+    // Update theme-color meta for mobile browsers
+    document.querySelector('meta[name=theme-color]')?.setAttribute('content', dark ? '#0f1118' : '#ffffff');
   }, [dark]);
 
   return (
