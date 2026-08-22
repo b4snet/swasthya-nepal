@@ -9,9 +9,8 @@
   gap: var(--sp-3);
   padding: var(--sp-3) var(--sp-5);
   background: var(--paper);
-  border: var(--border-subtle);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-xs);
 }
 
 .appts__datebar .input {
@@ -19,11 +18,213 @@
   max-width: 220px;
 }
 
-.appts__count {
-  font-size: var(--fs-caption);
-  color: var(--ink-muted);
+.appts__nav-btn {
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--white);
+  color: var(--text-primary);
+  font-size: 13px;
   font-weight: 500;
-  margin-left: auto;
+  cursor: pointer;
+  transition: all 150ms;
+}
+
+.appts__nav-btn:hover {
+  background: var(--gray-50);
+}
+
+/* ── View toggle ── */
+.appts__view-toggle {
+  display: flex;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.appts__view-btn {
+  height: 32px;
+  padding: 0 14px;
+  border: none;
+  background: var(--white);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 150ms;
+}
+
+.appts__view-btn:not(:last-child) {
+  border-right: 1px solid var(--border-default);
+}
+
+.appts__view-btn--active {
+  background: var(--blue-50);
+  color: var(--blue-700);
+}
+
+/* ── Status summary ── */
+.appts__summary {
+  display: flex;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.appts__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-3) var(--space-5);
+  background: var(--white);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  min-width: 80px;
+}
+
+.appts__stat-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.appts__stat-value--booked { color: var(--blue-600); }
+.appts__stat-value--checked { color: var(--amber-600); }
+.appts__stat-value--active { color: var(--green-600); }
+.appts__stat-value--done { color: var(--gray-400); }
+
+.appts__stat-label {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-top: 2px;
+}
+
+/* ── Patient link in table ── */
+.appts__patient-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.appts__patient-link:hover {
+  color: var(--blue-600);
+}
+
+/* ── Small button ── */
+.btn--sm {
+  height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ── Timeline view ── */
+.appts__timeline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.appts__timeline-hour {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+
+.appts__timeline-label {
+  width: 60px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  padding-top: 8px;
+  flex-shrink: 0;
+}
+
+.appts__timeline-slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  flex: 1;
+}
+
+.appts__timeline-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  background: var(--white);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  min-width: 180px;
+  transition: all 150ms;
+}
+
+.appts__timeline-card:hover {
+  border-color: var(--blue-400);
+  box-shadow: var(--shadow-xs);
+}
+
+.appts__timeline-card--completed {
+  opacity: 0.6;
+}
+
+.appts__timeline-time {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--blue-600);
+}
+
+.appts__timeline-patient {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.appts__timeline-provider {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+/* ── Search results dropdown ── */
+.appts__search-results {
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--white);
+  margin-top: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.appts__search-result {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.appts__search-result:hover {
+  background: var(--gray-50);
+}
+
+.appts__search-result .mono {
+  font-size: 11px;
+  color: var(--text-tertiary);
 }
 
 /* ── Table row link styling ── */

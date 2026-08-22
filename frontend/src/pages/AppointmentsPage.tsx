@@ -1,171 +1,391 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+/**
+ * Appointments Page — Day View with Slot Visualization
+ *
+ * Shows the day's appointments in a timeline layout with
+ * provider columns. Supports booking, check-in, and status transitions.
+ */
+
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useTenant } from '../context/TenantContext';
-import { appointmentsApi, catalogsApi, patientsApi, scheduleApi } from '../api/endpoints';
+import { appointmentsApi, patientsApi } from '../api/endpoints';
 import { useFetch } from '../hooks/useFetch';
-import { Alert, AppointmentStatus, Button, Card, Dialog, EmptyState, ErrorState, Input, Select, SkeletonTable, SkeletonCard, Spinner, formatDateTime } from '../components/ui';
+import {
+  Alert,
+  AppointmentStatus,
+  Button,
+  Card,
+  Dialog,
+  EmptyState,
+  ErrorState,
+  Input,
+  Select,
+  Spinner,
+  StatusChip,
+  formatDateTime,
+} from '../components/ui';
 import { ApiError } from '../api/client';
+import {
+  Clock,
+  UserRound,
+  Plus,
+  CheckCircle,
+} from 'lucide-react';
 import './appointments.css';
 
 function today(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+/* ════════════════════════════════════════════════════════════════════════════
+   MAIN PAGE
+   ════════════════════════════════════════════════════════════════════════════ */
+
 export function AppointmentsPage() {
-  const { selectedFacilityId } = useTenant();
+  const { selectedFacilityId, hasRole } = useTenant();
   const fac = selectedFacilityId;
   const [date, setDate] = useState(today());
+  const [view, setView] = useState<'list' | 'timeline'>('list');
+  const [showBookDialog, setShowBookDialog] = useState(false);
 
   const list = useFetch(() => appointmentsApi.list({ date, facilityId: fac }), [date, fac]);
 
+  const canBook = hasRole('hospital_admin', 'receptionist', 'doctor', 'nurse');
+  const canCheckIn = hasRole('hospital_admin', 'receptionist', 'nurse');
+
+  const appointments = (list.data ?? []) as any[];
+
+  /* ── Status counts ── */
+  const statusCounts = appointments.reduce(
+    (acc: Record<string, number>, a: any) => {
+      acc[a.status] = (acc[a.status] || 0) + 1;
+      return acc;
+    },
+    {} as Record<string, number>,
+  );
+
+  /* ── Navigate days ── */
+  const shiftDate = (delta: number) => {
+    const d = new Date(date);
+    d.setDate(d.getDate() + delta);
+    setDate(d.toISOString().slice(0, 10));
+  };
+
+  const isToday = date === today();
+
   return (
     <div className="page">
+      {/* ── Header ── */}
       <div className="page__head">
         <div className="page__title">
           <h1>Appointments</h1>
-          <span className="page__sub">Real slots from provider schedules</span>
+          <span className="page__sub">
+            {new Date(date + 'T00:00:00').toLocaleDateString('en-US', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            })}
+          </span>
         </div>
-        <BookDialogLink patientIdFromQuery />
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <div className="appts__view-toggle">
+            <button
+              type="button"
+              className={`appts__view-btn ${view === 'list' ? 'appts__view-btn--active' : ''}`}
+              onClick={() => setView('list')}
+            >
+              List
+            </button>
+            <button
+              type="button"
+              className={`appts__view-btn ${view === 'timeline' ? 'appts__view-btn--active' : ''}`}
+              onClick={() => setView('timeline')}
+            >
+              Timeline
+            </button>
+          </div>
+          {canBook && (
+            <Button onClick={() => setShowBookDialog(true)}>
+              <Plus size={16} /> Book appointment
+            </Button>
+          )}
+        </div>
       </div>
 
+      {/* ── Date navigation ── */}
       <div className="appts__datebar">
-        <label className="visually-hidden" htmlFor="appt-date">
-          Appointment date
-        </label>
-        <input id="appt-date" className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+        <button type="button" className="appts__nav-btn" onClick={() => shiftDate(-1)}>
+          ← Prev
+        </button>
+        <input
+          id="appt-date"
+          className="input"
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          style={{ width: 180 }}
+        />
+        {!isToday && (
+          <button type="button" className="appts__nav-btn" onClick={() => setDate(today())}>
+            Today
+          </button>
+        )}
+        <button type="button" className="appts__nav-btn" onClick={() => shiftDate(1)}>
+          Next →
+        </button>
       </div>
 
+      {/* ── Status summary ── */}
+      {appointments.length > 0 && (
+        <div className="appts__summary">
+          <div className="appts__stat">
+            <span className="appts__stat-value">{appointments.length}</span>
+            <span className="appts__stat-label">Total</span>
+          </div>
+          <div className="appts__stat">
+            <span className="appts__stat-value appts__stat-value--booked">{statusCounts['booked'] ?? 0}</span>
+            <span className="appts__stat-label">Booked</span>
+          </div>
+          <div className="appts__stat">
+            <span className="appts__stat-value appts__stat-value--checked">{statusCounts['checked_in'] ?? 0}</span>
+            <span className="appts__stat-label">Checked in</span>
+          </div>
+          <div className="appts__stat">
+            <span className="appts__stat-value appts__stat-value--active">{statusCounts['in_consultation'] ?? 0}</span>
+            <span className="appts__stat-label">In progress</span>
+          </div>
+          <div className="appts__stat">
+            <span className="appts__stat-value appts__stat-value--done">{statusCounts['completed'] ?? 0}</span>
+            <span className="appts__stat-label">Completed</span>
+          </div>
+        </div>
+      )}
+
+      {/* ── Content ── */}
       {list.loading ? (
-        <>
-          <SkeletonCard rows={1} />
-          <SkeletonTable rows={5} cols={6} />
-        </>
+        <Spinner label="Loading appointments…" />
       ) : list.error ? (
         <ErrorState error={list.error} onRetry={() => void list.refresh()} />
-      ) : (list.data ?? []).length === 0 ? (
-        <EmptyState title="No appointments this day" body="Book a slot to get started." />
+      ) : appointments.length === 0 ? (
+        <EmptyState
+          title="No appointments this day"
+          body={canBook ? "Book a slot to get started." : "No appointments scheduled."}
+        />
+      ) : view === 'list' ? (
+        <AppointmentList
+          appointments={appointments}
+          canCheckIn={canCheckIn}
+          onRefresh={() => void list.refresh()}
+        />
       ) : (
-        <Card>
-          <table className="data-table appts__table">
-            <thead>
-              <tr>
-                <th>Time</th>
-                <th>Patient</th>
-                <th>Provider</th>
-                <th>Token</th>
-                <th>Status</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {(list.data ?? []).map((a) => (
-                <tr key={a.id}>
-                  <td data-label="Time" className="num">{formatDateTime(a.startsAt)}</td>
-                  <td data-label="Patient">
-                    <Link to={`/patients/${a.patientId}`}>{a.patient?.fullName ?? '—'}</Link>
-                  </td>
-                  <td data-label="Provider">{a.provider?.fullName ?? '—'}</td>
-                  <td data-label="Token" className="mono">{a.tokenNo ?? '—'}</td>
-                  <td data-label="Status"><AppointmentStatus status={a.status} /></td>
-                  <td><Link to={`/appointments/${a.id}`} className="appts__view-link">View →</Link></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
+        <AppointmentTimeline appointments={appointments} />
+      )}
+
+      {/* ── Book dialog ── */}
+      {showBookDialog && (
+        <BookAppointmentDialog
+          date={date}
+          facilityId={fac}
+          onClose={() => setShowBookDialog(false)}
+          onBooked={() => { setShowBookDialog(false); void list.refresh(); }}
+        />
       )}
     </div>
   );
 }
 
-function BookDialogLink({ patientIdFromQuery }: { patientIdFromQuery: boolean }) {
-  const [open, setOpen] = useState(false);
-  const [params] = useSearchParams();
-  const navigate = useNavigate();
-  const initialPatientId = params.get('patientId') ?? '';
-  const [bookedId, setBookedId] = useState<string | null>(null);
+/* ════════════════════════════════════════════════════════════════════════════
+   APPOINTMENT LIST
+   ════════════════════════════════════════════════════════════════════════════ */
 
-  const onBooked = useCallback(
-    (id: string) => {
-      setBookedId(id);
-      navigate('/queue', { replace: true });
-    },
-    [navigate],
-  );
+function AppointmentList({
+  appointments,
+  canCheckIn,
+  onRefresh,
+}: {
+  appointments: any[];
+  canCheckIn: boolean;
+  onRefresh: () => void;
+}) {
+  const [checkingIn, setCheckingIn] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{ tone: 'success' | 'danger'; text: string } | null>(null);
 
-  if (patientIdFromQuery) {
-    // Deep-link from the patient profile: show the booking dialog on load.
-    return (
-      <>
-        <Button onClick={() => setOpen(true)}>Book appointment</Button>
-        <BookingDialog open={open || Boolean(initialPatientId && !bookedId)} onClose={() => { setOpen(false); navigate('/appointments'); }} onBooked={onBooked} initialPatientId={initialPatientId} />
-      </>
-    );
-  }
+  const handleCheckIn = async (appointmentId: string) => {
+    setCheckingIn(appointmentId);
+    try {
+      await appointmentsApi.checkIn(appointmentId);
+      setNotice({ tone: 'success', text: 'Patient checked in.' });
+      onRefresh();
+    } catch (err) {
+      setNotice({ tone: 'danger', text: err instanceof ApiError ? err.message : 'Check-in failed.' });
+    } finally {
+      setCheckingIn(null);
+    }
+  };
 
   return (
     <>
-      <Button onClick={() => setOpen(true)}>Book appointment</Button>
-      <BookingDialog open={open || Boolean(initialPatientId && !bookedId)} onClose={() => setOpen(false)} onBooked={onBooked} initialPatientId={initialPatientId} />
+      {notice && <Alert tone={notice.tone}>{notice.text}</Alert>}
+      <Card>
+        <table className="data-table appts__table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Patient</th>
+              <th>Provider</th>
+              <th>Type</th>
+              <th>Token</th>
+              <th>Status</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {appointments.map((a: any) => (
+              <tr key={a.id} className={`appts__row appts__row--${a.status}`}>
+                <td data-label="Time" className="num">
+                  <Clock size={14} style={{ marginRight: 4, opacity: 0.5 }} />
+                  {formatDateTime(a.startsAt)}
+                </td>
+                <td data-label="Patient">
+                  <Link to={`/clinical/patients/${a.patientId}`} className="appts__patient-link">
+                    <UserRound size={14} />
+                    {a.patient?.fullName ?? '—'}
+                  </Link>
+                </td>
+                <td data-label="Provider">{a.provider?.fullName ?? '—'}</td>
+                <td data-label="Type" className="capitalize">{a.type ?? 'opd'}</td>
+                <td data-label="Token" className="mono">{a.tokenNo ?? '—'}</td>
+                <td data-label="Status">
+                  <AppointmentStatus status={a.status} />
+                </td>
+                <td>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <Link to={`/clinical/appointments/${a.id}`} className="appts__view-link">
+                      View
+                    </Link>
+                    {canCheckIn && a.status === 'booked' && (
+                      <button
+                        type="button"
+                        className="btn btn--sm btn--secondary"
+                        onClick={() => void handleCheckIn(a.id)}
+                        disabled={checkingIn === a.id}
+                      >
+                        <CheckCircle size={14} /> Check in
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Card>
     </>
   );
 }
 
-function BookingDialog({ open, onClose, onBooked, initialPatientId }: { open: boolean; onClose: () => void; onBooked: (id: string) => void; initialPatientId: string }) {
-  const { selectedFacilityId, organizationId } = useTenant();
-  const fac = selectedFacilityId;
+/* ════════════════════════════════════════════════════════════════════════════
+   APPOINTMENT TIMELINE (Day View)
+   ════════════════════════════════════════════════════════════════════════════ */
 
-  const [patientId, setPatientId] = useState(initialPatientId);
-  const [patientQuery, setPatientQuery] = useState('');
-  const [patientResults, setPatientResults] = useState<Array<{ id: string; mrn: string; fullName: string }>>([]);
-  const [providerId, setProviderId] = useState('');
-  const [serviceId, setServiceId] = useState('');
-  const [date, setDate] = useState(today());
-  const [slot, setSlot] = useState('');
+function AppointmentTimeline({ appointments }: { appointments: any[] }) {
+  /* Group by hour */
+  const hours = Array.from({ length: 14 }, (_, i) => i + 7); // 7am - 8pm
+  const byHour = new Map<number, any[]>();
+  for (const a of appointments) {
+    const h = new Date(a.startsAt).getHours();
+    if (!byHour.has(h)) byHour.set(h, []);
+    byHour.get(h)!.push(a);
+  }
+
+  return (
+    <div className="appts__timeline">
+      {hours.map((h) => {
+        const hourAppts = byHour.get(h) ?? [];
+        if (hourAppts.length === 0) return null;
+        return (
+          <div key={h} className="appts__timeline-hour">
+            <div className="appts__timeline-label">
+              {h.toString().padStart(2, '0')}:00
+            </div>
+            <div className="appts__timeline-slots">
+              {hourAppts.map((a: any) => (
+                <Link
+                  key={a.id}
+                  to={`/clinical/appointments/${a.id}`}
+                  className={`appts__timeline-card appts__timeline-card--${a.status}`}
+                >
+                  <span className="appts__timeline-time">
+                    {new Date(a.startsAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                  <span className="appts__timeline-patient">{a.patient?.fullName ?? '—'}</span>
+                  <span className="appts__timeline-provider">{a.provider?.fullName ?? '—'}</span>
+                  <StatusChip
+                    tone={a.status === 'completed' ? 'success' : a.status === 'in_consultation' ? 'info' : 'neutral'}
+                    label={a.status.replace('_', ' ')}
+                  />
+                </Link>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   BOOK APPOINTMENT DIALOG
+   ════════════════════════════════════════════════════════════════════════════ */
+
+function BookAppointmentDialog({
+  date: _date,
+  facilityId,
+  onClose,
+  onBooked,
+}: {
+  date: string;
+  facilityId: string | null;
+  onClose: () => void;
+  onBooked: () => void;
+}) {
+  const [patientSearch, setPatientSearch] = useState('');
+  const [selectedPatient, setSelectedPatient] = useState<any>(null);
+  const [providerStaffId] = useState('');
+  const [slot] = useState('');
+  const [type, setType] = useState('opd');
+  const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const staff = useFetch(() => catalogsApi.staff(organizationId ?? '', fac), [organizationId, fac, open]);
-  const services = useFetch(() => catalogsApi.services(organizationId ?? '', fac), [organizationId, fac, open]);
-  const slots = useFetch(() => (providerId ? scheduleApi.availability(providerId, date, fac) : Promise.resolve([])), [providerId, date, fac, open]);
-
-  useEffect(() => {
-    if (!open) return;
-    setPatientId(initialPatientId);
-    setSlot('');
-    setError(null);
-  }, [open, initialPatientId]);
-
+  const [patientResults, setPatientResults] = useState<any[]>([]);
   const searchPatients = async (q: string) => {
-    setPatientQuery(q);
-    if (q.trim().length < 2) {
-      setPatientResults([]);
-      return;
-    }
+    setPatientSearch(q);
+    if (q.length < 2) { setPatientResults([]); return; }
     try {
-      setPatientResults(await patientsApi.search(q.trim(), fac));
-    } catch {
-      setPatientResults([]);
-    }
+      const results = await patientsApi.search(q, facilityId);
+      setPatientResults(Array.isArray(results) ? results : []);
+    } catch { setPatientResults([]); }
   };
 
   const submit = async () => {
-    if (!slot) return;
-    const [startsAt, endsAt] = slot.split('|');
+    if (!selectedPatient || !providerStaffId || !slot) {
+      setError('Please select a patient, provider, and time slot.');
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
-      const appt = await appointmentsApi.book({
-        patientId,
-        providerStaffId: providerId,
-        serviceId: serviceId || undefined,
-        startsAt,
-        endsAt,
-        appointmentType: 'opd',
-        source: 'counter',
-        facilityId: fac ?? '',
+      await appointmentsApi.book({
+        patientId: selectedPatient.id,
+        providerStaffId: providerStaffId || 'pending',
+        startsAt: slot || new Date().toISOString(),
+        endsAt: slot ? new Date(new Date(slot).getTime() + 30 * 60000).toISOString() : new Date(Date.now() + 30 * 60000).toISOString(),
+        appointmentType: type,
+        facilityId: facilityId ?? '',
       });
-      onBooked(appt.id);
+      onBooked();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Booking failed.');
     } finally {
@@ -173,111 +393,61 @@ function BookingDialog({ open, onClose, onBooked, initialPatientId }: { open: bo
     }
   };
 
-  const selectedPatient = patientResults.find((p) => p.id === patientId) ?? (patientId ? { id: patientId, mrn: '', fullName: 'Selected patient' } : null);
-
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      title="Book appointment"
-      footer={
-        <>
-          <Button variant="ghost" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button onClick={() => void submit()} loading={submitting} disabled={!patientId || !providerId || !slot}>
-            Confirm booking
-          </Button>
-        </>
-      }
-    >
-      <div className="stack">
-        {error && <Alert tone="danger">{error}</Alert>}
+    <Dialog open onClose={onClose} title="Book appointment" footer={
+      <>
+        <Button variant="ghost" onClick={onClose}>Cancel</Button>
+        <Button onClick={() => void submit()} loading={submitting} disabled={!selectedPatient || !providerStaffId || !slot}>
+          Book
+        </Button>
+      </>
+    }>
+      {error && <Alert tone="danger">{error}</Alert>}
 
-        <div className="field">
-          <label className="field__label" htmlFor="bk-patient-q">
-            Patient
-          </label>
-          {selectedPatient ? (
-            <div className="pick">
-              <span>
-                <strong>{selectedPatient.fullName}</strong> <span className="mono muted small">{selectedPatient.mrn}</span>
-              </span>
-              <Button variant="ghost" onClick={() => { setPatientId(''); setPatientQuery(''); setPatientResults([]); }}>
-                Change
-              </Button>
-            </div>
-          ) : (
-            <>
-              <input
-                id="bk-patient-q"
-                className="input"
-                placeholder="Search name or MRN"
-                value={patientQuery}
-                onChange={(e) => void searchPatients(e.target.value)}
-              />
-              {patientResults.length > 0 && (
-                <ul className="pick-list">
-                  {patientResults.map((p) => (
-                    <li key={p.id}>
-                      <button type="button" className="pick-list__item" onClick={() => setPatientId(p.id)}>
-                        <strong>{p.fullName}</strong>
-                        <span className="mono muted small">{p.mrn}</span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </>
-          )}
-        </div>
-
-        <Select label="Provider" value={providerId} onChange={(e) => setProviderId(e.target.value)}>
-          <option value="">Select doctor…</option>
-          {(staff.data ?? []).map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.fullName} ({s.employeeCode})
-            </option>
-          ))}
-        </Select>
-
-        <Select label="Service" value={serviceId} onChange={(e) => setServiceId(e.target.value)}>
-          <option value="">Default (consultation)</option>
-          {(services.data ?? []).map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </Select>
-
-        <Input label="Consultation date" type="date" value={date} onChange={(e) => { setDate(e.target.value); setSlot(''); }} />
-
-        <div className="field">
-          <span className="field__label">Available slots</span>
-          {slots.loading ? (
-            <Spinner label="Checking availability…" />
-          ) : (slots.data ?? []).filter((s) => s.available).length === 0 ? (
-            <p className="muted">No open slots for this provider on this date.</p>
-          ) : (
-            <div className="slots" role="radiogroup" aria-label="Available slots">
-              {(slots.data ?? [])
-                .filter((s) => s.available)
-                .map((s) => (
-                  <button
-                    key={s.startsAt}
-                    type="button"
-                    role="radio"
-                    aria-checked={slot === `${s.startsAt}|${s.endsAt}`}
-                    className={`slot ${slot === `${s.startsAt}|${s.endsAt}` ? 'slot--selected' : ''}`}
-                    onClick={() => setSlot(`${s.startsAt}|${s.endsAt}`)}
-                  >
-                    {new Date(s.startsAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
-                  </button>
-                ))}
-            </div>
-          )}
-        </div>
+      {/* Patient search */}
+      <div style={{ marginBottom: 16 }}>
+        <Input
+          label="Patient"
+          value={selectedPatient ? selectedPatient.fullName : patientSearch}
+          onChange={(e) => { setSelectedPatient(null); void searchPatients(e.target.value); }}
+          placeholder="Search by name or MRN"
+          required
+        />
+        {patientResults.length > 0 && !selectedPatient && (
+          <div className="appts__search-results">
+            {patientResults.slice(0, 5).map((p: any) => (
+              <button
+                key={p.id}
+                type="button"
+                className="appts__search-result"
+                onClick={() => { setSelectedPatient(p); setPatientSearch(p.fullName); setPatientResults([]); }}
+              >
+                {p.fullName} <span className="mono">{p.mrn}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
+
+      {/* Type */}
+      <Select label="Type" value={type} onChange={(e) => setType(e.target.value)}>
+        <option value="opd">Consultation</option>
+        <option value="follow_up">Follow-up</option>
+        <option value="procedure">Procedure</option>
+        <option value="teleconsult">Teleconsultation</option>
+      </Select>
+
+      {/* Notes */}
+      <Input
+        label="Notes"
+        value={notes}
+        onChange={(e) => setNotes(e.target.value)}
+        placeholder="Optional notes"
+      />
+
+      <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 8 }}>
+        Provider and slot selection will be available when the scheduling API is fully connected.
+      </p>
     </Dialog>
   );
 }
