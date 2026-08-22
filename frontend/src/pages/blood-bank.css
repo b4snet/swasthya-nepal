@@ -1,0 +1,240 @@
+/* ── Blood Bank Command Center ─────────────────────────────────────── */
+
+.bb-page {
+  max-width: 1400px;
+}
+
+.bb-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* ── Census Dashboard ─────────────────────────────────────────────── */
+
+.bb-census {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.bb-census-card {
+  background: #fff;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.bb-census-card--donors { border-top: 3px solid var(--primary, #4FA9FF); }
+.bb-census-card--units { border-top: 3px solid #8b5cf6; }
+.bb-census-card--available { border-top: 3px solid #10b981; }
+.bb-census-card--reserved { border-top: 3px solid #3b82f6; }
+.bb-census-card--issued { border-top: 3px solid #ea580c; }
+.bb-census-card--expiring { border-top: 3px solid #f59e0b; }
+
+.bb-census-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary, #111827);
+  line-height: 1;
+}
+
+.bb-census-label {
+  font-size: 12px;
+  color: var(--text-secondary, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 500;
+}
+
+/* ── Tabs ─────────────────────────────────────────────────────────── */
+
+.bb-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--border, #e5e7eb);
+  margin-bottom: 16px;
+}
+
+.bb-tab {
+  padding: 10px 20px;
+  border: none;
+  background: none;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary, #6b7280);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.bb-tab:hover { color: var(--text-primary, #111827); }
+
+.bb-tab--active {
+  color: var(--primary, #4FA9FF);
+  border-bottom-color: var(--primary, #4FA9FF);
+  font-weight: 600;
+}
+
+/* ── Section Card ─────────────────────────────────────────────────── */
+
+.bb-section-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.bb-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+}
+
+.bb-section-header h3 {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+  margin: 0;
+}
+
+.bb-section-actions {
+  display: flex;
+  gap: 6px;
+}
+
+/* ── Component Grid ───────────────────────────────────────────────── */
+
+.bb-component-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  padding: 16px;
+}
+
+.bb-component-card {
+  background: #fff;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.bb-component-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-left: 3px solid;
+  padding-left: 10px;
+  margin-bottom: 6px;
+}
+
+.bb-component-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+}
+
+.bb-component-count {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.bb-component-desc {
+  font-size: 11px;
+  color: var(--text-tertiary, #9ca3af);
+  margin: 0;
+}
+
+/* ── Lifecycle Flow ───────────────────────────────────────────────── */
+
+.bb-lifecycle {
+  padding: 16px;
+  border-top: 1px solid var(--border, #e5e7eb);
+}
+
+.bb-lifecycle h4 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+  margin: 0 0 12px;
+}
+
+.bb-lifecycle-flow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.bb-lifecycle-step {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.bb-lifecycle-step--collection { background: #dbeafe; color: #1e40af; }
+.bb-lifecycle-step--testing { background: #fef3c7; color: #92400e; }
+.bb-lifecycle-step--available { background: #ecfdf5; color: #065f46; }
+.bb-lifecycle-step--reserved { background: #dbeafe; color: #1e40af; }
+.bb-lifecycle-step--issued { background: #ffedd5; color: #9a3412; }
+.bb-lifecycle-step--transfused { background: #ecfdf5; color: #065f46; }
+
+.bb-lifecycle-arrow {
+  font-size: 14px;
+  color: var(--text-tertiary, #9ca3af);
+}
+
+/* ── Status Badge ─────────────────────────────────────────────────── */
+
+.bb-status-badge {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 4px;
+  text-transform: capitalize;
+}
+
+/* ── Transfusion Actions ──────────────────────────────────────────── */
+
+.bb-tx-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border, #e5e7eb);
+}
+
+/* ── Responsive ───────────────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .bb-census {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .bb-component-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .bb-census {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .bb-component-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .bb-tabs {
+    overflow-x: auto;
+  }
+}
