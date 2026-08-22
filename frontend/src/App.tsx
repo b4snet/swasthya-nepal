@@ -8,12 +8,22 @@ import { AppShell } from './layout/AppShell';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Button, Card, Spinner } from './components/ui';
 
-// Core pages — eagerly loaded (high-traffic, small)
+// Core pages — eagerly loaded
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { ForbiddenPage } from './pages/ForbiddenPage';
 
-// Feature pages — lazily loaded (code-split per route)
+// Module dashboards
+const HospitalDashboard = lazy(() => import('./pages/modules/HospitalDashboard').then(m => ({ default: m.HospitalDashboard })));
+const ClinicalDashboard = lazy(() => import('./pages/modules/ClinicalDashboard').then(m => ({ default: m.ClinicalDashboard })));
+const PharmacyDashboard = lazy(() => import('./pages/modules/PharmacyDashboard').then(m => ({ default: m.PharmacyDashboard })));
+const LaboratoryDashboard = lazy(() => import('./pages/modules/LaboratoryDashboard').then(m => ({ default: m.LaboratoryDashboard })));
+const FinanceDashboard = lazy(() => import('./pages/modules/FinanceDashboard').then(m => ({ default: m.FinanceDashboard })));
+const ProcurementDashboard = lazy(() => import('./pages/modules/ProcurementDashboard').then(m => ({ default: m.ProcurementDashboard })));
+const ReportsDashboard = lazy(() => import('./pages/modules/ReportsDashboard').then(m => ({ default: m.ReportsDashboard })));
+const CommunicationsDashboard = lazy(() => import('./pages/modules/CommunicationsDashboard').then(m => ({ default: m.CommunicationsDashboard })));
+
+// Feature pages — lazily loaded
 const PatientsPage = lazy(() => import('./pages/PatientsPage').then(m => ({ default: m.PatientsPage })));
 const PatientRegisterPage = lazy(() => import('./pages/PatientRegisterPage').then(m => ({ default: m.PatientRegisterPage })));
 const PatientProfilePage = lazy(() => import('./pages/PatientProfilePage').then(m => ({ default: m.PatientProfilePage })));
@@ -25,7 +35,6 @@ const BillingPage = lazy(() => import('./pages/BillingPage').then(m => ({ defaul
 const PharmacyPage = lazy(() => import('./pages/PharmacyPage').then(m => ({ default: m.PharmacyPage })));
 const InventoryPage = lazy(() => import('./pages/InventoryPage').then(m => ({ default: m.InventoryPage })));
 const ProcurementPage = lazy(() => import('./pages/ProcurementPage').then(m => ({ default: m.ProcurementPage })));
-const FinancePage = lazy(() => import('./pages/FinancePage').then(m => ({ default: m.FinancePage })));
 const BudgetPage = lazy(() => import('./pages/BudgetPage').then(m => ({ default: m.BudgetPage })));
 const ExpensePage = lazy(() => import('./pages/ExpensePage').then(m => ({ default: m.ExpensePage })));
 const FinancialPeriodPage = lazy(() => import('./pages/FinancialPeriodPage').then(m => ({ default: m.FinancialPeriodPage })));
@@ -39,8 +48,20 @@ const ReferralsPage = lazy(() => import('./pages/ReferralsPage').then(m => ({ de
 const PatientPortalPage = lazy(() => import('./pages/PatientPortalPage').then(m => ({ default: m.PatientPortalPage })));
 const PortalActivationPage = lazy(() => import('./pages/PortalActivationPage').then(m => ({ default: m.PortalActivationPage })));
 const TelehealthPage = lazy(() => import('./pages/TelehealthPage').then(m => ({ default: m.TelehealthPage })));
+const EmergencyPage = lazy(() => import('./pages/EmergencyPage').then(m => ({ default: m.EmergencyPage })));
+const IcuPage = lazy(() => import('./pages/IcuPage').then(m => ({ default: m.IcuPage })));
+const OperatingTheatrePage = lazy(() => import('./pages/OperatingTheatrePage').then(m => ({ default: m.OperatingTheatrePage })));
+const BloodBankPage = lazy(() => import('./pages/BloodBankPage').then(m => ({ default: m.BloodBankPage })));
+const NursingPage = lazy(() => import('./pages/NursingPage').then(m => ({ default: m.NursingPage })));
+const FormsPage = lazy(() => import('./pages/FormsPage').then(m => ({ default: m.FormsPage })));
+const BedOccupancyPage = lazy(() => import('./pages/BedOccupancyPage').then(m => ({ default: m.BedOccupancyPage })));
+const DocumentCenterPage = lazy(() => import('./pages/DocumentCenterPage').then(m => ({ default: m.DocumentCenterPage })));
+const RevenueCyclePage = lazy(() => import('./pages/RevenueCyclePage').then(m => ({ default: m.RevenueCyclePage })));
+const OperationsCenterPage = lazy(() => import('./pages/OperationsCenterPage').then(m => ({ default: m.OperationsCenterPage })));
+const PatientImportPage = lazy(() => import('./pages/PatientImportPage').then(m => ({ default: m.PatientImportPage })));
+const PhysicianSchedulingPage = lazy(() => import('./pages/PhysicianSchedulingPage').then(m => ({ default: m.PhysicianSchedulingPage })));
 
-// Admin pages — lazily loaded as a group
+// Admin pages
 const AdminLayout = lazy(() => import('./pages/admin/AdminLayout').then(m => ({ default: m.AdminLayout })));
 const AdminUsersPage = lazy(() => import('./pages/admin/AdminUsersPage').then(m => ({ default: m.AdminUsersPage })));
 const AdminRolesPage = lazy(() => import('./pages/admin/AdminRolesPage').then(m => ({ default: m.AdminRolesPage })));
@@ -51,18 +72,6 @@ const AdminMedicationsPage = lazy(() => import('./pages/admin/AdminMedicationsPa
 const AdminSettingsPage = lazy(() => import('./pages/admin/AdminSettingsPage').then(m => ({ default: m.AdminSettingsPage })));
 const AdminBrandingPage = lazy(() => import('./pages/admin/AdminBrandingPage').then(m => ({ default: m.AdminBrandingPage })));
 const AdminConsolePage = lazy(() => import('./pages/admin/AdminConsolePage').then(m => ({ default: m.AdminConsolePage })));
-const PhysicianSchedulingPage = lazy(() => import('./pages/PhysicianSchedulingPage').then(m => ({ default: m.PhysicianSchedulingPage })));
-const DocumentCenterPage = lazy(() => import('./pages/DocumentCenterPage').then(m => ({ default: m.DocumentCenterPage })));
-const RevenueCyclePage = lazy(() => import('./pages/RevenueCyclePage').then(m => ({ default: m.RevenueCyclePage })));
-const OperationsCenterPage = lazy(() => import('./pages/OperationsCenterPage').then(m => ({ default: m.OperationsCenterPage })));
-const PatientImportPage = lazy(() => import('./pages/PatientImportPage').then(m => ({ default: m.PatientImportPage })));
-const EmergencyPage = lazy(() => import('./pages/EmergencyPage').then(m => ({ default: m.EmergencyPage })));
-const IcuPage = lazy(() => import('./pages/IcuPage').then(m => ({ default: m.IcuPage })));
-const OperatingTheatrePage = lazy(() => import('./pages/OperatingTheatrePage').then(m => ({ default: m.OperatingTheatrePage })));
-const BloodBankPage = lazy(() => import('./pages/BloodBankPage').then(m => ({ default: m.BloodBankPage })));
-const NursingPage = lazy(() => import('./pages/NursingPage').then(m => ({ default: m.NursingPage })));
-const FormsPage = lazy(() => import('./pages/FormsPage').then(m => ({ default: m.FormsPage })));
-const BedOccupancyPage = lazy(() => import('./pages/BedOccupancyPage').then(m => ({ default: m.BedOccupancyPage })));
 
 function FullScreenSpinner({ label }: { label: string }) {
   return (
@@ -135,45 +144,82 @@ export function App() {
           <Routes>
             <Route path="/login" element={<LoginRoute />} />
             <Route path="/forbidden" element={<ForbiddenPage />} />
+            <Route path="/portal/activate/:token" element={<LazySuspense><PortalActivationPage /></LazySuspense>} />
+            <Route path="/portal" element={<LazySuspense><PatientPortalPage /></LazySuspense>} />
             <Route element={<Gate />}>
+              {/* ── Global dashboard ── */}
               <Route path="/" element={<DashboardPage />} />
-              <Route path="/patients" element={<LazySuspense><PatientsPage /></LazySuspense>} />
-              <Route path="/patients/new" element={<LazySuspense><PatientRegisterPage /></LazySuspense>} />               <Route path="/patients/:id" element={<LazySuspense><PatientProfilePage /></LazySuspense>} />
-               <Route path="/patients/import" element={<LazySuspense><PatientImportPage /></LazySuspense>} />
-              <Route path="/appointments" element={<LazySuspense><AppointmentsPage /></LazySuspense>} />
-              <Route path="/appointments/:id" element={<LazySuspense><AppointmentDetailPage /></LazySuspense>} />
-              <Route path="/queue" element={<LazySuspense><QueuePage /></LazySuspense>} />
-              <Route path="/encounters/:id" element={<LazySuspense><EncounterPage /></LazySuspense>} />
-              <Route path="/billing" element={<LazySuspense><BillingPage /></LazySuspense>} />
-              <Route path="/billing/:invoiceId" element={<LazySuspense><BillingPage /></LazySuspense>} />
-              <Route path="/pharmacy" element={<LazySuspense><PharmacyPage /></LazySuspense>} />
-              <Route path="/inventory" element={<LazySuspense><InventoryPage /></LazySuspense>} />
-              <Route path="/procurement" element={<LazySuspense><ProcurementPage /></LazySuspense>} />
-              <Route path="/finance" element={<LazySuspense><FinancePage /></LazySuspense>} />
-              <Route path="/budgets" element={<LazySuspense><BudgetPage /></LazySuspense>} />
-              <Route path="/expenses" element={<LazySuspense><ExpensePage /></LazySuspense>} />
-              <Route path="/financial-periods" element={<LazySuspense><FinancialPeriodPage /></LazySuspense>} />
-              <Route path="/audit" element={<LazySuspense><AuditPage /></LazySuspense>} />               <Route path="/analytics" element={<LazySuspense><AnalyticsPage /></LazySuspense>} />
-               <Route path="/notifications" element={<LazySuspense><NotificationsPage /></LazySuspense>} />
-               <Route path="/communications" element={<LazySuspense><CommunicationsPage /></LazySuspense>} />
-               <Route path="/communications" element={<LazySuspense><CommunicationsPage /></LazySuspense>} />
-               <Route path="/forms" element={<LazySuspense><FormsPage /></LazySuspense>} />
-               <Route path="/physician-scheduling" element={<LazySuspense><PhysicianSchedulingPage /></LazySuspense>} />
-               <Route path="/documents" element={<LazySuspense><DocumentCenterPage /></LazySuspense>} />
-               <Route path="/revenue" element={<LazySuspense><RevenueCyclePage /></LazySuspense>} />
-               <Route path="/operations" element={<LazySuspense><OperationsCenterPage /></LazySuspense>} />
-               <Route path="/beds" element={<LazySuspense><BedOccupancyPage /></LazySuspense>} />
-               <Route path="/telehealth" element={<LazySuspense><TelehealthPage /></LazySuspense>} />
-               <Route path="/emergency" element={<LazySuspense><EmergencyPage /></LazySuspense>} />
-               <Route path="/icu" element={<LazySuspense><IcuPage /></LazySuspense>} />
-               <Route path="/ot" element={<LazySuspense><OperatingTheatrePage /></LazySuspense>} />
-               <Route path="/blood-bank" element={<LazySuspense><BloodBankPage /></LazySuspense>} />
-               <Route path="/nursing" element={<LazySuspense><NursingPage /></LazySuspense>} />
-               <Route path="/radiology" element={<LazySuspense><RadiologyPage /></LazySuspense>} />
-               <Route path="/oncology" element={<LazySuspense><OncologyPage /></LazySuspense>} />
-               <Route path="/referrals" element={<LazySuspense><ReferralsPage /></LazySuspense>} />
-               <Route path="/portal" element={<LazySuspense><PatientPortalPage /></LazySuspense>} />
-               <Route path="/portal/activate/:token" element={<LazySuspense><PortalActivationPage /></LazySuspense>} />
+
+              {/* ═══ HOSPITAL MODULE ═══ */}
+              <Route path="/hospital" element={<LazySuspense><HospitalDashboard /></LazySuspense>} />
+              <Route path="/hospital/opd" element={<LazySuspense><QueuePage /></LazySuspense>} />
+              <Route path="/hospital/ipd" element={<LazySuspense><BedOccupancyPage /></LazySuspense>} />
+              <Route path="/emergency" element={<LazySuspense><EmergencyPage /></LazySuspense>} />
+              <Route path="/icu" element={<LazySuspense><IcuPage /></LazySuspense>} />
+              <Route path="/ot" element={<LazySuspense><OperatingTheatrePage /></LazySuspense>} />
+              <Route path="/beds" element={<LazySuspense><BedOccupancyPage /></LazySuspense>} />
+              <Route path="/nursing" element={<LazySuspense><NursingPage /></LazySuspense>} />
+
+              {/* ═══ CLINICAL MODULE ═══ */}
+              <Route path="/clinical" element={<LazySuspense><ClinicalDashboard /></LazySuspense>} />
+              <Route path="/clinical/patients" element={<LazySuspense><PatientsPage /></LazySuspense>} />
+              <Route path="/clinical/patients/new" element={<LazySuspense><PatientRegisterPage /></LazySuspense>} />
+              <Route path="/clinical/patients/:id" element={<LazySuspense><PatientProfilePage /></LazySuspense>} />
+              <Route path="/clinical/patients/import" element={<LazySuspense><PatientImportPage /></LazySuspense>} />
+              <Route path="/clinical/appointments" element={<LazySuspense><AppointmentsPage /></LazySuspense>} />
+              <Route path="/clinical/appointments/:id" element={<LazySuspense><AppointmentDetailPage /></LazySuspense>} />
+              <Route path="/clinical/queue" element={<LazySuspense><QueuePage /></LazySuspense>} />
+              <Route path="/clinical/encounters" element={<LazySuspense><EncounterPage /></LazySuspense>} />
+              <Route path="/clinical/encounters/:id" element={<LazySuspense><EncounterPage /></LazySuspense>} />
+              <Route path="/clinical/forms" element={<LazySuspense><FormsPage /></LazySuspense>} />
+              <Route path="/clinical/referrals" element={<LazySuspense><ReferralsPage /></LazySuspense>} />
+              <Route path="/clinical/scheduling" element={<LazySuspense><PhysicianSchedulingPage /></LazySuspense>} />
+              <Route path="/clinical/telehealth" element={<LazySuspense><TelehealthPage /></LazySuspense>} />
+              <Route path="/clinical/oncology" element={<LazySuspense><OncologyPage /></LazySuspense>} />
+
+              {/* ═══ PHARMACY MODULE ═══ */}
+              <Route path="/pharmacy" element={<LazySuspense><PharmacyDashboard /></LazySuspense>} />
+              <Route path="/pharmacy/prescriptions" element={<LazySuspense><PharmacyPage /></LazySuspense>} />
+              <Route path="/pharmacy/dispensing" element={<LazySuspense><PharmacyPage /></LazySuspense>} />
+              <Route path="/pharmacy/inventory" element={<LazySuspense><InventoryPage /></LazySuspense>} />
+
+              {/* ═══ LABORATORY MODULE ═══ */}
+              <Route path="/laboratory" element={<LazySuspense><LaboratoryDashboard /></LazySuspense>} />
+              <Route path="/laboratory/orders" element={<LazySuspense><LaboratoryDashboard /></LazySuspense>} />
+              <Route path="/laboratory/reports" element={<LazySuspense><LaboratoryDashboard /></LazySuspense>} />
+
+              {/* ═══ RADIOLOGY MODULE ═══ */}
+              <Route path="/radiology" element={<LazySuspense><RadiologyPage /></LazySuspense>} />
+
+              {/* ═══ BLOOD BANK ═══ */}
+              <Route path="/blood-bank" element={<LazySuspense><BloodBankPage /></LazySuspense>} />
+
+              {/* ═══ FINANCE MODULE ═══ */}
+              <Route path="/finance" element={<LazySuspense><FinanceDashboard /></LazySuspense>} />
+              <Route path="/finance/billing" element={<LazySuspense><BillingPage /></LazySuspense>} />
+              <Route path="/finance/billing/:invoiceId" element={<LazySuspense><BillingPage /></LazySuspense>} />
+              <Route path="/finance/revenue" element={<LazySuspense><RevenueCyclePage /></LazySuspense>} />
+              <Route path="/finance/budgets" element={<LazySuspense><BudgetPage /></LazySuspense>} />
+              <Route path="/finance/expenses" element={<LazySuspense><ExpensePage /></LazySuspense>} />
+              <Route path="/finance/periods" element={<LazySuspense><FinancialPeriodPage /></LazySuspense>} />
+
+              {/* ═══ PROCUREMENT MODULE ═══ */}
+              <Route path="/procurement" element={<LazySuspense><ProcurementDashboard /></LazySuspense>} />
+              <Route path="/procurement/inventory" element={<LazySuspense><InventoryPage /></LazySuspense>} />
+              <Route path="/procurement/orders" element={<LazySuspense><ProcurementPage /></LazySuspense>} />
+
+              {/* ═══ REPORTS MODULE ═══ */}
+              <Route path="/reports" element={<LazySuspense><ReportsDashboard /></LazySuspense>} />
+              <Route path="/reports/analytics" element={<LazySuspense><AnalyticsPage /></LazySuspense>} />
+              <Route path="/reports/operations" element={<LazySuspense><OperationsCenterPage /></LazySuspense>} />
+              <Route path="/reports/documents" element={<LazySuspense><DocumentCenterPage /></LazySuspense>} />
+
+              {/* ═══ COMMUNICATIONS MODULE ═══ */}
+              <Route path="/communications" element={<LazySuspense><CommunicationsDashboard /></LazySuspense>} />
+              <Route path="/communications/notifications" element={<LazySuspense><NotificationsPage /></LazySuspense>} />
+              <Route path="/communications/messages" element={<LazySuspense><CommunicationsPage /></LazySuspense>} />
+
+              {/* ═══ ADMINISTRATION MODULE ═══ */}
               <Route path="/admin" element={<LazySuspense><AdminLayout /></LazySuspense>}>
                 <Route index element={<LazySuspense><AdminConsolePage /></LazySuspense>} />
                 <Route path="users" element={<LazySuspense><AdminUsersPage /></LazySuspense>} />
@@ -184,7 +230,39 @@ export function App() {
                 <Route path="medications" element={<LazySuspense><AdminMedicationsPage /></LazySuspense>} />
                 <Route path="settings" element={<LazySuspense><AdminSettingsPage /></LazySuspense>} />
                 <Route path="branding" element={<LazySuspense><AdminBrandingPage /></LazySuspense>} />
+                <Route path="audit" element={<LazySuspense><AuditPage /></LazySuspense>} />
               </Route>
+
+              {/* ── Legacy redirects (old URLs → new module hierarchy) ── */}
+              <Route path="/patients" element={<Navigate to="/clinical/patients" replace />} />
+              <Route path="/patients/new" element={<Navigate to="/clinical/patients/new" replace />} />
+              <Route path="/patients/:id" element={<Navigate to="/clinical/patients/:id" replace />} />
+              <Route path="/patients/import" element={<Navigate to="/clinical/patients/import" replace />} />
+              <Route path="/appointments" element={<Navigate to="/clinical/appointments" replace />} />
+              <Route path="/appointments/:id" element={<Navigate to="/clinical/appointments/:id" replace />} />
+              <Route path="/queue" element={<Navigate to="/clinical/queue" replace />} />
+              <Route path="/encounters/:id" element={<Navigate to="/clinical/encounters/:id" replace />} />
+              <Route path="/billing" element={<Navigate to="/finance/billing" replace />} />
+              <Route path="/billing/:invoiceId" element={<Navigate to="/finance/billing/:invoiceId" replace />} />
+              <Route path="/inventory" element={<Navigate to="/procurement/inventory" replace />} />
+              <Route path="/procurement" element={<Navigate to="/procurement/orders" replace />} />
+              <Route path="/finance" element={<Navigate to="/finance/billing" replace />} />
+              <Route path="/budgets" element={<Navigate to="/finance/budgets" replace />} />
+              <Route path="/expenses" element={<Navigate to="/finance/expenses" replace />} />
+              <Route path="/financial-periods" element={<Navigate to="/finance/periods" replace />} />
+              <Route path="/audit" element={<Navigate to="/admin/audit" replace />} />
+              <Route path="/analytics" element={<Navigate to="/reports/analytics" replace />} />
+              <Route path="/operations" element={<Navigate to="/reports/operations" replace />} />
+              <Route path="/notifications" element={<Navigate to="/communications/notifications" replace />} />
+              <Route path="/communications" element={<Navigate to="/communications/messages" replace />} />
+              <Route path="/forms" element={<Navigate to="/clinical/forms" replace />} />
+              <Route path="/physician-scheduling" element={<Navigate to="/clinical/scheduling" replace />} />
+              <Route path="/documents" element={<Navigate to="/reports/documents" replace />} />
+              <Route path="/revenue" element={<Navigate to="/finance/revenue" replace />} />
+              <Route path="/referrals" element={<Navigate to="/clinical/referrals" replace />} />
+              <Route path="/telehealth" element={<Navigate to="/clinical/telehealth" replace />} />
+              <Route path="/oncology" element={<Navigate to="/clinical/oncology" replace />} />
+
               <Route path="*" element={<Navigate to="/" replace />} />
             </Route>
           </Routes>

@@ -1306,54 +1306,62 @@ export const oncologyApi = {
    Patient Portal / PHR (Phase 16)
    ------------------------------------------------------------------ */
 
+import { portalRequest } from './portalClient';
+
 export const portalApi = {
-  me: () => api.request('/api/v1/portal/me'),
+  login: (orgCode: string, identifier: string, password: string) =>
+    portalRequest<{ token: string; tokenType: string; expiresAt: string; account: unknown }>('/api/v1/portal/login', {
+      method: 'POST',
+      body: { organizationCode: orgCode, identifier, password },
+    }),
 
-  profile: () => api.request('/api/v1/portal/profile'),
+  me: () => portalRequest('/api/v1/portal/me'),
 
-  medicalHistory: () => api.request('/api/v1/portal/medical-history'),
+  profile: () => portalRequest('/api/v1/portal/profile'),
 
-  medications: () => api.request('/api/v1/portal/medications'),
+  medicalHistory: () => portalRequest('/api/v1/portal/medical-history'),
 
-  labResults: () => api.request('/api/v1/portal/lab-results'),
+  medications: () => portalRequest('/api/v1/portal/medications'),
 
-  radiologyReports: () => api.request('/api/v1/portal/radiology-reports'),
+  labResults: () => portalRequest('/api/v1/portal/lab-results'),
 
-  prescriptions: () => api.request('/api/v1/portal/prescriptions'),
+  radiologyReports: () => portalRequest('/api/v1/portal/radiology-reports'),
 
-  documents: () => api.request('/api/v1/portal/documents'),
+  prescriptions: () => portalRequest('/api/v1/portal/prescriptions'),
+
+  documents: () => portalRequest('/api/v1/portal/documents'),
 
   /** View a shared document's HTML content */
   showDocument: (documentId: string) =>
-    api.request<{ id: string; documentNumber: string; documentType: string; category: string; title: string; providerName: string; departmentName: string; status: string; contentHtml: string; hasPdf: boolean; createdAt: string }>(`/api/v1/portal/documents/${documentId}`),
+    portalRequest<{ id: string; documentNumber: string; documentType: string; category: string; title: string; providerName: string; departmentName: string; status: string; contentHtml: string; hasPdf: boolean; createdAt: string }>(`/api/v1/portal/documents/${documentId}`),
 
   /** Get the PDF download URL for a shared document */
   documentPdfUrl: (documentId: string) => `/api/v1/portal/documents/${documentId}/pdf`,
 
-  referrals: () => api.request('/api/v1/portal/referrals'),
+  referrals: () => portalRequest('/api/v1/portal/referrals'),
 
-  immunizations: () => api.request('/api/v1/portal/immunizations'),
+  immunizations: () => portalRequest('/api/v1/portal/immunizations'),
 
-  appointments: () => api.request('/api/v1/portal/appointments'),
+  appointments: () => portalRequest('/api/v1/portal/appointments'),
 
-  bills: () => api.request('/api/v1/portal/bills'),
+  bills: () => portalRequest('/api/v1/portal/bills'),
 
-  grants: () => api.request('/api/v1/portal/grants'),
+  grants: () => portalRequest('/api/v1/portal/grants'),
 
   revokeGrant: (grantId: string) =>
-    api.request(`/api/v1/portal/grants/${grantId}/revoke`, { method: 'POST', body: {} }),
+    portalRequest(`/api/v1/portal/grants/${grantId}/revoke`, { method: 'POST', body: {} }),
 
-  messages: () => api.request('/api/v1/portal/messages'),
+  messages: () => portalRequest('/api/v1/portal/messages'),
 
   sendMessage: (payload: { recipientStaffId: string; subject: string; body: string; category?: string }) =>
-    api.request('/api/v1/portal/messages', { method: 'POST', body: payload }),
+    portalRequest('/api/v1/portal/messages', { method: 'POST', body: payload }),
 
-  notificationPreferences: () => api.request('/api/v1/portal/notification-preferences'),
+  notificationPreferences: () => portalRequest('/api/v1/portal/notification-preferences'),
 
   updateNotificationPreferences: (payload: Record<string, unknown>) =>
-    api.request('/api/v1/portal/notification-preferences', { method: 'PUT', body: payload }),
+    portalRequest('/api/v1/portal/notification-preferences', { method: 'PUT', body: payload }),
 
-  consentRecords: () => api.request('/api/v1/portal/consents'),
+  consentRecords: () => portalRequest('/api/v1/portal/consents'),
 
   revokeConsent: (consentId: string, reason?: string) =>
     api.request('/api/v1/portal/consents/revoke', { method: 'POST', body: { consentId, reason } }),
@@ -1363,6 +1371,10 @@ export const documentCenterApi = {
   list: (orgId: string, params?: { category?: string; documentType?: string; patientId?: string; status?: string; search?: string }) => {
     const qs = params ? '?' + new URLSearchParams(Object.entries(params).filter(([, v]) => v)).toString() : '';
     return api.request<{ data: GeneratedDocument[]; total: number; page: number; lastPage: number }>(`/api/v1/organizations/${orgId}/documents${qs}`);
+  },
+  listPlatform: (params?: { category?: string; documentType?: string; patientId?: string; status?: string; search?: string }) => {
+    const qs = params ? '?' + new URLSearchParams(Object.entries(params).filter(([, v]) => v)).toString() : '';
+    return api.request<{ data: GeneratedDocument[]; total: number; page: number; lastPage: number }>(`/api/v1/documents/platform${qs}`);
   },
   show: (documentId: string) =>
     api.request<GeneratedDocument>(`/api/v1/documents/${documentId}`),

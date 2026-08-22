@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useTenant } from '../context/TenantContext';
 import { useAuth } from '../auth/AuthProvider';
 import {
-  Users, Calendar, Activity, Clock, Bed, DollarSign, Pill, TestTube,
+  Users, Calendar, Clock, Bed, DollarSign, Pill, TestTube,
   Image, AlertTriangle, Stethoscope, CheckCircle, FileText,
   TrendingUp, TrendingDown, Building2, Globe,
 } from 'lucide-react';
@@ -12,23 +12,18 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
 } from 'recharts';
-import {
-  KpiCard, ChartCard, TableCard, AlertCard, FilterBar,
-  DashboardSection, OccupancyBar, DashboardSkeleton,
-} from '../components/dashboard';
 import { dashboardApi, type DashboardMetrics, type ChartData } from '../api/dashboard';
 import './dashboard-premium.css';
 
-const COLORS = {
-  blue: '#4FA9FF',
-  green: '#12B76A',
-  red: '#F04438',
-  amber: '#F79009',
-  gray: '#98A2B3',
-  blueLight: '#D1E9FF',
-  greenLight: '#D1FADF',
-};
+/* ── Constants ── */
+const BLUE = '#2e90fa';
+const GREEN = '#12b76a';
+const RED = '#f04438';
+const AMBER = '#f79009';
+const GRAY = '#98a2b3';
+const CHART_PALETTE = [BLUE, GREEN, AMBER, RED, GRAY, '#8b5cf6', '#06b6d4'];
 
+/* ── Helpers ── */
 function dateRange(days: number) {
   const end = new Date();
   const start = new Date();
@@ -41,6 +36,14 @@ function greeting() {
   if (h < 12) return 'Good morning';
   if (h < 17) return 'Good afternoon';
   return 'Good evening';
+}
+
+function currentTime() {
+  return new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatDate(d: Date) {
+  return d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 }
 
 function formatCurrency(minor: number) {
@@ -57,16 +60,33 @@ function timeAgo(dateStr: string) {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
-function hasRole(user: any, ...roles: string[]) {
-  return user?.assignments?.some((a: any) => roles.includes(a.role?.code)) ?? false;
+function formatTime(dateStr: string) {
+  return new Date(dateStr).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 }
 
-export function DashboardPage() {
-  const { selectedFacilityId, selectedFacilityName, facilities } = useTenant();
-  const { user, assignments } = useAuth();
-  const fac = selectedFacilityId;
 
-  const isPlatform = assignments.length === 0 || (!fac && facilities.length === 0);
+
+const EMPTY_CHARTS: ChartData = {
+  patientVolume: [],
+  appointmentVolume: [],
+  revenueTrend: [],
+  bedOccupancy: { occupied: 0, available: 0, cleaning: 0, total: 0 },
+  appointmentsByStatus: [],
+  labWorkload: [],
+  departmentActivity: [],
+  recentPatients: [],
+  upcomingAppointments: [],
+  recentAdmissions: [],
+  pendingLabResults: [],
+  lowStockMedications: [],
+};
+
+/* ── Page ── */
+export function DashboardPage() {
+  const { selectedFacilityId, selectedFacilityName } = useTenant();
+  const { user } = useAuth();
+  const fac = selectedFacilityId;
+  const isPlatform = !fac; // Show platform overview when no facility is selected
 
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [charts, setCharts] = useState<ChartData | null>(null);
@@ -74,22 +94,31 @@ export function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [dateStart, setDateStart] = useState(() => dateRange(30).start);
   const [dateEnd, setDateEnd] = useState(() => dateRange(30).end);
+  const [clock, setClock] = useState(currentTime());
+  const prevMetrics = useRef<DashboardMetrics | null>(null);
+
+  // Tick clock every 30s
+  useEffect(() => {
+    const id = setInterval(() => setClock(currentTime()), 30000);
+    return () => clearInterval(id);
+  }, []);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [metricsRes, chartsRes] = await Promise.allSettled([
+      const [mRes, cRes] = await Promise.allSettled([
         dashboardApi.metrics(fac),
         dashboardApi.chartData(fac, 30),
       ]);
-      if (metricsRes.status === 'fulfilled') {
-        setMetrics(metricsRes.value as DashboardMetrics);
+      if (mRes.status === 'fulfilled') {
+        prevMetrics.current = mRes.value as DashboardMetrics;
+        setMetrics(mRes.value as DashboardMetrics);
       } else {
         setError('Failed to load dashboard metrics');
       }
-      if (chartsRes.status === 'fulfilled') setCharts(chartsRes.value as ChartData);
-    } catch (e) {
+      if (cRes.status === 'fulfilled') setCharts(cRes.value as ChartData);
+    } catch {
       setError('Failed to load dashboard data');
     } finally {
       setLoading(false);
@@ -98,466 +127,533 @@ export function DashboardPage() {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 60000);
-    return () => clearInterval(interval);
+    const id = setInterval(fetchData, 60000);
+    return () => clearInterval(id);
   }, [fetchData]);
 
-  const _roleFlags = {
-    isDoctor: hasRole(user, 'doctor', 'physician', 'specialist'),
-    isNurse: hasRole(user, 'nurse', 'nursing'),
-    isPharmacist: hasRole(user, 'pharmacist', 'pharmacy'),
-    isLabTech: hasRole(user, 'lab_technician', 'laboratory', 'lab'),
-    isReception: hasRole(user, 'receptionist', 'front_desk'),
-    isBilling: hasRole(user, 'billing', 'billing_clerk', 'accountant'),
-    isAdmin: hasRole(user, 'admin', 'hospital_admin', 'organization_admin'),
-    isFinance: hasRole(user, 'finance', 'finance_manager'),
-  };
-  void _roleFlags;
-
+  /* ── Loading state ── */
   if (loading && !metrics) {
     return (
       <div className="dashboard">
-        <div className="dashboard-header">
-          <div className="dashboard-header__text">
-            <h1>{greeting()}, {user?.email?.split('@')[0] || 'User'}</h1>
-            <p>Loading hospital dashboard...</p>
+        <div className="dash-pulse dash-animate">
+          <div className="dash-pulse__left">
+            <div className="dash-skeleton" style={{ width: 280, height: 32, borderRadius: 8 }} />
+            <div className="dash-skeleton" style={{ width: 180, height: 16, borderRadius: 6, marginTop: 8 }} />
           </div>
         </div>
-        <div className="kpi-grid">
-          {Array.from({ length: 6 }).map((_, i) => <DashboardSkeleton key={i} type="kpi" />)}
+        <div className="dash-hero-kpis">
+          {Array.from({ length: 4 }).map((_, i) => <div key={i} className="dash-skeleton dash-skeleton--kpi" />)}
         </div>
-        <div className="chart-grid">
-          <DashboardSkeleton type="chart" />
-          <DashboardSkeleton type="chart" />
+        <div className="dash-charts">
+          <div className="dash-skeleton dash-skeleton--chart" />
+          <div className="dash-skeleton dash-skeleton--chart" />
         </div>
       </div>
     );
   }
 
+  /* ── Error state ── */
   if (error && !metrics) {
     return (
       <div className="dashboard">
-        <div className="dashboard-header">
-          <div className="dashboard-header__text">
-            <h1>{greeting()}, {user?.email?.split('@')[0] || 'User'}</h1>
-            <p>{error}</p>
+        <div className="dash-pulse dash-animate">
+          <div className="dash-pulse__left">
+            <h1 className="dash-pulse__greeting">{greeting()}, {user?.email?.split('@')[0] || 'User'}</h1>
+            <div className="dash-pulse__meta">
+              <span>{formatDate(new Date())}</span>
+              <span style={{ color: 'var(--red-500)' }}>{error}</span>
+            </div>
           </div>
-          <div className="dashboard-header__actions">
-            <Link to="/patients/new" className="btn btn--primary btn--sm">
-              <Users size={14} /> New Patient
-            </Link>
-            <Link to="/appointments" className="btn btn--secondary btn--sm">
-              <Calendar size={14} /> Appointments
-            </Link>
+          <div className="dash-pulse__actions">
+            <button className="btn btn--secondary btn--sm" onClick={fetchData}>Retry</button>
           </div>
         </div>
-        <button className="btn btn--secondary" onClick={fetchData} style={{ margin: '0 1.5rem' }}>Retry</button>
       </div>
     );
   }
 
+  /* ── No data state ── */
   if (!metrics) {
     return (
       <div className="dashboard">
-        <div className="dashboard-header">
-          <div className="dashboard-header__text">
-            <h1>{greeting()}, {user?.email?.split('@')[0] || 'User'}</h1>
-            <p>No data available</p>
+        <div className="dash-pulse dash-animate">
+          <div className="dash-pulse__left">
+            <h1 className="dash-pulse__greeting">{greeting()}, {user?.email?.split('@')[0] || 'User'}</h1>
+            <div className="dash-pulse__meta">
+              <span>{formatDate(new Date())}</span>
+              <span style={{ color: 'var(--text-tertiary)' }}>No data available — select a facility</span>
+            </div>
           </div>
-          <div className="dashboard-header__actions">
-            <Link to="/patients/new" className="btn btn--primary btn--sm">
-              <Users size={14} /> New Patient
-            </Link>
-            <Link to="/appointments" className="btn btn--secondary btn--sm">
-              <Calendar size={14} /> Appointments
-            </Link>
+          <div className="dash-pulse__actions">
+            <Link to="/patients/new" className="btn btn--primary btn--sm"><Users size={14} /> New Patient</Link>
+            <Link to="/appointments" className="btn btn--secondary btn--sm"><Calendar size={14} /> Appointments</Link>
           </div>
-        </div>
-        <div className="kpi-grid">
-          {Array.from({ length: 6 }).map((_, i) => <DashboardSkeleton key={i} type="kpi" />)}
         </div>
       </div>
     );
   }
 
   const m = metrics;
-  const c: ChartData = charts ?? {
-    patientVolume: [],
-    appointmentVolume: [],
-    revenueTrend: [],
-    bedOccupancy: { occupied: 0, available: 0, cleaning: 0, total: 0 },
-    appointmentsByStatus: [],
-    labWorkload: [],
-    departmentActivity: [],
-    recentPatients: [],
-    upcomingAppointments: [],
-    recentAdmissions: [],
-    pendingLabResults: [],
-    lowStockMedications: [],
-  };
+  const c = charts ?? EMPTY_CHARTS;
+  const platformStats = isPlatform ? { totalOrganizations: (m as any).totalOrganizations ?? 0, totalFacilities: (m as any).totalFacilities ?? 0 } : null;
 
-  // Platform stats from backend
-  const platformStats = (m as any).totalOrganizations !== undefined
-    ? { totalOrganizations: (m as any).totalOrganizations, totalFacilities: (m as any).totalFacilities }
-    : null;
+  const userName = user?.email?.split('@')[0] || 'User';
 
   return (
     <div className="dashboard">
-      {/* ── Header ── */}
-      <div className="dashboard-header">
-        <div className="dashboard-header__text">
-          <h1>{greeting()}, {user?.email?.split('@')[0] || 'User'}</h1>
-          <p>
-            {isPlatform
-              ? 'Platform overview — all organizations and facilities'
-              : selectedFacilityName
-                ? `Facility: ${selectedFacilityName}`
-                : new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
-            }
-          </p>
+      {/* ═══ PULSE HEADER ═══ */}
+      <div className="dash-pulse dash-animate">
+        <div className="dash-pulse__left">
+          <h1 className="dash-pulse__greeting">{greeting()}, {userName}</h1>
+          <div className="dash-pulse__meta">
+            <span>{isPlatform ? 'Platform overview' : selectedFacilityName || formatDate(new Date())}</span>
+            <span className="dash-pulse__live">
+              <span className="dash-pulse__dot" />
+              {clock}
+            </span>
+          </div>
         </div>
-        <div className="dashboard-header__actions">
-          <Link to="/patients/new" className="btn btn--primary btn--sm">
-            <Users size={14} /> New Patient
-          </Link>
-          <Link to="/appointments" className="btn btn--secondary btn--sm">
-            <Calendar size={14} /> Appointments
-          </Link>
+        <div className="dash-pulse__actions">
+          <Link to="/patients/new" className="btn btn--primary btn--sm"><Users size={14} /> New Patient</Link>
+          <Link to="/appointments" className="btn btn--secondary btn--sm"><Calendar size={14} /> Appointments</Link>
         </div>
       </div>
 
-      {/* ── Alerts ── */}
-      {m.criticalValues > 0 && (
-        <AlertCard
-          type="danger"
-          title={`${m.criticalValues} critical lab value${m.criticalValues > 1 ? 's' : ''} pending acknowledgment`}
-          message="Review and acknowledge critical laboratory results immediately"
-          icon={AlertTriangle}
-        />
-      )}
-      {m.lowStockItems > 0 && (
-        <AlertCard
-          type="warning"
-          title={`${m.lowStockItems} medication${m.lowStockItems > 1 ? 's' : ''} below reorder level`}
-          message="Review pharmacy inventory and generate purchase orders"
-          icon={Pill}
-        />
-      )}
-      {m.erWaiting > 0 && (
-        <AlertCard
-          type="warning"
-          title={`${m.erWaiting} patient${m.erWaiting > 1 ? 's' : ''} waiting in emergency`}
-          message="Emergency department has patients awaiting triage or consultation"
-          icon={Clock}
-        />
+      {/* ═══ ALERTS ═══ */}
+      {(m.criticalValues > 0 || m.lowStockItems > 0 || m.erWaiting > 0) && (
+        <div className="dash-alerts dash-animate">
+          {m.criticalValues > 0 && (
+            <div className="dash-alert dash-alert--danger">
+              <AlertTriangle size={16} className="dash-alert__icon" />
+              <span className="dash-alert__text">
+                <strong>{m.criticalValues} critical lab value{m.criticalValues > 1 ? 's' : ''}</strong>
+                <span className="dash-alert__sub"> — pending acknowledgment</span>
+              </span>
+            </div>
+          )}
+          {m.lowStockItems > 0 && (
+            <div className="dash-alert dash-alert--warning">
+              <Pill size={16} className="dash-alert__icon" />
+              <span className="dash-alert__text">
+                <strong>{m.lowStockItems} medication{m.lowStockItems > 1 ? 's' : ''}</strong>
+                <span className="dash-alert__sub"> below reorder level</span>
+              </span>
+            </div>
+          )}
+          {m.erWaiting > 0 && (
+            <div className="dash-alert dash-alert--warning">
+              <Clock size={16} className="dash-alert__icon" />
+              <span className="dash-alert__text">
+                <strong>{m.erWaiting} patient{m.erWaiting > 1 ? 's' : ''}</strong>
+                <span className="dash-alert__sub"> waiting in emergency</span>
+              </span>
+            </div>
+          )}
+        </div>
       )}
 
-      {/* ── Filter Bar ── */}
-      <FilterBar
-        dateRange={{ start: dateStart, end: dateEnd, onChange: (s, e) => { setDateStart(s); setDateEnd(e); } }}
-      />
+      {/* ═══ FILTER ═══ */}
+      <div className="dash-filter dash-animate">
+        <span className="dash-filter__label">From</span>
+        <input type="date" className="dash-filter__input" value={dateStart}
+          onChange={(e) => setDateStart(e.target.value)} />
+        <span className="dash-filter__label">To</span>
+        <input type="date" className="dash-filter__input" value={dateEnd}
+          onChange={(e) => setDateEnd(e.target.value)} />
+      </div>
 
-      {/* ── Platform Overview (superadmin) ── */}
+      {/* ═══ PLATFORM OVERVIEW (superadmin) ═══ */}
       {isPlatform && platformStats && (
-        <DashboardSection title="Platform Overview" subtitle="All organizations and facilities">
-          <div className="kpi-grid">
-            <KpiCard label="Organizations" value={platformStats.totalOrganizations} icon={Building2} iconColor="blue" />
-            <KpiCard label="Facilities" value={platformStats.totalFacilities} icon={Globe} iconColor="green" />
-            <KpiCard
-              label="Total Patients"
-              value={m.totalPatients}
-              icon={Users}
-              iconColor="blue"
-              trend={m.newPatientsToday > 0 ? { value: `+${m.newPatientsToday} today`, direction: 'up' as const } : undefined}
-            />
-            <KpiCard label="Appointments Today" value={m.appointmentsToday} icon={Calendar} iconColor="blue" />
-            <KpiCard
-              label="Revenue This Month"
-              value={formatCurrency(m.revenueThisMonth)}
-              icon={DollarSign}
-              iconColor="green"
-              trend={m.revenueToday > 0 ? { value: `${formatCurrency(m.revenueToday)} today`, direction: 'up' as const } : undefined}
-            />
-            <KpiCard label="Notifications" value={m.unreadNotifications} icon={Activity} iconColor={m.unreadNotifications > 5 ? 'red' : 'gray'} />
+        <div className="dash-section dash-animate">
+          <div className="dash-section__head">
+            <h2 className="dash-section__title">Platform overview</h2>
+            <p className="dash-section__sub">All organizations and facilities</p>
           </div>
-        </DashboardSection>
+          <div className="dash-hero-kpis">
+            <HeroKpi label="Organizations" value={platformStats.totalOrganizations} icon={Building2} color="blue" />
+            <HeroKpi label="Facilities" value={platformStats.totalFacilities} icon={Globe} color="green" />
+            <HeroKpi label="Total patients" value={m.totalPatients} icon={Users} color="blue"
+              trend={m.newPatientsToday > 0 ? { text: `+${m.newPatientsToday} today`, dir: 'up' } : undefined} />
+            <HeroKpi label="Revenue this month" value={formatCurrency(m.revenueThisMonth)} icon={DollarSign} color="green"
+              trend={m.revenueToday > 0 ? { text: `${formatCurrency(m.revenueToday)} today`, dir: 'up' } : undefined} />
+          </div>
+        </div>
       )}
 
-      {/* ── Core KPIs ── */}
+      {/* ═══ HERO KPIs ═══ */}
       {!isPlatform && (
-        <DashboardSection title="Today's Operations">
-          <div className="kpi-grid">
-            <KpiCard
-              label="Appointments"
-              value={m.appointmentsToday}
-              icon={Calendar}
-              iconColor="blue"
-              trend={m.completedToday > 0 ? { value: `${m.completedToday} completed`, direction: 'up' } : undefined}
-            />
-            <KpiCard
-              label="In Queue"
-              value={m.inQueue + m.inConsultation}
-              icon={Clock}
-              iconColor={m.inQueue > 10 ? 'amber' : 'blue'}
-            />
-            <KpiCard
-              label="Encounters"
-              value={m.encountersToday}
-              icon={Stethoscope}
-              iconColor="green"
-              trend={{ value: `${m.encountersThisWeek} this week`, direction: 'neutral' }}
-            />
-            <KpiCard
-              label="Total Patients"
-              value={m.totalPatients}
-              icon={Users}
-              iconColor="blue"
-              trend={m.newPatientsToday > 0 ? { value: `+${m.newPatientsToday} today`, direction: 'up' } : undefined}
-            />
-            <KpiCard
-              label="Revenue Today"
-              value={formatCurrency(m.revenueToday)}
-              icon={DollarSign}
-              iconColor="green"
-              trend={m.outstandingAmount > 0 ? { value: `${formatCurrency(m.outstandingAmount)} outstanding`, direction: 'down' } : undefined}
-            />
-            <KpiCard
-              label="Notifications"
-              value={m.unreadNotifications}
-              icon={Activity}
-              iconColor={m.unreadNotifications > 5 ? 'red' : 'gray'}
-            />
+        <div className="dash-section dash-animate">
+          <div className="dash-section__head">
+            <h2 className="dash-section__title">Today</h2>
+            <p className="dash-section__sub">{formatDate(new Date())}</p>
           </div>
-        </DashboardSection>
+          <div className="dash-hero-kpis">
+            <HeroKpi label="Appointments" value={m.appointmentsToday} icon={Calendar} color="blue"
+              trend={m.completedToday > 0 ? { text: `${m.completedToday} done`, dir: 'up' } : undefined} />
+            <HeroKpi label="In queue" value={m.inQueue + m.inConsultation} icon={Clock}
+              color={m.inQueue > 10 ? 'amber' : 'blue'} />
+            <HeroKpi label="Encounters" value={m.encountersToday} icon={Stethoscope} color="green"
+              trend={{ text: `${m.encountersThisWeek} this week`, dir: 'neutral' }} />
+            <HeroKpi label="Revenue" value={formatCurrency(m.revenueToday)} icon={DollarSign} color="green"
+              trend={m.outstandingAmount > 0 ? { text: `${formatCurrency(m.outstandingAmount)} outstanding`, dir: 'down' } : undefined} />
+          </div>
+        </div>
       )}
 
-      {/* ── Charts Row 1: Patient Volume + Revenue ── */}
-      <div className="chart-grid">
-        <ChartCard title="Patient Registrations" subtitle="Last 30 days">
-          {c.patientVolume.length > 0 ? (
-            <ResponsiveContainer width="100%" height={240}>
-              <AreaChart data={c.patientVolume}>
-                <defs>
-                  <linearGradient id="blueGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor={COLORS.blue} stopOpacity={0.15} />
-                    <stop offset="95%" stopColor={COLORS.blue} stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--gray-100)" />
-                <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} tickFormatter={(v) => v.slice(5)} />
-                <YAxis tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} width={35} />
-                <Tooltip
-                  contentStyle={{ fontSize: 12, border: '1px solid var(--gray-200)', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.06)' }}
-                  formatter={(v) => [Number(v), 'Patients']}
-                  labelFormatter={(l) => `Date: ${l}`}
-                />
-                <Area type="monotone" dataKey="value" stroke={COLORS.blue} strokeWidth={2} fill="url(#blueGrad)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="dashboard-empty" style={{ height: 240 }}>
-              <p className="dashboard-empty__title">No patient registration data</p>
-              <p className="dashboard-empty__message">Data will appear as patients are registered</p>
-            </div>
-          )}
-        </ChartCard>
+      {/* ═══ QUEUE SNAPSHOT ═══ */}
+      {!isPlatform && (m.inQueue > 0 || m.inConsultation > 0 || m.checkInsToday > 0) && (
+        <div className="dash-section dash-animate">
+          <div className="dash-section__head">
+            <h2 className="dash-section__title">Patient pipeline</h2>
+          </div>
+          <div className="dash-queue">
+            <QueueStat label="Checked in" value={m.checkInsToday} sub="arrived today" color="green" />
+            <QueueStat label="Waiting" value={m.inQueue} sub={`avg ${m.avgWaitMinutes}min wait`}
+              color={m.inQueue > 10 ? 'amber' : 'blue'} />
+            <QueueStat label="In consultation" value={m.inConsultation} sub="with provider" color="blue" />
+          </div>
+        </div>
+      )}
 
-        <ChartCard title="Revenue Trend" subtitle="Paid invoices">
-          {c.revenueTrend.length > 0 ? (
-            <ResponsiveContainer width="100%" height={240}>
-              <BarChart data={c.revenueTrend}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--gray-100)" />
-                <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} tickFormatter={(v) => v.slice(5)} />
-                <YAxis tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} width={50} tickFormatter={(v) => `${(v / 100).toFixed(0)}K`} />
-                <Tooltip
-                  contentStyle={{ fontSize: 12, border: '1px solid var(--gray-200)', borderRadius: 8 }}
-                  formatter={(v) => [formatCurrency(Number(v)), 'Revenue']}
-                />
-                <Bar dataKey="value" fill={COLORS.blue} radius={[3, 3, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="dashboard-empty" style={{ height: 240 }}>
-              <p className="dashboard-empty__title">No revenue data</p>
-              <p className="dashboard-empty__message">Revenue will appear as invoices are paid</p>
+      {/* ═══ CHARTS ═══ */}
+      <div className="dash-charts dash-animate">
+        {/* Patient Volume */}
+        <div className="dash-chart">
+          <div className="dash-chart__head">
+            <div>
+              <p className="dash-chart__title">Patient registrations</p>
+              <p className="dash-chart__sub">Last 30 days</p>
             </div>
-          )}
-        </ChartCard>
+          </div>
+          <div className="dash-chart__body">
+            {c.patientVolume.length > 0 ? (
+              <ResponsiveContainer width="100%" height={220}>
+                <AreaChart data={c.patientVolume}>
+                  <defs>
+                    <linearGradient id="grad-blue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={BLUE} stopOpacity={0.12} />
+                      <stop offset="95%" stopColor={BLUE} stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" />
+                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} tickFormatter={(v) => v.slice(5)} />
+                  <YAxis tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} width={32} />
+                  <Tooltip contentStyle={{ fontSize: 12, border: '1px solid var(--border-subtle)', borderRadius: 8, background: 'var(--surface-card)' }} formatter={(v) => [Number(v), 'Patients']} labelFormatter={(l) => `Date: ${l}`} />
+                  <Area type="monotone" dataKey="value" stroke={BLUE} strokeWidth={2} fill="url(#grad-blue)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="dash-empty" style={{ height: 220 }}>
+                <p className="dash-empty__title">No patient registration data</p>
+                <p className="dash-empty__sub">Data will appear as patients are registered</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Revenue */}
+        <div className="dash-chart">
+          <div className="dash-chart__head">
+            <div>
+              <p className="dash-chart__title">Revenue trend</p>
+              <p className="dash-chart__sub">Paid invoices</p>
+            </div>
+          </div>
+          <div className="dash-chart__body">
+            {c.revenueTrend.length > 0 ? (
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={c.revenueTrend}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" />
+                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} tickFormatter={(v) => v.slice(5)} />
+                  <YAxis tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} width={48} tickFormatter={(v) => `${(v / 100).toFixed(0)}K`} />
+                  <Tooltip contentStyle={{ fontSize: 12, border: '1px solid var(--border-subtle)', borderRadius: 8, background: 'var(--surface-card)' }} formatter={(v) => [formatCurrency(Number(v)), 'Revenue']} />
+                  <Bar dataKey="value" fill={BLUE} radius={[3, 3, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="dash-empty" style={{ height: 220 }}>
+                <p className="dash-empty__title">No revenue data</p>
+                <p className="dash-empty__sub">Revenue will appear as invoices are paid</p>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* ── IPD & Beds Section ── */}
-      {m.totalBeds > 0 && (
-        <DashboardSection title="Inpatient Department" subtitle="Bed occupancy overview">
-          <div className="kpi-grid">
-            <KpiCard label="Total Beds" value={m.totalBeds} icon={Bed} iconColor="gray" />
-            <KpiCard
-              label="Occupied"
-              value={m.occupiedBeds}
-              icon={Bed}
-              iconColor="blue"
-              trend={{ value: `${m.totalBeds > 0 ? Math.round((m.occupiedBeds / m.totalBeds) * 100) : 0}% occupancy`, direction: m.occupiedBeds > m.totalBeds * 0.9 ? 'down' : 'neutral' }}
-            />
-            <KpiCard label="Available" value={m.availableBeds} icon={Bed} iconColor="green" />
-            <KpiCard label="Cleaning" value={m.cleaningBeds} icon={Bed} iconColor="amber" />
-            <KpiCard label="Admissions Today" value={m.admissionsToday} icon={TrendingUp} iconColor="blue" />
-            <KpiCard label="Discharges Today" value={m.dischargesToday} icon={TrendingDown} iconColor="green" />
+      {/* ═══ RECENT + APPOINTMENTS ═══ */}
+      <div className="dash-duo dash-animate">
+        {/* Recent Patients */}
+        <div className="dash-card">
+          <div className="dash-card__head">
+            <p className="dash-card__title">Recent patients</p>
+            {c.recentPatients.length > 0 && <span className="dash-card__badge">{c.recentPatients.length}</span>}
           </div>
-          <ChartCard title="Bed Occupancy">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
-              <OccupancyBar occupied={m.occupiedBeds} available={m.availableBeds} cleaning={m.cleaningBeds} height={12} />
-              <div style={{ display: 'flex', gap: 'var(--space-4)', fontSize: 'var(--text-caption)' }}>
-                <span style={{ color: COLORS.blue }}>● Occupied ({m.occupiedBeds})</span>
-                <span style={{ color: COLORS.green }}>● Available ({m.availableBeds})</span>
-                {m.cleaningBeds > 0 && <span style={{ color: COLORS.amber }}>● Cleaning ({m.cleaningBeds})</span>}
-              </div>
-            </div>
-          </ChartCard>
-        </DashboardSection>
-      )}
-
-      {/* ── Pharmacy & Lab Section ── */}
-      <DashboardSection title="Pharmacy & Laboratory">
-        <div className="kpi-grid">
-          <KpiCard label="Prescriptions Today" value={m.prescriptionsToday} icon={Pill} iconColor="blue" />
-          <KpiCard label="Dispensings Today" value={m.dispensingsToday} icon={CheckCircle} iconColor="green" />
-          <KpiCard
-            label="Low Stock Items"
-            value={m.lowStockItems}
-            icon={AlertTriangle}
-            iconColor={m.lowStockItems > 0 ? 'red' : 'green'}
-          />
-          <KpiCard label="Expiring Soon" value={m.expiringItems} icon={Clock} iconColor={m.expiringItems > 0 ? 'amber' : 'green'} />
-          <KpiCard label="Pending Lab Orders" value={m.pendingLabOrders} icon={TestTube} iconColor="blue" />
-          <KpiCard label="Critical Values" value={m.criticalValues} icon={AlertTriangle} iconColor={m.criticalValues > 0 ? 'red' : 'green'} />
-        </div>
-      </DashboardSection>
-
-      {/* ── Radiology Section ── */}
-      {(m.pendingStudies > 0 || m.completedStudiesToday > 0 || m.pendingReports > 0) && (
-        <DashboardSection title="Radiology">
-          <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
-            <KpiCard label="Pending Studies" value={m.pendingStudies} icon={Image} iconColor="blue" />
-            <KpiCard label="Completed Today" value={m.completedStudiesToday} icon={CheckCircle} iconColor="green" />
-            <KpiCard label="Reports Pending" value={m.pendingReports} icon={FileText} iconColor="amber" />
-          </div>
-        </DashboardSection>
-      )}
-
-      {/* ── Appointments by Status Chart ── */}
-      {c.appointmentsByStatus.length > 0 && (
-        <div className="chart-grid">
-          <ChartCard title="Appointments Today" subtitle="By status">
-            <ResponsiveContainer width="100%" height={200}>
-              <PieChart>
-                <Pie
-                  data={c.appointmentsByStatus}
-                  dataKey="count"
-                  nameKey="status"
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={55}
-                  outerRadius={80}
-                  paddingAngle={2}
-                >
-                  {c.appointmentsByStatus.map((_entry, i) => (
-                    <Cell key={i} fill={[COLORS.blue, COLORS.green, COLORS.amber, COLORS.red, COLORS.gray][i % 5]} />
-                  ))}
-                </Pie>
-                <Tooltip contentStyle={{ fontSize: 12 }} />
-              </PieChart>
-            </ResponsiveContainer>
-            <div style={{ display: 'flex', justifyContent: 'center', gap: 'var(--space-4)', fontSize: 'var(--text-caption)', flexWrap: 'wrap' }}>
-              {c.appointmentsByStatus.map((item, i) => (
-                <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: [COLORS.blue, COLORS.green, COLORS.amber, COLORS.red, COLORS.gray][i % 5], display: 'inline-block' }} />
-                  {item.status} ({item.count})
-                </span>
-              ))}
-            </div>
-          </ChartCard>
-
-          {/* ── Recent Activity ── */}
-          <ChartCard title="Recent Patients" subtitle="Latest registrations">
+          <div className="dash-card__body">
             {c.recentPatients.length > 0 ? (
-              <div className="activity-feed">
-                {c.recentPatients.slice(0, 6).map((p) => (
-                  <Link key={p.id} to={`/patients/${p.id}`} className="activity-feed__item" style={{ textDecoration: 'none', color: 'inherit' }}>
-                    <div className="activity-feed__dot activity-feed__dot--blue" />
-                    <span className="activity-feed__text">
-                      <strong>{p.name}</strong> <span style={{ color: 'var(--text-tertiary)' }}>({p.mrn})</span>
+              <div className="dash-feed">
+                {c.recentPatients.slice(0, 7).map((p) => (
+                  <Link key={p.id} to={`/patients/${p.id}`} className="dash-feed__item">
+                    <span className="dash-feed__dot dash-feed__dot--blue" />
+                    <span className="dash-feed__name">
+                      {p.name}
+                      <span className="dash-feed__mrn">{p.mrn}</span>
                     </span>
-                    <span className="activity-feed__time">{timeAgo(p.lastVisit)}</span>
+                    <span className="dash-feed__time">{timeAgo(p.lastVisit)}</span>
                   </Link>
                 ))}
               </div>
             ) : (
-              <div className="dashboard-empty" style={{ padding: 'var(--space-6)' }}>
-                <p className="dashboard-empty__title">No recent patients</p>
-              </div>
+              <div className="dash-empty"><p className="dash-empty__title">No recent patients</p></div>
             )}
-          </ChartCard>
+          </div>
+        </div>
+
+        {/* Upcoming Appointments */}
+        <div className="dash-card">
+          <div className="dash-card__head">
+            <p className="dash-card__title">Upcoming appointments</p>
+            {c.upcomingAppointments.length > 0 && <span className="dash-card__badge">{c.upcomingAppointments.length}</span>}
+          </div>
+          <div className="dash-card__body">
+            {c.upcomingAppointments.length > 0 ? (
+              c.upcomingAppointments.slice(0, 7).map((a, i) => (
+                <div key={i} className="dash-appt">
+                  <span className="dash-appt__time">{formatTime(a.time)}</span>
+                  <div className="dash-appt__info">
+                    <div className="dash-appt__patient">{a.patientName}</div>
+                    <div className="dash-appt__detail">{a.type} · {a.provider}</div>
+                  </div>
+                  <StatusBadge status={a.status} />
+                </div>
+              ))
+            ) : (
+              <div className="dash-empty"><p className="dash-empty__title">No upcoming appointments</p></div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ═══ IPD + BEDS ═══ */}
+      {m.totalBeds > 0 && (
+        <div className="dash-section dash-animate">
+          <div className="dash-section__head">
+            <h2 className="dash-section__title">Inpatient department</h2>
+            <p className="dash-section__sub">Bed occupancy</p>
+          </div>
+          <div className="dash-hero-kpis" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+            <HeroKpi label="Occupied" value={m.occupiedBeds} icon={Bed} color="blue"
+              trend={{ text: `${m.totalBeds > 0 ? Math.round((m.occupiedBeds / m.totalBeds) * 100) : 0}%`, dir: 'neutral' }} />
+            <HeroKpi label="Available" value={m.availableBeds} icon={Bed} color="green" />
+            <HeroKpi label="Admissions / Discharges" value={`${m.admissionsToday} / ${m.dischargesToday}`} icon={TrendingUp} color="blue" />
+          </div>
+          <div className="dash-card" style={{ padding: '16px 20px' }}>
+            <div className="dash-occupancy">
+              {m.occupiedBeds > 0 && <div className="dash-occupancy__seg dash-occupancy__seg--occupied" style={{ width: `${(m.occupiedBeds / m.totalBeds) * 100}%` }} />}
+              {m.cleaningBeds > 0 && <div className="dash-occupancy__seg dash-occupancy__seg--cleaning" style={{ width: `${(m.cleaningBeds / m.totalBeds) * 100}%` }} />}
+              {m.availableBeds > 0 && <div className="dash-occupancy__seg dash-occupancy__seg--available" style={{ width: `${(m.availableBeds / m.totalBeds) * 100}%` }} />}
+            </div>
+            <div className="dash-occupancy__legend">
+              <span><span className="dash-occupancy__legend-dot" style={{ background: BLUE }} /> Occupied ({m.occupiedBeds})</span>
+              <span><span className="dash-occupancy__legend-dot" style={{ background: GREEN }} /> Available ({m.availableBeds})</span>
+              {m.cleaningBeds > 0 && <span><span className="dash-occupancy__legend-dot" style={{ background: AMBER }} /> Cleaning ({m.cleaningBeds})</span>}
+            </div>
+          </div>
         </div>
       )}
 
-      {/* ── Tables Row ── */}
-      <div className="chart-grid">
-        {c.upcomingAppointments.length > 0 && (
-          <TableCard
-            title="Upcoming Appointments"
-            columns={[
-              { key: 'patientName', label: 'Patient' },
-              { key: 'time', label: 'Time', render: (r) => new Date(String((r as any).time)).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) },
-              { key: 'type', label: 'Type' },
-              { key: 'status', label: 'Status', render: (r) => <StatusDot status={String(r.status)} /> },
-            ]}
-            data={c.upcomingAppointments as any}
-            maxRows={8}
-          />
-        )}
+      {/* ═══ PHARMACY + LAB ═══ */}
+      <div className="dash-section dash-animate">
+        <div className="dash-section__head">
+          <h2 className="dash-section__title">Pharmacy & laboratory</h2>
+        </div>
+        <div className="dash-hero-kpis" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+          <HeroKpi label="Prescriptions" value={m.prescriptionsToday} icon={Pill} color="blue" />
+          <HeroKpi label="Low stock" value={m.lowStockItems} icon={AlertTriangle} color={m.lowStockItems > 0 ? 'red' : 'green'} />
+          <HeroKpi label="Critical values" value={m.criticalValues} icon={AlertTriangle} color={m.criticalValues > 0 ? 'red' : 'green'} />
+        </div>
+      </div>
 
+      {/* ═══ APPOINTMENTS BY STATUS + RECENT ACTIVITY ═══ */}
+      {c.appointmentsByStatus.length > 0 && (
+        <div className="dash-charts dash-animate">
+          <div className="dash-chart">
+            <div className="dash-chart__head">
+              <div>
+                <p className="dash-chart__title">Appointments today</p>
+                <p className="dash-chart__sub">By status</p>
+              </div>
+            </div>
+            <div className="dash-chart__body">
+              <ResponsiveContainer width="100%" height={200}>
+                <PieChart>
+                  <Pie data={c.appointmentsByStatus} dataKey="count" nameKey="status" cx="50%" cy="50%" innerRadius={52} outerRadius={78} paddingAngle={2}>
+                    {c.appointmentsByStatus.map((_e, i) => <Cell key={i} fill={CHART_PALETTE[i % CHART_PALETTE.length]} />)}
+                  </Pie>
+                  <Tooltip contentStyle={{ fontSize: 12, background: 'var(--surface-card)' }} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 14, fontSize: 12, flexWrap: 'wrap', color: 'var(--text-secondary)' }}>
+                {c.appointmentsByStatus.map((item, i) => (
+                  <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <span style={{ width: 7, height: 7, borderRadius: '50%', background: CHART_PALETTE[i % CHART_PALETTE.length], display: 'inline-block' }} />
+                    {item.status} ({item.count})
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="dash-chart">
+            <div className="dash-chart__head">
+              <div>
+                <p className="dash-chart__title">Radiology & lab</p>
+                <p className="dash-chart__sub">Workload overview</p>
+              </div>
+            </div>
+            <div className="dash-chart__body" style={{ display: 'flex', flexDirection: 'column', gap: 16, justifyContent: 'center' }}>
+              <MiniStat icon={Image} label="Pending studies" value={m.pendingStudies} color="blue" />
+              <MiniStat icon={CheckCircle} label="Completed today" value={m.completedStudiesToday} color="green" />
+              <MiniStat icon={FileText} label="Reports pending" value={m.pendingReports} color="amber" />
+              <MiniStat icon={TestTube} label="Pending lab orders" value={m.pendingLabOrders} color="blue" />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ TABLES ═══ */}
+      <div className="dash-tables dash-animate">
         {c.recentAdmissions.length > 0 && (
-          <TableCard
-            title="Recent Admissions"
-            columns={[
-              { key: 'patientName', label: 'Patient' },
-              { key: 'ward', label: 'Ward' },
-              { key: 'admittedAt', label: 'Admitted', render: (r) => timeAgo(String((r as any).admittedAt)) },
-              { key: 'status', label: 'Status', render: (r) => <StatusDot status={String(r.status)} /> },
-            ]}
-            data={c.recentAdmissions as any}
-            maxRows={8}
-          />
+          <div className="dash-card">
+            <div className="dash-card__head">
+              <p className="dash-card__title">Recent admissions</p>
+            </div>
+            <div className="dash-card__body">
+              <table className="dash-table">
+                <thead><tr><th>Patient</th><th>Ward</th><th>Admitted</th><th>Status</th></tr></thead>
+                <tbody>
+                  {c.recentAdmissions.slice(0, 6).map((a, i) => (
+                    <tr key={i}>
+                      <td>{a.patientName}</td>
+                      <td>{a.ward}</td>
+                      <td>{timeAgo(a.admittedAt)}</td>
+                      <td><StatusBadge status={a.status} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         )}
 
         {c.lowStockMedications.length > 0 && (
-          <TableCard
-            title="Low Stock Medications"
-            columns={[
-              { key: 'name', label: 'Medication' },
-              { key: 'form', label: 'Form' },
-              { key: 'quantity', label: 'In Stock', align: 'right' },
-              { key: 'reorderLevel', label: 'Reorder Level', align: 'right' },
-            ]}
-            data={c.lowStockMedications as any}
-            maxRows={8}
-            emptyMessage="All medications adequately stocked"
-          />
+          <div className="dash-card">
+            <div className="dash-card__head">
+              <p className="dash-card__title">Low stock medications</p>
+            </div>
+            <div className="dash-card__body">
+              <table className="dash-table">
+                <thead><tr><th>Medication</th><th>Form</th><th style={{ textAlign: 'right' }}>In stock</th><th style={{ textAlign: 'right' }}>Reorder</th></tr></thead>
+                <tbody>
+                  {c.lowStockMedications.slice(0, 6).map((med, i) => (
+                    <tr key={i}>
+                      <td>{med.name}</td>
+                      <td>{med.form}</td>
+                      <td className="align-right">{med.quantity}</td>
+                      <td className="align-right">{med.reorderLevel}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         )}
       </div>
     </div>
   );
 }
 
-/* ── Status Dot helper ── */
-function StatusDot({ status }: { status: string }) {
-  const colors: Record<string, string> = {
-    booked: COLORS.blue, completed: COLORS.green, cancelled: COLORS.red,
-    no_show: COLORS.red, checked_in: COLORS.green, in_consultation: COLORS.blue,
-    waiting: COLORS.amber, admitted: COLORS.blue, discharged: COLORS.green,
-  };
+/* ═══ Sub-components ═══ */
+
+function HeroKpi({ label, value, icon: Icon, color = 'blue', trend }: {
+  label: string;
+  value: string | number;
+  icon: any;
+  color?: string;
+  trend?: { text: string; dir: 'up' | 'down' | 'neutral' };
+}) {
+  const [pop, setPop] = useState(false);
+  const prev = useRef(value);
+  useEffect(() => {
+    if (prev.current !== value) {
+      setPop(true);
+      prev.current = value;
+      const t = setTimeout(() => setPop(false), 300);
+      return () => clearTimeout(t);
+    }
+  }, [value]);
+
+  const TrendIcon = trend?.dir === 'up' ? TrendingUp : trend?.dir === 'down' ? TrendingDown : TrendingUp;
+
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-caption)' }}>
-      <span style={{ width: 6, height: 6, borderRadius: '50%', background: colors[status] ?? COLORS.gray }} />
+    <div className="dash-hero-kpi">
+      <div className="dash-hero-kpi__top">
+        <span className="dash-hero-kpi__label">{label}</span>
+        <span className={`dash-hero-kpi__icon dash-hero-kpi__icon--${color}`}><Icon size={16} /></span>
+      </div>
+      <span className={`dash-hero-kpi__value ${pop ? 'dash-number-pop' : ''}`}>
+        {typeof value === 'number' ? value.toLocaleString() : value}
+      </span>
+      {trend && (
+        <span className={`dash-hero-kpi__trend dash-hero-kpi__trend--${trend.dir}`}>
+          <TrendIcon size={12} /> {trend.text}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function QueueStat({ label, value, sub, color = 'blue' }: {
+  label: string;
+  value: number;
+  sub: string;
+  color?: string;
+}) {
+  return (
+    <div className="dash-queue__stat">
+      <span className="dash-queue__stat-label">{label}</span>
+      <span className="dash-queue__stat-value" style={{ color: `var(--${color === 'amber' ? 'amber' : color === 'green' ? 'green' : 'blue'}-600)` }}>
+        {value}
+      </span>
+      <span className="dash-queue__stat-sub">{sub}</span>
+    </div>
+  );
+}
+
+function MiniStat({ icon: Icon, label, value, color }: {
+  icon: any;
+  label: string;
+  value: number;
+  color: string;
+}) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <span className={`dash-hero-kpi__icon dash-hero-kpi__icon--${color}`} style={{ width: 32, height: 32 }}>
+        <Icon size={14} />
+      </span>
+      <div>
+        <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "'Manrope', sans-serif", color: 'var(--text-primary)', lineHeight: 1 }}>
+          {value.toLocaleString()}
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>{label}</div>
+      </div>
+    </div>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  return (
+    <span className={`dash-appt__status dash-appt__status--${status}`}>
+      <span className="dash-appt__dot" />
       {status.replace(/_/g, ' ')}
     </span>
   );

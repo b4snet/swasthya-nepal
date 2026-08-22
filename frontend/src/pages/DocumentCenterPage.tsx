@@ -64,14 +64,15 @@ export function DocumentCenterPage() {
   const [wizardOpen, setWizardOpen] = useState(false);
 
   const fetchDocuments = useCallback(async () => {
-    if (!organizationId) return;
     setLoading(true);
     setError(null);
     try {
       const params: Record<string, string> = {};
       if (categoryFilter !== 'all') params.category = categoryFilter;
       if (searchQuery.trim()) params.search = searchQuery.trim();
-      const res = await documentCenterApi.list(organizationId, params);
+      const res = organizationId
+        ? await documentCenterApi.list(organizationId, params)
+        : await documentCenterApi.listPlatform(params);
       const data = res as unknown as { data: GeneratedDocument[]; total: number; page: number; lastPage: number };
       setDocuments(data.data ?? []);
       setTotal(data.total ?? 0);
@@ -90,7 +91,7 @@ export function DocumentCenterPage() {
       const res = await documentCenterApi.stats(organizationId);
       setStats(res as unknown as Record<string, unknown>);
     } catch {
-      // Stats are optional
+      // Stats are optional — for platform users without an org, stats are unavailable
     }
   }, [organizationId]);
 

@@ -242,6 +242,37 @@ export const messages = {
   'nav.budgets': 'Budgets',
   'nav.expenses': 'Expenses',
   'nav.financialPeriods': 'Financial Periods',
+
+  // ── Module keys ──
+  'module.hospital': 'Hospital',
+  'module.clinical': 'Clinical',
+  'module.pharmacy': 'Pharmacy',
+  'module.laboratory': 'Laboratory',
+  'module.radiology': 'Radiology',
+  'module.bloodBank': 'Blood Bank',
+  'module.finance': 'Finance',
+  'module.procurement': 'Procurement & Inventory',
+  'module.reports': 'Reports & Analytics',
+  'module.communications': 'Communications',
+  'module.administration': 'Administration',
+  'module.patientPortal': 'Patient Portal',
+
+  // ── Sub-nav labels ──
+  'nav.hospitalDashboard': 'Overview',
+  'nav.opd': 'OPD',
+  'nav.ipd': 'IPD',
+  'nav.clinicalDashboard': 'Overview',
+  'nav.encounters': 'Encounters',
+  'nav.pharmacyDashboard': 'Overview',
+  'nav.prescriptions': 'Prescriptions',
+  'nav.dispensing': 'Dispensing',
+  'nav.pharmacyInventory': 'Inventory',
+  'nav.labDashboard': 'Overview',
+  'nav.labOrders': 'Orders',
+  'nav.labReports': 'Reports',
+  'nav.financeDashboard': 'Overview',
+  'nav.procurementDashboard': 'Overview',
+  'module.registerPatient': 'Register Patient',
 } as const;
 
 export type MessageKey = keyof typeof messages;

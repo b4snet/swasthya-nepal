@@ -193,17 +193,22 @@ function createClient(baseUrl: string): ApiClient {
         return body.data;
       }
       if (res.status === 401) {
-        // One single-flight refresh attempt, then a single replay.
-        pendingRefresh ??= refreshTokens();
-        const ok = await pendingRefresh;
-        pendingRefresh = null;
-        if (ok) {
-          const replay = await rawFetch(path, options);
-          if (replay.ok) {
-            const body = (await replay.json()) as { data: T };
-            return body.data;
+        // Don't attempt staff token refresh for portal routes —
+        // portal tokens use a separate auth system and refreshing
+        // via /auth/refresh would fail and clear the portal token.
+        if (!path.startsWith('/api/v1/portal/')) {
+          // One single-flight refresh attempt, then a single replay.
+          pendingRefresh ??= refreshTokens();
+          const ok = await pendingRefresh;
+          pendingRefresh = null;
+          if (ok) {
+            const replay = await rawFetch(path, options);
+            if (replay.ok) {
+              const body = (await replay.json()) as { data: T };
+              return body.data;
+            }
+            throw await parseError(replay);
           }
-          throw await parseError(replay);
         }
         throw await parseError(res);
       }

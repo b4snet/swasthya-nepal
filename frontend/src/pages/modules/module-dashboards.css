@@ -1,0 +1,66 @@
+/* Module dashboard landing pages — clean grid of quick-action cards */
+.module-dash {
+  max-width: 960px;
+}
+
+.module-dash__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+  color: var(--text-primary);
+}
+
+.module-dash__header h1 {
+  font-family: var(--font-sans);
+  font-size: var(--text-h2);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-tight);
+  margin: 0;
+}
+
+.module-dash__subtitle {
+  color: var(--text-tertiary);
+  font-size: var(--text-body);
+  margin-top: var(--space-1);
+}
+
+.module-dash__desc {
+  color: var(--text-secondary);
+  font-size: var(--text-body);
+  margin-bottom: var(--space-6);
+  max-width: 480px;
+}
+
+.module-dash__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--space-3);
+}
+
+.module-dash__card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  color: var(--text-primary);
+  font-size: var(--text-label);
+  font-weight: var(--weight-medium);
+  text-decoration: none;
+  transition: all var(--duration-fast) var(--ease);
+}
+
+.module-dash__card:hover {
+  border-color: var(--blue-200);
+  background: var(--blue-50);
+  color: var(--blue-700);
+  box-shadow: var(--shadow-sm);
+}
+
+.module-dash__card:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}

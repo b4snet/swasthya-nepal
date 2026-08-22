@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { portalApi } from '../api/endpoints';
 import { ApiError } from '../api/client';
+import { portalTokenStore } from '../api/portalClient';
 import { Card, EmptyState, SkeletonCard, SkeletonStats, StatusChip, Button, Input } from '../components/ui';
 import {
   Home,
@@ -62,6 +63,27 @@ export function PatientPortalPage() {
   const [tab, setTab] = useState<Tab>('overview');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [portalAuthenticated, setPortalAuthenticated] = useState<boolean>(!!portalTokenStore.get());
+  const [loginOrg, setLoginOrg] = useState('');
+  const [loginId, setLoginId] = useState('');
+  const [loginPass, setLoginPass] = useState('');
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [loginLoading, setLoginLoading] = useState(false);
+
+  const handlePortalLogin = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginLoading(true);
+    setLoginError(null);
+    try {
+      const res = await portalApi.login(loginOrg, loginId, loginPass) as unknown as { token: string; expiresAt: string };
+      portalTokenStore.set({ accessToken: res.token, refreshToken: res.token, expiresIn: 3600, refreshExpiresIn: 604800 });
+      setPortalAuthenticated(true);
+    } catch (err) {
+      setLoginError(err instanceof Error ? err.message : 'Login failed');
+    } finally {
+      setLoginLoading(false);
+    }
+  }, [loginOrg, loginId, loginPass]);
 
   const [profile, setProfile] = useState<PatientProfile | null>(null);
   const [medicalHistory, setMedicalHistory] = useState<MedicalHistory | null>(null);
@@ -86,7 +108,7 @@ export function PatientPortalPage() {
   const [msgRecipient, setMsgRecipient] = useState('');
   const [sending, setSending] = useState(false);
 
-  useEffect(() => { loadOverview(); }, []);
+  useEffect(() => { if (portalAuthenticated) loadOverview(); }, [portalAuthenticated]);
 
   async function loadOverview() {
     setLoading(true);
@@ -217,6 +239,32 @@ export function PatientPortalPage() {
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to update preferences');
     }
+  }
+
+  // Portal login form
+  if (!portalAuthenticated) {
+    return (
+      <div className="portal" style={{ maxWidth: 480, margin: '80px auto', padding: 32 }}>
+        <div style={{ textAlign: 'center', marginBottom: 32 }}>
+          <div style={{ fontSize: 48, marginBottom: 8 }}>+</div>
+          <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8 }}>Patient Portal</h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Sign in to access your health records</p>
+        </div>
+        {loginError && (
+          <div style={{ padding: '12px 16px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, marginBottom: 16, color: '#ef4444', fontSize: 13 }}>
+            {loginError}
+          </div>
+        )}
+        <form onSubmit={handlePortalLogin} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <Input label="Organization code" placeholder="e.g. smoke-group" value={loginOrg} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLoginOrg(e.target.value)} required />
+          <Input label="Login identifier" placeholder="e.g. patient@email.com" value={loginId} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLoginId(e.target.value)} required />
+          <Input label="Password" type="password" placeholder="Your password" value={loginPass} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLoginPass(e.target.value)} required />
+          <Button type="submit" disabled={loginLoading} variant="primary" style={{ width: '100%' }}>
+            {loginLoading ? 'Signing in...' : 'Sign in'}
+          </Button>
+        </form>
+      </div>
+    );
   }
 
   if (loading) return (

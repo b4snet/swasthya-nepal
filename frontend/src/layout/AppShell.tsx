@@ -4,94 +4,34 @@ import { CommandPalette } from '../components/CommandPalette';
 import { useAuth } from '../auth/AuthProvider';
 import { useTenant } from '../context/TenantContext';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
-import { ADMIN_ROLES, AUDIT_ROLES, BILLING_ROLES, QUEUE_ROLES } from '../auth/roles';
 import { useI18n } from '../i18n/I18nProvider';
-import type { MessageKey } from '../i18n/locales/en';
 import { Button, Dialog } from '../components/ui';
+import { useAccess } from '../auth/useAccess';
 import {
-  LayoutDashboard,
-  Users,
-  CalendarDays,
-  ListOrdered,
-  Pill,
-  Boxes,
-  ShoppingCart,
-  WalletCards,
-  DollarSign,
-  Landmark,
-  Receipt,
-  CalendarClock,
-  ChartNoAxesCombined,
-  Bell,
-  Activity,
-  MessageSquare,
-  ScanLine,
-  Crosshair,
-  Siren,
-  HeartPulse,
-  Stethoscope,
-  Upload,
-  Video,
-  Scissors,
-  Droplets,
-  ClipboardList,
-  FileText,
-  Bed,
-  PanelsTopLeft,
-  ShieldCheck,
-  Settings,
-  ChevronRight,
   LogOut,
   Globe,
   Building2,
-  MoreHorizontal,
-  GitPullRequestArrow,
   Sun,
   Moon,
-  type LucideIcon,
+  ChevronRight,
+  MoreHorizontal,
+  Bell,
+  Search,
 } from 'lucide-react';
+import {
+  MODULES,
+  getActiveModule,
+  filterModulesByRole,
+  type NavModule,
+} from '../navigation/modules';
 import './shell.css';
 
-// ── Navigation with Lucide icons ──
-const NAV: Array<{ to: string; labelKey: MessageKey; Icon: LucideIcon; roles: string[]; group?: string }> = [
-  { to: '/', labelKey: 'nav.dashboard', Icon: LayoutDashboard, roles: [], group: 'overview' },
-  { to: '/patients', labelKey: 'nav.patients', Icon: Users, roles: [], group: 'clinical' },
-  { to: '/patients/import', labelKey: 'nav.patientImport', Icon: Upload, roles: [], group: 'clinical' },
-  { to: '/appointments', labelKey: 'nav.appointments', Icon: CalendarDays, roles: [], group: 'clinical' },
-  { to: '/queue', labelKey: 'nav.queue', Icon: ListOrdered, roles: [...QUEUE_ROLES], group: 'clinical' },
-  { to: '/pharmacy', labelKey: 'nav.pharmacy', Icon: Pill, roles: [], group: 'operations' },
-  { to: '/inventory', labelKey: 'nav.inventory', Icon: Boxes, roles: [], group: 'operations' },
-  { to: '/procurement', labelKey: 'nav.procurement', Icon: ShoppingCart, roles: [], group: 'operations' },
-  { to: '/billing', labelKey: 'nav.billing', Icon: WalletCards, roles: [...BILLING_ROLES], group: 'finance' },
-  { to: '/finance', labelKey: 'nav.finance', Icon: Landmark, roles: [], group: 'finance' },
-  { to: '/budgets', labelKey: 'nav.budgets', Icon: ChartNoAxesCombined, roles: [], group: 'finance' },
-  { to: '/expenses', labelKey: 'nav.expenses', Icon: Receipt, roles: [], group: 'finance' },
-  { to: '/revenue', labelKey: 'nav.revenueCycle', Icon: DollarSign, roles: [...BILLING_ROLES], group: 'finance' },
-  { to: '/financial-periods', labelKey: 'nav.financialPeriods', Icon: CalendarClock, roles: [], group: 'finance' },
-  { to: '/analytics', labelKey: 'nav.analytics', Icon: ChartNoAxesCombined, roles: [], group: 'insights' },
-  { to: '/operations', labelKey: 'nav.operationsCenter', Icon: Activity, roles: [], group: 'insights' },
-  { to: '/notifications', labelKey: 'nav.notifications', Icon: Bell, roles: [], group: 'insights' },
-  { to: '/communications', labelKey: 'nav.communications', Icon: MessageSquare, roles: [], group: 'insights' },
-  { to: '/forms', labelKey: 'nav.forms', Icon: FileText, roles: [], group: 'clinical' },
-  { to: '/physician-scheduling', labelKey: 'nav.physicianScheduling', Icon: Stethoscope, roles: [], group: 'clinical' },
-  { to: '/beds', labelKey: 'nav.beds', Icon: Bed, roles: [], group: 'clinical' },
-  { to: '/telehealth', labelKey: 'nav.telehealth', Icon: Video, roles: [], group: 'clinical' },
-  { to: '/emergency', labelKey: 'nav.emergency', Icon: Siren, roles: [], group: 'clinical' },
-  { to: '/icu', labelKey: 'nav.icu', Icon: HeartPulse, roles: [], group: 'clinical' },
-  { to: '/ot', labelKey: 'nav.ot', Icon: Scissors, roles: [], group: 'clinical' },
-  { to: '/blood-bank', labelKey: 'nav.bloodBank', Icon: Droplets, roles: [], group: 'clinical' },
-  { to: '/nursing', labelKey: 'nav.nursing', Icon: ClipboardList, roles: [], group: 'clinical' },
-  { to: '/documents', labelKey: 'nav.documentCenter', Icon: FileText, roles: [], group: 'clinical' },
-  { to: '/radiology', labelKey: 'nav.radiology', Icon: ScanLine, roles: [], group: 'clinical' },
-  { to: '/oncology', labelKey: 'nav.oncology', Icon: Crosshair, roles: [], group: 'clinical' },
-  { to: '/referrals', labelKey: 'nav.referrals', Icon: GitPullRequestArrow, roles: [], group: 'clinical' },
-  { to: '/portal', labelKey: 'nav.portal', Icon: PanelsTopLeft, roles: [], group: 'insights' },
-  { to: '/audit', labelKey: 'nav.audit', Icon: ShieldCheck, roles: [...AUDIT_ROLES], group: 'admin' },
-  { to: '/admin', labelKey: 'nav.admin', Icon: Settings, roles: [...ADMIN_ROLES], group: 'admin' },
-];
-
-function allowed(roles: string[], hasRole: (r: string) => boolean) {
-  return roles.length === 0 || roles.some((r) => hasRole(r));
+/** Time-of-day greeting */
+function getGreeting(): string {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  return 'Good evening';
 }
 
 // ── Facility switcher ──
@@ -151,8 +91,9 @@ function DarkModeToggle() {
   const [dark, setDark] = useState(() => {
     const saved = localStorage.getItem('swasthya-theme');
     if (saved === 'dark') return true;
+    // Default to light — bright clinical language is the standard
     if (saved === 'light') return false;
-    return typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches;
+    return false;
   });
 
   useEffect(() => {
@@ -298,21 +239,131 @@ function SidebarUser() {
   );
 }
 
+// ── Module icon rail (leftmost narrow column) ──
+function ModuleRail({
+  modules,
+  activeModule,
+  onSelect,
+}: {
+  modules: NavModule[];
+  activeModule: NavModule | undefined;
+  onSelect: (m: NavModule) => void;
+}) {
+  const { t } = useI18n();
+  return (
+    <div className="module-rail" role="navigation" aria-label="Modules">
+      {modules.map((m) => (
+        <button
+          key={m.key}
+          type="button"
+          className={`module-rail__item ${activeModule?.key === m.key ? 'module-rail__item--active' : ''}`}
+          onClick={() => onSelect(m)}
+          title={t(m.labelKey)}
+          aria-label={t(m.labelKey)}
+          data-testid={`module-${m.key}`}
+        >
+          <m.Icon size={20} strokeWidth={1.75} />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ── Contextual sub-navigation panel ──
+function SubNav({
+  module: mod,
+  pathname,
+}: {
+  module: NavModule;
+  pathname: string;
+}) {
+  const { t } = useI18n();
+  return (
+    <div className="subnav" role="navigation" aria-label={t(mod.labelKey)}>
+      <div className="subnav__header">
+        <mod.Icon size={16} strokeWidth={1.75} />
+        <span className="subnav__title">{t(mod.labelKey)}</span>
+      </div>
+      <div className="subnav__items">
+        {mod.children.map((child) => {
+          const isActive =
+            pathname === child.to ||
+            (child.to !== mod.defaultTo && pathname.startsWith(child.to + '/'));
+          return (
+            <NavLink
+              key={child.key}
+              to={child.to}
+              className={`subnav__link ${isActive ? 'subnav__link--active' : ''}`}
+              data-testid={`subnav-${child.key}`}
+            >
+              <child.Icon size={15} strokeWidth={1.75} />
+              <span>{t(child.labelKey)}</span>
+            </NavLink>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Breadcrumbs ──
+function Breadcrumbs({
+  activeModule,
+  pathname,
+}: {
+  activeModule: NavModule | undefined;
+  pathname: string;
+}) {
+  const { t } = useI18n();
+  if (!activeModule) return null;
+
+  // Find the active child
+  const activeChild = activeModule.children.find(
+    (c) => pathname === c.to || (c.to !== activeModule.defaultTo && pathname.startsWith(c.to + '/')),
+  );
+
+  return (
+    <nav className="breadcrumbs" aria-label="Breadcrumb">
+      <span className="breadcrumbs__item breadcrumbs__item--muted">Swasthya</span>
+      <ChevronRight size={12} className="breadcrumbs__sep" />
+      <span className="breadcrumbs__item">{t(activeModule.labelKey)}</span>
+      {activeChild && activeChild.to !== activeModule.defaultTo && (
+        <>
+          <ChevronRight size={12} className="breadcrumbs__sep" />
+          <span className="breadcrumbs__item breadcrumbs__item--current">{t(activeChild.labelKey)}</span>
+        </>
+      )}
+    </nav>
+  );
+}
+
 // ── Main shell ──
 export function AppShell() {
-  const { selectedFacilityId } = useTenant();
   const hasRole = useTenant().hasRole;
   const { t } = useI18n();
   const location = useLocation();
-  const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
-
-  const visible = NAV.filter((n) => allowed(n.roles, hasRole)).map((n) => ({ ...n, label: t(n.labelKey) }));
-  const primary = visible.slice(0, 4);
-  const rest = visible.slice(4);
+  const navigate = useNavigate();
   const network = useNetworkStatus();
+  const access = useAccess();
+
+  const visibleModules = filterModulesByRole(MODULES, hasRole);
+  const activeModule = getActiveModule(location.pathname);
+
+  // Mobile sub-nav state
+  const [mobileSubNavOpen, setMobileSubNavOpen] = useState(false);
+
+  // When a module is selected from the rail, navigate to its default
+  const handleModuleSelect = (m: NavModule) => {
+    navigate(m.defaultTo);
+    setMobileSubNavOpen(false);
+  };
+
+  // Mobile: bottom nav shows the 4 most important modules
+  const mobileModules = visibleModules.slice(0, 4);
+  const moreModules = visibleModules.slice(4);
 
   return (
-    <div className="app-shell">
+    <div className="app-shell app-shell--module-first">
       <CommandPalette />
       <a className="skip-link" href="#content">{t('shell.skipToContent')}</a>
 
@@ -332,8 +383,30 @@ export function AppShell() {
             </svg>
           </span>
           <strong className="app-title">Swasthya</strong>
+          <Breadcrumbs activeModule={activeModule} pathname={location.pathname} />
         </div>
         <div className="app-header__right">
+          <span className="app-greeting">
+            {getGreeting()}, {access.getDisplayName()}
+          </span>
+          <button
+            type="button"
+            className="lang-btn"
+            onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
+            title="Search (Ctrl+K)"
+            aria-label="Search"
+          >
+            <Search size={15} />
+          </button>
+          <button
+            type="button"
+            className="lang-btn"
+            onClick={() => navigate('/communications/notifications')}
+            title="Notifications"
+            aria-label="Notifications"
+          >
+            <Bell size={15} />
+          </button>
           <FacilitySwitcher />
           <LanguageToggle />
           <DarkModeToggle />
@@ -342,25 +415,17 @@ export function AppShell() {
       </header>
 
       <div className="app-body">
-        {/* ── Sidebar ── */}
-        <aside className="app-sidebar" aria-label={t('shell.primary')}>
-          <nav className="sidebar-nav" role="navigation">
-            {visible.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.to === '/'}
-                className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link--active' : ''}`}
-              >
-                <item.Icon size={18} strokeWidth={1.75} />
-                <span className="sidebar-link__label">{item.label}</span>
-              </NavLink>
-            ))}
-          </nav>
-          <div className="sidebar-footer">
-            <SidebarUser />
-          </div>
-        </aside>
+        {/* ── Module rail (icon sidebar) ── */}
+        <ModuleRail
+          modules={visibleModules}
+          activeModule={activeModule}
+          onSelect={handleModuleSelect}
+        />
+
+        {/* ── Contextual sub-navigation ── */}
+        {activeModule && (
+          <SubNav module={activeModule} pathname={location.pathname} />
+        )}
 
         {/* ── Content ── */}
         <main className="app-content" id="content" tabIndex={-1}>
@@ -372,38 +437,71 @@ export function AppShell() {
 
       {/* ── Mobile bottom nav ── */}
       <nav className="bottom-nav" aria-label={t('shell.primary')}>
-        {primary.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.to === '/'}
-            className={({ isActive }) => `bottom-nav__item ${isActive ? 'bottom-nav__item--active' : ''}`}
+        {mobileModules.map((m) => (
+          <button
+            key={m.key}
+            type="button"
+            className={`bottom-nav__item ${activeModule?.key === m.key ? 'bottom-nav__item--active' : ''}`}
+            onClick={() => handleModuleSelect(m)}
           >
-            <item.Icon size={20} strokeWidth={1.75} />
-            <span>{item.label}</span>
-          </NavLink>
+            <m.Icon size={20} strokeWidth={1.75} />
+            <span>{t(m.labelKey)}</span>
+          </button>
         ))}
-        {rest.length > 0 && (
-          <button className="bottom-nav__item" aria-expanded={mobileMoreOpen} onClick={() => setMobileMoreOpen((v) => !v)}>
+        {moreModules.length > 0 && (
+          <button
+            type="button"
+            className="bottom-nav__item"
+            onClick={() => setMobileSubNavOpen((v) => !v)}
+          >
             <MoreHorizontal size={20} strokeWidth={1.75} />
             <span>{t('shell.more')}</span>
           </button>
         )}
       </nav>
 
-      {mobileMoreOpen && (
-        <div className="mobile-sheet" role="menu" aria-label={t('shell.moreDestinations')}>
-          {rest.map((item) => (
-            <NavLink key={item.to} to={item.to} className="mobile-sheet__item" onClick={() => setMobileMoreOpen(false)}>
-              <item.Icon size={18} strokeWidth={1.75} />
-              <span>{item.label}</span>
+      {/* ── Mobile module drawer ── */}
+      {mobileSubNavOpen && (
+        <div className="mobile-sheet" role="menu" aria-label="More modules">
+          {moreModules.map((m) => (
+            <button
+              key={m.key}
+              type="button"
+              className="mobile-sheet__item"
+              onClick={() => handleModuleSelect(m)}
+            >
+              <m.Icon size={18} strokeWidth={1.75} />
+              <span>{t(m.labelKey)}</span>
               <ChevronRight size={14} className="mobile-sheet__chevron" />
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* ── Mobile sub-navigation drawer (when a module is active) ── */}
+      {activeModule && mobileSubNavOpen && (
+        <div className="mobile-sheet mobile-sheet--subnav" role="menu" aria-label={t(activeModule.labelKey)}>
+          <div className="mobile-sheet__header">
+            <activeModule.Icon size={16} strokeWidth={1.75} />
+            <span>{t(activeModule.labelKey)}</span>
+          </div>
+          {activeModule.children.map((child) => (
+            <NavLink
+              key={child.key}
+              to={child.to}
+              className="mobile-sheet__item"
+              onClick={() => setMobileSubNavOpen(false)}
+            >
+              <child.Icon size={16} strokeWidth={1.75} />
+              <span>{t(child.labelKey)}</span>
             </NavLink>
           ))}
         </div>
       )}
 
-      {!selectedFacilityId && (
+      <SidebarUser />
+
+      {useTenant().selectedFacilityId === null && (
         <div className="facility-required" role="status" data-testid="facility-required-banner">
           {t('shell.selectFacilityRequired')}
         </div>

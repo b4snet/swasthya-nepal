@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
@@ -9,9 +9,9 @@ import { I18nProvider } from './I18nProvider';
 import { AppShell } from '../layout/AppShell';
 
 /**
- * Phase 22 localization — the REAL app shell (nav, context switcher, sign
- * out) renders in Nepali Devanagari when the provider locale is `ne`, and
- * the html lang attribute drives the Devanagari font stack.
+ * Phase 22 localization — the REAL app shell (module rail, sub-nav, context
+ * switcher, sign out) renders in Nepali Devanagari when the provider locale
+ * is `ne`, and the html lang attribute drives the Devanagari font stack.
  */
 function sessionPayload(roles: string[]) {
   return jsonOk({
@@ -42,14 +42,17 @@ async function renderLocalizedShell(roles: string[]) {
       </I18nProvider>
     </MemoryRouter>,
   );
-  await screen.findAllByRole('link', { name: 'Dashboard' });
+  await waitFor(() => {
+    expect(screen.queryByTestId('module-hospital')).not.toBeNull();
+  });
 }
 
 describe('localized app shell (Phase 22)', () => {
   it('renders the shell in English by default', async () => {
     await renderLocalizedShell(['receptionist']);
-    // Sidebar + bottom nav render each destination twice — count both.
-    expect(screen.getAllByRole('link', { name: 'Queue' }).length).toBeGreaterThan(0);
+    // Module rail renders with English labels
+    expect(screen.getByTestId('module-hospital')).toHaveAttribute('aria-label', 'Hospital');
+    expect(screen.getByTestId('module-clinical')).toHaveAttribute('aria-label', 'Clinical');
     expect(document.documentElement.lang).toBe('en');
   });
 
@@ -58,11 +61,12 @@ describe('localized app shell (Phase 22)', () => {
     await renderLocalizedShell(['receptionist']);
     await user.click(screen.getByTestId('lang-toggle'));
     expect(document.documentElement.lang).toBe('ne');
-    expect(screen.getAllByRole('link', { name: 'कतार' }).length).toBeGreaterThan(0); // Queue
-    expect(screen.getAllByRole('link', { name: 'बिरामीहरू' }).length).toBeGreaterThan(0); // Patients
-    expect(screen.getByRole('button', { name: 'साइन आउट' })).toBeTruthy(); // Sign out
+    // Module labels are now in Nepali
+    expect(screen.getByTestId('module-hospital')).toHaveAttribute('aria-label', 'अस्पताल');
+    expect(screen.getByTestId('module-clinical')).toHaveAttribute('aria-label', 'क्लिनिकल');
+    expect(screen.getByRole('button', { name: 'साइन आउट' })).toBeTruthy();
     await user.click(screen.getByTestId('lang-toggle'));
     expect(document.documentElement.lang).toBe('en');
-    expect(screen.getAllByRole('link', { name: 'Queue' }).length).toBeGreaterThan(0);
+    expect(screen.getByTestId('module-hospital')).toHaveAttribute('aria-label', 'Hospital');
   });
 });
