@@ -163,6 +163,37 @@ export const patientsApi = {
       `/api/v1/patients/${patientId}/portal/invite`,
       { method: 'POST', body: payload },
     ),
+
+  // ── Patient longitudinal record sub-resources ──
+  diagnoses: (patientId: string, facilityId?: string | null) =>
+    api.request<any[]>(`/api/v1/patients/${patientId}/diagnoses`, opt(facilityId)),
+
+  prescriptions: (patientId: string, facilityId?: string | null) =>
+    api.request<any[]>(`/api/v1/patients/${patientId}/prescriptions`, opt(facilityId)),
+
+  allergies: (patientId: string, facilityId?: string | null) =>
+    api.request<any[]>(`/api/v1/patients/${patientId}/allergies`, opt(facilityId)),
+
+  medications: (patientId: string, facilityId?: string | null) =>
+    api.request<any[]>(`/api/v1/patients/${patientId}/medications`, opt(facilityId)),
+
+  admissions: (patientId: string, facilityId?: string | null) =>
+    api.request<any[]>(`/api/v1/patients/${patientId}/admissions`, opt(facilityId)),
+
+  documents: (patientId: string, facilityId?: string | null) =>
+    api.request<any[]>(`/api/v1/patients/${patientId}/documents`, opt(facilityId)),
+
+  labOrders: (patientId: string, facilityId?: string | null) =>
+    api.request<any[]>(`/api/v1/patients/${patientId}/lab-orders`, opt(facilityId)),
+
+  radiologyOrders: (patientId: string, facilityId?: string | null) =>
+    api.request<any[]>(`/api/v1/patients/${patientId}/radiology-orders`, opt(facilityId)),
+
+  referrals: (patientId: string, facilityId?: string | null) =>
+    api.request<any[]>(`/api/v1/patients/${patientId}/referrals`, opt(facilityId)),
+
+  followUps: (patientId: string, facilityId?: string | null) =>
+    api.request<any[]>(`/api/v1/patients/${patientId}/follow-ups`, opt(facilityId)),
 };
 
 /* ------------------------------------------------------------------

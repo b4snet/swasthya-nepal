@@ -93,17 +93,37 @@ describe('PatientRegisterPage', () => {
 });
 
 describe('PatientProfilePage', () => {
-  it('renders profile page without crashing', async () => {
+  const mockPatient = {
+    id: 'p-1',
+    fullName: 'Test Patient',
+    mrn: 'MRN-0001',
+    dateOfBirth: '1990-01-15',
+    sex: 'male',
+    bloodGroup: 'O+',
+    status: 'active',
+    createdAt: '2025-01-01T00:00:00Z',
+  };
+
+  function setupProfileFetch() {
     localStorage.setItem('swasthya.refreshToken', 'rt-test');
     sessionStorage.setItem('swasthya.accessToken', 'at-test');
     let callCount = 0;
-    const fn = vi.fn(async () => {
+    const fn = vi.fn(async (...args: any[]) => {
       callCount++;
       if (callCount === 1) return sessionPayload(['hospital_admin']);
-      return jsonOk({ data: [] });
+      // Extract URL from Request object or string
+      const url = typeof args[0] === 'string' ? args[0] : args[0]?.url ?? '';
+      // Return patient object for the main show endpoint
+      if (url.includes('/patients/p-1') && !url.includes('/timeline') && !url.includes('/diagnoses') && !url.includes('/prescriptions') && !url.includes('/lab-orders') && !url.includes('/radiology-orders') && !url.includes('/admissions') && !url.includes('/referrals') && !url.includes('/documents') && !url.includes('/follow-ups')) {
+        return jsonOk(mockPatient);
+      }
+      return jsonOk([]);
     });
     vi.stubGlobal('fetch', fn);
+  }
 
+  it('renders profile page without crashing', async () => {
+    setupProfileFetch();
     render(
       <MemoryRouter initialEntries={['/patients/p-1']}>
         <I18nProvider>
@@ -115,25 +135,14 @@ describe('PatientProfilePage', () => {
         </I18nProvider>
       </MemoryRouter>,
     );
-
-    // Should render either loading spinner or patient data without crashing
+    // Page should render (loading spinner or patient content)
     await waitFor(() => {
-      const page = document.querySelector('.page');
-      expect(page).toBeInTheDocument();
+      expect(document.querySelector('.page')).toBeInTheDocument();
     });
   });
 
   it('has back to patients link', async () => {
-    localStorage.setItem('swasthya.refreshToken', 'rt-test');
-    sessionStorage.setItem('swasthya.accessToken', 'at-test');
-    let callCount = 0;
-    const fn = vi.fn(async () => {
-      callCount++;
-      if (callCount === 1) return sessionPayload(['hospital_admin']);
-      return jsonOk({ data: [] });
-    });
-    vi.stubGlobal('fetch', fn);
-
+    setupProfileFetch();
     render(
       <MemoryRouter initialEntries={['/patients/p-1']}>
         <I18nProvider>
@@ -145,8 +154,6 @@ describe('PatientProfilePage', () => {
         </I18nProvider>
       </MemoryRouter>,
     );
-
-    // Eventually the page should render with a back link
     await waitFor(() => {
       expect(screen.getByText(/back to patients/i)).toBeInTheDocument();
     }, { timeout: 3000 });

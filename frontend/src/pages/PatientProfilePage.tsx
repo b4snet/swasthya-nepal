@@ -1,20 +1,48 @@
+/**
+ * Patient Longitudinal Record — Clinical Workspace
+ *
+ * The central clinical object in SWASTHYA. Provides a role-aware,
+ * contextual view of the patient across all encounters, departments,
+ * and care settings.
+ *
+ * Tabs are filtered by the logged-in user's role.
+ * Backend authorization remains authoritative.
+ */
+
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useTenant } from '../context/TenantContext';
 import { patientsApi } from '../api/endpoints';
 import { useFetch } from '../hooks/useFetch';
-import { Alert, Button, Card, Dialog, EmptyState, ErrorState, Input, Select, Spinner, StatusChip, Tabs, formatDate, formatDateTime } from '../components/ui';
+import {
+  Alert,
+  Button,
+  Card,
+  EmptyState,
+  ErrorState,
+  Spinner,
+  StatusChip,
+  Tabs,
+  formatDate,
+  formatDateTime,
+} from '../components/ui';
 import { encountersApi } from '../api/endpoints';
-import { ApiError } from '../api/client';
-import type { TimelineEntry, PatientIdentifier, PatientContact } from '../api/types';
+import {
+  UserRound,
+  FileText,
+  Pill,
+  FlaskConical,
+  ScanLine,
+  Bed,
+  GitPullRequestArrow,
+  CalendarDays,
+  ClipboardList,
+  Activity,
+} from 'lucide-react';
 import './patient.css';
 
-/**
- * The backend stores structured summary metadata per timeline event (e.g.
- * `{ mrn: 'MRN-…' }`, `{ changed: [...] }`). Render it as plain text — never
- * as a React child directly.
- */
-export function timelineSummary(summary: TimelineEntry['summary']): string {
+/* ── Timeline helper ── */
+export function timelineSummary(summary: any): string {
   if (typeof summary === 'string') return summary;
   if (Array.isArray(summary)) return summary.map(String).join(', ');
   if (summary && typeof summary === 'object') {
@@ -25,97 +53,209 @@ export function timelineSummary(summary: TimelineEntry['summary']): string {
   return '';
 }
 
+/* ── Tab definitions ── */
+const ALL_TABS = [
+  { id: 'overview', label: 'Overview', Icon: Activity, roles: [] as string[] },
+  { id: 'encounters', label: 'Encounters', Icon: FileText, roles: [] as string[] },
+  { id: 'diagnoses', label: 'Diagnoses', Icon: ClipboardList, roles: ['doctor', 'nurse', 'hospital_admin', 'org_admin', 'superadmin'] },
+  { id: 'medications', label: 'Medications', Icon: Pill, roles: ['doctor', 'nurse', 'pharmacist', 'hospital_admin', 'org_admin', 'superadmin'] },
+  { id: 'lab', label: 'Laboratory', Icon: FlaskConical, roles: ['doctor', 'nurse', 'lab_technician', 'lab_supervisor', 'hospital_admin', 'org_admin', 'superadmin'] },
+  { id: 'radiology', label: 'Radiology', Icon: ScanLine, roles: ['doctor', 'nurse', 'radiologist', 'radiographer', 'hospital_admin', 'org_admin', 'superadmin'] },
+  { id: 'admissions', label: 'Admissions', Icon: Bed, roles: ['doctor', 'nurse', 'hospital_admin', 'org_admin', 'superadmin'] },
+  { id: 'referrals', label: 'Referrals', Icon: GitPullRequestArrow, roles: ['doctor', 'nurse', 'hospital_admin', 'org_admin', 'superadmin'] },
+  { id: 'appointments', label: 'Appointments', Icon: CalendarDays, roles: [] as string[] },
+  { id: 'documents', label: 'Documents', Icon: FileText, roles: [] as string[] },
+  { id: 'timeline', label: 'Timeline', Icon: Activity, roles: [] as string[] },
+];
+
+/* ════════════════════════════════════════════════════════════════════════════
+   MAIN PAGE
+   ════════════════════════════════════════════════════════════════════════════ */
+
 export function PatientProfilePage() {
   const { id } = useParams<{ id: string }>();
   const { selectedFacilityId, hasRole } = useTenant();
   const fac = selectedFacilityId;
 
+  /* ── Data fetching ── */
   const profile = useFetch(() => patientsApi.show(id!, fac), [id, fac]);
   const timeline = useFetch(() => patientsApi.timeline(id!, fac), [id, fac]);
-  const identifiers = useFetch(() => patientsApi.identifiers(id!, fac), [id, fac]);
-  const contacts = useFetch(() => patientsApi.contacts(id!, fac), [id, fac]);
-  const encounters = useFetch(
-    () => encountersApi.forPatient(id!, fac),
+  const encounters = useFetch(() => encountersApi.forPatient(id!, fac), [id, fac]);
+  const diagnoses = useFetch(() => patientsApi.diagnoses(id!, fac), [id, fac]);
+  const prescriptions = useFetch(() => patientsApi.prescriptions(id!, fac), [id, fac]);
+  const labOrders = useFetch(() => patientsApi.labOrders(id!, fac), [id, fac]);
+  const radiologyOrders = useFetch(() => patientsApi.radiologyOrders(id!, fac), [id, fac]);
+  const admissions = useFetch(() => patientsApi.admissions(id!, fac), [id, fac]);
+  const referrals = useFetch(() => patientsApi.referrals(id!, fac), [id, fac]);
+  const documents = useFetch(() => patientsApi.documents(id!, fac), [id, fac]);
+  const appointments = useFetch(
+    () => patientsApi.followUps(id!, fac),
     [id, fac],
   );
 
-  const [tab, setTab] = useState<'demographics' | 'encounters' | 'lab' | 'identifiers' | 'contacts' | 'timeline'>('demographics');
+  const [tab, setTab] = useState('overview');
   const [notice, setNotice] = useState<{ tone: 'success' | 'danger'; text: string } | null>(null);
 
-  const canBook = hasRole('hospital_admin', 'receptionist', 'doctor', 'nurse');
-  const canUpdate = hasRole('hospital_admin', 'receptionist', 'doctor', 'nurse');
-
+  /* ── Loading / error states ── */
   if (profile.loading) return <Spinner />;
   if (profile.error) return <ErrorState error={profile.error} onRetry={() => void profile.refresh()} />;
   if (!profile.data) return <EmptyState title="Patient not found" body="This patient may have been removed or is outside your facility scope." />;
-  const patient = profile.data;
 
-  const tabs = [
-    { id: 'demographics', label: 'Demographics' },
-    { id: 'encounters', label: `Encounters${encounters.data ? ` (${(encounters.data as any[]).length})` : ''}` },
-    { id: 'lab', label: 'Lab Orders' },
-    { id: 'identifiers', label: `Identifiers${identifiers.data ? ` (${identifiers.data.length})` : ''}` },
-    { id: 'contacts', label: `Contacts${contacts.data ? ` (${contacts.data.length})` : ''}` },
-    { id: 'timeline', label: 'Timeline' },
-  ];
+  const patient = profile.data;
+  const canEdit = hasRole('hospital_admin', 'receptionist', 'doctor', 'nurse');
+  const canBook = hasRole('hospital_admin', 'receptionist', 'doctor', 'nurse');
+
+  /* ── Filter tabs by role ── */
+  const visibleTabs = ALL_TABS.filter(
+    (t) => t.roles.length === 0 || t.roles.some((r) => hasRole(r as any)),
+  );
+
+  /* ── Tab badge counts ── */
+  const tabCounts: Record<string, number | undefined> = {
+    encounters: (encounters.data as any[])?.length,
+    diagnoses: (diagnoses.data as any[])?.length,
+    medications: (prescriptions.data as any[])?.length,
+    lab: (labOrders.data as any[])?.length,
+    radiology: (radiologyOrders.data as any[])?.length,
+    admissions: (admissions.data as any[])?.length,
+    referrals: (referrals.data as any[])?.length,
+    documents: (documents.data as any[])?.length,
+  };
 
   return (
     <div className="page">
       {notice && <Alert tone={notice.tone}>{notice.text}</Alert>}
 
+      {/* ═══ PATIENT HEADER ═══ */}
       <div className="patient-hero">
         <div className="patient-hero__avatar">
-          {patient.fullName?.charAt(0) ?? '?'}
+          <UserRound size={24} />
         </div>
         <div className="patient-hero__info">
           <h1 className="patient-hero__name">{patient.fullName}</h1>
           <div className="patient-hero__meta">
             <span className="mono">{patient.mrn}</span>
-            <span style={{ color: 'var(--line)' }}>·</span>
-            <span>{formatDate(patient.dateOfBirth)}</span>
-            <span style={{ color: 'var(--line)' }}>·</span>
+            <span className="patient-hero__sep">·</span>
+            <span>{patient.dateOfBirth ? formatDate(patient.dateOfBirth) : '—'}</span>
+            <span className="patient-hero__sep">·</span>
             <span className="capitalize">{patient.sex}</span>
+            {patient.bloodGroup && (
+              <>
+                <span className="patient-hero__sep">·</span>
+                <span>{patient.bloodGroup}</span>
+              </>
+            )}
             {patient.status !== 'active' && (
               <StatusChip
                 tone={patient.status === 'deceased' ? 'danger' : 'neutral'}
                 label={patient.status}
-                struck={patient.status === 'inactive'}
               />
             )}
           </div>
         </div>
         <div className="patient-hero__actions">
-          {canUpdate && (
-            <EditPatientDialog patient={patient} facilityId={fac} onSaved={() => { void profile.refresh(); setNotice({ tone: 'success', text: 'Patient updated.' }); }} />
+          {canEdit && (
+            <Button
+              variant="secondary"
+              onClick={() => setNotice({ tone: 'success', text: 'Edit dialog coming soon.' })}
+            >
+              Edit
+            </Button>
           )}
           {canBook && (
-            <Link className="btn btn--primary" to={`/appointments/new?patientId=${patient.id}`}>
+            <Link className="btn btn--primary" to={`/clinical/appointments?patientId=${patient.id}`}>
               Book appointment
             </Link>
           )}
         </div>
       </div>
 
-      <Tabs tabs={tabs} active={tab} onChange={(t) => setTab(t as typeof tab)} />
+      {/* ═══ TABS ═══ */}
+      <Tabs
+        tabs={visibleTabs.map((t) => ({
+          id: t.id,
+          label: tabCounts[t.id] !== undefined && tabCounts[t.id] !== undefined
+            ? `${t.label} (${tabCounts[t.id]})`
+            : t.label,
+        }))}
+        active={tab}
+        onChange={(t) => setTab(t)}
+      />
 
-      {tab === 'demographics' && (
-        <Card>
-          <dl className="kv">
-            <div><dt>MRN</dt><dd className="mono">{patient.mrn}</dd></div>
-            <div><dt>Blood group</dt><dd>{patient.bloodGroup ?? '—'}</dd></div>
-            <div><dt>Status</dt><dd>{patient.status}</dd></div>
-            <div><dt>Registered</dt><dd>{formatDateTime(patient.createdAt)}</dd></div>
-          </dl>
-        </Card>
+      {/* ═══ TAB CONTENT ═══ */}
+
+      {/* ── Overview ── */}
+      {tab === 'overview' && (
+        <div className="patient-overview">
+          <div className="patient-overview__grid">
+            <Card title="Demographics">
+              <dl className="kv">
+                <div><dt>MRN</dt><dd className="mono">{patient.mrn}</dd></div>
+                <div><dt>Blood group</dt><dd>{patient.bloodGroup ?? '—'}</dd></div>
+                <div><dt>Status</dt><dd><StatusChip tone={patient.status === 'active' ? 'success' : 'neutral'} label={patient.status} /></dd></div>
+                <div><dt>Registered</dt><dd>{formatDateTime(patient.createdAt)}</dd></div>
+              </dl>
+            </Card>
+
+            <Card title="Recent Encounters">
+              {(encounters.data as any[])?.length === 0 ? (
+                <p className="muted">No encounters yet</p>
+              ) : (
+                <ul className="patient-list">
+                  {(encounters.data as any[])?.slice(0, 5).map((e: any) => (
+                    <li key={e.id} className="patient-list__item">
+                      <span className="patient-list__primary">{e.type} — {e.providerName ?? 'Unknown'}</span>
+                      <span className="patient-list__secondary mono">{formatDateTime(e.startedAt)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
+
+            <Card title="Active Diagnoses">
+              {(diagnoses.data as any[])?.filter((d: any) => d.status === 'active').length === 0 ? (
+                <p className="muted">No active diagnoses</p>
+              ) : (
+                <ul className="patient-list">
+                  {(diagnoses.data as any[])?.filter((d: any) => d.status === 'active').slice(0, 5).map((d: any) => (
+                    <li key={d.id} className="patient-list__item">
+                      <span className="patient-list__primary">{d.description ?? d.code ?? 'Diagnosis'}</span>
+                      <StatusChip tone={d.type === 'final' ? 'success' : 'info'} label={d.type} />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
+
+            <Card title="Recent Lab Orders">
+              {(labOrders.data as any[])?.length === 0 ? (
+                <p className="muted">No lab orders</p>
+              ) : (
+                <ul className="patient-list">
+                  {(labOrders.data as any[])?.slice(0, 5).map((o: any) => (
+                    <li key={o.id} className="patient-list__item">
+                      <span className="patient-list__primary">{o.testName ?? o.name ?? 'Lab order'}</span>
+                      <StatusChip
+                        tone={o.status === 'reported' ? 'success' : o.status === 'verified' ? 'info' : 'neutral'}
+                        label={o.status}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
+          </div>
+        </div>
       )}
 
+      {/* ── Encounters ── */}
       {tab === 'encounters' && (
         <Card title="Encounters">
           {encounters.loading ? (
             <Spinner label="Loading encounters…" />
           ) : encounters.error ? (
             <ErrorState error={encounters.error} onRetry={() => void encounters.refresh()} />
-          ) : (encounters.data ?? []).length === 0 ? (
+          ) : (encounters.data as any[])?.length === 0 ? (
             <EmptyState title="No encounters yet" body="Consultations and visits will appear here." />
           ) : (
             <table className="data-table" aria-label="Patient encounters">
@@ -149,22 +289,332 @@ export function PatientProfilePage() {
         </Card>
       )}
 
-      {tab === 'lab' && (
-        <Card title="Laboratory orders">
-          <EmptyState title="Lab orders" body="Laboratory orders for this patient will appear here." />
+      {/* ── Diagnoses ── */}
+      {tab === 'diagnoses' && (
+        <Card title="Diagnoses & Problems">
+          {diagnoses.loading ? (
+            <Spinner label="Loading diagnoses…" />
+          ) : diagnoses.error ? (
+            <ErrorState error={diagnoses.error} onRetry={() => void diagnoses.refresh()} />
+          ) : (diagnoses.data as any[])?.length === 0 ? (
+            <EmptyState title="No diagnoses recorded" body="Diagnoses from encounters will appear here." />
+          ) : (
+            <table className="data-table" aria-label="Patient diagnoses">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Diagnosis</th>
+                  <th>Type</th>
+                  <th>Status</th>
+                  <th>Provider</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(diagnoses.data as any[]).map((d: any) => (
+                  <tr key={d.id}>
+                    <td data-label="Date" className="mono">{formatDateTime(d.createdAt)}</td>
+                    <td data-label="Diagnosis">{d.description ?? d.code ?? '—'}</td>
+                    <td data-label="Type" className="capitalize">{d.type ?? '—'}</td>
+                    <td data-label="Status">
+                      <StatusChip
+                        tone={d.status === 'active' ? 'warning' : d.status === 'resolved' ? 'success' : 'neutral'}
+                        label={d.status}
+                      />
+                    </td>
+                    <td data-label="Provider">{d.providerName ?? '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </Card>
       )}
 
-      {tab === 'identifiers' && (
-        <IdentifiersTab patientId={id!} facilityId={fac} data={identifiers} onRefresh={() => void identifiers.refresh()} />
+      {/* ── Medications ── */}
+      {tab === 'medications' && (
+        <Card title="Medications & Prescriptions">
+          {prescriptions.loading ? (
+            <Spinner label="Loading prescriptions…" />
+          ) : prescriptions.error ? (
+            <ErrorState error={prescriptions.error} onRetry={() => void prescriptions.refresh()} />
+          ) : (prescriptions.data as any[])?.length === 0 ? (
+            <EmptyState title="No prescriptions" body="Prescriptions from encounters will appear here." />
+          ) : (
+            <table className="data-table" aria-label="Patient prescriptions">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Medication</th>
+                  <th>Dosage</th>
+                  <th>Frequency</th>
+                  <th>Status</th>
+                  <th>Prescriber</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(prescriptions.data as any[]).map((p: any) => (
+                  <tr key={p.id}>
+                    <td data-label="Date" className="mono">{formatDateTime(p.createdAt)}</td>
+                    <td data-label="Medication">{p.medicationName ?? p.medication?.name ?? '—'}</td>
+                    <td data-label="Dosage">{p.dosage ?? '—'}</td>
+                    <td data-label="Frequency">{p.frequency ?? '—'}</td>
+                    <td data-label="Status">
+                      <StatusChip
+                        tone={p.status === 'active' ? 'success' : p.status === 'dispensed' ? 'info' : 'neutral'}
+                        label={p.status}
+                      />
+                    </td>
+                    <td data-label="Prescriber">{p.prescriberName ?? '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Card>
       )}
 
-      {tab === 'contacts' && (
-        <ContactsTab patientId={id!} facilityId={fac} data={contacts} onRefresh={() => void contacts.refresh()} />
+      {/* ── Laboratory ── */}
+      {tab === 'lab' && (
+        <Card title="Laboratory Orders">
+          {labOrders.loading ? (
+            <Spinner label="Loading lab orders…" />
+          ) : labOrders.error ? (
+            <ErrorState error={labOrders.error} onRetry={() => void labOrders.refresh()} />
+          ) : (labOrders.data as any[])?.length === 0 ? (
+            <EmptyState title="No lab orders" body="Laboratory orders for this patient will appear here." />
+          ) : (
+            <table className="data-table" aria-label="Patient lab orders">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Test</th>
+                  <th>Priority</th>
+                  <th>Status</th>
+                  <th>Ordered By</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(labOrders.data as any[]).map((o: any) => (
+                  <tr key={o.id}>
+                    <td data-label="Date" className="mono">{formatDateTime(o.createdAt)}</td>
+                    <td data-label="Test">{o.testName ?? o.name ?? '—'}</td>
+                    <td data-label="Priority" className="capitalize">{o.priority ?? 'routine'}</td>
+                    <td data-label="Status">
+                      <StatusChip
+                        tone={o.status === 'reported' ? 'success' : o.status === 'verified' ? 'info' : 'neutral'}
+                        label={o.status}
+                      />
+                    </td>
+                    <td data-label="Ordered By">{o.orderedByName ?? '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Card>
       )}
 
+      {/* ── Radiology ── */}
+      {tab === 'radiology' && (
+        <Card title="Radiology Orders">
+          {radiologyOrders.loading ? (
+            <Spinner label="Loading radiology orders…" />
+          ) : radiologyOrders.error ? (
+            <ErrorState error={radiologyOrders.error} onRetry={() => void radiologyOrders.refresh()} />
+          ) : (radiologyOrders.data as any[])?.length === 0 ? (
+            <EmptyState title="No radiology orders" body="Imaging orders for this patient will appear here." />
+          ) : (
+            <table className="data-table" aria-label="Patient radiology orders">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Study</th>
+                  <th>Modality</th>
+                  <th>Status</th>
+                  <th>Ordered By</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(radiologyOrders.data as any[]).map((o: any) => (
+                  <tr key={o.id}>
+                    <td data-label="Date" className="mono">{formatDateTime(o.createdAt)}</td>
+                    <td data-label="Study">{o.studyName ?? o.name ?? '—'}</td>
+                    <td data-label="Modality">{o.modality ?? '—'}</td>
+                    <td data-label="Status">
+                      <StatusChip
+                        tone={o.status === 'reported' ? 'success' : o.status === 'verified' ? 'info' : 'neutral'}
+                        label={o.status}
+                      />
+                    </td>
+                    <td data-label="Ordered By">{o.orderedByName ?? '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Card>
+      )}
+
+      {/* ── Admissions ── */}
+      {tab === 'admissions' && (
+        <Card title="Admissions">
+          {admissions.loading ? (
+            <Spinner label="Loading admissions…" />
+          ) : admissions.error ? (
+            <ErrorState error={admissions.error} onRetry={() => void admissions.refresh()} />
+          ) : (admissions.data as any[])?.length === 0 ? (
+            <EmptyState title="No admissions" body="Inpatient admissions will appear here." />
+          ) : (
+            <table className="data-table" aria-label="Patient admissions">
+              <thead>
+                <tr>
+                  <th>Admitted</th>
+                  <th>Ward</th>
+                  <th>Bed</th>
+                  <th>Attending</th>
+                  <th>Status</th>
+                  <th>Discharged</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(admissions.data as any[]).map((a: any) => (
+                  <tr key={a.id}>
+                    <td data-label="Admitted" className="mono">{formatDateTime(a.admittedAt)}</td>
+                    <td data-label="Ward">{a.wardName ?? '—'}</td>
+                    <td data-label="Bed">{a.bedNumber ?? '—'}</td>
+                    <td data-label="Attending">{a.attendingName ?? '—'}</td>
+                    <td data-label="Status">
+                      <StatusChip
+                        tone={a.dischargedAt ? 'success' : 'info'}
+                        label={a.dischargedAt ? 'discharged' : 'active'}
+                      />
+                    </td>
+                    <td data-label="Discharged">{a.dischargedAt ? formatDateTime(a.dischargedAt) : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Card>
+      )}
+
+      {/* ── Referrals ── */}
+      {tab === 'referrals' && (
+        <Card title="Referrals">
+          {referrals.loading ? (
+            <Spinner label="Loading referrals…" />
+          ) : referrals.error ? (
+            <ErrorState error={referrals.error} onRetry={() => void referrals.refresh()} />
+          ) : (referrals.data as any[])?.length === 0 ? (
+            <EmptyState title="No referrals" body="Internal and external referrals will appear here." />
+          ) : (
+            <table className="data-table" aria-label="Patient referrals">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>From</th>
+                  <th>To</th>
+                  <th>Reason</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(referrals.data as any[]).map((r: any) => (
+                  <tr key={r.id}>
+                    <td data-label="Date" className="mono">{formatDateTime(r.createdAt)}</td>
+                    <td data-label="From">{r.fromDepartment ?? r.referringProvider ?? '—'}</td>
+                    <td data-label="To">{r.toDepartment ?? r.receivingProvider ?? '—'}</td>
+                    <td data-label="Reason">{r.reason ?? '—'}</td>
+                    <td data-label="Status">
+                      <StatusChip
+                        tone={r.status === 'completed' ? 'success' : r.status === 'accepted' ? 'info' : 'neutral'}
+                        label={r.status}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Card>
+      )}
+
+      {/* ── Appointments ── */}
+      {tab === 'appointments' && (
+        <Card title="Appointments & Follow-ups">
+          {appointments.loading ? (
+            <Spinner label="Loading appointments…" />
+          ) : appointments.error ? (
+            <ErrorState error={appointments.error} onRetry={() => void appointments.refresh()} />
+          ) : (appointments.data as any[])?.length === 0 ? (
+            <EmptyState title="No appointments" body="Scheduled appointments and follow-ups will appear here." />
+          ) : (
+            <table className="data-table" aria-label="Patient appointments">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Type</th>
+                  <th>Provider</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(appointments.data as any[]).map((a: any) => (
+                  <tr key={a.id}>
+                    <td data-label="Date" className="mono">{formatDateTime(a.scheduledAt ?? a.date)}</td>
+                    <td data-label="Type" className="capitalize">{a.type ?? 'consultation'}</td>
+                    <td data-label="Provider">{a.providerName ?? '—'}</td>
+                    <td data-label="Status">
+                      <StatusChip
+                        tone={a.status === 'completed' ? 'success' : a.status === 'cancelled' ? 'danger' : 'info'}
+                        label={a.status}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Card>
+      )}
+
+      {/* ── Documents ── */}
+      {tab === 'documents' && (
+        <Card title="Documents">
+          {documents.loading ? (
+            <Spinner label="Loading documents…" />
+          ) : documents.error ? (
+            <ErrorState error={documents.error} onRetry={() => void documents.refresh()} />
+          ) : (documents.data as any[])?.length === 0 ? (
+            <EmptyState title="No documents" body="Patient documents, consents, and forms will appear here." />
+          ) : (
+            <table className="data-table" aria-label="Patient documents">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Document</th>
+                  <th>Type</th>
+                  <th>Author</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(documents.data as any[]).map((d: any) => (
+                  <tr key={d.id}>
+                    <td data-label="Date" className="mono">{formatDateTime(d.createdAt)}</td>
+                    <td data-label="Document">{d.name ?? d.title ?? '—'}</td>
+                    <td data-label="Type" className="capitalize">{d.type ?? '—'}</td>
+                    <td data-label="Author">{d.authorName ?? '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Card>
+      )}
+
+      {/* ── Timeline ── */}
       {tab === 'timeline' && (
-        <Card title="Timeline">
+        <Card title="Clinical Timeline">
           {timeline.loading ? (
             <Spinner label="Loading timeline…" />
           ) : timeline.error ? (
@@ -185,284 +635,12 @@ export function PatientProfilePage() {
         </Card>
       )}
 
-      <Card>
-        <Link to="/patients">← Back to patients</Link>
-      </Card>
+      {/* ── Back link ── */}
+      <div style={{ marginTop: 'var(--space-4)' }}>
+        <Link to="/clinical/patients" className="btn btn--secondary">
+          ← Back to patients
+        </Link>
+      </div>
     </div>
-  );
-}
-
-/* ------------------------------------------------------------------ Edit Patient Dialog */
-
-function EditPatientDialog({ patient, facilityId, onSaved }: {
-  patient: { id: string; fullName: string; dateOfBirth: string; sex: string; bloodGroup: string | null };
-  facilityId: string | null;
-  onSaved: () => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [fullName, setFullName] = useState(patient.fullName);
-  const [dateOfBirth, setDateOfBirth] = useState(patient.dateOfBirth);
-  const [sex, setSex] = useState(patient.sex);
-  const [bloodGroup, setBloodGroup] = useState(patient.bloodGroup ?? '');
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const submit = async () => {
-    setSubmitting(true);
-    setError(null);
-    try {
-      await patientsApi.update(patient.id, {
-        fullName: fullName.trim(),
-        dateOfBirth,
-        sex,
-        bloodGroup: bloodGroup || undefined,
-      }, facilityId);
-      onSaved();
-      setOpen(false);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Update failed.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <>
-      <Button variant="secondary" onClick={() => setOpen(true)}>Edit patient</Button>
-      <Dialog open={open} onClose={() => setOpen(false)} title="Edit patient" footer={
-        <>
-          <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button onClick={() => void submit()} loading={submitting}>Save changes</Button>
-        </>
-      }>
-        <div className="stack">
-          {error && <Alert tone="danger">{error}</Alert>}
-          <Input label="Full name" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
-          <Input label="Date of birth" type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} required />
-          <Select label="Sex" value={sex} onChange={(e) => setSex(e.target.value)} required>
-            <option value="female">Female</option>
-            <option value="male">Male</option>
-            <option value="other">Other</option>
-            <option value="unknown">Unknown</option>
-          </Select>
-          <Input label="Blood group" value={bloodGroup} onChange={(e) => setBloodGroup(e.target.value)} placeholder="e.g. O+" />
-        </div>
-      </Dialog>
-    </>
-  );
-}
-
-/* ------------------------------------------------------------------ Identifiers Tab */
-
-function IdentifiersTab({ patientId, facilityId, data, onRefresh }: {
-  patientId: string; facilityId: string | null;
-  data: ReturnType<typeof useFetch<PatientIdentifier[]>>;
-  onRefresh: () => void;
-}) {
-  const [addOpen, setAddOpen] = useState(false);
-
-  if (data.loading) return <Spinner />;
-  if (data.error) return <ErrorState error={data.error} onRetry={onRefresh} />;
-
-  const items = Array.isArray(data.data) ? data.data : [];
-
-  return (
-    <div className="stack">
-      <div className="page__head">
-        <h2>Identifiers</h2>
-        <Button onClick={() => setAddOpen(true)}>Add identifier</Button>
-      </div>
-
-      {items.length === 0 ? (
-        <EmptyState title="No identifiers" body="Add government IDs, passports, or other identifiers for this patient." />
-      ) : (
-        <Card>
-          <table className="data-table" aria-label="Patient identifiers">
-            <thead>
-              <tr>
-                <th>Type</th>
-                <th>Value</th>
-                <th>Country</th>
-                <th>Verified</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((ident) => (
-                <tr key={ident.id}>
-                  <td data-label="Type" className="capitalize">{ident.type.replace(/_/g, ' ')}</td>
-                  <td data-label="Value" className="mono">{ident.value}</td>
-                  <td data-label="Country">{ident.issuingCountry ?? '—'}</td>
-                  <td data-label="Verified">
-                    <StatusChip tone={ident.isVerified ? 'success' : 'neutral'} label={ident.isVerified ? 'Yes' : 'No'} />
-                  </td>
-                  <td data-label="Status">
-                    <StatusChip tone={ident.status === 'active' ? 'success' : 'neutral'} label={ident.status} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
-      )}
-
-      <AddIdentifierDialog open={addOpen} onClose={() => setAddOpen(false)} patientId={patientId} facilityId={facilityId} onCreated={() => { setAddOpen(false); onRefresh(); }} />
-    </div>
-  );
-}
-
-function AddIdentifierDialog({ open, onClose, patientId, facilityId, onCreated }: {
-  open: boolean; onClose: () => void; patientId: string; facilityId: string | null; onCreated: () => void;
-}) {
-  const [type, setType] = useState('national_id');
-  const [value, setValue] = useState('');
-  const [country, setCountry] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const submit = async () => {
-    setSubmitting(true);
-    setError(null);
-    try {
-      await patientsApi.addIdentifier(patientId, {
-        type,
-        value: value.trim(),
-        issuingCountry: country || undefined,
-      }, facilityId);
-      onCreated();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to add identifier.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <Dialog open={open} onClose={onClose} title="Add identifier" footer={
-      <>
-        <Button variant="ghost" onClick={onClose}>Cancel</Button>
-        <Button onClick={() => void submit()} loading={submitting} disabled={!value.trim()}>Add</Button>
-      </>
-    }>
-      <div className="stack">
-        {error && <Alert tone="danger">{error}</Alert>}
-        <Select label="Type" value={type} onChange={(e) => setType(e.target.value)}>
-          <option value="national_id">National ID</option>
-          <option value="passport">Passport</option>
-          <option value="license">Driving license</option>
-          <option value="other">Other</option>
-        </Select>
-        <Input label="Value" value={value} onChange={(e) => setValue(e.target.value)} required />
-        <Input label="Issuing country" value={country} onChange={(e) => setCountry(e.target.value)} placeholder="e.g. NP" />
-      </div>
-    </Dialog>
-  );
-}
-
-/* ------------------------------------------------------------------ Contacts Tab */
-
-function ContactsTab({ patientId, facilityId, data, onRefresh }: {
-  patientId: string; facilityId: string | null;
-  data: ReturnType<typeof useFetch<PatientContact[]>>;
-  onRefresh: () => void;
-}) {
-  const [addOpen, setAddOpen] = useState(false);
-
-  if (data.loading) return <Spinner />;
-  if (data.error) return <ErrorState error={data.error} onRetry={onRefresh} />;
-
-  const items = Array.isArray(data.data) ? data.data : [];
-
-  return (
-    <div className="stack">
-      <div className="page__head">
-        <h2>Contacts</h2>
-        <Button onClick={() => setAddOpen(true)}>Add contact</Button>
-      </div>
-
-      {items.length === 0 ? (
-        <EmptyState title="No contacts" body="Add phone, email, or address contacts for this patient." />
-      ) : (
-        <Card>
-          <table className="data-table" aria-label="Patient contacts">
-            <thead>
-              <tr>
-                <th>Type</th>
-                <th>Value</th>
-                <th>Primary</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((c) => (
-                <tr key={c.id}>
-                  <td data-label="Type" className="capitalize">{c.type}</td>
-                  <td data-label="Value">{c.value}</td>
-                  <td data-label="Primary">
-                    <StatusChip tone={c.isPrimary ? 'success' : 'neutral'} label={c.isPrimary ? 'Yes' : 'No'} />
-                  </td>
-                  <td data-label="Status">
-                    <StatusChip tone={c.status === 'active' ? 'success' : 'neutral'} label={c.status} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
-      )}
-
-      <AddContactDialog open={addOpen} onClose={() => setAddOpen(false)} patientId={patientId} facilityId={facilityId} onCreated={() => { setAddOpen(false); onRefresh(); }} />
-    </div>
-  );
-}
-
-function AddContactDialog({ open, onClose, patientId, facilityId, onCreated }: {
-  open: boolean; onClose: () => void; patientId: string; facilityId: string | null; onCreated: () => void;
-}) {
-  const [type, setType] = useState('phone');
-  const [value, setValue] = useState('');
-  const [isPrimary, setIsPrimary] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const submit = async () => {
-    setSubmitting(true);
-    setError(null);
-    try {
-      await patientsApi.addContact(patientId, {
-        type,
-        value: value.trim(),
-        isPrimary,
-      }, facilityId);
-      onCreated();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to add contact.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <Dialog open={open} onClose={onClose} title="Add contact" footer={
-      <>
-        <Button variant="ghost" onClick={onClose}>Cancel</Button>
-        <Button onClick={() => void submit()} loading={submitting} disabled={!value.trim()}>Add</Button>
-      </>
-    }>
-      <div className="stack">
-        {error && <Alert tone="danger">{error}</Alert>}
-        <Select label="Type" value={type} onChange={(e) => setType(e.target.value)}>
-          <option value="phone">Phone</option>
-          <option value="email">Email</option>
-          <option value="address">Address</option>
-          <option value="emergency">Emergency</option>
-        </Select>
-        <Input label="Value" value={value} onChange={(e) => setValue(e.target.value)} required placeholder={type === 'email' ? 'email@example.com' : type === 'phone' ? '+977-…' : ''} />
-        <label className="check">
-          <input type="checkbox" checked={isPrimary} onChange={(e) => setIsPrimary(e.target.checked)} />
-          Primary contact
-        </label>
-      </div>
-    </Dialog>
   );
 }
