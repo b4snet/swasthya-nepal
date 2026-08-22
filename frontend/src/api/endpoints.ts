@@ -515,6 +515,41 @@ export const numberingApi = {
     `/api/v1/numbering/${id}/generate`, { method: 'POST', body: { facilityId } }),
 };
 
+/* ------------------------------------------------------------------
+   Admission (Phase 102)
+   ------------------------------------------------------------------ */
+export const admissionApi = {
+  store: (encounterId: string, payload: {
+    bedId: string;
+    admissionType: string;
+    admittingDiagnosis: string;
+  }) => api.request<{
+    id: string; patientId: string; encounterId: string;
+    admissionNumber: string; status: string; admittedAt: string;
+  }>(`/api/v1/encounters/${encounterId}/admissions`, { method: 'POST', body: payload }),
+  show: (admissionId: string) => api.request<{
+    id: string; patientId: string; encounterId: string;
+    admissionType: string; admittingDiagnosis: string | null;
+    status: string; admittedAt: string; dischargedAt: string | null;
+    dischargeType: string | null; dischargeSummary: string | null;
+    bed: { id: string; bedCode: string } | null;
+  }>(`/api/v1/admissions/${admissionId}`),
+  transfer: (admissionId: string, payload: {
+    targetBedId: string;
+    reason: string;
+  }) => api.request<{
+    id: string; status: string;
+    oldBed: { id: string; bedCode: string };
+    newBed: { id: string; bedCode: string };
+  }>(`/api/v1/admissions/${admissionId}/transfer`, { method: 'POST', body: payload }),
+  discharge: (admissionId: string, payload: {
+    dischargeType: string;
+    dischargeSummary?: string;
+  }) => api.request<{
+    id: string; status: string; dischargedAt: string;
+  }>(`/api/v1/admissions/${admissionId}/discharge`, { method: 'POST', body: payload }),
+};
+
 export const bedWardApi = {
   occupancy: (orgId: string) =>
     api.request<{ summary: Record<string, number>; wards: Array<{

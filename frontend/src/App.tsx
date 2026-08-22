@@ -55,6 +55,7 @@ const BloodBankPage = lazy(() => import('./pages/BloodBankPage').then(m => ({ de
 const NursingPage = lazy(() => import('./pages/NursingPage').then(m => ({ default: m.NursingPage })));
 const FormsPage = lazy(() => import('./pages/FormsPage').then(m => ({ default: m.FormsPage })));
 const BedOccupancyPage = lazy(() => import('./pages/BedOccupancyPage').then(m => ({ default: m.BedOccupancyPage })));
+const IpdDashboard = lazy(() => import('./pages/IpdDashboard').then(m => ({ default: m.IpdDashboard })));
 const DocumentCenterPage = lazy(() => import('./pages/DocumentCenterPage').then(m => ({ default: m.DocumentCenterPage })));
 const RevenueCyclePage = lazy(() => import('./pages/RevenueCyclePage').then(m => ({ default: m.RevenueCyclePage })));
 const OperationsCenterPage = lazy(() => import('./pages/OperationsCenterPage').then(m => ({ default: m.OperationsCenterPage })));
@@ -173,7 +174,8 @@ export function App() {
               {/* ═══ HOSPITAL MODULE ═══ */}
               <Route path="/hospital" element={<LazySuspense><HospitalDashboard /></LazySuspense>} />
               <Route path="/hospital/opd" element={<LazySuspense><QueuePage /></LazySuspense>} />
-              <Route path="/hospital/ipd" element={<LazySuspense><BedOccupancyPage /></LazySuspense>} />
+              <Route path="/hospital/ipd" element={<LazySuspense><IpdDashboard /></LazySuspense>} />
+              <Route path="/ipd" element={<LazySuspense><IpdDashboard /></LazySuspense>} />
               <Route path="/emergency" element={<LazySuspense><EmergencyPage /></LazySuspense>} />
               <Route path="/icu" element={<LazySuspense><IcuPage /></LazySuspense>} />
               <Route path="/ot" element={<LazySuspense><OperatingTheatrePage /></LazySuspense>} />

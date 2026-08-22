@@ -1,0 +1,326 @@
+/* ── Nursing Workspace ─────────────────────────────────────────────── */
+
+.nursing-page {
+  max-width: 1400px;
+}
+
+.nursing-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* ── Census Cards ─────────────────────────────────────────────────── */
+
+.nursing-census {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.nursing-census-card {
+  background: #fff;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.nursing-census-card--tasks { border-top: 3px solid var(--primary, #4FA9FF); }
+.nursing-census-card--urgent { border-top: 3px solid #ef4444; }
+.nursing-census-card--vitals { border-top: 3px solid #10b981; }
+.nursing-census-card--plans { border-top: 3px solid #8b5cf6; }
+.nursing-census-card--alerts { border-top: 3px solid #f59e0b; }
+
+.nursing-census-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary, #111827);
+  line-height: 1;
+}
+
+.nursing-census-label {
+  font-size: 12px;
+  color: var(--text-secondary, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 500;
+}
+
+/* ── Tabs ─────────────────────────────────────────────────────────── */
+
+.nursing-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--border, #e5e7eb);
+  margin-bottom: 16px;
+}
+
+.nursing-tab {
+  padding: 10px 20px;
+  border: none;
+  background: none;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary, #6b7280);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.15s, border-color 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nursing-tab:hover {
+  color: var(--text-primary, #111827);
+}
+
+.nursing-tab--active {
+  color: var(--primary, #4FA9FF);
+  border-bottom-color: var(--primary, #4FA9FF);
+  font-weight: 600;
+}
+
+.nursing-tab-badge {
+  background: var(--bg-secondary, #f3f4f6);
+  padding: 1px 7px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary, #6b7280);
+}
+
+.nursing-tab-badge--danger {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* ── Section Card ─────────────────────────────────────────────────── */
+
+.nursing-section-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.nursing-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+}
+
+.nursing-section-header h3 {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+  margin: 0;
+}
+
+/* ── Task Table ───────────────────────────────────────────────────── */
+
+.nursing-desc {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nursing-priority {
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.nursing-status {
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.nursing-time {
+  font-size: 12px;
+  color: var(--text-tertiary, #9ca3af);
+  white-space: nowrap;
+}
+
+/* ── Care Plan List ───────────────────────────────────────────────── */
+
+.nursing-plan-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.nursing-plan-item {
+  padding: 16px;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+}
+
+.nursing-plan-item:last-child {
+  border-bottom: none;
+}
+
+.nursing-plan-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.nursing-plan-patient {
+  font-weight: 600;
+  color: var(--primary, #4FA9FF);
+  font-size: 14px;
+}
+
+.nursing-plan-status {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 1px 6px;
+  border-radius: 4px;
+  text-transform: capitalize;
+}
+
+.nursing-plan-status--active { background: #ecfdf5; color: #059669; }
+.nursing-plan-status--completed { background: #f3f4f6; color: #6b7280; }
+
+.nursing-plan-diagnosis {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary, #111827);
+  margin: 0 0 6px;
+}
+
+.nursing-plan-goals,
+.nursing-plan-interventions {
+  font-size: 13px;
+  color: var(--text-secondary, #6b7280);
+  margin: 0 0 4px;
+}
+
+/* ── Handover List ────────────────────────────────────────────────── */
+
+.nursing-handover-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.nursing-handover-item {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+}
+
+.nursing-handover-item:last-child {
+  border-bottom: none;
+}
+
+.nursing-handover-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.nursing-handover-shift {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-primary, #111827);
+}
+
+.nursing-handover-date {
+  font-size: 13px;
+  color: var(--text-secondary, #6b7280);
+}
+
+.nursing-handover-status {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 1px 6px;
+  border-radius: 4px;
+  text-transform: capitalize;
+}
+
+.nursing-handover-status--pending { background: #fffbeb; color: #92400e; }
+.nursing-handover-status--completed { background: #ecfdf5; color: #059669; }
+
+/* ── Alert List ───────────────────────────────────────────────────── */
+
+.nursing-alert-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.nursing-alert-item {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+  border-left: 3px solid;
+}
+
+.nursing-alert-item:last-child {
+  border-bottom: none;
+}
+
+.nursing-alert-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.nursing-alert-type {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-primary, #111827);
+}
+
+.nursing-alert-severity {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.nursing-alert-status {
+  font-size: 11px;
+  color: var(--text-tertiary, #9ca3af);
+  text-transform: capitalize;
+}
+
+.nursing-alert-message {
+  font-size: 13px;
+  color: var(--text-secondary, #6b7280);
+  margin: 6px 0 0;
+}
+
+/* ── Vitals Grid ──────────────────────────────────────────────────── */
+
+.nursing-vitals-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* ── Responsive ───────────────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .nursing-census {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .nursing-vitals-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .nursing-census {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .nursing-tabs {
+    overflow-x: auto;
+  }
+}

@@ -1,0 +1,372 @@
+/* ── IPD Dashboard ─────────────────────────────────────────────────── */
+
+.ipd-page {
+  max-width: 1400px;
+}
+
+.ipd-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* ── Census Dashboard ─────────────────────────────────────────────── */
+
+.ipd-census {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.ipd-census-card {
+  background: #fff;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.ipd-census-card--total { border-top: 3px solid var(--primary, #4FA9FF); }
+.ipd-census-card--occupied { border-top: 3px solid #ef4444; }
+.ipd-census-card--available { border-top: 3px solid #10b981; }
+.ipd-census-card--cleaning { border-top: 3px solid #3b82f6; }
+.ipd-census-card--rate { border-top: 3px solid #8b5cf6; }
+
+.ipd-census-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary, #111827);
+  line-height: 1;
+}
+
+.ipd-census-label {
+  font-size: 12px;
+  color: var(--text-secondary, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 500;
+}
+
+/* ── Occupancy Bar ────────────────────────────────────────────────── */
+
+.ipd-occupancy-bar {
+  width: 100%;
+  height: 6px;
+  background: var(--border, #e5e7eb);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.ipd-occupancy-fill {
+  height: 100%;
+  background: var(--primary, #4FA9FF);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+/* ── Tabs ─────────────────────────────────────────────────────────── */
+
+.ipd-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--border, #e5e7eb);
+  margin-bottom: 16px;
+}
+
+.ipd-tab {
+  padding: 10px 20px;
+  border: none;
+  background: none;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary, #6b7280);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.ipd-tab:hover {
+  color: var(--text-primary, #111827);
+}
+
+.ipd-tab--active {
+  color: var(--primary, #4FA9FF);
+  border-bottom-color: var(--primary, #4FA9FF);
+  font-weight: 600;
+}
+
+/* ── Ward Grid ────────────────────────────────────────────────────── */
+
+.ipd-ward-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 16px;
+}
+
+.ipd-ward-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.ipd-ward-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 16px;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+}
+
+.ipd-ward-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+  margin: 0;
+}
+
+.ipd-ward-type {
+  font-size: 12px;
+  color: var(--text-secondary, #6b7280);
+  text-transform: capitalize;
+}
+
+.ipd-ward-occupancy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.ipd-ward-rate {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary, #111827);
+}
+
+.ipd-ward-count {
+  font-size: 12px;
+  color: var(--text-secondary, #6b7280);
+}
+
+/* ── Bed Grid ─────────────────────────────────────────────────────── */
+
+.ipd-bed-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
+  gap: 6px;
+  padding: 12px 16px 16px;
+}
+
+.ipd-bed-cell {
+  width: 48px;
+  height: 48px;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border: 1px solid var(--border, #e5e7eb);
+  background: #fff;
+  cursor: default;
+  transition: background 0.1s;
+}
+
+.ipd-bed-cell--available {
+  background: #ecfdf5;
+  border-color: #d1fae5;
+}
+
+.ipd-bed-cell--occupied {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.ipd-bed-cell--reserved {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+.ipd-bed-cell--cleaning {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.ipd-bed-cell--maintenance {
+  background: #f5f3ff;
+  border-color: #ddd6fe;
+}
+
+.ipd-bed-code {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+}
+
+.ipd-bed-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+/* ── Section Card ─────────────────────────────────────────────────── */
+
+.ipd-section-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.ipd-section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+}
+
+.ipd-section-header h3 {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+  margin: 0;
+}
+
+.ipd-badge {
+  background: var(--bg-secondary, #f3f4f6);
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary, #6b7280);
+}
+
+/* ── Patient List ─────────────────────────────────────────────────── */
+
+.ipd-patient-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.ipd-patient-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+}
+
+.ipd-patient-row:last-child {
+  border-bottom: none;
+}
+
+.ipd-patient-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.ipd-patient-link {
+  font-weight: 600;
+  color: var(--primary, #4FA9FF);
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.ipd-patient-link:hover {
+  text-decoration: underline;
+}
+
+.ipd-patient-complaint {
+  font-size: 13px;
+  color: var(--text-secondary, #6b7280);
+}
+
+.ipd-patient-meta {
+  font-size: 12px;
+  color: var(--text-tertiary, #9ca3af);
+}
+
+/* ── Triage Badge ─────────────────────────────────────────────────── */
+
+.ipd-triage-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+}
+
+/* ── Status Badge ─────────────────────────────────────────────────── */
+
+.ipd-status-badge {
+  display: inline-flex;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.ipd-status-badge--purple {
+  background: #f5f3ff;
+  color: #7c3aed;
+}
+
+/* ── Transfer List ────────────────────────────────────────────────── */
+
+.ipd-transfer-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.ipd-transfer-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+}
+
+.ipd-transfer-row:last-child {
+  border-bottom: none;
+}
+
+/* ── Discharge Status ─────────────────────────────────────────────── */
+
+.ipd-discharge-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── Responsive ───────────────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .ipd-census {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .ipd-ward-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .ipd-census {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .ipd-tabs {
+    overflow-x: auto;
+  }
+}
