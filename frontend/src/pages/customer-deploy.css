@@ -1,0 +1,123 @@
+/* ═══════════════════════════════════════════════════════
+   Customer Deployment Readiness — Phase 132
+   Premium white-first clinical design
+   ═══════════════════════════════════════════════════════ */
+
+.cd-page { max-width: 1200px; margin: 0 auto; padding: 24px; }
+.cd-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+.cd-title { font-size: 22px; font-weight: 700; color: #111827; margin: 0; }
+.cd-subtitle { font-size: 13px; color: #6b7280; margin: 4px 0 0; }
+.cd-header__right { display: flex; align-items: center; gap: 8px; }
+.cd-verdict-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.cd-verdict-pill--ready { background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; }
+
+/* ── Census ── */
+.cd-census { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+.cd-census-card {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px;
+}
+.cd-census-card__icon {
+  width: 36px; height: 36px; display: flex; align-items: center;
+  justify-content: center; border-radius: 8px; flex-shrink: 0;
+}
+.cd-census-card__info { display: flex; flex-direction: column; }
+.cd-census-card__value { font-size: 18px; font-weight: 700; color: #111827; line-height: 1.2; }
+.cd-census-card__label { font-size: 11px; color: #6b7280; white-space: nowrap; }
+
+/* ── Tabs ── */
+.cd-tabs { display: flex; gap: 2px; border-bottom: 1px solid #e5e7eb; margin-bottom: 20px; }
+.cd-tab {
+  padding: 10px 16px; font-size: 13px; font-weight: 500; color: #6b7280;
+  background: none; border: none; border-bottom: 2px solid transparent;
+  cursor: pointer; transition: all 0.15s ease;
+}
+.cd-tab:hover { color: #111827; background: #f9fafb; }
+.cd-tab--active { color: #2563eb; border-bottom-color: #2563eb; font-weight: 600; }
+
+/* ── Sections ── */
+.cd-section {
+  background: #fff; border: 1px solid #e5e7eb;
+  border-radius: 12px; padding: 20px; margin-bottom: 16px;
+}
+.cd-section__head {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 14px; font-weight: 600; color: #111827; margin-bottom: 16px;
+}
+.cd-section__head svg { color: #6b7280; }
+.cd-subhead {
+  font-size: 13px; font-weight: 600; color: #374151;
+  margin: 20px 0 10px; padding-bottom: 6px; border-bottom: 1px solid #f3f4f6;
+}
+
+/* ── Verdict Card ── */
+.cd-verdict-card { padding: 24px; border-radius: 12px; margin-bottom: 16px; }
+.cd-verdict-card--ready { background: #ecfdf5; border: 2px solid #a7f3d0; }
+.cd-verdict-card__header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.cd-verdict-card__header svg { color: #059669; }
+.cd-verdict-card__header h3 { font-size: 18px; font-weight: 700; color: #059669; margin: 0; }
+.cd-verdict-card p { font-size: 13px; color: #065f46; line-height: 1.6; margin: 0; }
+
+/* ── Timeline ── */
+.cd-timeline { display: flex; flex-direction: column; gap: 6px; }
+.cd-timeline-item {
+  display: grid; grid-template-columns: 100px 1fr;
+  gap: 12px; align-items: center;
+  padding: 10px 14px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px;
+}
+.cd-timeline-week { font-size: 12px; font-weight: 700; color: #2563eb; }
+.cd-timeline-activity { font-size: 12px; color: #374151; }
+
+/* ── Template Grid ── */
+.cd-template-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px; }
+.cd-template-card {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 14px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px;
+}
+.cd-template-name { font-size: 14px; font-weight: 700; color: #111827; }
+.cd-template-desc { font-size: 12px; color: #6b7280; }
+.cd-template-target { font-size: 11px; color: #2563eb; }
+
+/* ── Tables ── */
+.cd-table-wrap { display: flex; flex-direction: column; gap: 2px; }
+.cd-table {
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px; align-items: center; padding: 8px 12px;
+  background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px;
+  font-size: 12px; color: #374151;
+}
+.cd-table--head {
+  background: #f3f4f6; font-weight: 600; font-size: 10px;
+  text-transform: uppercase; letter-spacing: 0.03em;
+}
+.cd-bold { font-weight: 600; color: #111827; }
+.cd-muted { font-size: 11px; color: #6b7280; }
+.cd-mono { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 11px; }
+
+/* ── Checklist ── */
+.cd-checklist { display: flex; flex-direction: column; gap: 4px; }
+.cd-check-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px;
+  font-size: 12px; color: #374151;
+}
+.cd-chk-empty {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 2px solid #d1d5db; flex-shrink: 0;
+}
+.cd-icon-ok { color: #059669; }
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .cd-page { padding: 16px; }
+  .cd-header { flex-direction: column; gap: 12px; }
+  .cd-census { grid-template-columns: repeat(2, 1fr); }
+  .cd-tabs { overflow-x: auto; }
+  .cd-table { grid-template-columns: 1fr 1fr; }
+  .cd-table--head { display: none; }
+  .cd-template-grid { grid-template-columns: 1fr; }
+}
