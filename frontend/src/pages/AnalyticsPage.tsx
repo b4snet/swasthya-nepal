@@ -1,312 +1,382 @@
-import { useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTenant } from '../context/TenantContext';
-import { analyticsApi } from '../api/endpoints';
 import { useFetch } from '../hooks/useFetch';
-import { Alert, Button, Card, Dialog, EmptyState, ErrorState, Input, Select, Spinner } from '../components/ui';
+import { analyticsApi } from '../api/endpoints';
 import { ApiError } from '../api/client';
+import { Alert, Button, Card, EmptyState } from '../components/ui';
+import '../pages/analytics-cmd.css';
+
+/* ── Types ───────────────────────────────────────────────────────── */
+
+interface KpiDefinition {
+  id: string;
+  code: string;
+  name: string;
+  domain: string;
+  sourceTable: string;
+  aggregation: string;
+  unit: string | null;
+  status: string;
+}
+
+interface Dashboard {
+  id: string;
+  name: string;
+  description: string | null;
+  kpis: Array<{ id: string; name: string; domain: string }>;
+  status: string;
+}
+
+interface ReportTemplate {
+  id: string;
+  code: string;
+  name: string;
+  category: string;
+  scope: string;
+  status: string;
+}
+
+/* ── Constants ───────────────────────────────────────────────────── */
+
+const DOMAIN_COLORS: Record<string, { color: string; bg: string }> = {
+  clinical: { color: '#10b981', bg: '#ecfdf5' },
+  operational: { color: '#3b82f6', bg: '#dbeafe' },
+  financial: { color: '#f59e0b', bg: '#fef3c7' },
+  inventory: { color: '#8b5cf6', bg: '#f5f3ff' },
+  workforce: { color: '#ec4899', bg: '#fce7f3' },
+  patient_flow: { color: '#06b6d4', bg: '#cffafe' },
+  quality: { color: '#ef4444', bg: '#fee2e2' },
+};
+
+function DomainBadge({ domain }: { domain: string }) {
+  const c = DOMAIN_COLORS[domain] ?? { color: '#6b7280', bg: '#f3f4f6' };
+  return <span className="analytics-badge" style={{ color: c.color, backgroundColor: c.bg }}>{domain.replace(/_/g, ' ')}</span>;
+}
+
+/* ── Main Component ──────────────────────────────────────────────── */
 
 export function AnalyticsPage() {
-  const { selectedFacilityId, hasRole } = useTenant();
-  const fac = selectedFacilityId;
+  const { selectedFacilityId: fac } = useTenant();
+  const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'command-center' | 'kpis' | 'reports' | 'dashboards' | 'exports'>('command-center');
+  const [busy, setBusy] = useState(false);
 
-  const [tab, setTab] = useState<'kpis' | 'dashboards' | 'templates' | 'runs'>('kpis');
-  const [notice, setNotice] = useState<{ tone: 'success' | 'danger'; text: string } | null>(null);
+  // Filter
+  const [dateRange, setDateRange] = useState('today');
 
-  const canManage = hasRole('hospital_admin', 'analytics_admin');
+  // Data fetching
+  const kpis = useFetch(
+    () => analyticsApi.kpiDefinitions(fac).catch(() => []),
+    [fac],
+  );
+
+  const dashboards = useFetch(
+    () => analyticsApi.dashboards(fac).catch(() => []),
+    [fac],
+  );
+
+  const reportTemplates = useFetch(
+    () => analyticsApi.reportTemplates(fac).catch(() => []),
+    [fac],
+  );
+
+  const allKpis = useMemo(() => (kpis.data ?? []) as KpiDefinition[], [kpis.data]);
+  const allDashboards = useMemo(() => (dashboards.data ?? []) as unknown as Dashboard[], [dashboards.data]);
+  const allReports = useMemo(() => (reportTemplates.data ?? []) as unknown as ReportTemplate[], [reportTemplates.data]);
+
+  const go = useCallback(async <T,>(fn: () => Promise<T>): Promise<T | null> => {
+    setBusy(true); setError(null);
+    try { return await fn(); } catch (e: unknown) { setError(e instanceof ApiError ? e.message : 'Failed'); return null; } finally { setBusy(false); }
+  }, []);
+
+  // Domain KPI counts
+  const kpiDomainCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    allKpis.forEach(k => { counts[k.domain] = (counts[k.domain] || 0) + 1; });
+    return counts;
+  }, [allKpis]);
+
+  const handleRunReport = useCallback(async (templateId: string) => {
+    await go(() => analyticsApi.runReport({ templateId }, fac));
+  }, [fac, go]);
+
+  const handleExportReport = useCallback(async (templateId: string, format: string) => {
+    await go(() => analyticsApi.exportReport({ templateId, format }, fac));
+  }, [fac, go]);
 
   return (
-    <div className="page">
-      <div className="page__head">
-        <div className="page__title">
-          <h1>Analytics & Reporting</h1>
-          <span className="page__sub">KPI definitions, dashboards, and report management</span>
+    <div className="page analytics-page">
+      <header className="page__head">
+        <div>
+          <h1 className="page__title">Analytics & Command Center</h1>
+          <p className="page__subtitle">Enterprise dashboards, KPIs, reports, hospital operations</p>
+        </div>
+        <div className="analytics-actions">
+          <select className="analytics-select" value={dateRange} onChange={e => setDateRange(e.target.value)}>
+            <option value="today">Today</option>
+            <option value="week">This Week</option>
+            <option value="month">This Month</option>
+            <option value="quarter">This Quarter</option>
+            <option value="year">This Year</option>
+          </select>
+          <Button variant="ghost" onClick={() => { kpis.refresh(); dashboards.refresh(); reportTemplates.refresh(); }}>Refresh</Button>
+        </div>
+      </header>
+
+      {error && <Alert tone="danger">{error}</Alert>}
+
+      {/* ── Census Dashboard ──────────────────────────────── */}
+      <div className="analytics-census">
+        <div className="analytics-census-card analytics-census-card--kpis">
+          <span className="analytics-census-value">{allKpis.length}</span>
+          <span className="analytics-census-label">KPI Definitions</span>
+        </div>
+        <div className="analytics-census-card analytics-census-card--dashboards">
+          <span className="analytics-census-value">{allDashboards.length}</span>
+          <span className="analytics-census-label">Dashboards</span>
+        </div>
+        <div className="analytics-census-card analytics-census-card--reports">
+          <span className="analytics-census-value">{allReports.length}</span>
+          <span className="analytics-census-label">Report Templates</span>
+        </div>
+        <div className="analytics-census-card analytics-census-card--clinical">
+          <span className="analytics-census-value">{kpiDomainCounts.clinical ?? 0}</span>
+          <span className="analytics-census-label">Clinical KPIs</span>
+        </div>
+        <div className="analytics-census-card analytics-census-card--operational">
+          <span className="analytics-census-value">{kpiDomainCounts.operational ?? 0}</span>
+          <span className="analytics-census-label">Operational KPIs</span>
+        </div>
+        <div className="analytics-census-card analytics-census-card--financial">
+          <span className="analytics-census-value">{kpiDomainCounts.financial ?? 0}</span>
+          <span className="analytics-census-label">Financial KPIs</span>
         </div>
       </div>
 
-      {notice && <Alert tone={notice.tone}>{notice.text}</Alert>}
-
-      <div className="tabs" role="tablist">
-        {(['kpis', 'dashboards', 'templates', 'runs'] as const).map((t) => (
-          <button key={t} role="tab" aria-selected={tab === t} className={`tabs__tab ${tab === t ? 'tabs__tab--active' : ''}`} onClick={() => setTab(t)}>
-            {t === 'kpis' ? 'KPI Definitions' : t === 'dashboards' ? 'Dashboards' : t === 'templates' ? 'Report Templates' : 'Report Runs'}
+      {/* ── Tabs ──────────────────────────────────────────── */}
+      <div className="analytics-tabs">
+        {(['command-center', 'kpis', 'reports', 'dashboards', 'exports'] as const).map(t => (
+          <button key={t} className={`analytics-tab ${activeTab === t ? 'analytics-tab--active' : ''}`}
+            onClick={() => setActiveTab(t)}>
+            {t === 'command-center' ? 'Command Center' : t === 'kpis' ? 'KPIs' : t === 'reports' ? 'Reports' : t === 'dashboards' ? 'Dashboards' : 'Exports'}
           </button>
         ))}
       </div>
 
-      {tab === 'kpis' && <KpiTab fac={fac} canManage={canManage} setNotice={setNotice} />}
-      {tab === 'dashboards' && <DashboardTab fac={fac} />}
-      {tab === 'templates' && <TemplateTab fac={fac} canManage={canManage} setNotice={setNotice} />}
-      {tab === 'runs' && <RunsTab fac={fac} canManage={canManage} setNotice={setNotice} />}
-    </div>
-  );
-}
-
-function KpiTab({ fac, canManage, setNotice }: { fac: string | null; canManage: boolean; setNotice: (n: any) => void }) {
-  const [createOpen, setCreateOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
-
-  const kpis = useFetch(() => analyticsApi.kpiDefinitions(fac), [fac]);
-
-  const [code, setCode] = useState('');
-  const [name, setName] = useState('');
-  const [domain, setDomain] = useState('operational');
-  const [sourceTable, setSourceTable] = useState('');
-  const [dateColumn, setDateColumn] = useState('created_at');
-  const [aggregation, setAggregation] = useState('count');
-
-  const handleCreate = async () => {
-    setBusy(true);
-    try {
-      await analyticsApi.storeKpiDefinition({ code, name, domain, sourceTable, dateColumn, aggregation }, fac);
-      setNotice({ tone: 'success', text: 'KPI definition created.' });
-      setCreateOpen(false);
-      setCode('');
-      setName('');
-      setSourceTable('');
-      void kpis.refresh();
-    } catch (err) {
-      setNotice({ tone: 'danger', text: err instanceof ApiError ? err.message : 'Failed.' });
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  if (kpis.loading) return <Spinner />;
-  if (kpis.error) return <ErrorState error={kpis.error} onRetry={() => void kpis.refresh()} />;
-
-  const data = kpis.data ?? [];
-
-  return (
-    <Card title="KPI Definitions">
-      {canManage && (
-        <div className="row mb-4"><Button onClick={() => setCreateOpen(true)}>Add KPI</Button></div>
-      )}
-      {data.length === 0 ? (
-        <EmptyState title="No KPI definitions" body="Define KPIs to start measuring operational metrics." />
-      ) : (
-        <table className="data-table">
-          <thead><tr><th>Code</th><th>Name</th><th>Domain</th><th>Aggregation</th><th>Status</th><th>v{data[0]?.version}</th></tr></thead>
-          <tbody>
-            {data.map((k) => (
-              <tr key={k.id}>
-                <td className="mono">{k.code}</td>
-                <td>{k.name}</td>
-                <td>{k.domain}</td>
-                <td>{k.aggregation}</td>
-                <td><span className={`status-chip status-chip--${k.status === 'active' ? 'success' : 'neutral'}`}>{k.status}</span></td>
-                <td className="num">v{k.version}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-      <Dialog open={createOpen} onClose={() => setCreateOpen(false)} title="Add KPI definition"
-        footer={<><Button variant="ghost" onClick={() => setCreateOpen(false)}>Cancel</Button><Button onClick={() => void handleCreate()} loading={busy} disabled={!code.trim() || !name.trim() || !sourceTable.trim()}>Create</Button></>}>
-        <div className="stack">
-          <Input label="Code" value={code} onChange={(e) => setCode(e.target.value)} placeholder="e.g. daily_appointments" />
-          <Input label="Name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Daily appointments" />
-          <Select label="Domain" value={domain} onChange={(e) => setDomain(e.target.value)}>
-            <option value="operational">Operational</option>
-            <option value="clinical">Clinical</option>
-            <option value="financial">Financial</option>
-          </Select>
-          <Input label="Source table" value={sourceTable} onChange={(e) => setSourceTable(e.target.value)} placeholder="e.g. appointments" />
-          <Input label="Date column" value={dateColumn} onChange={(e) => setDateColumn(e.target.value)} />
-          <Select label="Aggregation" value={aggregation} onChange={(e) => setAggregation(e.target.value)}>
-            <option value="count">Count</option>
-            <option value="sum">Sum</option>
-            <option value="avg">Average</option>
-          </Select>
-        </div>
-      </Dialog>
-    </Card>
-  );
-}
-
-function DashboardTab({ fac }: { fac: string | null }) {
-  const dashboards = useFetch(() => analyticsApi.dashboards(fac), [fac]);
-
-  if (dashboards.loading) return <Spinner />;
-  if (dashboards.error) return <ErrorState error={dashboards.error} onRetry={() => void dashboards.refresh()} />;
-
-  const data = dashboards.data ?? [];
-
-  return (
-    <Card title="Dashboards">
-      {data.length === 0 ? (
-        <EmptyState title="No dashboards" body="Dashboards are configured by administrators." />
-      ) : (
-        <table className="data-table">
-          <thead><tr><th>Code</th><th>Name</th><th>Role gate</th><th>Status</th></tr></thead>
-          <tbody>
-            {data.map((d) => (
-              <tr key={d.id}>
-                <td className="mono">{d.code}</td>
-                <td>{d.name}</td>
-                <td>{d.roleGate ?? '—'}</td>
-                <td><span className={`status-chip status-chip--${d.isActive ? 'success' : 'neutral'}`}>{d.isActive ? 'Active' : 'Inactive'}</span></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </Card>
-  );
-}
-
-function TemplateTab({ fac, canManage, setNotice }: { fac: string | null; canManage: boolean; setNotice: (n: any) => void }) {
-  const [createOpen, setCreateOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
-
-  const templates = useFetch(() => analyticsApi.reportTemplates(fac), [fac]);
-
-  const [code, setCode] = useState('');
-  const [name, setName] = useState('');
-  const [category, setCategory] = useState('operational');
-  const [scope, setScope] = useState('facility');
-
-  const handleCreate = async () => {
-    setBusy(true);
-    try {
-      await analyticsApi.storeReportTemplate({ code, name, category, scope }, fac);
-      setNotice({ tone: 'success', text: 'Report template created.' });
-      setCreateOpen(false);
-      setCode('');
-      setName('');
-      void templates.refresh();
-    } catch (err) {
-      setNotice({ tone: 'danger', text: err instanceof ApiError ? err.message : 'Failed.' });
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  if (templates.loading) return <Spinner />;
-  if (templates.error) return <ErrorState error={templates.error} onRetry={() => void templates.refresh()} />;
-
-  const data = templates.data ?? [];
-
-  return (
-    <Card title="Report Templates">
-      {canManage && (
-        <div className="row mb-4"><Button onClick={() => setCreateOpen(true)}>Add template</Button></div>
-      )}
-      {data.length === 0 ? (
-        <EmptyState title="No report templates" body="Create templates to define reusable reports." />
-      ) : (
-        <table className="data-table">
-          <thead><tr><th>Code</th><th>Name</th><th>Category</th><th>Scope</th><th>Status</th></tr></thead>
-          <tbody>
-            {data.map((t) => (
-              <tr key={t.id}>
-                <td className="mono">{t.code}</td>
-                <td>{t.name}</td>
-                <td>{t.category}</td>
-                <td>{t.scope}</td>
-                <td><span className={`status-chip status-chip--${t.isActive ? 'success' : 'neutral'}`}>{t.isActive ? 'Active' : 'Inactive'}</span></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-      <Dialog open={createOpen} onClose={() => setCreateOpen(false)} title="Add report template"
-        footer={<><Button variant="ghost" onClick={() => setCreateOpen(false)}>Cancel</Button><Button onClick={() => void handleCreate()} loading={busy} disabled={!code.trim() || !name.trim()}>Create</Button></>}>
-        <div className="stack">
-          <Input label="Code" value={code} onChange={(e) => setCode(e.target.value)} placeholder="e.g. daily_summary" />
-          <Input label="Name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Daily summary" />
-          <Select label="Category" value={category} onChange={(e) => setCategory(e.target.value)}>
-            <option value="operational">Operational</option>
-            <option value="clinical">Clinical</option>
-            <option value="financial">Financial</option>
-            <option value="pharmacy">Pharmacy</option>
-          </Select>
-          <Select label="Scope" value={scope} onChange={(e) => setScope(e.target.value)}>
-            <option value="facility">Facility</option>
-            <option value="organization">Organization</option>
-          </Select>
-        </div>
-      </Dialog>
-    </Card>
-  );
-}
-
-function RunsTab({ fac, canManage, setNotice }: { fac: string | null; canManage: boolean; setNotice: (n: any) => void }) {
-  const [runBusy, setRunBusy] = useState(false);
-
-  const runs = useFetch(() => analyticsApi.reportRuns(fac), [fac]);
-  const templates = useFetch(() => analyticsApi.reportTemplates(fac), [fac]);
-
-  const handleRun = async (templateId: string) => {
-    setRunBusy(true);
-    try {
-      await analyticsApi.runReport({ templateId }, fac);
-      setNotice({ tone: 'success', text: 'Report started.' });
-      void runs.refresh();
-    } catch (err) {
-      setNotice({ tone: 'danger', text: err instanceof ApiError ? err.message : 'Failed.' });
-    } finally {
-      setRunBusy(false);
-    }
-  };
-
-  const handleExport = async (templateId: string) => {
-    setRunBusy(true);
-    try {
-      await analyticsApi.exportReport({ templateId, format: 'csv' }, fac);
-      setNotice({ tone: 'success', text: 'Export started.' });
-      void runs.refresh();
-    } catch (err) {
-      setNotice({ tone: 'danger', text: err instanceof ApiError ? err.message : 'Failed.' });
-    } finally {
-      setRunBusy(false);
-    }
-  };
-
-  if (runs.loading || templates.loading) return <Spinner />;
-  if (runs.error) return <ErrorState error={runs.error} onRetry={() => void runs.refresh()} />;
-
-  const templateList = templates.data ?? [];
-  const runList = runs.data ?? [];
-
-  return (
-    <div className="stack">
-      {canManage && templateList.length > 0 && (
-        <Card title="Run a report">
-          <div className="stack">
-            {templateList.filter((t) => t.isActive).map((t) => (
-              <div key={t.id} className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-                <span>{t.name} <span className="muted small">({t.category})</span></span>
-                <div className="row">
-                  <Button size="sm" onClick={() => void handleRun(t.id)} loading={runBusy}>Run</Button>
-                  <Button size="sm" variant="ghost" onClick={() => void handleExport(t.id)} loading={runBusy}>Export CSV</Button>
-                </div>
+      {/* ── Command Center Tab ─────────────────────────────── */}
+      {activeTab === 'command-center' && (
+        <div className="analytics-command-center">
+          {/* Hospital Operations Overview */}
+          <Card className="analytics-section-card">
+            <div className="analytics-section-header">
+              <h3>Hospital Operations — {dateRange === 'today' ? 'Today' : dateRange.charAt(0).toUpperCase() + dateRange.slice(1)}</h3>
+            </div>
+            <div className="analytics-ops-grid">
+              <div className="analytics-ops-card">
+                <span className="analytics-ops-label">ED Census</span>
+                <span className="analytics-ops-value">—</span>
+                <span className="analytics-ops-sub">Emergency patients</span>
               </div>
-            ))}
+              <div className="analytics-ops-card">
+                <span className="analytics-ops-label">OPD Visits</span>
+                <span className="analytics-ops-value">—</span>
+                <span className="analytics-ops-sub">Outpatient encounters</span>
+              </div>
+              <div className="analytics-ops-card">
+                <span className="analytics-ops-label">IPD Census</span>
+                <span className="analytics-ops-value">—</span>
+                <span className="analytics-ops-sub">Inpatient beds occupied</span>
+              </div>
+              <div className="analytics-ops-card">
+                <span className="analytics-ops-label">ICU Census</span>
+                <span className="analytics-ops-value">—</span>
+                <span className="analytics-ops-sub">Critical care patients</span>
+              </div>
+              <div className="analytics-ops-card">
+                <span className="analytics-ops-label">OT Cases</span>
+                <span className="analytics-ops-value">—</span>
+                <span className="analytics-ops-sub">Surgeries completed</span>
+              </div>
+              <div className="analytics-ops-card">
+                <span className="analytics-ops-label">Discharges</span>
+                <span className="analytics-ops-value">—</span>
+                <span className="analytics-ops-sub">Patients discharged</span>
+              </div>
+            </div>
+          </Card>
+
+          {/* Department Workload */}
+          <Card className="analytics-section-card">
+            <div className="analytics-section-header">
+              <h3>Department Workload</h3>
+            </div>
+            <div className="analytics-dept-grid">
+              <div className="analytics-dept-card">
+                <span className="analytics-dept-name">Laboratory</span>
+                <div className="analytics-dept-bar">
+                  <div className="analytics-dept-fill" style={{ width: '0%', backgroundColor: '#8b5cf6' }} />
+                </div>
+                <span className="analytics-dept-stat">— pending orders</span>
+              </div>
+              <div className="analytics-dept-card">
+                <span className="analytics-dept-name">Radiology</span>
+                <div className="analytics-dept-bar">
+                  <div className="analytics-dept-fill" style={{ width: '0%', backgroundColor: '#06b6d4' }} />
+                </div>
+                <span className="analytics-dept-stat">— pending studies</span>
+              </div>
+              <div className="analytics-dept-card">
+                <span className="analytics-dept-name">Pharmacy</span>
+                <div className="analytics-dept-bar">
+                  <div className="analytics-dept-fill" style={{ width: '0%', backgroundColor: '#f59e0b' }} />
+                </div>
+                <span className="analytics-dept-stat">— pending prescriptions</span>
+              </div>
+              <div className="analytics-dept-card">
+                <span className="analytics-dept-name">Blood Bank</span>
+                <div className="analytics-dept-bar">
+                  <div className="analytics-dept-fill" style={{ width: '0%', backgroundColor: '#ef4444' }} />
+                </div>
+                <span className="analytics-dept-stat">— pending requests</span>
+              </div>
+            </div>
+          </Card>
+
+          {/* Financial Summary */}
+          <Card className="analytics-section-card">
+            <div className="analytics-section-header">
+              <h3>Financial Summary</h3>
+            </div>
+            <div className="analytics-fin-grid">
+              <div className="analytics-fin-card">
+                <span className="analytics-fin-label">Revenue</span>
+                <span className="analytics-fin-value">—</span>
+              </div>
+              <div className="analytics-fin-card">
+                <span className="analytics-fin-label">Outstanding</span>
+                <span className="analytics-fin-value analytics-fin-value--warning">—</span>
+              </div>
+              <div className="analytics-fin-card">
+                <span className="analytics-fin-label">Collections</span>
+                <span className="analytics-fin-value analytics-fin-value--success">—</span>
+              </div>
+              <div className="analytics-fin-card">
+                <span className="analytics-fin-label">Refunds</span>
+                <span className="analytics-fin-value">—</span>
+              </div>
+            </div>
+          </Card>
+
+          {/* Critical Events */}
+          <Card className="analytics-section-card">
+            <div className="analytics-section-header">
+              <h3>Critical Events</h3>
+            </div>
+            <EmptyState title="Critical events" body="Critical lab results, imaging findings, and urgent alerts appear here." />
+          </Card>
+        </div>
+      )}
+
+      {/* ── KPIs Tab ──────────────────────────────────────── */}
+      {activeTab === 'kpis' && (
+        <Card className="analytics-section-card">
+          <div className="analytics-section-header">
+            <h3>KPI Definitions</h3>
           </div>
+          {allKpis.length === 0 ? (
+            <EmptyState title="No KPIs configured" body="Define KPIs to track hospital performance metrics." />
+          ) : (
+            <div className="analytics-table">
+              <div className="analytics-table-header">
+                <span>Code</span>
+                <span>Name</span>
+                <span>Domain</span>
+                <span>Source</span>
+                <span>Aggregation</span>
+                <span>Unit</span>
+              </div>
+              {allKpis.map(k => (
+                <div key={k.id} className="analytics-table-row">
+                  <span className="analytics-mono">{k.code}</span>
+                  <span className="analytics-name">{k.name}</span>
+                  <DomainBadge domain={k.domain} />
+                  <span className="analytics-mono">{k.sourceTable}</span>
+                  <span>{k.aggregation}</span>
+                  <span>{k.unit ?? '—'}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </Card>
       )}
 
-      <Card title="Report runs">
-        {runList.length === 0 ? (
-          <EmptyState title="No report runs" body="Run a report to see results here." />
-        ) : (
-          <table className="data-table">
-            <thead><tr><th>Template</th><th>Started</th><th>Completed</th><th>Rows</th><th>Status</th><th>Export</th></tr></thead>
-            <tbody>
-              {runList.map((r) => (
-                <tr key={r.id}>
-                  <td>{r.templateCode ?? '—'}</td>
-                  <td className="num">{new Date(r.runAt).toLocaleString()}</td>
-                  <td className="num">{r.completedAt ? new Date(r.completedAt).toLocaleString() : '—'}</td>
-                  <td className="num">{r.rowCount ?? '—'}</td>
-                  <td><span className={`status-chip status-chip--${r.status === 'completed' ? 'success' : r.status === 'failed' ? 'danger' : 'info'}`}>{r.status}</span></td>
-                  <td>{r.isExport ? <span className="muted small">{r.exportFormat}</span> : '—'}</td>
-                </tr>
+      {/* ── Reports Tab ───────────────────────────────────── */}
+      {activeTab === 'reports' && (
+        <Card className="analytics-section-card">
+          <div className="analytics-section-header">
+            <h3>Report Catalogue</h3>
+          </div>
+          {allReports.length === 0 ? (
+            <EmptyState title="No report templates" body="Create report templates to generate hospital analytics." />
+          ) : (
+            <div className="analytics-report-grid">
+              {allReports.map(r => (
+                <div key={r.id} className="analytics-report-card">
+                  <div className="analytics-report-header">
+                    <span className="analytics-report-name">{r.name}</span>
+                    <DomainBadge domain={r.category} />
+                  </div>
+                  <span className="analytics-report-code">{r.code}</span>
+                  <span className="analytics-report-scope">Scope: {r.scope}</span>
+                  <div className="analytics-report-actions">
+                    <Button variant="ghost" size="sm" onClick={() => void handleRunReport(r.id)} loading={busy}>Run</Button>
+                    <Button variant="ghost" size="sm" onClick={() => void handleExportReport(r.id, 'csv')}>Export CSV</Button>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
-        )}
-      </Card>
+            </div>
+          )}
+        </Card>
+      )}
+
+      {/* ── Dashboards Tab ────────────────────────────────── */}
+      {activeTab === 'dashboards' && (
+        <Card className="analytics-section-card">
+          <div className="analytics-section-header">
+            <h3>Saved Dashboards</h3>
+          </div>
+          {allDashboards.length === 0 ? (
+            <EmptyState title="No dashboards" body="Create dashboards to visualize hospital analytics." />
+          ) : (
+            <div className="analytics-dashboard-grid">
+              {allDashboards.map(d => (
+                <div key={d.id} className="analytics-dashboard-card">
+                  <div className="analytics-dashboard-header">
+                    <span className="analytics-dashboard-name">{d.name}</span>
+                    <span className="analytics-dashboard-kpis">{d.kpis?.length ?? 0} KPIs</span>
+                  </div>
+                  {d.description && <p className="analytics-dashboard-desc">{d.description}</p>}
+                  <div className="analytics-dashboard-kpi-list">
+                    {(d.kpis ?? []).slice(0, 5).map(k => (
+                      <span key={k.id} className="analytics-kpi-tag">{k.name}</span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
+
+      {/* ── Exports Tab ───────────────────────────────────── */}
+      {activeTab === 'exports' && (
+        <Card className="analytics-section-card">
+          <div className="analytics-section-header">
+            <h3>Report Exports</h3>
+          </div>
+          <EmptyState title="Export center" body="Run and export reports in CSV, spreadsheet, or PDF format." />
+        </Card>
+      )}
     </div>
   );
 }
