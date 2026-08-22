@@ -40,11 +40,33 @@ import {
 } from 'lucide-react';
 
 // ── Role constants (mirror backend seeded catalog) ──
-const ALL = [] as string[]; // empty = visible to all authenticated users
+// Empty [] = visible to all authenticated users.
+// Non-empty = ONLY visible to listed roles.
+//
+// Backend roles: superadmin, support_agent, org_admin, org_finance,
+// hospital_admin, receptionist, billing_clerk, doctor, nurse,
+// pharmacist, lab_technician, lab_supervisor, radiographer, radiologist
+
+const ALL = [] as string[]; // visible to all authenticated users
+
+// Module-level role groups
+const HOSPITAL_ADMIN = ['superadmin', 'org_admin', 'hospital_admin', 'receptionist'];
+const CLINICAL = ['superadmin', 'doctor', 'nurse', 'hospital_admin', 'org_admin', 'receptionist'];
+const CLINICAL_DOCTOR = ['superadmin', 'doctor', 'hospital_admin', 'org_admin'];
+const PHARMACY = ['superadmin', 'pharmacist', 'hospital_admin', 'org_admin'];
+const LAB = ['superadmin', 'lab_technician', 'lab_supervisor', 'doctor', 'hospital_admin', 'org_admin'];
+const RADIOLOGY = ['superadmin', 'radiologist', 'radiographer', 'doctor', 'hospital_admin', 'org_admin'];
+const FINANCE = ['superadmin', 'billing_clerk', 'hospital_admin', 'org_admin', 'org_finance'];
+const PROCUREMENT = ['superadmin', 'hospital_admin', 'org_admin'];
+const REPORTS = ['superadmin', 'hospital_admin', 'org_admin', 'org_finance'];
+const COMMS = ALL; // notifications are universal
+const ADMIN = ['superadmin', 'org_admin', 'hospital_admin'];
+const AUDIT = ['hospital_admin', 'org_admin', 'org_finance', 'superadmin'];
+const PATIENT_ACCESS = ALL; // patient portal visible to all (backend gates data)
+
+// Item-level role groups
 const QUEUE = ['hospital_admin', 'doctor', 'nurse', 'receptionist'];
 const BILLING = ['hospital_admin', 'org_admin', 'billing_clerk'];
-const AUDIT = ['hospital_admin', 'org_admin', 'org_finance', 'branch_manager', 'superadmin'];
-const ADMIN = ['superadmin', 'org_admin', 'hospital_admin'];
 
 export interface NavItem {
   key: string;
@@ -76,47 +98,47 @@ export interface NavModule {
  * Client-side gating only — backend `authorize:` and RLS remain authoritative.
  */
 export const MODULES: NavModule[] = [
-  // ── HOSPITAL ──
+  // ── HOSPITAL (operations / facility management) ──
   {
     key: 'hospital',
     labelKey: 'module.hospital',
     Icon: Building2,
-    roles: ALL,
+    roles: HOSPITAL_ADMIN,
     defaultTo: '/hospital',
     routePrefix: '/hospital',
     children: [
-      { key: 'hosp-dashboard', labelKey: 'nav.hospitalDashboard', to: '/hospital', Icon: LayoutDashboard, roles: ALL },
-      { key: 'hosp-opd', labelKey: 'nav.opd', to: '/hospital/opd', Icon: Stethoscope, roles: ALL },
-      { key: 'hosp-ipd', labelKey: 'nav.ipd', to: '/hospital/ipd', Icon: Bed, roles: ALL },
-      { key: 'hosp-emergency', labelKey: 'nav.emergency', to: '/emergency', Icon: Siren, roles: ALL },
-      { key: 'hosp-icu', labelKey: 'nav.icu', to: '/icu', Icon: HeartPulse, roles: ALL },
-      { key: 'hosp-ot', labelKey: 'nav.ot', to: '/ot', Icon: Scissors, roles: ALL },
-      { key: 'hosp-beds', labelKey: 'nav.beds', to: '/beds', Icon: Bed, roles: ALL },
-      { key: 'hosp-nursing', labelKey: 'nav.nursing', to: '/nursing', Icon: ClipboardList, roles: ALL },
+      { key: 'hosp-dashboard', labelKey: 'nav.hospitalDashboard', to: '/hospital', Icon: LayoutDashboard, roles: HOSPITAL_ADMIN },
+      { key: 'hosp-opd', labelKey: 'nav.opd', to: '/hospital/opd', Icon: Stethoscope, roles: HOSPITAL_ADMIN },
+      { key: 'hosp-ipd', labelKey: 'nav.ipd', to: '/hospital/ipd', Icon: Bed, roles: HOSPITAL_ADMIN },
+      { key: 'hosp-emergency', labelKey: 'nav.emergency', to: '/emergency', Icon: Siren, roles: HOSPITAL_ADMIN },
+      { key: 'hosp-icu', labelKey: 'nav.icu', to: '/icu', Icon: HeartPulse, roles: HOSPITAL_ADMIN },
+      { key: 'hosp-ot', labelKey: 'nav.ot', to: '/ot', Icon: Scissors, roles: HOSPITAL_ADMIN },
+      { key: 'hosp-beds', labelKey: 'nav.beds', to: '/beds', Icon: Bed, roles: HOSPITAL_ADMIN },
+      { key: 'hosp-nursing', labelKey: 'nav.nursing', to: '/nursing', Icon: ClipboardList, roles: HOSPITAL_ADMIN },
     ],
   },
 
-  // ── CLINICAL ──
+  // ── CLINICAL (patient care workflow) ──
   {
     key: 'clinical',
     labelKey: 'module.clinical',
     Icon: Stethoscope,
-    roles: ALL,
+    roles: CLINICAL,
     defaultTo: '/clinical',
     routePrefix: '/clinical',
     children: [
-      { key: 'clin-workspace', labelKey: 'nav.clinicalWorkspace', to: '/clinical/workspace', Icon: Stethoscope, roles: ALL },
-      { key: 'clin-dashboard', labelKey: 'nav.clinicalDashboard', to: '/clinical', Icon: LayoutDashboard, roles: ALL },
-      { key: 'clin-patients', labelKey: 'nav.patients', to: '/clinical/patients', Icon: Users, roles: ALL },
-      { key: 'clin-import', labelKey: 'nav.patientImport', to: '/clinical/patients/import', Icon: Upload, roles: ALL },
-      { key: 'clin-appointments', labelKey: 'nav.appointments', to: '/clinical/appointments', Icon: CalendarDays, roles: ALL },
+      { key: 'clin-workspace', labelKey: 'nav.clinicalWorkspace', to: '/clinical/workspace', Icon: Stethoscope, roles: CLINICAL_DOCTOR },
+      { key: 'clin-dashboard', labelKey: 'nav.clinicalDashboard', to: '/clinical', Icon: LayoutDashboard, roles: CLINICAL },
+      { key: 'clin-patients', labelKey: 'nav.patients', to: '/clinical/patients', Icon: Users, roles: CLINICAL },
+      { key: 'clin-import', labelKey: 'nav.patientImport', to: '/clinical/patients/import', Icon: Upload, roles: CLINICAL },
+      { key: 'clin-appointments', labelKey: 'nav.appointments', to: '/clinical/appointments', Icon: CalendarDays, roles: CLINICAL },
       { key: 'clin-queue', labelKey: 'nav.queue', to: '/clinical/queue', Icon: ListOrdered, roles: QUEUE },
-      { key: 'clin-encounters', labelKey: 'nav.encounters', to: '/clinical/encounters', Icon: FileText, roles: ALL },
-      { key: 'clin-forms', labelKey: 'nav.forms', to: '/clinical/forms', Icon: FileText, roles: ALL },
-      { key: 'clin-referrals', labelKey: 'nav.referrals', to: '/clinical/referrals', Icon: GitPullRequestArrow, roles: ALL },
-      { key: 'clin-scheduling', labelKey: 'nav.physicianScheduling', to: '/clinical/scheduling', Icon: CalendarClock, roles: ALL },
-      { key: 'clin-telehealth', labelKey: 'nav.telehealth', to: '/clinical/telehealth', Icon: Video, roles: ALL },
-      { key: 'clin-oncology', labelKey: 'nav.oncology', to: '/clinical/oncology', Icon: Crosshair, roles: ALL },
+      { key: 'clin-encounters', labelKey: 'nav.encounters', to: '/clinical/encounters', Icon: FileText, roles: CLINICAL_DOCTOR },
+      { key: 'clin-forms', labelKey: 'nav.forms', to: '/clinical/forms', Icon: FileText, roles: CLINICAL },
+      { key: 'clin-referrals', labelKey: 'nav.referrals', to: '/clinical/referrals', Icon: GitPullRequestArrow, roles: CLINICAL_DOCTOR },
+      { key: 'clin-scheduling', labelKey: 'nav.physicianScheduling', to: '/clinical/scheduling', Icon: CalendarClock, roles: CLINICAL_DOCTOR },
+      { key: 'clin-telehealth', labelKey: 'nav.telehealth', to: '/clinical/telehealth', Icon: Video, roles: CLINICAL_DOCTOR },
+      { key: 'clin-oncology', labelKey: 'nav.oncology', to: '/clinical/oncology', Icon: Crosshair, roles: CLINICAL_DOCTOR },
     ],
   },
 
@@ -125,14 +147,14 @@ export const MODULES: NavModule[] = [
     key: 'pharmacy',
     labelKey: 'module.pharmacy',
     Icon: Pill,
-    roles: ALL,
+    roles: PHARMACY,
     defaultTo: '/pharmacy',
     routePrefix: '/pharmacy',
     children: [
-      { key: 'pharm-dashboard', labelKey: 'nav.pharmacyDashboard', to: '/pharmacy', Icon: LayoutDashboard, roles: ALL },
-      { key: 'pharm-prescriptions', labelKey: 'nav.prescriptions', to: '/pharmacy/prescriptions', Icon: FileText, roles: ALL },
-      { key: 'pharm-dispensing', labelKey: 'nav.dispensing', to: '/pharmacy/dispensing', Icon: Pill, roles: ALL },
-      { key: 'pharm-inventory', labelKey: 'nav.pharmacyInventory', to: '/pharmacy/inventory', Icon: Boxes, roles: ALL },
+      { key: 'pharm-dashboard', labelKey: 'nav.pharmacyDashboard', to: '/pharmacy', Icon: LayoutDashboard, roles: PHARMACY },
+      { key: 'pharm-prescriptions', labelKey: 'nav.prescriptions', to: '/pharmacy/prescriptions', Icon: FileText, roles: PHARMACY },
+      { key: 'pharm-dispensing', labelKey: 'nav.dispensing', to: '/pharmacy/dispensing', Icon: Pill, roles: PHARMACY },
+      { key: 'pharm-inventory', labelKey: 'nav.pharmacyInventory', to: '/pharmacy/inventory', Icon: Boxes, roles: PHARMACY },
     ],
   },
 
@@ -141,13 +163,13 @@ export const MODULES: NavModule[] = [
     key: 'laboratory',
     labelKey: 'module.laboratory',
     Icon: FlaskConical,
-    roles: ALL,
+    roles: LAB,
     defaultTo: '/laboratory',
     routePrefix: '/laboratory',
     children: [
-      { key: 'lab-dashboard', labelKey: 'nav.labDashboard', to: '/laboratory', Icon: LayoutDashboard, roles: ALL },
-      { key: 'lab-orders', labelKey: 'nav.labOrders', to: '/laboratory/orders', Icon: ClipboardList, roles: ALL },
-      { key: 'lab-reports', labelKey: 'nav.labReports', to: '/laboratory/reports', Icon: FileText, roles: ALL },
+      { key: 'lab-dashboard', labelKey: 'nav.labDashboard', to: '/laboratory', Icon: LayoutDashboard, roles: LAB },
+      { key: 'lab-orders', labelKey: 'nav.labOrders', to: '/laboratory/orders', Icon: ClipboardList, roles: LAB },
+      { key: 'lab-reports', labelKey: 'nav.labReports', to: '/laboratory/reports', Icon: FileText, roles: LAB },
     ],
   },
 
@@ -156,11 +178,11 @@ export const MODULES: NavModule[] = [
     key: 'radiology',
     labelKey: 'module.radiology',
     Icon: ScanLine,
-    roles: ALL,
+    roles: RADIOLOGY,
     defaultTo: '/radiology',
     routePrefix: '/radiology',
     children: [
-      { key: 'rad-worklist', labelKey: 'nav.radiology', to: '/radiology', Icon: ScanLine, roles: ALL },
+      { key: 'rad-worklist', labelKey: 'nav.radiology', to: '/radiology', Icon: ScanLine, roles: RADIOLOGY },
     ],
   },
 
@@ -169,11 +191,11 @@ export const MODULES: NavModule[] = [
     key: 'bloodbank',
     labelKey: 'module.bloodBank',
     Icon: Droplets,
-    roles: ALL,
+    roles: HOSPITAL_ADMIN,
     defaultTo: '/blood-bank',
     routePrefix: '/blood-bank',
     children: [
-      { key: 'bb-main', labelKey: 'nav.bloodBank', to: '/blood-bank', Icon: Droplets, roles: ALL },
+      { key: 'bb-main', labelKey: 'nav.bloodBank', to: '/blood-bank', Icon: Droplets, roles: HOSPITAL_ADMIN },
     ],
   },
 
@@ -182,16 +204,16 @@ export const MODULES: NavModule[] = [
     key: 'finance',
     labelKey: 'module.finance',
     Icon: Landmark,
-    roles: ALL,
+    roles: FINANCE,
     defaultTo: '/finance',
     routePrefix: '/finance',
     children: [
-      { key: 'fin-dashboard', labelKey: 'nav.financeDashboard', to: '/finance', Icon: LayoutDashboard, roles: ALL },
+      { key: 'fin-dashboard', labelKey: 'nav.financeDashboard', to: '/finance', Icon: LayoutDashboard, roles: FINANCE },
       { key: 'fin-billing', labelKey: 'nav.billing', to: '/finance/billing', Icon: WalletCards, roles: BILLING },
       { key: 'fin-revenue', labelKey: 'nav.revenueCycle', to: '/finance/revenue', Icon: DollarSign, roles: BILLING },
-      { key: 'fin-budgets', labelKey: 'nav.budgets', to: '/finance/budgets', Icon: ChartNoAxesCombined, roles: ALL },
-      { key: 'fin-expenses', labelKey: 'nav.expenses', to: '/finance/expenses', Icon: Receipt, roles: ALL },
-      { key: 'fin-periods', labelKey: 'nav.financialPeriods', to: '/finance/periods', Icon: CalendarClock, roles: ALL },
+      { key: 'fin-budgets', labelKey: 'nav.budgets', to: '/finance/budgets', Icon: ChartNoAxesCombined, roles: FINANCE },
+      { key: 'fin-expenses', labelKey: 'nav.expenses', to: '/finance/expenses', Icon: Receipt, roles: FINANCE },
+      { key: 'fin-periods', labelKey: 'nav.financialPeriods', to: '/finance/periods', Icon: CalendarClock, roles: FINANCE },
     ],
   },
 
@@ -200,13 +222,13 @@ export const MODULES: NavModule[] = [
     key: 'procurement',
     labelKey: 'module.procurement',
     Icon: Boxes,
-    roles: ALL,
+    roles: PROCUREMENT,
     defaultTo: '/procurement',
     routePrefix: '/procurement',
     children: [
-      { key: 'proc-dashboard', labelKey: 'nav.procurementDashboard', to: '/procurement', Icon: LayoutDashboard, roles: ALL },
-      { key: 'proc-inventory', labelKey: 'nav.inventory', to: '/procurement/inventory', Icon: Boxes, roles: ALL },
-      { key: 'proc-orders', labelKey: 'nav.procurement', to: '/procurement/orders', Icon: ShoppingCart, roles: ALL },
+      { key: 'proc-dashboard', labelKey: 'nav.procurementDashboard', to: '/procurement', Icon: LayoutDashboard, roles: PROCUREMENT },
+      { key: 'proc-inventory', labelKey: 'nav.inventory', to: '/procurement/inventory', Icon: Boxes, roles: PROCUREMENT },
+      { key: 'proc-orders', labelKey: 'nav.procurement', to: '/procurement/orders', Icon: ShoppingCart, roles: PROCUREMENT },
     ],
   },
 
@@ -215,13 +237,13 @@ export const MODULES: NavModule[] = [
     key: 'reports',
     labelKey: 'module.reports',
     Icon: BarChart3,
-    roles: ALL,
+    roles: REPORTS,
     defaultTo: '/reports',
     routePrefix: '/reports',
     children: [
-      { key: 'rpt-analytics', labelKey: 'nav.analytics', to: '/reports/analytics', Icon: ChartNoAxesCombined, roles: ALL },
-      { key: 'rpt-operations', labelKey: 'nav.operationsCenter', to: '/reports/operations', Icon: Activity, roles: ALL },
-      { key: 'rpt-documents', labelKey: 'nav.documentCenter', to: '/reports/documents', Icon: FileText, roles: ALL },
+      { key: 'rpt-analytics', labelKey: 'nav.analytics', to: '/reports/analytics', Icon: ChartNoAxesCombined, roles: REPORTS },
+      { key: 'rpt-operations', labelKey: 'nav.operationsCenter', to: '/reports/operations', Icon: Activity, roles: REPORTS },
+      { key: 'rpt-documents', labelKey: 'nav.documentCenter', to: '/reports/documents', Icon: FileText, roles: REPORTS },
     ],
   },
 
@@ -230,12 +252,12 @@ export const MODULES: NavModule[] = [
     key: 'communications',
     labelKey: 'module.communications',
     Icon: MessageSquare,
-    roles: ALL,
+    roles: COMMS,
     defaultTo: '/communications',
     routePrefix: '/communications',
     children: [
-      { key: 'com-notifications', labelKey: 'nav.notifications', to: '/communications/notifications', Icon: Bell, roles: ALL },
-      { key: 'com-messages', labelKey: 'nav.communications', to: '/communications/messages', Icon: MessageSquare, roles: ALL },
+      { key: 'com-notifications', labelKey: 'nav.notifications', to: '/communications/notifications', Icon: Bell, roles: COMMS },
+      { key: 'com-messages', labelKey: 'nav.communications', to: '/communications/messages', Icon: MessageSquare, roles: COMMS },
     ],
   },
 
@@ -266,11 +288,11 @@ export const MODULES: NavModule[] = [
     key: 'portal',
     labelKey: 'module.patientPortal',
     Icon: PanelsTopLeft,
-    roles: ALL,
+    roles: PATIENT_ACCESS,
     defaultTo: '/portal',
     routePrefix: '/portal',
     children: [
-      { key: 'port-home', labelKey: 'nav.portal', to: '/portal', Icon: PanelsTopLeft, roles: ALL },
+      { key: 'port-home', labelKey: 'nav.portal', to: '/portal', Icon: PanelsTopLeft, roles: PATIENT_ACCESS },
     ],
   },
 ];

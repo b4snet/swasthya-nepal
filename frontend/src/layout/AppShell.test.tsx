@@ -34,9 +34,9 @@ async function renderShell(roles: string[]) {
       </AuthProvider>
     </MemoryRouter>,
   );
-  // Wait for module rail to render
+  // Wait for the app shell to render (module rail or mobile nav)
   await waitFor(() => {
-    expect(screen.queryByTestId('module-hospital')).not.toBeNull();
+    expect(screen.queryByTestId('user-menu-trigger')).not.toBeNull();
   });
 }
 
@@ -57,6 +57,16 @@ describe('AppShell module-first navigation', () => {
     expect(countModule('admin')).toBe(0);
   });
 
+  it('hides hospital module from doctor role (admin-only module)', async () => {
+    await renderShell(['doctor']);
+    expect(countModule('hospital')).toBe(0);
+  });
+
+  it('hides finance module from doctor role', async () => {
+    await renderShell(['doctor']);
+    expect(countModule('finance')).toBe(0);
+  });
+
   it('shows admin module to admin roles', async () => {
     await renderShell(['superadmin']);
     expect(countModule('admin')).toBeGreaterThan(0);
@@ -73,14 +83,9 @@ describe('AppShell module-first navigation', () => {
     });
   });
 
-  it('hides billing from doctor roles in finance sub-nav', async () => {
-    await renderShell(['doctor']);
-    // Click finance module
-    const financeBtn = screen.getByTestId('module-finance');
-    financeBtn.click();
-    await waitFor(() => {
-      expect(screen.queryByTestId('subnav-fin-billing')).toBeNull();
-    });
+  it('shows finance module to billing clerk', async () => {
+    await renderShell(['billing_clerk']);
+    expect(countModule('finance')).toBeGreaterThan(0);
   });
 
   it('shows billing sub-nav to billing clerk', async () => {
