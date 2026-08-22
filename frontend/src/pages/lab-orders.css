@@ -1,0 +1,40 @@
+/* ============================================================================
+   Laboratory Orders Worklist
+   ========================================================================== */
+
+.lab-orders__filters {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  margin-top: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.lab-orders__table {
+  width: 100%;
+}
+
+.lab-orders__row {
+  transition: background 150ms;
+}
+
+.lab-orders__row:hover {
+  background: var(--gray-25);
+}
+
+.lab-orders__patient {
+  font-weight: 500;
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.lab-orders__patient:hover {
+  color: var(--blue-600);
+}
+
+.lab-orders__error {
+  font-size: 11px;
+  color: var(--danger);
+  margin-top: 4px;
+  display: block;
+}

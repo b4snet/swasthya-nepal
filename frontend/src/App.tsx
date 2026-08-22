@@ -62,6 +62,7 @@ const PatientImportPage = lazy(() => import('./pages/PatientImportPage').then(m 
 const PhysicianSchedulingPage = lazy(() => import('./pages/PhysicianSchedulingPage').then(m => ({ default: m.PhysicianSchedulingPage })));
 const ClinicalWorkspace = lazy(() => import('./pages/ClinicalWorkspace').then(m => ({ default: m.ClinicalWorkspace })));
 const HospitalOnboarding = lazy(() => import('./pages/HospitalOnboarding').then(m => ({ default: m.HospitalOnboarding })));
+const LabOrdersPage = lazy(() => import('./pages/LabOrdersPage').then(m => ({ default: m.LabOrdersPage })));
 
 // Admin pages
 const AdminLayout = lazy(() => import('./pages/admin/AdminLayout').then(m => ({ default: m.AdminLayout })));
@@ -205,8 +206,8 @@ export function App() {
 
               {/* ═══ LABORATORY MODULE ═══ */}
               <Route path="/laboratory" element={<LazySuspense><LaboratoryDashboard /></LazySuspense>} />
-              <Route path="/laboratory/orders" element={<LazySuspense><LaboratoryDashboard /></LazySuspense>} />
-              <Route path="/laboratory/reports" element={<LazySuspense><LaboratoryDashboard /></LazySuspense>} />
+              <Route path="/laboratory/orders" element={<LazySuspense><LabOrdersPage /></LazySuspense>} />
+              <Route path="/laboratory/reports" element={<LazySuspense><LabOrdersPage /></LazySuspense>} />
 
               {/* ═══ RADIOLOGY MODULE ═══ */}
               <Route path="/radiology" element={<LazySuspense><RadiologyPage /></LazySuspense>} />
