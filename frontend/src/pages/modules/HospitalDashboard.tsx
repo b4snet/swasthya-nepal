@@ -4,6 +4,7 @@ import { useAccess } from '../../auth/useAccess';
 import { useFetch } from '../../hooks/useFetch';
 import { useTenant } from '../../context/TenantContext';
 import { dashboardApi } from '../../api/dashboard';
+import { NeedsAttention } from '../../components/NeedsAttention';
 import {
   Building2,
   Bed,
@@ -93,6 +94,13 @@ export function HospitalDashboard() {
               <span className="kpi-card__label">ER Waiting</span>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Needs Attention */}
+      {m && (
+        <div style={{ marginBottom: 'var(--space-6)' }}>
+          <NeedsAttention metrics={m} />
         </div>
       )}
 

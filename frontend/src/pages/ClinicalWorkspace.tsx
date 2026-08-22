@@ -4,6 +4,7 @@ import { useFetch } from '../hooks/useFetch';
 import { useTenant } from '../context/TenantContext';
 import { appointmentsApi } from '../api/endpoints';
 import { dashboardApi } from '../api/dashboard';
+import { NeedsAttention } from '../components/NeedsAttention';
 import {
   CalendarDays,
   Clock,
@@ -190,6 +191,11 @@ export function ClinicalWorkspace() {
           Alerts
           {m && m.criticalValues > 0 && <span className="cw__tab-badge cw__tab-badge--red">{m.criticalValues}</span>}
         </button>
+      </div>
+
+      {/* Needs Attention */}
+      <div className="cw__section" style={{ marginBottom: 'var(--space-5)' }}>
+        <NeedsAttention metrics={m} />
       </div>
 
       {/* Tab content */}
