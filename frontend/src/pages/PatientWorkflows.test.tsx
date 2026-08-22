@@ -100,7 +100,7 @@ describe('PatientProfilePage', () => {
     const fn = vi.fn(async () => {
       callCount++;
       if (callCount === 1) return sessionPayload(['hospital_admin']);
-      return jsonOk(null);
+      return jsonOk({ data: [] });
     });
     vi.stubGlobal('fetch', fn);
 
@@ -130,7 +130,7 @@ describe('PatientProfilePage', () => {
     const fn = vi.fn(async () => {
       callCount++;
       if (callCount === 1) return sessionPayload(['hospital_admin']);
-      return jsonOk(null);
+      return jsonOk({ data: [] });
     });
     vi.stubGlobal('fetch', fn);
 

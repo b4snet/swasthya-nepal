@@ -4,6 +4,7 @@ import { useTenant } from '../context/TenantContext';
 import { patientsApi } from '../api/endpoints';
 import { useFetch } from '../hooks/useFetch';
 import { Alert, Button, Card, Dialog, EmptyState, ErrorState, Input, Select, Spinner, StatusChip, Tabs, formatDate, formatDateTime } from '../components/ui';
+import { encountersApi } from '../api/endpoints';
 import { ApiError } from '../api/client';
 import type { TimelineEntry, PatientIdentifier, PatientContact } from '../api/types';
 import './patient.css';
@@ -33,8 +34,12 @@ export function PatientProfilePage() {
   const timeline = useFetch(() => patientsApi.timeline(id!, fac), [id, fac]);
   const identifiers = useFetch(() => patientsApi.identifiers(id!, fac), [id, fac]);
   const contacts = useFetch(() => patientsApi.contacts(id!, fac), [id, fac]);
+  const encounters = useFetch(
+    () => encountersApi.forPatient(id!, fac),
+    [id, fac],
+  );
 
-  const [tab, setTab] = useState<'demographics' | 'identifiers' | 'contacts' | 'timeline'>('demographics');
+  const [tab, setTab] = useState<'demographics' | 'encounters' | 'lab' | 'identifiers' | 'contacts' | 'timeline'>('demographics');
   const [notice, setNotice] = useState<{ tone: 'success' | 'danger'; text: string } | null>(null);
 
   const canBook = hasRole('hospital_admin', 'receptionist', 'doctor', 'nurse');
@@ -47,6 +52,8 @@ export function PatientProfilePage() {
 
   const tabs = [
     { id: 'demographics', label: 'Demographics' },
+    { id: 'encounters', label: `Encounters${encounters.data ? ` (${(encounters.data as any[]).length})` : ''}` },
+    { id: 'lab', label: 'Lab Orders' },
     { id: 'identifiers', label: `Identifiers${identifiers.data ? ` (${identifiers.data.length})` : ''}` },
     { id: 'contacts', label: `Contacts${contacts.data ? ` (${contacts.data.length})` : ''}` },
     { id: 'timeline', label: 'Timeline' },
@@ -99,6 +106,52 @@ export function PatientProfilePage() {
             <div><dt>Status</dt><dd>{patient.status}</dd></div>
             <div><dt>Registered</dt><dd>{formatDateTime(patient.createdAt)}</dd></div>
           </dl>
+        </Card>
+      )}
+
+      {tab === 'encounters' && (
+        <Card title="Encounters">
+          {encounters.loading ? (
+            <Spinner label="Loading encounters…" />
+          ) : encounters.error ? (
+            <ErrorState error={encounters.error} onRetry={() => void encounters.refresh()} />
+          ) : (encounters.data ?? []).length === 0 ? (
+            <EmptyState title="No encounters yet" body="Consultations and visits will appear here." />
+          ) : (
+            <table className="data-table" aria-label="Patient encounters">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Type</th>
+                  <th>Provider</th>
+                  <th>Service</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(encounters.data as any[]).map((e: any) => (
+                  <tr key={e.id}>
+                    <td data-label="Date" className="mono">{formatDateTime(e.startedAt)}</td>
+                    <td data-label="Type" className="capitalize">{e.type}</td>
+                    <td data-label="Provider">{e.providerName ?? '—'}</td>
+                    <td data-label="Service">{e.serviceName ?? '—'}</td>
+                    <td data-label="Status">
+                      <StatusChip
+                        tone={e.status === 'signed' ? 'success' : e.status === 'open' ? 'info' : 'neutral'}
+                        label={e.status}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Card>
+      )}
+
+      {tab === 'lab' && (
+        <Card title="Laboratory orders">
+          <EmptyState title="Lab orders" body="Laboratory orders for this patient will appear here." />
         </Card>
       )}
 
