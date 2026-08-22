@@ -1,0 +1,125 @@
+/* ── Quality & Patient Safety ─────────────────────────────────────── */
+
+/* Census */
+.q-census { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 16px; }
+.q-census-card {
+  background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px;
+  display: flex; flex-direction: column; gap: 4px; min-width: 0;
+}
+.q-census-card--total { border-left: 3px solid #3b82f6; }
+.q-census-card--draft { border-left: 3px solid #6b7280; }
+.q-census-card--published { border-left: 3px solid #3b82f6; }
+.q-census-card--acknowledged { border-left: 3px solid #10b981; }
+.q-census-card--safety { border-left: 3px solid #ef4444; }
+.q-census-card--capa { border-left: 3px solid #f59e0b; }
+.q-census-value { font-size: 1.75rem; font-weight: 700; color: #111827; }
+.q-census-label { font-size: 0.75rem; color: #6b7280; font-weight: 500; text-transform: uppercase; letter-spacing: 0.03em; }
+
+/* Tabs */
+.q-tabs { display: flex; gap: 2px; border-bottom: 1px solid #e5e7eb; margin-bottom: 16px; }
+.q-tab {
+  padding: 8px 16px; font-size: 0.8125rem; font-weight: 500; color: #6b7280;
+  background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer;
+  transition: all 0.15s ease;
+}
+.q-tab:hover { color: #374151; }
+.q-tab--active { color: #2563eb; border-bottom-color: #2563eb; }
+
+/* Section Card */
+.q-section-card { border-radius: 8px; overflow: hidden; }
+.q-section-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid #f3f4f6; }
+.q-section-header h3 { font-size: 0.9375rem; font-weight: 600; color: #111827; margin: 0; }
+
+/* Badge */
+.q-badge {
+  display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 12px;
+  font-size: 0.6875rem; font-weight: 600; text-transform: capitalize; white-space: nowrap;
+}
+
+/* Dashboard */
+.q-dashboard { display: flex; flex-direction: column; gap: 0; }
+
+/* Overview Grid */
+.q-overview-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 16px 20px; }
+.q-overview-card {
+  background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px;
+  text-align: center;
+}
+.q-overview-label { font-size: 0.75rem; color: #6b7280; font-weight: 500; text-transform: uppercase; display: block; margin-bottom: 4px; }
+.q-overview-value { font-size: 1.25rem; font-weight: 700; color: #111827; }
+.q-overview-value--warning { color: #f59e0b; }
+.q-overview-value--danger { color: #ef4444; }
+.q-overview-value--success { color: #10b981; }
+
+/* Report List */
+.q-report-list { padding: 0; }
+.q-report-item {
+  padding: 14px 20px; border-bottom: 1px solid #f3f4f6;
+}
+.q-report-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.q-report-title { font-size: 0.875rem; font-weight: 500; color: #111827; }
+.q-report-meta { display: flex; gap: 8px; align-items: center; font-size: 0.75rem; color: #9ca3af; }
+.q-report-code { font-family: 'SF Mono', monospace; font-size: 0.6875rem; }
+
+/* Safety Types */
+.q-safety-types { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; padding: 16px 20px; }
+.q-safety-type-card {
+  background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 16px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.q-safety-type-name { font-size: 0.8125rem; font-weight: 500; color: #374151; }
+.q-safety-type-count { font-size: 0.75rem; color: #9ca3af; }
+
+/* Infection Grid */
+.q-infection-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 16px 20px; }
+.q-infection-card {
+  background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.q-infection-label { font-size: 0.75rem; color: #6b7280; font-weight: 500; text-transform: uppercase; }
+.q-infection-value { font-size: 1.25rem; font-weight: 700; color: #111827; }
+
+/* Table */
+.q-table { padding: 0; }
+.q-table-header {
+  display: grid; grid-template-columns: 1fr 2fr 1fr 1fr 1fr 1fr; gap: 12px;
+  padding: 10px 20px; font-size: 0.6875rem; font-weight: 600; color: #9ca3af;
+  text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid #e5e7eb;
+}
+.q-table-row {
+  display: grid; grid-template-columns: 1fr 2fr 1fr 1fr 1fr 1fr; gap: 12px;
+  padding: 12px 20px; font-size: 0.8125rem; color: #374151;
+  border-bottom: 1px solid #f3f4f6; transition: background 0.1s ease;
+  align-items: center;
+}
+.q-table-row:hover { background: #f9fafb; }
+.q-name { font-weight: 500; color: #111827; }
+.q-mono { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.8125rem; color: #374151; }
+.q-table-actions { display: flex; gap: 6px; }
+
+/* Form */
+.q-form { display: flex; flex-direction: column; gap: 12px; }
+.q-form-field { display: flex; flex-direction: column; gap: 4px; }
+.q-label { font-size: 0.75rem; font-weight: 500; color: #374151; }
+.q-input {
+  padding: 8px 12px; font-size: 0.8125rem; border: 1px solid #d1d5db;
+  border-radius: 6px; background: #fff; color: #111827; width: 100%;
+  box-sizing: border-box;
+}
+.q-input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.1); }
+.q-actions { display: flex; gap: 8px; }
+
+/* Responsive */
+@media (max-width: 1280px) {
+  .q-census { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 768px) {
+  .q-census { grid-template-columns: repeat(2, 1fr); }
+  .q-overview-grid { grid-template-columns: repeat(2, 1fr); }
+  .q-safety-types { grid-template-columns: 1fr; }
+  .q-infection-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 480px) {
+  .q-census { grid-template-columns: 1fr; }
+  .q-tabs { overflow-x: auto; }
+}
