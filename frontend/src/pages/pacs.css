@@ -1,0 +1,362 @@
+/* ── PACS Viewer ───────────────────────────────────────────────────── */
+
+.pacs-page {
+  max-width: 1400px;
+  height: calc(100vh - 80px);
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Context Header ───────────────────────────────────────────────── */
+
+.pacs-context-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: #fff;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.pacs-context-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.pacs-patient-link {
+  font-weight: 600;
+  color: var(--primary, #4FA9FF);
+  text-decoration: none;
+}
+
+.pacs-patient-link:hover { text-decoration: underline; }
+
+.pacs-context-sep {
+  color: var(--text-tertiary, #9ca3af);
+}
+
+.pacs-context-study,
+.pacs-context-modality {
+  color: var(--text-secondary, #6b7280);
+}
+
+.pacs-context-status {
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.pacs-context-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* ── Split View ───────────────────────────────────────────────────── */
+
+.pacs-split {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ── Image Panel ──────────────────────────────────────────────────── */
+
+.pacs-image-panel {
+  background: #fff;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.pacs-image-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+}
+
+.pacs-image-header h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+  margin: 0;
+}
+
+/* ── DICOM References ─────────────────────────────────────────────── */
+
+.pacs-refs-section {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+}
+
+.pacs-ref-group {
+  margin-bottom: 12px;
+}
+
+.pacs-ref-type {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-tertiary, #9ca3af);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.pacs-ref-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.pacs-ref-value {
+  font-size: 12px;
+  font-family: 'SF Mono', 'Consolas', monospace;
+  color: var(--text-primary, #111827);
+  background: var(--bg-secondary, #f3f4f6);
+  padding: 2px 6px;
+  border-radius: 3px;
+  word-break: break-all;
+}
+
+.pacs-ref-desc {
+  font-size: 11px;
+  color: var(--text-tertiary, #9ca3af);
+}
+
+/* ── PACS Viewer Launch ───────────────────────────────────────────── */
+
+.pacs-viewer-launch {
+  margin-top: 12px;
+  padding: 12px;
+  background: #eff6ff;
+  border-radius: 6px;
+  border: 1px solid #bfdbfe;
+}
+
+.pacs-viewer-launch h4 {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e40af;
+  margin: 0 0 6px;
+}
+
+.pacs-viewer-link {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primary, #4FA9FF);
+  text-decoration: none;
+}
+
+.pacs-viewer-link:hover { text-decoration: underline; }
+
+.pacs-viewer-note {
+  font-size: 11px;
+  color: var(--text-secondary, #6b7280);
+  margin: 4px 0 0;
+}
+
+/* ── Study UID ────────────────────────────────────────────────────── */
+
+.pacs-study-uid {
+  margin-top: 8px;
+  padding: 8px;
+  background: var(--bg-secondary, #f9fafb);
+  border-radius: 4px;
+}
+
+.pacs-uid-label {
+  font-size: 11px;
+  color: var(--text-tertiary, #9ca3af);
+  display: block;
+  margin-bottom: 2px;
+}
+
+.pacs-uid-value {
+  font-size: 11px;
+  font-family: 'SF Mono', 'Consolas', monospace;
+  color: var(--text-primary, #111827);
+  word-break: break-all;
+}
+
+/* ── Image Viewer Frame ───────────────────────────────────────────── */
+
+.pacs-viewer-frame {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f9fafb;
+  min-height: 300px;
+}
+
+.pacs-viewer-placeholder {
+  text-align: center;
+  color: var(--text-secondary, #6b7280);
+}
+
+.pacs-viewer-icon {
+  font-size: 48px;
+  color: var(--text-tertiary, #9ca3af);
+  display: block;
+  margin-bottom: 12px;
+}
+
+.pacs-viewer-placeholder p {
+  font-size: 14px;
+  font-weight: 500;
+  margin: 0 0 4px;
+}
+
+.pacs-viewer-sub {
+  font-size: 12px;
+  color: var(--text-tertiary, #9ca3af);
+}
+
+.pacs-no-images {
+  padding: 16px;
+}
+
+/* ── Report Panel ─────────────────────────────────────────────────── */
+
+.pacs-report-panel {
+  background: #fff;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.pacs-report-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+}
+
+.pacs-report-header h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+  margin: 0;
+}
+
+.pacs-report-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.pacs-report-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.pacs-report-type {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--bg-secondary, #f3f4f6);
+  color: var(--text-primary, #111827);
+  text-transform: capitalize;
+}
+
+.pacs-report-status {
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.pacs-report-section {
+  margin-bottom: 12px;
+}
+
+.pacs-report-section h4 {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-tertiary, #9ca3af);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 4px;
+}
+
+.pacs-report-section p {
+  font-size: 13px;
+  color: var(--text-primary, #111827);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ── Critical Finding ─────────────────────────────────────────────── */
+
+.pacs-critical-finding {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: #fee2e2;
+  border-radius: 6px;
+  border-left: 3px solid #dc2626;
+}
+
+.pacs-critical-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #dc2626;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.pacs-critical-finding p {
+  font-size: 13px;
+  color: #991b1b;
+  margin: 4px 0 0;
+  line-height: 1.5;
+}
+
+.pacs-report-timestamps {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border, #e5e7eb);
+}
+
+.pacs-report-timestamps span {
+  font-size: 11px;
+  color: var(--text-tertiary, #9ca3af);
+}
+
+/* ── Responsive ───────────────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .pacs-split {
+    grid-template-columns: 1fr;
+  }
+
+  .pacs-report-panel {
+    max-height: 300px;
+  }
+}
+
+@media (max-width: 600px) {
+  .pacs-context-header {
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+  }
+
+  .pacs-context-info {
+    flex-wrap: wrap;
+  }
+}

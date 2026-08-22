@@ -43,6 +43,8 @@ const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage').then(m => ({ de
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage').then(m => ({ default: m.NotificationsPage })));
 const CommunicationsPage = lazy(() => import('./pages/CommunicationsPage').then(m => ({ default: m.CommunicationsPage })));
 const RadiologyPage = lazy(() => import('./pages/RadiologyPage').then(m => ({ default: m.RadiologyPage })));
+const PacsViewer = lazy(() => import('./pages/PacsViewer').then(m => ({ default: m.PacsViewer })));
+
 const OncologyPage = lazy(() => import('./pages/OncologyPage').then(m => ({ default: m.OncologyPage })));
 const ReferralsPage = lazy(() => import('./pages/ReferralsPage').then(m => ({ default: m.ReferralsPage })));
 const PatientPortalPage = lazy(() => import('./pages/PatientPortalPage').then(m => ({ default: m.PatientPortalPage })));
@@ -213,6 +215,7 @@ export function App() {
 
               {/* ═══ RADIOLOGY MODULE ═══ */}
               <Route path="/radiology" element={<LazySuspense><RadiologyPage /></LazySuspense>} />
+              <Route path="/radiology/imaging/:studyId" element={<LazySuspense><PacsViewer /></LazySuspense>} />
 
               {/* ═══ BLOOD BANK ═══ */}
               <Route path="/blood-bank" element={<LazySuspense><BloodBankPage /></LazySuspense>} />
