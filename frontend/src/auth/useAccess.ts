@@ -27,6 +27,9 @@ export const ROLES = {
   NURSE: 'nurse',
   PHARMACIST: 'pharmacist',
   LAB_TECHNICIAN: 'lab_technician',
+  LAB_SUPERVISOR: 'lab_supervisor',
+  RADIOGRAPHER: 'radiographer',
+  RADIOLOGIST: 'radiologist',
 } as const;
 
 export type RoleCode = (typeof ROLES)[keyof typeof ROLES];
@@ -127,6 +130,9 @@ const ROLE_DEFAULT_MODULE: Record<string, string> = {
   [ROLES.SUPERADMIN]: 'administration',
   [ROLES.BRANCH_MANAGER]: 'hospital',
   [ROLES.ORG_FINANCE]: 'finance',
+  [ROLES.LAB_SUPERVISOR]: 'laboratory',
+  [ROLES.RADIOGRAPHER]: 'radiology',
+  [ROLES.RADIOLOGIST]: 'radiology',
 };
 
 // ── Access hook ──
@@ -217,6 +223,25 @@ export function useAccess() {
       [ROLES.LAB_TECHNICIAN]: [
         PERMISSIONS.PATIENT_VIEW,
         PERMISSIONS.LAB_VIEW, PERMISSIONS.LAB_RESULT,
+        PERMISSIONS.DOCUMENT_VIEW,
+        PERMISSIONS.NOTIFICATION_VIEW,
+      ],
+      [ROLES.LAB_SUPERVISOR]: [
+        PERMISSIONS.PATIENT_VIEW,
+        PERMISSIONS.LAB_VIEW, PERMISSIONS.LAB_RESULT, PERMISSIONS.LAB_VERIFY,
+        PERMISSIONS.DOCUMENT_VIEW,
+        PERMISSIONS.NOTIFICATION_VIEW,
+      ],
+      [ROLES.RADIOGRAPHER]: [
+        PERMISSIONS.PATIENT_VIEW,
+        PERMISSIONS.RADIOLOGY_VIEW,
+        PERMISSIONS.DOCUMENT_VIEW,
+        PERMISSIONS.NOTIFICATION_VIEW,
+      ],
+      [ROLES.RADIOLOGIST]: [
+        PERMISSIONS.PATIENT_VIEW,
+        PERMISSIONS.RADIOLOGY_VIEW, PERMISSIONS.RADIOLOGY_REPORT,
+        PERMISSIONS.LAB_VIEW,
         PERMISSIONS.DOCUMENT_VIEW,
         PERMISSIONS.NOTIFICATION_VIEW,
       ],

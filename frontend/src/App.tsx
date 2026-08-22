@@ -5,12 +5,12 @@ import { TenantProvider, useTenant } from './context/TenantContext';
 import { ToastProvider } from './context/ToastContext';
 import { useI18n } from './i18n/I18nProvider';
 import { AppShell } from './layout/AppShell';
+import { getDefaultModuleKey } from './navigation/modules';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Button, Card, Spinner } from './components/ui';
 
 // Core pages — eagerly loaded
 import { LoginPage } from './pages/LoginPage';
-import { DashboardPage } from './pages/DashboardPage';
 import { ForbiddenPage } from './pages/ForbiddenPage';
 
 // Module dashboards
@@ -138,6 +138,22 @@ function LoginRoute() {
   return <LoginPage />;
 }
 
+/** Redirect to role-specific landing module */
+function RoleRedirect() {
+  const { hasRole: tenantHasRole } = useTenant();
+  const defaultModule = getDefaultModuleKey((r) => tenantHasRole(r));
+  const moduleRoutes: Record<string, string> = {
+    hospital: '/hospital',
+    clinical: '/clinical',
+    pharmacy: '/pharmacy',
+    laboratory: '/laboratory',
+    radiology: '/radiology',
+    finance: '/finance',
+    administration: '/admin',
+  };
+  return <Navigate to={moduleRoutes[defaultModule] ?? '/hospital'} replace />;
+}
+
 export function App() {
   return (
     <ErrorBoundary>
@@ -149,8 +165,8 @@ export function App() {
             <Route path="/portal/activate/:token" element={<LazySuspense><PortalActivationPage /></LazySuspense>} />
             <Route path="/portal" element={<LazySuspense><PatientPortalPage /></LazySuspense>} />
             <Route element={<Gate />}>
-              {/* ── Global dashboard ── */}
-              <Route path="/" element={<DashboardPage />} />
+              {/* ── Root: redirect to role-specific landing ── */}
+              <Route path="/" element={<RoleRedirect />} />
               <Route path="/onboarding" element={<LazySuspense><HospitalOnboarding /></LazySuspense>} />
 
               {/* ═══ HOSPITAL MODULE ═══ */}

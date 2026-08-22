@@ -54,7 +54,7 @@ const HOSPITAL_ADMIN = ['superadmin', 'org_admin', 'hospital_admin', 'receptioni
 const CLINICAL = ['superadmin', 'doctor', 'nurse', 'hospital_admin', 'org_admin', 'receptionist'];
 const CLINICAL_DOCTOR = ['superadmin', 'doctor', 'hospital_admin', 'org_admin'];
 const PHARMACY = ['superadmin', 'pharmacist', 'hospital_admin', 'org_admin'];
-const LAB = ['superadmin', 'lab_technician', 'lab_supervisor', 'doctor', 'hospital_admin', 'org_admin'];
+const LAB = ['superadmin', 'lab_technician', 'lab_supervisor', 'doctor', 'nurse', 'hospital_admin', 'org_admin'];
 const RADIOLOGY = ['superadmin', 'radiologist', 'radiographer', 'doctor', 'hospital_admin', 'org_admin'];
 const FINANCE = ['superadmin', 'billing_clerk', 'hospital_admin', 'org_admin', 'org_finance'];
 const PROCUREMENT = ['superadmin', 'hospital_admin', 'org_admin'];
@@ -173,6 +173,19 @@ export const MODULES: NavModule[] = [
     ],
   },
 
+  // ── NURSING ──
+  {
+    key: 'nursing',
+    labelKey: 'module.nursing',
+    Icon: ClipboardList,
+    roles: ['superadmin', 'nurse', 'hospital_admin'],
+    defaultTo: '/nursing',
+    routePrefix: '/nursing',
+    children: [
+      { key: 'nurse-dashboard', labelKey: 'nav.nursing', to: '/nursing', Icon: LayoutDashboard, roles: ['superadmin', 'nurse', 'hospital_admin'] },
+    ],
+  },
+
   // ── RADIOLOGY ──
   {
     key: 'radiology',
@@ -182,7 +195,7 @@ export const MODULES: NavModule[] = [
     defaultTo: '/radiology',
     routePrefix: '/radiology',
     children: [
-      { key: 'rad-worklist', labelKey: 'nav.radiology', to: '/radiology', Icon: ScanLine, roles: RADIOLOGY },
+      { key: 'rad-worklist', labelKey: 'nav.radiologyWorklist', to: '/radiology', Icon: ScanLine, roles: RADIOLOGY },
     ],
   },
 

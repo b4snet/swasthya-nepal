@@ -237,6 +237,15 @@ export const messages: Record<MessageKey, string> = {
   'nav.bloodBank': 'ब्लड बैंक',
   'nav.nursing': 'नर्सिङ',
   'nav.radiology': 'रेडियोलोजी',
+  'nav.radiologyWorklist': 'कार्यसूची',
+  'nav.radiologyStudies': 'अध्ययनहरू',
+  'nav.radiologyReporting': 'प्रतिवेदन',
+  'nav.radiologyCriticalFindings': 'गम्भीर निष्कर्षहरू',
+  'nav.nursingPatients': 'मेरा बिरामीहरू',
+  'nav.nursingTasks': 'कार्यहरू',
+  'nav.nursingVitals': 'महत्वपूर्ण संकेतहरू',
+  'nav.nursingHandover': 'हस्तान्तरण',
+  'nav.nursingDischarge': 'डिस्चार्ज तयारी',
   'nav.oncology': 'अङ्कोलोजी',
   'nav.referrals': 'रेफरल',
   'nav.portal': 'बिरामी पोर्टल',
@@ -257,6 +266,7 @@ export const messages: Record<MessageKey, string> = {
   'module.communications': 'सञ्चार',
   'module.administration': 'प्रशासन',
   'module.patientPortal': 'बिरामी पोर्टल',
+  'module.nursing': 'नर्सिङ',
 
   // ── Sub-nav labels ──
   'nav.hospitalDashboard': 'अवलोकन',

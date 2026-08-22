@@ -236,6 +236,15 @@ export const messages = {
   'nav.bloodBank': 'Blood Bank',
   'nav.nursing': 'Nursing',
   'nav.radiology': 'Radiology',
+  'nav.radiologyWorklist': 'Worklist',
+  'nav.radiologyStudies': 'Studies',
+  'nav.radiologyReporting': 'Reporting',
+  'nav.radiologyCriticalFindings': 'Critical Findings',
+  'nav.nursingPatients': 'My Patients',
+  'nav.nursingTasks': 'Tasks',
+  'nav.nursingVitals': 'Vitals',
+  'nav.nursingHandover': 'Handover',
+  'nav.nursingDischarge': 'Discharge Prep',
   'nav.oncology': 'Oncology',
   'nav.referrals': 'Referrals',
   'nav.portal': 'Patient Portal',
@@ -256,6 +265,7 @@ export const messages = {
   'module.communications': 'Communications',
   'module.administration': 'Administration',
   'module.patientPortal': 'Patient Portal',
+  'module.nursing': 'Nursing',
 
   // ── Sub-nav labels ──
   'nav.hospitalDashboard': 'Overview',
