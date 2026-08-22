@@ -1,0 +1,456 @@
+/* ── Emergency Department Command Center ──────────────────────────── */
+
+.er-page {
+  max-width: 1400px;
+}
+
+/* ── Actions ────────────────────────────────────────────────────── */
+
+.er-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* ── Census Dashboard ───────────────────────────────────────────── */
+
+.er-census {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.er-census-card {
+  background: #fff;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.er-census-card--total { border-top: 3px solid var(--primary, #4FA9FF); }
+.er-census-card--untriaged { border-top: 3px solid #f59e0b; }
+.er-census-card--high { border-top: 3px solid #ef4444; }
+.er-census-card--wait { border-top: 3px solid #6b7280; }
+.er-census-card--longest { border-top: 3px solid #dc2626; }
+
+.er-census-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary, #111827);
+  line-height: 1;
+}
+
+.er-census-label {
+  font-size: 12px;
+  color: var(--text-secondary, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 500;
+}
+
+/* ── Zone Tabs ──────────────────────────────────────────────────── */
+
+.er-zone-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--border, #e5e7eb);
+  margin-bottom: 16px;
+}
+
+.er-zone-tab {
+  padding: 10px 20px;
+  border: none;
+  background: none;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary, #6b7280);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.15s, border-color 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.er-zone-tab:hover {
+  color: var(--text-primary, #111827);
+}
+
+.er-zone-tab--active {
+  color: var(--primary, #4FA9FF);
+  border-bottom-color: var(--primary, #4FA9FF);
+  font-weight: 600;
+}
+
+.er-zone-count {
+  background: var(--bg-secondary, #f3f4f6);
+  padding: 1px 7px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.er-zone-count--warn {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.er-zone-count--danger {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* ── Queue Card ─────────────────────────────────────────────────── */
+
+.er-queue-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.er-queue-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.er-queue-item {
+  display: grid;
+  grid-template-columns: 52px 1fr 70px auto;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.er-queue-item:last-child {
+  border-bottom: none;
+}
+
+.er-queue-item:hover {
+  background: var(--bg-secondary, #f9fafb);
+}
+
+.er-queue-item--selected {
+  background: #eff6ff;
+}
+
+.er-queue-item--acute {
+  background: #fef2f2;
+}
+
+.er-queue-item--acute:hover {
+  background: #fee2e2;
+}
+
+/* ── Acuity Badges ──────────────────────────────────────────────── */
+
+.er-queue-triage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.er-acuity-badge {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.er-acuity-badge--untriaged {
+  background: var(--gray-300, #d1d5db);
+  color: var(--text-secondary, #6b7280);
+}
+
+.er-acuity--resus,
+.er-acuity-badge.er-acuity--resus {
+  background: #dc2626;
+}
+
+.er-acuity--emerg,
+.er-acuity-badge.er-acuity--emerg {
+  background: #ea580c;
+}
+
+.er-acuity--urgent,
+.er-acuity-badge.er-acuity--urgent {
+  background: #f59e0b;
+  color: #111827;
+}
+
+.er-acuity--semi,
+.er-acuity-badge.er-acuity--semi {
+  background: #22c55e;
+}
+
+.er-acuity--non,
+.er-acuity-badge.er-acuity--non {
+  background: #3b82f6;
+}
+
+/* ── Acuity Labels ──────────────────────────────────────────────── */
+
+.er-acuity-label {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 1px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.er-acuity-label.er-acuity--resus { background: #fee2e2; color: #991b1b; }
+.er-acuity-label.er-acuity--emerg { background: #ffedd5; color: #9a3412; }
+.er-acuity-label.er-acuity--urgent { background: #fef3c7; color: #92400e; }
+.er-acuity-label.er-acuity--semi { background: #dcfce7; color: #166534; }
+.er-acuity-label.er-acuity--non { background: #dbeafe; color: #1e40af; }
+
+/* ── Patient Info ───────────────────────────────────────────────── */
+
+.er-queue-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.er-queue-patient {
+  font-weight: 600;
+  color: var(--primary, #4FA9FF);
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.er-queue-patient:hover {
+  text-decoration: underline;
+}
+
+.er-queue-complaint {
+  font-size: 13px;
+  color: var(--text-primary, #111827);
+}
+
+.er-queue-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.er-queue-time {
+  font-size: 12px;
+  color: var(--text-tertiary, #9ca3af);
+}
+
+/* ── Wait Time ──────────────────────────────────────────────────── */
+
+.er-queue-wait {
+  text-align: right;
+}
+
+.er-wait-time {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary, #6b7280);
+}
+
+.er-wait--caution { color: #f59e0b; }
+.er-wait--warning { color: #ea580c; }
+.er-wait--critical { color: #dc2626; font-weight: 700; }
+
+/* ── Queue Actions ──────────────────────────────────────────────── */
+
+.er-queue-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+/* ── Detail Panel ───────────────────────────────────────────────── */
+
+.er-detail-panel {
+  margin-top: 16px;
+}
+
+.er-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+  margin-bottom: 12px;
+}
+
+.er-detail-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+  margin: 0;
+}
+
+.er-detail-complaint {
+  font-size: 13px;
+  color: var(--text-secondary, #6b7280);
+  margin: 4px 0 0;
+}
+
+.er-detail-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.er-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.er-detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.er-detail-label {
+  font-size: 11px;
+  color: var(--text-tertiary, #9ca3af);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 500;
+}
+
+.er-detail-value {
+  font-size: 14px;
+  color: var(--text-primary, #111827);
+  font-weight: 500;
+}
+
+.er-detail-quick-actions {
+  display: flex;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border, #e5e7eb);
+}
+
+/* ── Triage Option Grid ─────────────────────────────────────────── */
+
+.er-triage-preview {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.er-triage-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 8px;
+  border: 2px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.er-triage-option:hover {
+  border-color: var(--primary, #4FA9FF);
+}
+
+.er-triage-option--selected {
+  border-color: var(--primary, #4FA9FF);
+  box-shadow: 0 0 0 1px var(--primary, #4FA9FF);
+  background: #f0f7ff;
+}
+
+.er-triage-option-level {
+  font-size: 20px;
+  font-weight: 700;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+
+.er-triage-option.er-acuity--resus .er-triage-option-level { background: #dc2626; }
+.er-triage-option.er-acuity--emerg .er-triage-option-level { background: #ea580c; }
+.er-triage-option.er-acuity--urgent .er-triage-option-level { background: #f59e0b; color: #111827; }
+.er-triage-option.er-acuity--semi .er-triage-option-level { background: #22c55e; }
+.er-triage-option.er-acuity--non .er-triage-option-level { background: #3b82f6; }
+
+.er-triage-option-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+  text-align: center;
+}
+
+.er-triage-option-code {
+  font-size: 10px;
+  color: var(--text-tertiary, #9ca3af);
+}
+
+.er-triage-reassessment {
+  font-size: 12px;
+  color: var(--text-secondary, #6b7280);
+  margin-bottom: 12px;
+}
+
+/* ── Responsive ─────────────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .er-census {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .er-queue-item {
+    grid-template-columns: 44px 1fr auto;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .er-queue-wait {
+    display: none;
+  }
+
+  .er-detail-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .er-triage-preview {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .er-census {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .er-census-card:last-child {
+    grid-column: span 2;
+  }
+
+  .er-zone-tabs {
+    overflow-x: auto;
+  }
+
+  .er-triage-preview {
+    grid-template-columns: 1fr 1fr;
+  }
+}
