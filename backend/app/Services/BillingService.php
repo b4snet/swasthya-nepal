@@ -59,6 +59,20 @@ final class BillingService
                 throw new ApiException(ErrorCodes::CONFLICT, 'One or more charges have already been invoiced.', 409);
             }
 
+            // Compute per-line tax: use the effective-dated TaxRule when the
+            // charge has a tax_rule_id (Nepal Financial Architecture); fall back
+            // to the stored tax_rate_bps for legacy charges.
+            $lineTaxes = $charges->map(function (Charge $c): int {
+                if ($c->tax_rule_id !== null) {
+                    $rule = $c->taxRule;
+                    if ($rule !== null) {
+                        return $rule->calculateTax($c->amount_minor);
+                    }
+                }
+
+                return (int) round($c->amount_minor * $c->tax_rate_bps / 10000);
+            });
+
             $invoice = Invoice::query()->create([
                 'tenant_id' => $tenantId,
                 'facility_id' => $facilityId,
@@ -66,7 +80,7 @@ final class BillingService
                 'invoice_number' => $this->nextNumber($tenantId),
                 'status' => Invoice::STATUS_ISSUED,
                 'total_minor' => $charges->sum('amount_minor'),
-                'total_tax_minor' => $charges->sum(fn (Charge $c): int => (int) round($c->amount_minor * $c->tax_rate_bps / 10000)),
+                'total_tax_minor' => $lineTaxes->sum(),
                 'paid_minor' => 0,
                 'issued_at' => now(),
                 'created_by' => $createdBy,
@@ -74,14 +88,14 @@ final class BillingService
             ]);
 
             $lineNo = 1;
-            foreach ($charges as $charge) {
+            foreach ($charges as $idx => $charge) {
                 InvoiceLine::query()->create([
                     'tenant_id' => $tenantId,
                     'invoice_id' => $invoice->getKey(),
                     'charge_id' => $charge->getKey(),
                     'description' => $charge->description,
                     'amount_minor' => $charge->amount_minor,
-                    'tax_minor' => (int) round($charge->amount_minor * $charge->tax_rate_bps / 10000),
+                    'tax_minor' => $lineTaxes[$idx],
                     'line_no' => $lineNo++,
                 ]);
             }

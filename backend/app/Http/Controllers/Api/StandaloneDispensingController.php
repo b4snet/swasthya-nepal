@@ -170,7 +170,7 @@ final class StandaloneDispensingController extends Controller
                 'description' => $medication->generic_name.' ('.$medication->strength.') × '.$quantity,
                 'amount_minor' => $medication->price_minor * $quantity,
                 'currency' => $medication->currency,
-                'tax_rate_bps' => 0,
+                ...Charge::resolveTaxFields($facilityId, 'pharmacy'),
                 'status' => Charge::STATUS_POSTED,
                 'charged_at' => now(),
                 'created_by' => $userId,

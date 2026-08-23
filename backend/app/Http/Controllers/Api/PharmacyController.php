@@ -235,7 +235,7 @@ final class PharmacyController extends Controller
                     'description' => $medication->generic_name.' ('.$medication->strength.') × '.$quantity,
                     'amount_minor' => $medication->price_minor * $quantity,
                     'currency' => $medication->currency,
-                    'tax_rate_bps' => 0,
+                    ...Charge::resolveTaxFields($encounter->facility_id, 'pharmacy'),
                     'status' => Charge::STATUS_POSTED,
                     'charged_at' => now(),
                     'created_by' => $context->user?->getKey(),

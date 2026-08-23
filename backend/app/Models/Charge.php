@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasUuid;
+use App\Services\TaxResolver;
 use Database\Factories\ChargeFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -48,6 +49,7 @@ class Charge extends Model
         'amount_minor',
         'currency',
         'tax_rate_bps',
+        'tax_rule_id',
         'status',
         'voided_by',
         'void_reason',
@@ -64,6 +66,32 @@ class Charge extends Model
             'amount_minor' => 'integer',
             'tax_rate_bps' => 'integer',
             'charged_at' => 'datetime',
+        ];
+    }
+
+    /**
+     * @return BelongsTo<TaxRule, $this>
+     */
+    public function taxRule(): BelongsTo
+    {
+        return $this->belongsTo(TaxRule::class, 'tax_rule_id');
+    }
+
+    /**
+     * Resolve the tax fields for a new charge based on the effective-dated
+     * tax rules. Returns an array with 'tax_rule_id' and 'tax_rate_bps'
+     * that should be merged into the charge creation data.
+     *
+     * @return array{tax_rule_id: string|null, tax_rate_bps: int}
+     */
+    public static function resolveTaxFields(string $facilityId, ?string $serviceCategory = null): array
+    {
+        $resolver = app(TaxResolver::class);
+        $rule = $resolver->resolve($facilityId, $serviceCategory);
+
+        return [
+            'tax_rule_id' => $rule?->getKey(),
+            'tax_rate_bps' => $rule?->rate_value_bps ?? 0,
         ];
     }
 
