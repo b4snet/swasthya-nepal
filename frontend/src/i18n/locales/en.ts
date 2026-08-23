@@ -251,6 +251,7 @@ export const messages = {
   'nav.budgets': 'Budgets',
   'nav.expenses': 'Expenses',
   'nav.financialPeriods': 'Financial Periods',
+  'nav.nepalFinanceAdmin': 'Nepal Finance Admin',
 
   // ── Module keys ──
   'module.hospital': 'Hospital',

@@ -227,6 +227,7 @@ export const MODULES: NavModule[] = [
       { key: 'fin-budgets', labelKey: 'nav.budgets', to: '/finance/budgets', Icon: ChartNoAxesCombined, roles: FINANCE },
       { key: 'fin-expenses', labelKey: 'nav.expenses', to: '/finance/expenses', Icon: Receipt, roles: FINANCE },
       { key: 'fin-periods', labelKey: 'nav.financialPeriods', to: '/finance/periods', Icon: CalendarClock, roles: FINANCE },
+      { key: 'fin-nepal-admin', labelKey: 'nav.nepalFinanceAdmin', to: '/finance/nepal-admin', Icon: Settings, roles: ['superadmin', 'org_admin', 'hospital_admin', 'org_finance'] },
     ],
   },
 

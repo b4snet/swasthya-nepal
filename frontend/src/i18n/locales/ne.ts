@@ -252,6 +252,7 @@ export const messages: Record<MessageKey, string> = {
   'nav.budgets': 'बजेट',
   'nav.expenses': 'खर्च',
   'nav.financialPeriods': 'वित्तीय अवधि',
+  'nav.nepalFinanceAdmin': 'नेपाल वित्त प्रशासन',
 
   // ── Module keys ──
   'module.hospital': 'अस्पताल',
