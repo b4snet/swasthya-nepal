@@ -273,35 +273,10 @@
 }
 
 /* ── Dark mode ── */
-html.dark .pp-modal {
-    background: var(--color-surface, #1a1d27);
-  }
 
-  html.dark .pp-toolbar {
-    background: var(--gray-100, #22263a);
-    border-color: var(--color-border, #2a2e3e);
-  }
 
-  html.dark .pp-toolbar__title {
-    color: var(--color-text, #e4e7ee);
-  }
 
-  html.dark .pp-footer {
-    border-color: var(--color-border, #2a2e3e);
-    color: var(--gray-400, #5a5f73);
-  }
 
-  html.dark .pp-close:hover {
-    background: var(--gray-200, #2a2e3e);
-    color: var(--gray-600, #a3a7b8);
-  }
 
-  html.dark .pp-status--generated {
-    background: rgba(79, 169, 255, 0.15);
-  }
 
-  html.dark .pp-status--verified,
-  html.dark .pp-status--final {
-    background: rgba(16, 185, 129, 0.15);
-  }
 }

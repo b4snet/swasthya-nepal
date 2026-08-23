@@ -11,8 +11,6 @@ import {
   LogOut,
   Globe,
   Building2,
-  Sun,
-  Moon,
   ChevronRight,
   MoreHorizontal,
   Bell,
@@ -82,38 +80,6 @@ function LanguageToggle() {
     >
       <Globe size={15} />
       {locale === 'en' ? 'नेपाली' : 'EN'}
-    </button>
-  );
-}
-
-// ── Dark mode toggle ──
-function DarkModeToggle() {
-  const [dark, setDark] = useState(() => {
-    const saved = localStorage.getItem('swasthya-theme');
-    if (saved === 'dark') return true;
-    // Default to light — bright clinical language is the standard
-    if (saved === 'light') return false;
-    return false;
-  });
-
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', dark);
-    document.documentElement.classList.toggle('light', !dark);
-    localStorage.setItem('swasthya-theme', dark ? 'dark' : 'light');
-    // Update theme-color meta for mobile browsers
-    document.querySelector('meta[name=theme-color]')?.setAttribute('content', dark ? '#0f1118' : '#ffffff');
-  }, [dark]);
-
-  return (
-    <button
-      type="button"
-      className="lang-btn"
-      onClick={() => setDark((d) => !d)}
-      aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
-      title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
-      data-testid="dark-mode-toggle"
-    >
-      {dark ? <Sun size={15} /> : <Moon size={15} />}
     </button>
   );
 }
@@ -411,7 +377,6 @@ export function AppShell() {
           </button>
           <FacilitySwitcher />
           <LanguageToggle />
-          <DarkModeToggle />
           <UserMenu />
         </div>
       </header>
