@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Services\Ai\OpenRouterProvider;
 use Illuminate\Support\Facades\Http;
 
 /**
@@ -21,13 +22,25 @@ use Illuminate\Support\Facades\Http;
  * dispatch ALWAYS returns null: no data ever leaves the platform to an
  * unapproved model. Callers treat null as "inference unavailable" and fail
  * open loudly (AI_RULES.md §17).
+ *
+ * OpenRouter support: models configured with provider="openrouter" are
+ * dispatched through the OpenRouterProvider adapter, which handles the
+ * OpenAI-compatible API format. The API key is loaded from the
+ * OPENROUTER_API_KEY environment variable and NEVER leaves the server.
  */
 final class AiInferenceGateway
 {
+    private ?OpenRouterProvider $openRouter = null;
+
+    public function __construct()
+    {
+        $this->openRouter = new OpenRouterProvider();
+    }
+
     /**
      * @param  array<string, mixed>  $context  the MINIMUM input fields the
      *                                         feature's registry entry permits
-     * @return array{output: string, confidence: float|null}|null
+     * @return array{output: string, confidence: float|null, tokens_used: int|null}|null
      */
     public function dispatch(string $modelId, string $modelVersion, array $context): ?array
     {
@@ -38,9 +51,17 @@ final class AiInferenceGateway
             return null;
         }
 
-        $endpoint = $approved[$modelId]['endpoint'] ?? null;
-        $version = $approved[$modelId]['version'] ?? null;
+        $modelConfig = $approved[$modelId];
+        $endpoint = $modelConfig['endpoint'] ?? null;
+        $version = $modelConfig['version'] ?? null;
+        $provider = $modelConfig['provider'] ?? 'generic';
 
+        // Route to the appropriate provider adapter
+        if ($provider === 'openrouter') {
+            return $this->dispatchOpenRouter($modelId, $modelVersion, $context, $modelConfig);
+        }
+
+        // Generic endpoint dispatch (existing behavior)
         if (! is_string($endpoint) || ! str_starts_with($endpoint, 'https://')) {
             return null;
         }
@@ -75,10 +96,40 @@ final class AiInferenceGateway
                 ? (float) $payload['confidence']
                 : null;
 
-            return ['output' => $output, 'confidence' => $confidence];
+            return ['output' => $output, 'confidence' => $confidence, 'tokens_used' => null];
         } catch (\Throwable) {
             // Degraded: inference unreachable — never block care on it.
             return null;
         }
+    }
+
+    /**
+     * Dispatch through OpenRouter provider with version validation.
+     */
+    private function dispatchOpenRouter(
+        string $modelId,
+        string $modelVersion,
+        array $context,
+        array $modelConfig,
+    ): ?array {
+        if ($this->openRouter === null || ! $this->openRouter->isConfigured()) {
+            return null;
+        }
+
+        $version = $modelConfig['version'] ?? null;
+
+        if ($version !== null && (string) $version !== $modelVersion) {
+            return null;
+        }
+
+        // Build system prompt from config if provided
+        $systemPrompt = $modelConfig['system_prompt'] ?? null;
+
+        return $this->openRouter->dispatch(
+            $modelId,
+            $modelVersion,
+            $context,
+            is_array($systemPrompt) ? $systemPrompt : null,
+        );
     }
 }
