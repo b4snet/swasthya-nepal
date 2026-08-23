@@ -469,7 +469,7 @@ export function AppShell() {
 
       <SidebarUser />
 
-      {useTenant().selectedFacilityId === null && (
+      {useTenant().facilities.length > 0 && useTenant().selectedFacilityId === null && (
         <div className="facility-required" role="status" data-testid="facility-required-banner">
           {t('shell.selectFacilityRequired')}
         </div>

@@ -6,6 +6,9 @@ import { LoginPage } from '../pages/LoginPage';
 import { AuthProvider } from './AuthProvider';
 import { jsonError, jsonOk, stubFetch, assignments } from '../test/helpers';
 
+/** Environment response that stubFetch will return for the /health/env call. */
+const envResponse = jsonOk({ environment: 'testing', isProduction: false });
+
 function renderLogin() {
   return render(
     <MemoryRouter>
@@ -19,6 +22,7 @@ function renderLogin() {
 describe('LoginPage', () => {
   it('submits real credentials to the backend login endpoint', async () => {
     const fetchMock = stubFetch(
+      envResponse,
       jsonOk({
         accessToken: 'at-1',
         tokenType: 'Bearer',
@@ -35,16 +39,17 @@ describe('LoginPage', () => {
     await user.type(screen.getByLabelText(/password/i), 'secret');
     await user.click(screen.getByRole('button', { name: 'Sign in' }));
 
+    // First call is env, second is login.
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
     });
-    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    const [url, init] = fetchMock.mock.calls[1] as unknown as [string, RequestInit];
     expect(url).toBe('/api/v1/auth/login');
     expect(JSON.parse(String(init.body))).toEqual({ email: 'a@b.test', password: 'secret' });
   });
 
   it('maps a 401 to a user-facing error message', async () => {
-    stubFetch(jsonError(401, 'INVALID_CREDENTIALS', 'Invalid credentials.'));
+    stubFetch(envResponse, jsonError(401, 'INVALID_CREDENTIALS', 'Invalid credentials.'));
     const user = userEvent.setup();
     renderLogin();
     await user.type(screen.getByLabelText(/email/i), 'a@b.test');
@@ -54,7 +59,7 @@ describe('LoginPage', () => {
   });
 
   it('shows a rate-limit specific message on 429', async () => {
-    stubFetch(jsonError(429, 'RATE_LIMITED', 'Too many attempts.'));
+    stubFetch(envResponse, jsonError(429, 'RATE_LIMITED', 'Too many attempts.'));
     const user = userEvent.setup();
     renderLogin();
     await user.type(screen.getByLabelText(/email/i), 'a@b.test');
@@ -67,7 +72,7 @@ describe('LoginPage', () => {
     // The form is intentionally noValidate: the backend is authoritative.
     // An empty submit reaches the API and its 422 VALIDATION surfaces as a
     // user-facing message rather than being silently swallowed.
-    stubFetch(jsonError(422, 'VALIDATION', 'The email field is required.'));
+    stubFetch(envResponse, jsonError(422, 'VALIDATION', 'The email field is required.'));
     const user = userEvent.setup();
     renderLogin();
     await user.click(screen.getByRole('button', { name: 'Sign in' }));

@@ -7,6 +7,21 @@ import { Button, Input } from '../components/ui';
 import { ApiError } from '../api/client';
 import './login.css';
 
+/**
+ * Fetch the server environment (non-sensitive) to show a dev/staging indicator.
+ * Never exposes secrets or debug flags — only the APP_ENV string.
+ */
+async function fetchEnvironment(): Promise<string> {
+  try {
+    const res = await fetch('/api/v1/health/env');
+    if (!res.ok) return 'production';
+    const json = await res.json();
+    return json?.data?.environment ?? 'production';
+  } catch {
+    return 'production';
+  }
+}
+
 export function LoginPage() {
   const { login, sessionExpiredReason, clearExpiredReason } = useAuth();
   const { t } = useI18n();
@@ -15,6 +30,12 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [appEnv, setAppEnv] = useState<string | null>(null);
+
+  // Fetch environment on mount for dev/staging indicator.
+  useEffect(() => {
+    fetchEnvironment().then(setAppEnv);
+  }, []);
 
   // Auto-dismiss the expired banner after 8 seconds.
   useEffect(() => {
@@ -56,6 +77,11 @@ export function LoginPage() {
           </div>
           <h1>{t('app.name')}</h1>
           <p className="login__subtitle">{t('login.subtitle')}</p>
+          {appEnv && appEnv !== 'production' && (
+            <span className="login__env-badge" data-testid="env-badge">
+              {appEnv === 'local' ? 'Development' : appEnv.charAt(0).toUpperCase() + appEnv.slice(1)}
+            </span>
+          )}
         </div>
 
         {sessionExpiredReason && (

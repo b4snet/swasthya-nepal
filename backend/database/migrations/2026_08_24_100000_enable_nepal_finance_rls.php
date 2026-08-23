@@ -12,33 +12,42 @@ use Illuminate\Support\Facades\DB;
  */
 return new class extends Migration
 {
-    private const TABLES = ['tax_rules', 'benefit_rules'];
+    /** Tables with only tenant_id (no facility_id column) */
+    private const TENANT_ONLY = ['benefit_rules'];
+
+    /** Tables with both tenant_id and facility_id */
+    private const TENANT_FACILITY = ['tax_rules'];
+
+    private const ALL_TABLES = ['tax_rules', 'benefit_rules'];
 
     public function up(): void
     {
-        foreach (self::TABLES as $table) {
+        $tenantOnly = "tenant_id = NULLIF(swasthya_rls_tenant_id(), '')::uuid";
+        $tenantFacility = $tenantOnly . " AND (facility_id = NULLIF(swasthya_rls_facility_id(), '')::uuid OR swasthya_rls_facility_id() IS NULL OR swasthya_rls_facility_id() = '')";
+
+        foreach (self::ALL_TABLES as $table) {
             DB::statement("ALTER TABLE public.{$table} ENABLE ROW LEVEL SECURITY");
             DB::statement("ALTER TABLE public.{$table} FORCE ROW LEVEL SECURITY");
 
-            $tenantFacility = 'tenant_id = swasthya_rls_tenant_id() AND (facility_id = swasthya_rls_facility_id() OR swasthya_rls_facility_id() IS NULL)';
+            $using = in_array($table, self::TENANT_FACILITY) ? $tenantFacility : $tenantOnly;
 
             DB::statement("DROP POLICY IF EXISTS p_rls_{$table}_select ON public.{$table}");
-            DB::statement("CREATE POLICY p_rls_{$table}_select ON public.{$table} FOR SELECT USING ({$tenantFacility})");
+            DB::statement("CREATE POLICY p_rls_{$table}_select ON public.{$table} FOR SELECT USING ({$using})");
 
             DB::statement("DROP POLICY IF EXISTS p_rls_{$table}_insert ON public.{$table}");
             DB::statement("CREATE POLICY p_rls_{$table}_insert ON public.{$table} FOR INSERT WITH CHECK (true)");
 
             DB::statement("DROP POLICY IF EXISTS p_rls_{$table}_update ON public.{$table}");
-            DB::statement("CREATE POLICY p_rls_{$table}_update ON public.{$table} FOR UPDATE USING ({$tenantFacility}) WITH CHECK ({$tenantFacility})");
+            DB::statement("CREATE POLICY p_rls_{$table}_update ON public.{$table} FOR UPDATE USING ({$using}) WITH CHECK ({$using})");
 
             DB::statement("DROP POLICY IF EXISTS p_rls_{$table}_delete ON public.{$table}");
-            DB::statement("CREATE POLICY p_rls_{$table}_delete ON public.{$table} FOR DELETE USING ({$tenantFacility})");
+            DB::statement("CREATE POLICY p_rls_{$table}_delete ON public.{$table} FOR DELETE USING ({$using})");
         }
     }
 
     public function down(): void
     {
-        foreach (self::TABLES as $table) {
+        foreach (self::ALL_TABLES as $table) {
             DB::statement("DROP POLICY IF EXISTS p_rls_{$table}_select ON public.{$table}");
             DB::statement("DROP POLICY IF EXISTS p_rls_{$table}_insert ON public.{$table}");
             DB::statement("DROP POLICY IF EXISTS p_rls_{$table}_update ON public.{$table}");

@@ -114,6 +114,7 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('health')->group(function (): void {
     Route::get('live', [HealthController::class, 'live']);
     Route::get('ready', [HealthController::class, 'ready']);
+    Route::get('env', [HealthController::class, 'envInfo']);
 });
 
 // Public auth surface — strictest rate limits (API_CONTRACTS.md §15).

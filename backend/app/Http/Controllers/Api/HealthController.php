@@ -35,6 +35,24 @@ final class HealthController extends Controller
         );
     }
 
+    /**
+     * Return the non-sensitive application environment.
+     * Used by the frontend to display a dev/staging indicator on the login page.
+     * Never exposes secrets, keys, or debug flags.
+     */
+    public function envInfo(Request $request): JsonResponse
+    {
+        $env = config('app.env', 'production');
+
+        return Envelope::success(
+            data: [
+                'environment' => $env,
+                'isProduction' => $env === 'production',
+            ],
+            request: $request,
+        );
+    }
+
     public function ready(Request $request): JsonResponse
     {
         $checks = [
