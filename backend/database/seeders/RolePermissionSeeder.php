@@ -192,6 +192,10 @@ class RolePermissionSeeder extends Seeder
             // of duties — charge ≠ void).
             'billing:void' => ['domain' => 'billing', 'description' => 'Void posted charges and uncollected invoices (status + reason + approver, restricted)'],
 
+            // Nepal Financial Architecture — tax rules, benefit rules, payers,
+            // fiscal year configuration. Restricted to finance admin tier.
+            'billing:manage' => ['domain' => 'billing', 'description' => 'Manage tax rules, benefit rules, payers, and fiscal year configuration'],
+
             // Phase 14 — inventory & procurement (ROADMAP §15, PRODUCT_
             // REQUIREMENTS §6.15–6.16): inter-facility transfers, the
             // approval-gated adjustment path (requester ≠ approver), and
@@ -560,6 +564,9 @@ class RolePermissionSeeder extends Seeder
                     // Phase 13 — void stays with the financial approver tier
                     // (the clerk who charges cannot void — segregation of duties).
                     'billing:void',
+                    // Nepal Financial Architecture — manage tax rules, benefit
+                    // rules, payers, and fiscal year configuration.
+                    'billing:manage',
                     // Phase 14 — the finance officer sees procurement documents
                     // and holds the purchase-approval gate (never requests).
                     'procurement:view', 'procurement:approve',
@@ -615,6 +622,9 @@ class RolePermissionSeeder extends Seeder
                     // Phase 13 — void stays with the financial approver tier
                     // (the clerk who charges cannot void — segregation of duties).
                     'billing:void',
+                    // Nepal Financial Architecture — manage tax rules, benefit
+                    // rules, payers, and fiscal year configuration.
+                    'billing:manage',
                     // Phase 14 — the hospital admin administers their facility's
                     // inventory and procurement surface.
                     'inventory:transfer', 'inventory:adjust-request', 'inventory:adjust-approve',
