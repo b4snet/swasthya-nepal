@@ -301,10 +301,48 @@ export function useAccess() {
   };
 
   /**
-   * Get the user's display name (email prefix or full name).
+   * Get the user's professional display name.
+   * Priority: staff profile name > role-based label > email prefix.
+   * Never expose internal fixture/seed identifiers (smoke.*, test.*) to the UI.
    */
   const getDisplayName = (): string => {
-    return user?.email?.split('@')[0] ?? 'User';
+    // If a staff profile full name exists, use it
+    const staffName = (user as any)?.staffName;
+    if (staffName && typeof staffName === 'string' && staffName.trim()) {
+      return staffName.trim();
+    }
+    // Map role codes to professional labels
+    const roleLabels: Record<string, string> = {
+      superadmin: 'Super Admin',
+      org_admin: 'Organization Admin',
+      hospital_admin: 'Hospital Admin',
+      doctor: 'Doctor',
+      nurse: 'Nurse',
+      pharmacist: 'Pharmacist',
+      lab_technician: 'Lab Technician',
+      lab_supervisor: 'Lab Supervisor',
+      radiographer: 'Radiographer',
+      radiologist: 'Radiologist',
+      billing_clerk: 'Billing Clerk',
+      receptionist: 'Receptionist',
+      org_finance: 'Finance',
+      branch_manager: 'Branch Manager',
+      support_agent: 'Support',
+    };
+    // Use the first assigned role's professional label
+    const assignments = (user as any)?.assignments ?? [];
+    for (const assignment of assignments) {
+      const roles: string[] = assignment.roles ?? [];
+      for (const role of roles) {
+        if (roleLabels[role]) return roleLabels[role];
+      }
+    }
+    // Fallback: sanitize email prefix (remove fixture prefixes like smoke.)
+    const email = user?.email ?? '';
+    const prefix = email.split('@')[0] ?? 'User';
+    // Remove common fixture/test prefixes
+    const sanitized = prefix.replace(/^smoke\./, '').replace(/^test\./, '').replace(/^demo\./, '');
+    return sanitized.charAt(0).toUpperCase() + sanitized.slice(1) || 'User';
   };
 
   /**
@@ -312,6 +350,11 @@ export function useAccess() {
    */
   const getInitials = (): string => {
     const name = getDisplayName();
+    // If the name is a role label (e.g. "Super Admin"), use first letters of each word
+    const words = name.split(' ');
+    if (words.length >= 2) {
+      return (words[0][0] + words[1][0]).toUpperCase();
+    }
     return name.slice(0, 2).toUpperCase();
   };
 

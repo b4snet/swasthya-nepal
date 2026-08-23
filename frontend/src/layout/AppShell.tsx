@@ -87,6 +87,7 @@ function LanguageToggle() {
 // ── User menu ──
 function UserMenu() {
   const { user, logout } = useAuth();
+  const access = useAccess();
   const { t } = useI18n();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -127,7 +128,7 @@ function UserMenu() {
         aria-haspopup="menu"
         data-testid="user-menu-trigger"
       >
-        {user?.email?.slice(0, 2).toUpperCase()}
+        {access.getInitials()}
       </button>
 
       {open && (

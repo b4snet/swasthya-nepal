@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useTenant } from '../context/TenantContext';
-import { useAuth } from '../auth/AuthProvider';
+import { useAccess } from '../auth/useAccess';
 import {
   Users, Calendar, Clock, Bed, DollarSign, Pill, TestTube,
   Image, AlertTriangle, Stethoscope, CheckCircle, FileText,
@@ -84,7 +84,7 @@ const EMPTY_CHARTS: ChartData = {
 /* ── Page ── */
 export function DashboardPage() {
   const { selectedFacilityId, selectedFacilityName } = useTenant();
-  const { user } = useAuth();
+  const access = useAccess();
   const fac = selectedFacilityId;
   const isPlatform = !fac; // Show platform overview when no facility is selected
 
@@ -158,7 +158,7 @@ export function DashboardPage() {
       <div className="dashboard">
         <div className="dash-pulse dash-animate">
           <div className="dash-pulse__left">
-            <h1 className="dash-pulse__greeting">{greeting()}, {user?.email?.split('@')[0] || 'User'}</h1>
+            <h1 className="dash-pulse__greeting">{greeting()}, {access.getDisplayName()}</h1>
             <div className="dash-pulse__meta">
               <span>{formatDate(new Date())}</span>
               <span style={{ color: 'var(--red-500)' }}>{error}</span>
@@ -178,7 +178,7 @@ export function DashboardPage() {
       <div className="dashboard">
         <div className="dash-pulse dash-animate">
           <div className="dash-pulse__left">
-            <h1 className="dash-pulse__greeting">{greeting()}, {user?.email?.split('@')[0] || 'User'}</h1>
+            <h1 className="dash-pulse__greeting">{greeting()}, {access.getDisplayName()}</h1>
             <div className="dash-pulse__meta">
               <span>{formatDate(new Date())}</span>
               <span style={{ color: 'var(--text-tertiary)' }}>No data available — select a facility</span>
@@ -197,7 +197,7 @@ export function DashboardPage() {
   const c = charts ?? EMPTY_CHARTS;
   const platformStats = isPlatform ? { totalOrganizations: (m as any).totalOrganizations ?? 0, totalFacilities: (m as any).totalFacilities ?? 0 } : null;
 
-  const userName = user?.email?.split('@')[0] || 'User';
+  const userName = access.getDisplayName();
 
   return (
     <div className="dashboard">

@@ -43,6 +43,7 @@ export interface SessionUser {
   id: string;
   email: string;
   status: string;
+  staffName?: string | null;
 }
 
 export interface LoginResponse {

@@ -256,11 +256,16 @@ final class AuthController extends Controller
      */
     private function userPayload(User $user): array
     {
+        // Include staff profile name for professional display identity.
+        // The staff record links a user account to a real person in the hospital.
+        $staffName = $user->staff()->value('full_name');
+
         return [
             'id' => $user->getKey(),
             'email' => $user->email,
             'status' => $user->status,
             'mfaEnabled' => $user->mfaEnabled(),
+            'staffName' => $staffName,
         ];
     }
 
