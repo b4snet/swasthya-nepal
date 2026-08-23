@@ -24,6 +24,8 @@ const nepalFinanceApi = {
     api.request<unknown>('/api/v1/finance/fiscal-years', { method: 'POST', body: payload, ...opt(fac) }),
   closeFiscalYear: (id: string, fac?: string | null) =>
     api.request<unknown>(`/api/v1/finance/fiscal-years/${id}/close`, { method: 'POST', body: {}, ...opt(fac) }),
+  reopenFiscalYear: (id: string, fac?: string | null) =>
+    api.request<unknown>(`/api/v1/finance/fiscal-years/${id}/reopen`, { method: 'POST', body: {}, ...opt(fac) }),
 
   // Tax Rules
   taxRules: (fac?: string | null) =>
@@ -60,6 +62,8 @@ interface FiscalYear {
   end_date: string;
   status: string;
   period_status: string;
+  closed_at: string | null;
+  locked_at: string | null;
 }
 
 interface TaxRule {
@@ -294,6 +298,9 @@ export function NepalFinanceAdminPage() {
                   <span>
                     {fy.period_status === 'open' && (
                       <Button variant="ghost" size="sm" onClick={() => void go(() => nepalFinanceApi.closeFiscalYear(fy.id, fac).then(() => fiscalYears.refresh()))}>Close</Button>
+                    )}
+                    {fy.period_status === 'closed' && (
+                      <Button variant="ghost" size="sm" onClick={() => void go(() => nepalFinanceApi.reopenFiscalYear(fy.id, fac).then(() => fiscalYears.refresh()))}>Reopen</Button>
                     )}
                   </span>
                 </div>

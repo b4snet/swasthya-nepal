@@ -82,10 +82,17 @@ class Charge extends Model
      * tax rules. Returns an array with 'tax_rule_id' and 'tax_rate_bps'
      * that should be merged into the charge creation data.
      *
+     * Also validates that the fiscal period is open for this facility/date.
+     *
      * @return array{tax_rule_id: string|null, tax_rate_bps: int}
+     *
+     * @throws \App\Exceptions\ApiException if the fiscal period is closed or locked
      */
     public static function resolveTaxFields(string $facilityId, ?string $serviceCategory = null): array
     {
+        // Validate the fiscal period is open before posting a charge.
+        app(\App\Services\PeriodGuard::class)->assertOpen($facilityId);
+
         $resolver = app(TaxResolver::class);
         $rule = $resolver->resolve($facilityId, $serviceCategory);
 

@@ -126,6 +126,31 @@ final class NepalFinanceController extends Controller
         return Envelope::success(data: self::presentFiscalYear($period->fresh()), request: $request);
     }
 
+    /** POST /finance/fiscal-years/{period}/reopen */
+    public function reopenFiscalYear(Request $request, FinancialPeriod $period): JsonResponse
+    {
+        AccessCheck::scoped($period, write: true);
+
+        if ($period->status === FinancialPeriod::STATUS_LOCKED || $period->period_status === 'locked') {
+            throw new ApiException(ErrorCodes::CONFLICT, 'A locked period cannot be reopened. This is an irreversible accounting control.', 409);
+        }
+
+        if ($period->status !== FinancialPeriod::STATUS_CLOSED && $period->period_status !== 'closed') {
+            throw new ApiException(ErrorCodes::CONFLICT, 'Only closed periods can be reopened.', 409);
+        }
+
+        $period->update([
+            'status' => FinancialPeriod::STATUS_OPEN,
+            'period_status' => 'open',
+            'closed_by_staff_id' => null,
+            'closed_at' => null,
+        ]);
+
+        $this->audit->record('nepal_finance.fiscal_year.reopened', 'financial_period', $period->getKey(), [], $request);
+
+        return Envelope::success(data: self::presentFiscalYear($period->fresh()), request: $request);
+    }
+
     /* ── Payers ─────────────────────────────────────────────── */
 
     /** GET /finance/payers */
@@ -221,6 +246,8 @@ final class NepalFinanceController extends Controller
             'end_date' => $p->end_date?->toDateString(),
             'status' => $p->status,
             'period_status' => $p->period_status ?? $p->status,
+            'closed_at' => $p->closed_at?->toIso8601String(),
+            'locked_at' => $p->locked_at?->toIso8601String(),
         ];
     }
 

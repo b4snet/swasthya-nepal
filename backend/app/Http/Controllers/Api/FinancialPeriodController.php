@@ -139,9 +139,45 @@ final class FinancialPeriodController extends Controller
             throw new ApiException(ErrorCodes::CONFLICT, 'Only closed periods can be locked.', 409);
         }
 
-        $period->update(['status' => FinancialPeriod::STATUS_LOCKED]);
+        $context = TenantContext::current();
+        $staffId = $context->user?->staff()
+            ->where('tenant_id', $period->tenant_id)
+            ->where('facility_id', $period->facility_id)
+            ->first()?->getKey();
+
+        $period->update([
+            'status' => FinancialPeriod::STATUS_LOCKED,
+            'period_status' => 'locked',
+            'locked_by_staff_id' => $staffId,
+            'locked_at' => now(),
+        ]);
 
         $this->audit->record('financial_period.locked', 'financial_period', $period->getKey(), [], $request);
+
+        return Envelope::success(data: $this->present($period->fresh()), request: $request);
+    }
+
+    /** POST /financial-periods/{period}/reopen */
+    public function reopen(FinancialPeriod $period, Request $request): JsonResponse
+    {
+        AccessCheck::scoped($period, write: true);
+
+        if ($period->status === FinancialPeriod::STATUS_LOCKED) {
+            throw new ApiException(ErrorCodes::CONFLICT, 'A locked period cannot be reopened. This is an irreversible accounting control.', 409);
+        }
+
+        if ($period->status !== FinancialPeriod::STATUS_CLOSED) {
+            throw new ApiException(ErrorCodes::CONFLICT, 'Only closed periods can be reopened.', 409);
+        }
+
+        $period->update([
+            'status' => FinancialPeriod::STATUS_OPEN,
+            'period_status' => 'open',
+            'closed_by_staff_id' => null,
+            'closed_at' => null,
+        ]);
+
+        $this->audit->record('financial_period.reopened', 'financial_period', $period->getKey(), [], $request);
 
         return Envelope::success(data: $this->present($period->fresh()), request: $request);
     }

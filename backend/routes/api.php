@@ -1522,6 +1522,7 @@ Route::middleware(['throttle:api', ResolveTenantContext::class])->prefix('enterp
     Route::get('financial-periods/{period}', [FinancialPeriodController::class, 'show']);
     Route::post('financial-periods/{period}/close', [FinancialPeriodController::class, 'close']);
     Route::post('financial-periods/{period}/lock', [FinancialPeriodController::class, 'lock']);
+    Route::post('financial-periods/{period}/reopen', [FinancialPeriodController::class, 'reopen']);
 
     // Nepal Financial Architecture — Tax Rules (effective-dated)
     Route::get('finance/tax-rules', [TaxRuleController::class, 'index'])
@@ -1553,6 +1554,8 @@ Route::middleware(['throttle:api', ResolveTenantContext::class])->prefix('enterp
     Route::post('finance/fiscal-years', [NepalFinanceController::class, 'storeFiscalYear'])
         ->middleware('authorize:billing:manage');
     Route::post('finance/fiscal-years/{period}/close', [NepalFinanceController::class, 'closeFiscalYear'])
+        ->middleware('authorize:billing:manage');
+    Route::post('finance/fiscal-years/{period}/reopen', [NepalFinanceController::class, 'reopenFiscalYear'])
         ->middleware('authorize:billing:manage');
 
     Route::get('finance/payers', [NepalFinanceController::class, 'indexPayers'])
