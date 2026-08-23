@@ -41,10 +41,10 @@ class NepalFinanceSeeder extends Seeder
     /**
      * Nepal fiscal year: mid-Shrawan to mid-Shrawan (July 16 to July 15).
      */
-    private const NEPAL_FISCAL_YEAR = 2082;
-    private const NEPAL_FISCAL_BS = '2082/83';
-    private const FY_START = '2025-07-16';
-    private const FY_END = '2026-07-15';
+    private const NEPAL_FISCAL_YEAR = 2083;
+    private const NEPAL_FISCAL_BS = '2083/84';
+    private const FY_START = '2026-07-16';
+    private const FY_END = '2027-07-15';
 
     public function run(): void
     {
@@ -108,9 +108,9 @@ class NepalFinanceSeeder extends Seeder
             ],
             [
                 'code' => 'HEALTH_SVC_TAX',
-                'name' => 'Health Service Tax',
+                'name' => 'Health Service Tax (WITHDRAWN)',
                 'tax_type' => 'health_service_tax',
-                'description' => 'Health service tax on private healthcare services as per Finance Act.',
+                'description' => 'Health service tax on private healthcare — WITHDRAWN in FY 2083/84 budget. Archived for historical transaction reproducibility.',
                 'rate_method' => 'percentage',
                 'rate_value_bps' => 500, // 5%
                 'currency' => 'NPR',
@@ -122,19 +122,20 @@ class NepalFinanceSeeder extends Seeder
                 'applies_to_lab' => true,
                 'applies_to_radiology' => true,
                 'effective_from' => '2025-07-16',
-                'effective_to' => null,
+                'effective_to' => '2026-07-15', // Withdrawn in FY 2083/84
                 'source_authority' => 'Ministry of Finance, Nepal',
-                'source_document' => 'Finance Act 2082/83',
+                'source_document' => 'Finance Act 2082/83 (withdrawn in 2083/84)',
                 'source_effective_date' => '2025-07-16',
-                'source_url' => null,
-                'source_version' => null,
+                'source_url' => 'https://mof.gov.np',
+                'source_version' => 'withdrawn',
                 'is_default' => false,
+                'status' => 'superseded',
             ],
             [
                 'code' => 'HEALTH_EQUITY',
-                'name' => 'Health Equity Fee',
+                'name' => 'Health Equity Fee (WITHDRAWN)',
                 'tax_type' => 'health_equity_fee',
-                'description' => 'Health equity fee on private healthcare as per Finance Act.',
+                'description' => 'Health equity fee on private healthcare — INTRODUCED then WITHDRAWN in July 2026 following public criticism. Refunds being processed.',
                 'rate_method' => 'percentage',
                 'rate_value_bps' => 300, // 3%
                 'currency' => 'NPR',
@@ -145,14 +146,15 @@ class NepalFinanceSeeder extends Seeder
                 'applies_to_pharmacy' => true,
                 'applies_to_lab' => true,
                 'applies_to_radiology' => true,
-                'effective_from' => '2025-07-16',
-                'effective_to' => null,
+                'effective_from' => '2026-07-16',
+                'effective_to' => '2026-07-21', // Withdrawn 5 days after introduction
                 'source_authority' => 'Ministry of Finance, Nepal',
-                'source_document' => 'Finance Act 2083/84',
+                'source_document' => 'Finance Act 2083/84 (withdrawn following public criticism)',
                 'source_effective_date' => '2026-07-16',
-                'source_url' => null,
-                'source_version' => null,
+                'source_url' => 'https://mof.gov.np',
+                'source_version' => 'withdrawn',
                 'is_default' => false,
+                'status' => 'superseded',
             ],
         ];
 
@@ -242,94 +244,25 @@ class NepalFinanceSeeder extends Seeder
         if ($ssfPayer !== null) {
             $ssfBenefits = [
                 [
-                    'code' => 'SSF_OPD_MED',
-                    'name' => 'SSF OPD Medicine',
-                    'scheme_version' => 'SSF_2082',
-                    'service_category' => 'medicine',
+                    'code' => 'SSF_MEDICAL',
+                    'name' => 'SSF Medical Treatment Benefit',
+                    'scheme_version' => 'SSF_2083',
+                    'service_category' => null, // covers all medical services
                     'coverage_type' => 'capped',
-                    'coverage_percent_bps' => 10000, // 100% covered
-                    'limit_minor' => 500000, // NPR 5,000
-                    'copay_minor' => 0,
-                    'copay_percent_bps' => null,
-                    'deductible_minor' => null,
-                    'eligible_opd' => true,
-                    'eligible_ipd' => false,
-                    'eligible_maternity' => false,
-                    'eligible_dependents' => true,
-                    'max_dependents' => null,
-                    'effective_from' => '2025-07-16',
-                    'effective_to' => null,
-                    'source_authority' => 'Social Security Fund, Nepal',
-                    'source_document' => 'SSF Healthcare Scheme Guidelines',
-                    'source_effective_date' => null,
-                    'source_url' => 'https://www.ssf.gov.np',
-                ],
-                [
-                    'code' => 'SSF_OPD_LAB',
-                    'name' => 'SSF OPD Diagnostic',
-                    'scheme_version' => 'SSF_2082',
-                    'service_category' => 'diagnostic',
-                    'coverage_type' => 'capped',
-                    'coverage_percent_bps' => 10000,
-                    'limit_minor' => 300000, // NPR 3,000
-                    'copay_minor' => 0,
-                    'copay_percent_bps' => null,
-                    'deductible_minor' => null,
-                    'eligible_opd' => true,
-                    'eligible_ipd' => false,
-                    'eligible_maternity' => false,
-                    'eligible_dependents' => true,
-                    'max_dependents' => null,
-                    'effective_from' => '2025-07-16',
-                    'effective_to' => null,
-                    'source_authority' => 'Social Security Fund, Nepal',
-                    'source_document' => 'SSF Healthcare Scheme Guidelines',
-                    'source_effective_date' => null,
-                    'source_url' => 'https://www.ssf.gov.np',
-                ],
-                [
-                    'code' => 'SSF_IPD',
-                    'name' => 'SSF IPD Coverage',
-                    'scheme_version' => 'SSF_2082',
-                    'service_category' => 'surgery',
-                    'coverage_type' => 'capped',
-                    'coverage_percent_bps' => 7500, // 75%
-                    'limit_minor' => 5000000, // NPR 50,000
+                    'coverage_percent_bps' => 8000, // 80% (20% co-payment)
+                    'limit_minor' => 10000000, // NPR 100,000 per annum
                     'copay_minor' => null,
-                    'copay_percent_bps' => 2500, // 25% co-pay
+                    'copay_percent_bps' => 2000, // 20% co-payment per SSF rules
                     'deductible_minor' => null,
-                    'eligible_opd' => false,
+                    'eligible_opd' => true,
                     'eligible_ipd' => true,
                     'eligible_maternity' => true,
                     'eligible_dependents' => true,
                     'max_dependents' => null,
-                    'effective_from' => '2025-07-16',
+                    'effective_from' => '2026-07-16',
                     'effective_to' => null,
                     'source_authority' => 'Social Security Fund, Nepal',
-                    'source_document' => 'SSF Healthcare Scheme Guidelines',
-                    'source_effective_date' => null,
-                    'source_url' => 'https://www.ssf.gov.np',
-                ],
-                [
-                    'code' => 'SSF_MATERNITY',
-                    'name' => 'SSF Maternity Benefit',
-                    'scheme_version' => 'SSF_2082',
-                    'service_category' => 'maternity',
-                    'coverage_type' => 'capped',
-                    'coverage_percent_bps' => 10000,
-                    'limit_minor' => 800000, // NPR 8,000
-                    'copay_minor' => 0,
-                    'copay_percent_bps' => null,
-                    'deductible_minor' => null,
-                    'eligible_opd' => false,
-                    'eligible_ipd' => true,
-                    'eligible_maternity' => true,
-                    'eligible_dependents' => true,
-                    'max_dependents' => null,
-                    'effective_from' => '2025-07-16',
-                    'effective_to' => null,
-                    'source_authority' => 'Social Security Fund, Nepal',
-                    'source_document' => 'SSF Healthcare Scheme Guidelines',
+                    'source_document' => 'SSF Medical Treatment, Health and Maternity Protection Scheme',
                     'source_effective_date' => null,
                     'source_url' => 'https://www.ssf.gov.np',
                 ],
@@ -357,94 +290,48 @@ class NepalFinanceSeeder extends Seeder
         if ($hibPayer !== null) {
             $hibBenefits = [
                 [
-                    'code' => 'HIB_OPD',
-                    'name' => 'HIB OPD Coverage',
-                    'scheme_version' => 'HIB_BP_V3',
-                    'service_category' => 'opd',
+                    'code' => 'HIB_FAMILY',
+                    'name' => 'HIB Family Coverage (up to 5 members)',
+                    'scheme_version' => 'HIB_2083',
+                    'service_category' => null, // covers OPD, IPD, emergency
                     'coverage_type' => 'capped',
-                    'coverage_percent_bps' => 7500, // 75%
-                    'limit_minor' => 10000000, // NPR 100,000 per year
+                    'coverage_percent_bps' => 10000, // 100% up to limit
+                    'limit_minor' => 10000000, // NPR 100,000 per year per family of 5
                     'copay_minor' => null,
-                    'copay_percent_bps' => 2500, // 25% co-pay
-                    'deductible_minor' => null,
-                    'eligible_opd' => true,
-                    'eligible_ipd' => false,
-                    'eligible_maternity' => false,
-                    'eligible_dependents' => true,
-                    'max_dependents' => null,
-                    'effective_from' => '2025-07-16',
-                    'effective_to' => null,
-                    'source_authority' => 'Health Insurance Board, Nepal',
-                    'source_document' => 'HIB Benefit Package v3',
-                    'source_effective_date' => null,
-                    'source_url' => 'https://hib.gov.np',
-                ],
-                [
-                    'code' => 'HIB_IPD',
-                    'name' => 'HIB IPD Coverage',
-                    'scheme_version' => 'HIB_BP_V3',
-                    'service_category' => 'ipd',
-                    'coverage_type' => 'capped',
-                    'coverage_percent_bps' => 7500, // 75%
-                    'limit_minor' => 10000000, // NPR 100,000 per year
-                    'copay_minor' => null,
-                    'copay_percent_bps' => 2500, // 25% co-pay
-                    'deductible_minor' => null,
-                    'eligible_opd' => false,
-                    'eligible_ipd' => true,
-                    'eligible_maternity' => true,
-                    'eligible_dependents' => true,
-                    'max_dependents' => null,
-                    'effective_from' => '2025-07-16',
-                    'effective_to' => null,
-                    'source_authority' => 'Health Insurance Board, Nepal',
-                    'source_document' => 'HIB Benefit Package v3',
-                    'source_effective_date' => null,
-                    'source_url' => 'https://hib.gov.np',
-                ],
-                [
-                    'code' => 'HIB_MATERNITY',
-                    'name' => 'HIB Maternity Coverage',
-                    'scheme_version' => 'HIB_BP_V3',
-                    'service_category' => 'maternity',
-                    'coverage_type' => 'capped',
-                    'coverage_percent_bps' => 7500,
-                    'limit_minor' => 5000000, // NPR 50,000
-                    'copay_minor' => null,
-                    'copay_percent_bps' => 2500,
-                    'deductible_minor' => null,
-                    'eligible_opd' => false,
-                    'eligible_ipd' => true,
-                    'eligible_maternity' => true,
-                    'eligible_dependents' => true,
-                    'max_dependents' => null,
-                    'effective_from' => '2025-07-16',
-                    'effective_to' => null,
-                    'source_authority' => 'Health Insurance Board, Nepal',
-                    'source_document' => 'HIB Benefit Package v3',
-                    'source_effective_date' => null,
-                    'source_url' => 'https://hib.gov.np',
-                ],
-                [
-                    'code' => 'HIB_EMERGENCY',
-                    'name' => 'HIB Emergency Coverage',
-                    'scheme_version' => 'HIB_BP_V3',
-                    'service_category' => 'emergency',
-                    'coverage_type' => 'capped',
-                    'coverage_percent_bps' => 10000, // 100%
-                    'limit_minor' => 10000000, // NPR 100,000
-                    'copay_minor' => 0,
                     'copay_percent_bps' => null,
                     'deductible_minor' => null,
-                    'eligible_opd' => false,
+                    'eligible_opd' => true,
                     'eligible_ipd' => true,
-                    'eligible_maternity' => false,
+                    'eligible_maternity' => true,
                     'eligible_dependents' => true,
-                    'max_dependents' => null,
-                    'effective_from' => '2025-07-16',
+                    'max_dependents' => 5,
+                    'effective_from' => '2026-07-16',
                     'effective_to' => null,
                     'source_authority' => 'Health Insurance Board, Nepal',
-                    'source_document' => 'HIB Benefit Package v3',
+                    'source_document' => 'HIB Benefit Package — NPR 100,000 per family of 5',
+                    'source_effective_date' => null,
+                    'source_url' => 'https://hib.gov.np',
+                ],
+                [
+                    'code' => 'HIB_ADDITIONAL',
+                    'name' => 'HIB Additional Member Coverage',
+                    'scheme_version' => 'HIB_2083',
+                    'service_category' => null,
+                    'coverage_type' => 'capped',
+                    'coverage_percent_bps' => 10000,
+                    'limit_minor' => 2000000, // NPR 20,000 per additional member
+                    'copay_minor' => null,
+                    'copay_percent_bps' => null,
+                    'deductible_minor' => null,
+                    'eligible_opd' => true,
+                    'eligible_ipd' => true,
+                    'eligible_maternity' => true,
+                    'eligible_dependents' => true,
+                    'max_dependents' => null,
+                    'effective_from' => '2026-07-16',
+                    'effective_to' => null,
+                    'source_authority' => 'Health Insurance Board, Nepal',
+                    'source_document' => 'HIB Benefit Package — NPR 20,000 per additional member beyond 5',
                     'source_effective_date' => null,
                     'source_url' => 'https://hib.gov.np',
                 ],
