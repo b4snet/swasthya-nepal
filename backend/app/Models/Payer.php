@@ -27,15 +27,12 @@ class Payer extends Model
 
     /**
      * @var list<string>
-     */
-    protected $fillable = [
-        'tenant_id',
-        'name',
-        'code',
-        'payer_type',
-        'status',
-        'created_by',
-        'updated_by',
+     */    protected $fillable = [
+        'tenant_id', 'name', 'code',
+        'payer_type', 'payer_sub_type', 'scheme_version',
+        'registration_number', 'contact_person', 'contact_phone',
+        'contact_email', 'notes', 'config',
+        'status', 'created_by', 'updated_by',
     ];
 
     /**

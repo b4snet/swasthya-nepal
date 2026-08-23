@@ -44,8 +44,8 @@ return new class extends Migration
             // Scope
             $table->string('jurisdiction', 50)->default('nepal'); // 'nepal', 'province', 'local'
             $table->string('service_category', 50)->nullable();   // null = all services
-            $table->boolean('applies_toOPD')->default(true);
-            $table->boolean('applies_toIPD')->default(true);
+            $table->boolean('applies_to_opd')->default(true);
+            $table->boolean('applies_to_ipd')->default(true);
             $table->boolean('applies_to_pharmacy')->default(true);
             $table->boolean('applies_to_lab')->default(true);
             $table->boolean('applies_to_radiology')->default(true);

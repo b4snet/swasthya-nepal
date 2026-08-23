@@ -45,21 +45,23 @@ class InsuranceClaim extends Model
 
     public const STATUS_PAID = 'paid';
 
-    public const STATUS_DENIED = 'denied';
-
-    /**
+    public const STATUS_DENIED = 'denied';    /**
      * @var list<string>
      */
     protected $fillable = [
-        'tenant_id',
-        'claim_number',
+        'tenant_id', 'claim_number',
         'policy_id',
         'invoice_id',
         'payer_id',
+        'benefit_rule_id',
+        'claim_type',
+        'external_claim_number',
         'status',
         'submitted_at',
         'denial_reason',
+        'rejection_reason',
         'settlement_minor',
+        'patient_responsibility_minor',
         'lock_version',
         'created_by',
         'updated_by',

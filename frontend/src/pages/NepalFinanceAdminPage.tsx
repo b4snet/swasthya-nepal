@@ -66,14 +66,14 @@ interface TaxRule {
   id: string;
   code: string;
   name: string;
-  tax_type: string;
-  rate_method: string;
-  rate_value_bps: number;
-  effective_from: string;
-  effective_to: string | null;
+  taxType: string;
+  rateMethod: string;
+  rateValueBps: number;
+  effectiveFrom: string;
+  effectiveTo: string | null;
   status: string;
-  source_authority: string | null;
-  source_document: string | null;
+  sourceAuthority: string | null;
+  sourceDocument: string | null;
 }
 
 interface Payer {
@@ -90,14 +90,14 @@ interface BenefitRule {
   id: string;
   code: string;
   name: string;
-  scheme_version: string;
-  service_category: string;
-  coverage_type: string;
-  coverage_percent_bps: number | null;
-  limit_minor: number | null;
-  copay_minor: number | null;
-  effective_from: string;
-  effective_to: string | null;
+  schemeVersion: string;
+  serviceCategory: string;
+  coverageType: string;
+  coveragePercentBps: number | null;
+  limitMinor: number | null;
+  copayMinor: number | null;
+  effectiveFrom: string;
+  effectiveTo: string | null;
   status: string;
 }
 
@@ -171,10 +171,10 @@ export function NepalFinanceAdminPage() {
   const [selectedPayerId, setSelectedPayerId] = useState<string | null>(null);
 
   // Forms
-  const [fiscalForm, setFiscalForm] = useState({ name: '', fiscal_year: '', start_date: '', end_date: '', calendar_type: 'nepal_fiscal' });
-  const [taxForm, setTaxForm] = useState({ code: '', name: '', tax_type: 'vat', rate_method: 'percentage', rate_value_bps: 1300, effective_from: '', source_authority: '', source_document: '' });
-  const [payerForm, setPayerForm] = useState({ name: '', code: '', payer_type: 'insurance', payer_sub_type: 'private', scheme_version: '' });
-  const [benefitForm, setBenefitForm] = useState({ code: '', name: '', scheme_version: '', service_category: 'opd', coverage_type: 'full', coverage_percent_bps: 10000, limit_minor: 0, copay_minor: 0, effective_from: '' });
+  const [fiscalForm, setFiscalForm] = useState({ name: '', fiscalYear: '', startDate: '', endDate: '', calendarType: 'nepal_fiscal', nepalFiscalYear: '' });
+  const [taxForm, setTaxForm] = useState({ code: '', name: '', taxType: 'vat', rateMethod: 'percentage', rateValueBps: 1300, effectiveFrom: '', sourceAuthority: '', sourceDocument: '' });
+  const [payerForm, setPayerForm] = useState({ name: '', code: '', payerType: 'insurance', payerSubType: 'private', schemeVersion: '' });
+  const [benefitForm, setBenefitForm] = useState({ code: '', name: '', schemeVersion: '', serviceCategory: 'opd', coverageType: 'full', coveragePercentBps: 10000, limitMinor: 0, copayMinor: 0, effectiveFrom: '' });
 
   // Data
   const fiscalYears = useFetch(() => nepalFinanceApi.fiscalYears(fac), [fac]);
@@ -332,11 +332,11 @@ export function NepalFinanceAdminPage() {
                 <div key={rule.id} className="ai-table-row">
                   <span className="ai-mono">{rule.code}</span>
                   <span className="ai-name">{rule.name}</span>
-                  <span>{rule.tax_type.replace(/_/g, ' ')}</span>
-                  <span className="ai-mono">{formatBps(rule.rate_value_bps)}</span>
-                  <span>{rule.effective_from}</span>
-                  <span>{rule.effective_to ?? 'Current'}</span>
-                  <span className="ai-mono" title={rule.source_document ?? ''}>{rule.source_authority ?? '—'}</span>
+                  <span>{rule.taxType.replace(/_/g, ' ')}</span>
+                  <span className="ai-mono">{formatBps(rule.rateValueBps)}</span>
+                  <span>{rule.effectiveFrom}</span>
+                  <span>{rule.effectiveTo ?? 'Current'}</span>
+                  <span className="ai-mono" title={rule.sourceDocument ?? ''}>{rule.sourceAuthority ?? '—'}</span>
                   <StatusBadge status={rule.status} />
                 </div>
               ))}
@@ -415,10 +415,10 @@ export function NepalFinanceAdminPage() {
                 <div key={br.id} className="ai-table-row">
                   <span className="ai-mono">{br.code}</span>
                   <span className="ai-name">{br.name}</span>
-                  <span>{br.service_category}</span>
-                  <span>{br.coverage_type.replace(/_/g, ' ')}</span>
-                  <span>{br.limit_minor ? formatNpr(br.limit_minor) : '—'}</span>
-                  <span>{br.effective_from} → {br.effective_to ?? 'Current'}</span>
+                  <span>{br.serviceCategory}</span>
+                  <span>{br.coverageType.replace(/_/g, ' ')}</span>
+                  <span>{br.limitMinor ? formatNpr(br.limitMinor) : '—'}</span>
+                  <span>{br.effectiveFrom} → {br.effectiveTo ?? 'Current'}</span>
                   <StatusBadge status={br.status} />
                 </div>
               ))}
@@ -470,15 +470,16 @@ export function NepalFinanceAdminPage() {
             <Button onClick={async () => {
               await go(() => nepalFinanceApi.storeFiscalYear(fiscalForm, fac).then(() => fiscalYears.refresh()));
               setDlg(null);
-            }} loading={busy} disabled={!fiscalForm.name || !fiscalForm.start_date}>Create</Button>
+            }} loading={busy} disabled={!fiscalForm.name || !fiscalForm.startDate}>Create</Button>
           </>
         }>
           <form className="ai-form">
             <Input label="Period Name" value={fiscalForm.name} onChange={e => setFiscalForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. FY 2082/83" required />
-            <Input label="Fiscal Year" value={fiscalForm.fiscal_year} onChange={e => setFiscalForm(f => ({ ...f, fiscal_year: e.target.value }))} placeholder="e.g. 2082" type="number" required />
-            <Input label="Calendar Type" value={fiscalForm.calendar_type} onChange={e => setFiscalForm(f => ({ ...f, calendar_type: e.target.value }))} />
-            <Input label="Start Date" value={fiscalForm.start_date} onChange={e => setFiscalForm(f => ({ ...f, start_date: e.target.value }))} type="date" required />
-            <Input label="End Date" value={fiscalForm.end_date} onChange={e => setFiscalForm(f => ({ ...f, end_date: e.target.value }))} type="date" required />
+            <Input label="Fiscal Year" value={fiscalForm.fiscalYear} onChange={e => setFiscalForm(f => ({ ...f, fiscalYear: e.target.value }))} placeholder="e.g. 2082" type="number" required />
+            <Input label="Nepali BS Year" value={fiscalForm.nepalFiscalYear} onChange={e => setFiscalForm(f => ({ ...f, nepalFiscalYear: e.target.value }))} placeholder="e.g. 2082/83" />
+            <Input label="Calendar Type" value={fiscalForm.calendarType} onChange={e => setFiscalForm(f => ({ ...f, calendarType: e.target.value }))} />
+            <Input label="Start Date" value={fiscalForm.startDate} onChange={e => setFiscalForm(f => ({ ...f, startDate: e.target.value }))} type="date" required />
+            <Input label="End Date" value={fiscalForm.endDate} onChange={e => setFiscalForm(f => ({ ...f, endDate: e.target.value }))} type="date" required />
             <Alert tone="info">Nepal fiscal year: July 16 to July 15 (mid-Shrawan to mid-Shrawan in BS).</Alert>
           </form>
         </Dialog>
@@ -500,14 +501,14 @@ export function NepalFinanceAdminPage() {
             <Input label="Rule Name" value={taxForm.name} onChange={e => setTaxForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Standard VAT 13%" required />
             <div className="ai-form-field">
               <label className="ai-label">Tax Type</label>
-              <select className="ai-input" value={taxForm.tax_type} onChange={e => setTaxForm(f => ({ ...f, tax_type: e.target.value }))}>
+              <select className="ai-input" value={taxForm.taxType} onChange={e => setTaxForm(f => ({ ...f, taxType: e.target.value }))}>
                 {TAX_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
             </div>
-            <Input label="Rate (basis points)" value={taxForm.rate_value_bps} onChange={e => setTaxForm(f => ({ ...f, rate_value_bps: parseInt(e.target.value) || 0 }))} type="number" hint="1300 = 13.00%, 500 = 5.00%" required />
-            <Input label="Effective From" value={taxForm.effective_from} onChange={e => setTaxForm(f => ({ ...f, effective_from: e.target.value }))} type="date" required />
-            <Input label="Source Authority" value={taxForm.source_authority} onChange={e => setTaxForm(f => ({ ...f, source_authority: e.target.value }))} placeholder="e.g. Inland Revenue Department" />
-            <Input label="Source Document" value={taxForm.source_document} onChange={e => setTaxForm(f => ({ ...f, source_document: e.target.value }))} placeholder="e.g. Finance Act 2082/83" />
+            <Input label="Rate (basis points)" value={taxForm.rateValueBps} onChange={e => setTaxForm(f => ({ ...f, rateValueBps: parseInt(e.target.value) || 0 }))} type="number" hint="1300 = 13.00%, 500 = 5.00%" required />
+            <Input label="Effective From" value={taxForm.effectiveFrom} onChange={e => setTaxForm(f => ({ ...f, effectiveFrom: e.target.value }))} type="date" required />
+            <Input label="Source Authority" value={taxForm.sourceAuthority} onChange={e => setTaxForm(f => ({ ...f, sourceAuthority: e.target.value }))} placeholder="e.g. Inland Revenue Department" />
+            <Input label="Source Document" value={taxForm.sourceDocument} onChange={e => setTaxForm(f => ({ ...f, sourceDocument: e.target.value }))} placeholder="e.g. Finance Act 2082/83" />
             <Alert tone="warning">Historical records use the tax rule active at posting time. Creating a new rule does NOT change past invoices.</Alert>
           </form>
         </Dialog>
@@ -529,11 +530,11 @@ export function NepalFinanceAdminPage() {
             <Input label="Payer Name" value={payerForm.name} onChange={e => setPayerForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Social Security Fund" required />
             <div className="ai-form-field">
               <label className="ai-label">Payer Sub-Type</label>
-              <select className="ai-input" value={payerForm.payer_sub_type} onChange={e => setPayerForm(f => ({ ...f, payer_sub_type: e.target.value }))}>
+              <select className="ai-input" value={payerForm.payerSubType} onChange={e => setPayerForm(f => ({ ...f, payerSubType: e.target.value }))}>
                 {PAYER_SUB_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
             </div>
-            <Input label="Scheme Version" value={payerForm.scheme_version} onChange={e => setPayerForm(f => ({ ...f, scheme_version: e.target.value }))} placeholder="e.g. SSF_2082, HIB_BP_V3" />
+            <Input label="Scheme Version" value={payerForm.schemeVersion} onChange={e => setPayerForm(f => ({ ...f, schemeVersion: e.target.value }))} placeholder="e.g. SSF_2082, HIB_BP_V3" />
             <Alert tone="info">SSF and HIB use the same claims engine. Configure benefit rules after creating the payer.</Alert>
           </form>
         </Dialog>
@@ -554,23 +555,23 @@ export function NepalFinanceAdminPage() {
           <form className="ai-form">
             <Input label="Rule Code" value={benefitForm.code} onChange={e => setBenefitForm(f => ({ ...f, code: e.target.value }))} placeholder="e.g. SSF_OPD_MEDICINE" required />
             <Input label="Rule Name" value={benefitForm.name} onChange={e => setBenefitForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. SSF OPD Medicine Coverage" required />
-            <Input label="Scheme Version" value={benefitForm.scheme_version} onChange={e => setBenefitForm(f => ({ ...f, scheme_version: e.target.value }))} placeholder="e.g. SSF_2082" required />
+            <Input label="Scheme Version" value={benefitForm.schemeVersion} onChange={e => setBenefitForm(f => ({ ...f, schemeVersion: e.target.value }))} placeholder="e.g. SSF_2082" required />
             <div className="ai-form-field">
               <label className="ai-label">Service Category</label>
-              <select className="ai-input" value={benefitForm.service_category} onChange={e => setBenefitForm(f => ({ ...f, service_category: e.target.value }))}>
+              <select className="ai-input" value={benefitForm.serviceCategory} onChange={e => setBenefitForm(f => ({ ...f, serviceCategory: e.target.value }))}>
                 {SERVICE_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
               </select>
             </div>
             <div className="ai-form-field">
               <label className="ai-label">Coverage Type</label>
-              <select className="ai-input" value={benefitForm.coverage_type} onChange={e => setBenefitForm(f => ({ ...f, coverage_type: e.target.value }))}>
+              <select className="ai-input" value={benefitForm.coverageType} onChange={e => setBenefitForm(f => ({ ...f, coverageType: e.target.value }))}>
                 {COVERAGE_TYPES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
               </select>
             </div>
-            <Input label="Coverage %" value={benefitForm.coverage_percent_bps} onChange={e => setBenefitForm(f => ({ ...f, coverage_percent_bps: parseInt(e.target.value) || 0 }))} type="number" hint="10000 = 100%, 7500 = 75%" />
-            <Input label="Annual Limit (NPR minor)" value={benefitForm.limit_minor} onChange={e => setBenefitForm(f => ({ ...f, limit_minor: parseInt(e.target.value) || 0 }))} type="number" hint="10000000 = NPR 100,000" />
-            <Input label="Co-payment (NPR minor)" value={benefitForm.copay_minor} onChange={e => setBenefitForm(f => ({ ...f, copay_minor: parseInt(e.target.value) || 0 }))} type="number" />
-            <Input label="Effective From" value={benefitForm.effective_from} onChange={e => setBenefitForm(f => ({ ...f, effective_from: e.target.value }))} type="date" required />
+            <Input label="Coverage %" value={benefitForm.coveragePercentBps} onChange={e => setBenefitForm(f => ({ ...f, coveragePercentBps: parseInt(e.target.value) || 0 }))} type="number" hint="10000 = 100%, 7500 = 75%" />
+            <Input label="Annual Limit (NPR minor)" value={benefitForm.limitMinor} onChange={e => setBenefitForm(f => ({ ...f, limitMinor: parseInt(e.target.value) || 0 }))} type="number" hint="10000000 = NPR 100,000" />
+            <Input label="Co-payment (NPR minor)" value={benefitForm.copayMinor} onChange={e => setBenefitForm(f => ({ ...f, copayMinor: parseInt(e.target.value) || 0 }))} type="number" />
+            <Input label="Effective From" value={benefitForm.effectiveFrom} onChange={e => setBenefitForm(f => ({ ...f, effectiveFrom: e.target.value }))} type="date" required />
             <Alert tone="warning">Benefit rules are effective-dated. Historical claims use the rule active at claim time.</Alert>
           </form>
         </Dialog>

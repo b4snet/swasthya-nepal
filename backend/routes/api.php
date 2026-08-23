@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\AppointmentController;
 use App\Http\Controllers\Api\AssetController;
 use App\Http\Controllers\Api\AuditController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BenefitRuleController;
 use App\Http\Controllers\Api\BedController;
 use App\Http\Controllers\Api\BillingController;
 use App\Http\Controllers\Api\BloodBankController;
@@ -70,6 +71,8 @@ use App\Http\Controllers\Api\PortalActivationController;
 use App\Http\Controllers\Api\ProcurementController;
 use App\Http\Controllers\Api\RadiologyController;
 use App\Http\Controllers\Api\RealtimeController;
+use App\Http\Controllers\Api\NepalFinanceController;
+use App\Http\Controllers\Api\TaxRuleController;
 use App\Http\Controllers\Api\ReferralController;
 use App\Http\Controllers\Api\RefundController;
 use App\Http\Controllers\Api\RevenueController;
@@ -1350,6 +1353,34 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
     Route::get('onboarding/profile/steps', [OnboardingProfileController::class, 'steps']);
     Route::post('onboarding/profile/step/{stepKey}', [OnboardingProfileController::class, 'saveStep']);
     Route::post('onboarding/profile/complete', [OnboardingProfileController::class, 'complete']);
+
+    // Phase 84 — Centralized Document Center: browse, generate, verify,
+    // sign, share, and download documents with hospital branding.
+    // Named routes FIRST, then wildcard {document}.
+    Route::get('documents/platform', [DocumentCenterController::class, 'platformIndex'])
+        ->middleware('authorize:document:view');
+    Route::get('documents/prefill', DocumentPrefillController::class)
+        ->middleware('authorize:document:view');
+    Route::get('documents/categories', [DocumentCenterController::class, 'categories'])
+        ->middleware('authorize:document:view');
+    Route::get('organizations/{organization}/documents', [DocumentCenterController::class, 'index'])
+        ->middleware('authorize:document:view');
+    Route::get('organizations/{organization}/documents/stats', [DocumentCenterController::class, 'stats'])
+        ->middleware('authorize:document:view');
+    Route::post('organizations/{organization}/documents/generate', [DocumentCenterController::class, 'generate'])
+        ->middleware('authorize:document:manage');
+    Route::get('documents/{document}', [DocumentCenterController::class, 'show'])
+        ->middleware('authorize:document:view');
+    Route::post('documents/{document}/verify', [DocumentCenterController::class, 'verify'])
+        ->middleware('authorize:document:manage');
+    Route::post('documents/{document}/sign', [DocumentCenterController::class, 'sign'])
+        ->middleware('authorize:document:manage');
+    Route::post('documents/{document}/share', [DocumentCenterController::class, 'share'])
+        ->middleware('authorize:document:manage');
+    Route::get('documents/{document}/pdf', [DocumentCenterController::class, 'downloadPdf'])
+        ->middleware('authorize:document:view');
+    Route::post('documents/{document}/pdf', [DocumentCenterController::class, 'regeneratePdf'])
+        ->middleware('authorize:document:manage');
 });
 
 // Patient Portal — portal-authenticated surface (Phase 3 slice 22,
@@ -1491,6 +1522,46 @@ Route::middleware(['throttle:api', ResolveTenantContext::class])->prefix('enterp
     Route::get('financial-periods/{period}', [FinancialPeriodController::class, 'show']);
     Route::post('financial-periods/{period}/close', [FinancialPeriodController::class, 'close']);
     Route::post('financial-periods/{period}/lock', [FinancialPeriodController::class, 'lock']);
+
+    // Nepal Financial Architecture — Tax Rules (effective-dated)
+    Route::get('finance/tax-rules', [TaxRuleController::class, 'index'])
+        ->middleware('authorize:billing:view');
+    Route::post('finance/tax-rules', [TaxRuleController::class, 'store'])
+        ->middleware('authorize:billing:manage');
+    Route::get('finance/tax-rules/{taxRule}', [TaxRuleController::class, 'show'])
+        ->middleware('authorize:billing:view');
+    Route::patch('finance/tax-rules/{taxRule}', [TaxRuleController::class, 'update'])
+        ->middleware('authorize:billing:manage');
+    Route::delete('finance/tax-rules/{taxRule}', [TaxRuleController::class, 'destroy'])
+        ->middleware('authorize:billing:manage');
+
+    // Nepal Financial Architecture — Benefit Rules (versioned, per-payer)
+    Route::get('finance/payers/{payer}/benefit-rules', [BenefitRuleController::class, 'index'])
+        ->middleware('authorize:billing:view');
+    Route::post('finance/payers/{payer}/benefit-rules', [BenefitRuleController::class, 'store'])
+        ->middleware('authorize:billing:manage');
+    Route::get('finance/payers/{payer}/benefit-rules/{benefitRule}', [BenefitRuleController::class, 'show'])
+        ->middleware('authorize:billing:view');
+    Route::patch('finance/payers/{payer}/benefit-rules/{benefitRule}', [BenefitRuleController::class, 'update'])
+        ->middleware('authorize:billing:manage');
+    Route::delete('finance/payers/{payer}/benefit-rules/{benefitRule}', [BenefitRuleController::class, 'destroy'])
+        ->middleware('authorize:billing:manage');
+
+    // Nepal Financial Administration — fiscal years, payers, claims
+    Route::get('finance/fiscal-years', [NepalFinanceController::class, 'indexFiscalYears'])
+        ->middleware('authorize:billing:view');
+    Route::post('finance/fiscal-years', [NepalFinanceController::class, 'storeFiscalYear'])
+        ->middleware('authorize:billing:manage');
+    Route::post('finance/fiscal-years/{period}/close', [NepalFinanceController::class, 'closeFiscalYear'])
+        ->middleware('authorize:billing:manage');
+
+    Route::get('finance/payers', [NepalFinanceController::class, 'indexPayers'])
+        ->middleware('authorize:billing:view');
+    Route::post('finance/payers', [NepalFinanceController::class, 'storePayer'])
+        ->middleware('authorize:billing:manage');
+
+    Route::get('finance/claims', [NepalFinanceController::class, 'indexClaims'])
+        ->middleware('authorize:billing:view');
 });
 
 // Phase 85 — Complete Revenue Cycle: reports, receipts, adjustments.
@@ -1577,29 +1648,4 @@ Route::middleware(['throttle:api', ResolveTenantContext::class])->prefix('notifi
         ->middleware('authorize:notification:view');
 });
 
-// Phase 84 — Centralized Document Center: browse, generate, verify,
-// sign, share, and download documents with hospital branding.
-Route::get('organizations/{organization}/documents', [DocumentCenterController::class, 'index'])
-    ->middleware('authorize:document:view');
-Route::get('documents/prefill', DocumentPrefillController::class)
-    ->middleware('authorize:document:view');
-Route::get('organizations/{organization}/documents/stats', [DocumentCenterController::class, 'stats'])
-    ->middleware('authorize:document:view');
-Route::post('organizations/{organization}/documents/generate', [DocumentCenterController::class, 'generate'])
-    ->middleware('authorize:document:manage');
-Route::get('documents/{document}', [DocumentCenterController::class, 'show'])
-    ->middleware('authorize:document:view');
-Route::post('documents/{document}/verify', [DocumentCenterController::class, 'verify'])
-    ->middleware('authorize:document:manage');
-Route::post('documents/{document}/sign', [DocumentCenterController::class, 'sign'])
-    ->middleware('authorize:document:manage');
-Route::post('documents/{document}/share', [DocumentCenterController::class, 'share'])
-    ->middleware('authorize:document:manage');
-Route::get('documents/{document}/pdf', [DocumentCenterController::class, 'downloadPdf'])
-    ->middleware('authorize:document:view');
-Route::post('documents/{document}/pdf', [DocumentCenterController::class, 'regeneratePdf'])
-    ->middleware('authorize:document:manage');
-Route::get('documents/categories', [DocumentCenterController::class, 'categories'])
-    ->middleware('authorize:document:view');
-
-// (removed — module/onboarding routes moved inside main v1 group)
+// Document center routes have been moved inside the v1 authenticated group above.

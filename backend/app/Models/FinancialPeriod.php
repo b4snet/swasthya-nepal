@@ -22,6 +22,10 @@ class FinancialPeriod extends Model
         'start_date', 'end_date', 'status',
         'total_budget_minor', 'total_expenses_minor', 'total_revenue_minor',
         'closed_by_staff_id', 'closed_at', 'metadata',
+        'calendar_type', 'nepal_fiscal_year',
+        'nepal_start_date', 'nepal_end_date',
+        'period_status', 'close_notes',
+        'locked_by_staff_id', 'locked_at',
     ];
 
     protected function casts(): array
@@ -32,10 +36,13 @@ class FinancialPeriod extends Model
             'period_number' => 'integer',
             'start_date' => 'date',
             'end_date' => 'date',
+            'nepal_start_date' => 'date',
+            'nepal_end_date' => 'date',
             'total_budget_minor' => 'integer',
             'total_expenses_minor' => 'integer',
             'total_revenue_minor' => 'integer',
             'closed_at' => 'datetime',
+            'locked_at' => 'datetime',
         ];
     }
 }
