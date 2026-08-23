@@ -41,8 +41,9 @@ describe('User account menu', () => {
   it('shows user initials on the trigger chip', async () => {
     await renderShell(['hospital_admin']);
     const trigger = screen.getByTestId('user-menu-trigger');
-    expect(trigger).toHaveTextContent('TE');
-    expect(trigger).toHaveAttribute('title', 'testuser@swasthya.test');
+    // Hospital Admin → initials 'HA' (role-based professional identity)
+    expect(trigger).toHaveTextContent('HA');
+    expect(trigger).toHaveAttribute('title', 'Hospital Admin');
   });
 
   it('opens the dropdown on click with user email', async () => {

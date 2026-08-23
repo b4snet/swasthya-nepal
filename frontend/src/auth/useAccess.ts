@@ -233,7 +233,7 @@ const ROLE_DEFAULT_MODULE: Record<string, string> = {
 
 // ── Access hook ──
 export function useAccess() {
-  const { user } = useAuth();
+  const { user, assignments } = useAuth();
   const { hasRole: tenantHasRole } = useTenant();
 
   /**
@@ -433,8 +433,7 @@ export function useAccess() {
       ],
     };
 
-    // Check all assigned roles
-    const assignments = (user as any)?.assignments ?? [];
+    // Check all assigned roles (assignments come from useAuth(), not user object)
     for (const assignment of assignments) {
       const roles: string[] = assignment.roles ?? [];
       for (const role of roles) {
@@ -488,8 +487,7 @@ export function useAccess() {
       branch_manager: 'Branch Manager',
       support_agent: 'Support',
     };
-    // Use the first assigned role's professional label
-    const assignments = (user as any)?.assignments ?? [];
+    // Use the first assigned role's professional label (assignments from useAuth())
     for (const assignment of assignments) {
       const roles: string[] = assignment.roles ?? [];
       for (const role of roles) {

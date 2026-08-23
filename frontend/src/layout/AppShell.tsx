@@ -122,7 +122,7 @@ function UserMenu() {
       <button
         type="button"
         className="user-avatar"
-        title={user?.email ?? ''}
+        title={access.getDisplayName()}
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-haspopup="menu"
