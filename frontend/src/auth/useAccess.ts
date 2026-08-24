@@ -448,7 +448,6 @@ export function useAccess() {
    * Get the default landing module for the current user's primary role.
    */
   const getDefaultModule = (): string => {
-    const assignments = (user as any)?.assignments ?? [];
     for (const assignment of assignments) {
       const roles: string[] = assignment.roles ?? [];
       for (const role of roles) {

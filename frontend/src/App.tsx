@@ -12,6 +12,7 @@ import { Button, Card, Spinner } from './components/ui';
 import { LoginPage } from './pages/LoginPage';
 import { ForbiddenPage } from './pages/ForbiddenPage';
 import { DashboardPage } from './pages/DashboardPage';
+import { RoleDashboardRouter } from './auth/RoleDashboardRouter';
 
 // Module dashboards
 const HospitalDashboard = lazy(() => import('./pages/modules/HospitalDashboard').then(m => ({ default: m.HospitalDashboard })));
@@ -143,10 +144,7 @@ function LoginRoute() {
   return <LoginPage />;
 }
 
-/** Redirect to /dashboard */
-function RoleRedirect() {
-  return <Navigate to="/dashboard" replace />;
-}
+// RoleDashboardRouter replaces the old RoleRedirect — see auth/RoleDashboardRouter.tsx
 
 export function App() {
   return (
@@ -159,8 +157,8 @@ export function App() {
             <Route path="/portal/activate/:token" element={<LazySuspense><PortalActivationPage /></LazySuspense>} />
             <Route path="/portal" element={<LazySuspense><PatientPortalPage /></LazySuspense>} />
             <Route element={<Gate />}>
-              {/* ── Root: redirect to dashboard ── */}
-              <Route path="/" element={<RoleRedirect />} />
+              {/* ── Root: role-based redirect ── */}
+              <Route path="/" element={<RoleDashboardRouter />} />
               <Route path="/dashboard" element={<LazySuspense><DashboardPage /></LazySuspense>} />
               <Route path="/onboarding" element={<LazySuspense><HospitalOnboarding /></LazySuspense>} />
 
