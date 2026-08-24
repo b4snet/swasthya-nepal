@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { useEffect } from 'react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { describe, expect, it, beforeEach } from 'vitest';
@@ -14,7 +14,7 @@ function LocationSpy() {
 }
 
 /** Trigger login and render the router. */
-function LoginHarness({ assignments }: { assignments: unknown[] }) {
+function LoginHarness() {
   const { login } = useAuth();
   useEffect(() => {
     void login('a@b.test', 'secret');
@@ -43,7 +43,7 @@ function renderRouter(assignments: unknown[]) {
     <MemoryRouter initialEntries={['/']}>
       <AuthProvider>
         <TenantProvider>
-          <LoginHarness assignments={assignments} />
+          <LoginHarness />
         </TenantProvider>
       </AuthProvider>
     </MemoryRouter>,

@@ -111,6 +111,18 @@
   color: var(--blue-700);
 }
 
+.module-rail__separator {
+  width: 24px;
+  height: 1px;
+  background: var(--border-subtle);
+  margin: var(--space-1) 0;
+  flex-shrink: 0;
+}
+
+.module-rail__item--dashboard {
+  margin-bottom: 0;
+}
+
 /* ── Sub-navigation Panel ──────────────────────────────────────── */
 .subnav {
   width: 220px;

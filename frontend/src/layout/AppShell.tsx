@@ -15,6 +15,7 @@ import {
   MoreHorizontal,
   Bell,
   Search,
+  LayoutDashboard,
 } from 'lucide-react';
 import {
   MODULES,
@@ -211,16 +212,40 @@ function SidebarUser() {
 // ── Module icon rail (leftmost narrow column) ──
 function ModuleRail({
   modules,
+  dashboardModule,
   activeModule,
   onSelect,
 }: {
   modules: NavModule[];
+  dashboardModule: NavModule | undefined;
   activeModule: NavModule | undefined;
   onSelect: (m: NavModule) => void;
 }) {
   const { t } = useI18n();
+  const location = useLocation();
+  const isDashboardActive = dashboardModule && (
+    location.pathname === dashboardModule.routePrefix ||
+    location.pathname === dashboardModule.defaultTo
+  );
   return (
-    <div className="module-rail" role="navigation" aria-label="Modules">
+    <nav className="module-rail" role="navigation" aria-label="Modules">
+      {/* Global Dashboard — always first, always visible */}
+      {dashboardModule && (
+        <button
+          type="button"
+          className={`module-rail__item module-rail__item--dashboard ${isDashboardActive ? 'module-rail__item--active' : ''}`}
+          onClick={() => onSelect(dashboardModule)}
+          title={t(dashboardModule.labelKey)}
+          aria-label={t(dashboardModule.labelKey)}
+          aria-current={isDashboardActive ? 'page' : undefined}
+          data-testid="module-dashboard"
+        >
+          <dashboardModule.Icon size={20} strokeWidth={1.75} />
+        </button>
+      )}
+      {/* Separator between Dashboard and modules */}
+      {dashboardModule && <div className="module-rail__separator" />}
+      {/* Feature modules */}
       {modules.map((m) => (
         <button
           key={m.key}
@@ -234,7 +259,7 @@ function ModuleRail({
           <m.Icon size={20} strokeWidth={1.75} />
         </button>
       ))}
-    </div>
+    </nav>
   );
 }
 
@@ -284,6 +309,16 @@ function Breadcrumbs({
   pathname: string;
 }) {
   const { t } = useI18n();
+
+  // Global dashboard — show just "Dashboard"
+  if (pathname === '/dashboard') {
+    return (
+      <nav className="breadcrumbs" aria-label="Breadcrumb">
+        <span className="breadcrumbs__item breadcrumbs__item--current">{t('nav.dashboard')}</span>
+      </nav>
+    );
+  }
+
   if (!activeModule) return null;
 
   // Find the active child
@@ -316,7 +351,10 @@ export function AppShell() {
   const network = useNetworkStatus();
   const access = useAccess();
 
-  const visibleModules = filterModulesByRole(MODULES, hasRole);
+  const allModules = filterModulesByRole(MODULES, hasRole);
+  // Split out the persistent Dashboard item (always first) from other modules
+  const dashboardModule = allModules.find((m) => m.persistent);
+  const visibleModules = allModules.filter((m) => !m.persistent);
   const activeModule = getActiveModule(location.pathname);
 
   // Mobile sub-nav state
@@ -387,6 +425,7 @@ export function AppShell() {
         {/* ── Module rail (icon sidebar) ── */}
         <ModuleRail
           modules={visibleModules}
+          dashboardModule={dashboardModule}
           activeModule={activeModule}
           onSelect={handleModuleSelect}
         />
@@ -406,6 +445,18 @@ export function AppShell() {
 
       {/* ── Mobile bottom nav ── */}
       <nav className="bottom-nav" aria-label={t('shell.primary')}>
+        {/* Dashboard always first on mobile */}
+        {dashboardModule && (
+          <button
+            type="button"
+            className={`bottom-nav__item ${location.pathname === '/dashboard' ? 'bottom-nav__item--active' : ''}`}
+            onClick={() => navigate('/dashboard')}
+            aria-label={t(dashboardModule.labelKey)}
+          >
+            <LayoutDashboard size={20} strokeWidth={1.75} />
+            <span>{t(dashboardModule.labelKey)}</span>
+          </button>
+        )}
         {mobileModules.map((m) => (
           <button
             key={m.key}

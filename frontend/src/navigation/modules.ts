@@ -87,6 +87,8 @@ export interface NavModule {
   defaultTo: string;
   /** Route prefix for active-state matching */
   routePrefix: string;
+  /** If true, always renders in the rail even with no children (e.g. global Dashboard) */
+  persistent?: boolean;
 }
 
 /**
@@ -98,6 +100,18 @@ export interface NavModule {
  * Client-side gating only — backend `authorize:` and RLS remain authoritative.
  */
 export const MODULES: NavModule[] = [
+  // ── GLOBAL DASHBOARD (always first, always visible) ──
+  {
+    key: 'dashboard',
+    labelKey: 'nav.dashboard',
+    Icon: LayoutDashboard,
+    roles: ALL,
+    defaultTo: '/dashboard',
+    routePrefix: '/dashboard',
+    persistent: true,
+    children: [],
+  },
+
   // ── HOSPITAL (operations / facility management) ──
   {
     key: 'hospital',
@@ -335,7 +349,8 @@ export function filterModulesByRole(
         (c) => c.roles.length === 0 || c.roles.some((r) => hasRole(r)),
       ),
     }))
-    .filter((m) => m.children.length > 0);
+    // Keep persistent items (Dashboard) even with no children
+    .filter((m) => m.persistent || m.children.length > 0);
 }
 
 /**
