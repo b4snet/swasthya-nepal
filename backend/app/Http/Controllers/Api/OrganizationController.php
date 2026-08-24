@@ -42,21 +42,41 @@ final class OrganizationController extends Controller
     {
         $context = TenantContext::current();
 
-        $organizations = $context->assignments
-            ->pluck('organization')
-            ->filter()
-            ->unique('id')
-            ->map(fn (Organization $organization): array => [
-                'id' => $organization->getKey(),
-                'code' => $organization->code,
-                'name' => $organization->name,
-                'status' => $organization->status,
-                'facilities' => $organization->facilities()
-                    ->where('status', 'active')
-                    ->get(['id', 'name', 'code'])
-                    ->toArray(),
-            ])
-            ->values();
+        if ($context->isPlatform) {
+            // Platform admins see all organizations — they need this to
+            // manage tenants (e.g. Nepal Finance Admin).
+            $organizations = Organization::query()
+                ->select('id', 'code', 'name', 'status')
+                ->orderBy('name')
+                ->get()
+                ->map(fn (Organization $organization): array => [
+                    'id' => $organization->getKey(),
+                    'code' => $organization->code,
+                    'name' => $organization->name,
+                    'status' => $organization->status,
+                    'facilities' => $organization->facilities()
+                        ->where('status', 'active')
+                        ->get(['id', 'name', 'code'])
+                        ->toArray(),
+                ]);
+        } else {
+            // Tenant users see only their assigned organizations.
+            $organizations = $context->assignments
+                ->pluck('organization')
+                ->filter()
+                ->unique('id')
+                ->map(fn (Organization $organization): array => [
+                    'id' => $organization->getKey(),
+                    'code' => $organization->code,
+                    'name' => $organization->name,
+                    'status' => $organization->status,
+                    'facilities' => $organization->facilities()
+                        ->where('status', 'active')
+                        ->get(['id', 'name', 'code'])
+                        ->toArray(),
+                ])
+                ->values();
+        }
 
         return Envelope::success(data: $organizations, request: $request);
     }

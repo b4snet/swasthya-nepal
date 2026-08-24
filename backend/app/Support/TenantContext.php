@@ -115,6 +115,9 @@ final class TenantContext
      */
     public function can(string $permission): bool
     {
+        // Platform admins: honor platform-role permissions (both platform-scope
+        // and tenant-scope — a platform admin viewing tenant finance data via
+        // the X-Swasthya-Tenant override should not be blocked by scope).
         if ($this->isPlatform) {
             foreach ($this->assignments as $assignment) {
                 /** @var RoleAssignment $assignment */
@@ -125,7 +128,7 @@ final class TenantContext
                 /** @var Permission|null $candidate */
                 $candidate = $assignment->role->permissions->firstWhere('code', $permission);
 
-                if ($candidate !== null && $candidate->scope !== 'tenant') {
+                if ($candidate !== null) {
                     return true;
                 }
             }
@@ -139,18 +142,20 @@ final class TenantContext
 
         foreach ($this->assignments as $assignment) {
             /** @var RoleAssignment $assignment */
-            if ($assignment->tenant_id !== $this->organization->getKey()) {
-                continue;
-            }
+            $role = $assignment->role;
 
-            // Facility-scoped assignments apply only to their own facility.
-            if ($assignment->facility_id !== null) {
-                if ($this->facility === null || $assignment->facility_id !== $this->facility->getKey()) {
+            // Tenant-scoped assignments must match the current organization.
+            if ($assignment->tenant_id !== null) {
+                if ($assignment->tenant_id !== $this->organization->getKey()) {
                     continue;
                 }
+                // Facility-scoped assignments apply only to their own facility.
+                if ($assignment->facility_id !== null) {
+                    if ($this->facility === null || $assignment->facility_id !== $this->facility->getKey()) {
+                        continue;
+                    }
+                }
             }
-
-            $role = $assignment->role;
 
             if ($role?->permissions->contains('code', $permission)) {
                 return true;

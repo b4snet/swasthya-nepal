@@ -56,6 +56,18 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     return [...seen.values()];
   }, [assignments]);
 
+  // Derive organization context from assignments — not just from the selected
+  // facility. Org-level users (e.g. org_admin) have organizationId on their
+  // assignment but no facilityId, so the facility-derived path yields null.
+  const orgContext = useMemo(() => {
+    for (const a of assignments) {
+      if (a.organizationId) {
+        return { organizationId: a.organizationId, organizationCode: a.organizationCode ?? '' };
+      }
+    }
+    return null;
+  }, [assignments]);
+
   const roles = useMemo(() => [...new Set(assignments.flatMap((a) => a.roles))], [assignments]);
   const hasRole = useCallback((...codes: string[]) => codes.some((c) => roles.includes(c)), [roles]);
 
@@ -88,15 +100,17 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     () => ({
       selectedFacilityId: selected?.id ?? null,
       selectedFacilityName: selected?.name ?? null,
-      organizationId: selected?.organizationId ?? null,
-      organizationCode: selected?.organizationCode ?? null,
+      // Prefer facility-derived org context; fall back to assignment-derived
+      // org context for users who have an org but no facility (org_admin).
+      organizationId: selected?.organizationId || orgContext?.organizationId || null,
+      organizationCode: selected?.organizationCode || orgContext?.organizationCode || null,
       facilities,
       roles,
       hasRole,
       selectFacility,
       ready,
     }),
-    [selected, facilities, roles, hasRole, selectFacility, ready],
+    [selected, orgContext, facilities, roles, hasRole, selectFacility, ready],
   );
 
   return <TenantContext.Provider value={value}>{children}</TenantContext.Provider>;

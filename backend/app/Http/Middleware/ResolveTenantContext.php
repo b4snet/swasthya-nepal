@@ -166,6 +166,30 @@ final class ResolveTenantContext
             ->first();
 
         if ($session === null) {
+            // Platform user with no support session. Allow explicit tenant
+            // override via X-Swasthya-Tenant header so platform admins can
+            // access tenant-scoped finance/admin pages.
+            $proposedTenantId = $request->header('X-Swasthya-Tenant');
+
+            if (is_string($proposedTenantId) && $proposedTenantId !== '') {
+                /** @var Organization|null $organization */
+                $organization = Organization::query()->find($proposedTenantId);
+
+                if ($organization !== null && $organization->status === Organization::STATUS_ACTIVE) {
+                    DatabaseTenantContext::setTenant($organization->getKey());
+                    DatabaseTenantContext::setPlatform(false);
+                    $assignments->load(['role.permissions', 'organization', 'facility']);
+
+                    return new TenantContext(
+                        user: $user,
+                        isPlatform: false,
+                        organization: $organization,
+                        facility: null,
+                        assignments: $assignments,
+                    );
+                }
+            }
+
             DatabaseTenantContext::setPlatform(true);
             $assignments->load('role.permissions');
 

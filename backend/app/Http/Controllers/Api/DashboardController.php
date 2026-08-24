@@ -128,6 +128,42 @@ class DashboardController extends Controller
         if ($tenantId === null) {
             $platformStats['totalOrganizations'] = DB::table('organizations')->where('status', 'active')->count();
             $platformStats['totalFacilities'] = DB::table('facilities')->where('status', 'active')->count();
+            $platformStats['totalStaff'] = DB::table('users')->where('status', 'active')->count();
+            $platformStats['totalDepartments'] = DB::table('departments')->count();
+            $platformStats['totalUsers'] = DB::table('users')->count();
+            $platformStats['platformAdmins'] = DB::table('role_assignments')
+                ->join('roles', 'roles.id', '=', 'role_assignments.role_id')
+                ->where('roles.code', 'superadmin')
+                ->whereNull('role_assignments.tenant_id')
+                ->count();
+
+            // Organization breakdown for the table
+            $platformStats['organizations'] = DB::table('organizations')
+                ->select(
+                    'organizations.id',
+                    'organizations.name',
+                    'organizations.code',
+                    'organizations.status',
+                    DB::raw("(SELECT COUNT(*) FROM facilities WHERE facilities.tenant_id = organizations.id AND facilities.status = 'active') as facility_count"),
+                    DB::raw('(SELECT COUNT(*) FROM patients WHERE patients.tenant_id = organizations.id) as patient_count')
+                )
+                ->orderBy('organizations.name')
+                ->get()
+                ->map(fn ($org) => [
+                    'id' => $org->id,
+                    'name' => $org->name,
+                    'code' => $org->code,
+                    'status' => $org->status,
+                    'facilityCount' => (int) $org->facility_count,
+                    'patientCount' => (int) $org->patient_count,
+                ]);
+
+            // Cross-tenant totals
+            $platformStats['totalPatients'] = DB::table('patients')->count();
+            $platformStats['totalRevenue'] = (int) DB::table('invoices')->where('status', 'paid')->sum('total_minor');
+            $platformStats['totalAppointments'] = DB::table('appointments')
+                ->whereDate('starts_at', $today)
+                ->count();
         }
 
         return Envelope::success(data: array_merge([

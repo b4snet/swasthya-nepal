@@ -55,7 +55,7 @@ interface FormSubmission {
 /* ── Category config ── */
 const CATEGORIES: Record<string, { label: string; color: string; bg: string }> = {
   registration: { label: 'Registration', color: '#2e90fa', bg: '#eff8ff' },
-  clinical: { label: 'Clinical', color: '#0f766e', bg: '#f0fdfa' },
+  clinical: { label: 'Clinical', color: 'var(--blue-700)', bg: 'var(--blue-50)' },
   consent: { label: 'Consent', color: '#7c3aed', bg: '#f5f3ff' },
   specialty: { label: 'Specialty', color: '#d946ef', bg: '#fdf4ff' },
   pediatric: { label: 'Pediatric', color: '#f59e0b', bg: '#fffbeb' },
@@ -69,7 +69,7 @@ const CATEGORIES: Record<string, { label: string; color: string; bg: string }> =
   pharmacy: { label: 'Pharmacy', color: '#16a34a', bg: '#f0fdf4' },
   referral: { label: 'Referral', color: '#2563eb', bg: '#eff6ff' },
   insurance: { label: 'Insurance', color: '#7c3aed', bg: '#f5f3ff' },
-  telemedicine: { label: 'Telemedicine', color: '#0d9488', bg: '#f0fdfa' },
+  telemedicine: { label: 'Telemedicine', color: 'var(--blue-600)', bg: 'var(--blue-50)' },
   nursing: { label: 'Nursing', color: '#e11d48', bg: '#fff1f2' },
   wellness: { label: 'Wellness', color: '#a3e635', bg: '#f7fee7' },
 };
@@ -77,11 +77,11 @@ const CATEGORIES: Record<string, { label: string; color: string; bg: string }> =
 const STATUS_STYLES: Record<string, { label: string; color: string; bg: string }> = {
   draft: { label: 'Draft', color: '#667085', bg: '#f9fafb' },
   submitted: { label: 'Submitted', color: '#2e90fa', bg: '#eff8ff' },
-  verified: { label: 'Verified', color: '#0f766e', bg: '#f0fdfa' },
+  verified: { label: 'Verified', color: 'var(--blue-700)', bg: 'var(--blue-50)' },
   approved: { label: 'Approved', color: '#12b76a', bg: '#ecfdf3' },
   rejected: { label: 'Rejected', color: '#f04438', bg: '#fef3f2' },
   cancelled: { label: 'Cancelled', color: '#667085', bg: '#f9fafb' },
-  signed: { label: 'Signed', color: '#0f766e', bg: '#f0fdfa' },
+  signed: { label: 'Signed', color: 'var(--blue-700)', bg: 'var(--blue-50)' },
 };
 
 /* ── Helper: chip ── */
@@ -285,7 +285,7 @@ export function FormsPage() {
                     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 'auto' }}>
                       {tpl.module && <Chip color="#667085" bg="#f9fafb">{tpl.module}</Chip>}
                       {tpl.specialty && <Chip color="#667085" bg="#f9fafb">{tpl.specialty}</Chip>}
-                      {tpl.generates_document_number && <Chip color="#0f766e" bg="#f0fdfa">#{tpl.document_number_prefix}</Chip>}
+                      {tpl.generates_document_number && <Chip color="var(--blue-700)" bg="var(--blue-50)">#{tpl.document_number_prefix}</Chip>}
                       {tpl.printable && <Chip color="#667085" bg="#f9fafb">Print</Chip>}
                       {tpl.linked_to_encounter && <Chip color="#2e90fa" bg="#eff8ff">Encounter</Chip>}
                     </div>

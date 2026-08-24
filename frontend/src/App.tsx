@@ -11,6 +11,7 @@ import { Button, Card, Spinner } from './components/ui';
 // Core pages — eagerly loaded
 import { LoginPage } from './pages/LoginPage';
 import { ForbiddenPage } from './pages/ForbiddenPage';
+import { DashboardPage } from './pages/DashboardPage';
 
 // Module dashboards
 const HospitalDashboard = lazy(() => import('./pages/modules/HospitalDashboard').then(m => ({ default: m.HospitalDashboard })));
@@ -160,7 +161,7 @@ export function App() {
             <Route element={<Gate />}>
               {/* ── Root: redirect to dashboard ── */}
               <Route path="/" element={<RoleRedirect />} />
-              <Route path="/dashboard" element={<LazySuspense><HospitalDashboard /></LazySuspense>} />
+              <Route path="/dashboard" element={<LazySuspense><DashboardPage /></LazySuspense>} />
               <Route path="/onboarding" element={<LazySuspense><HospitalOnboarding /></LazySuspense>} />
 
               {/* ═══ HOSPITAL MODULE ═══ */}

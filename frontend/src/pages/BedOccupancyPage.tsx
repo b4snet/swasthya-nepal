@@ -105,9 +105,9 @@ export function BedOccupancyPage() {
           onClick={() => setSelectedWard(null)}
           style={{
             padding: '4px 12px', borderRadius: 9999, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-            border: `1px solid ${!selectedWard ? '#0f766e' : 'var(--border-subtle)'}`,
+            border: `1px solid ${!selectedWard ? 'var(--blue-600)' : 'var(--border-subtle)'}`,
             background: !selectedWard ? '#f0fdfa' : 'transparent',
-            color: !selectedWard ? '#0f766e' : 'var(--text-secondary)',
+            color: !selectedWard ? 'var(--blue-600)' : 'var(--text-secondary)',
           }}
         >
           All Wards ({wards.length})
@@ -118,9 +118,9 @@ export function BedOccupancyPage() {
             onClick={() => setSelectedWard(selectedWard === w.id ? null : w.id)}
             style={{
               padding: '4px 12px', borderRadius: 9999, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-              border: `1px solid ${selectedWard === w.id ? '#0f766e' : 'var(--border-subtle)'}`,
+              border: `1px solid ${selectedWard === w.id ? 'var(--blue-600)' : 'var(--border-subtle)'}`,
               background: selectedWard === w.id ? '#f0fdfa' : 'transparent',
-              color: selectedWard === w.id ? '#0f766e' : 'var(--text-secondary)',
+              color: selectedWard === w.id ? 'var(--blue-600)' : 'var(--text-secondary)',
             }}
           >
             {w.name} ({w.counts.total})

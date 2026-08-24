@@ -47,6 +47,7 @@ export interface RequestOptions {
   body?: unknown;
   facilityId?: string | null;
   branchId?: string | null;
+  tenantId?: string | null;
   retries?: number;
   timeoutMs?: number;
   signal?: AbortSignal;
@@ -109,6 +110,7 @@ function createClient(baseUrl: string): ApiClient {
     if (tokens) headers.Authorization = `Bearer ${tokens.accessToken}`;
     if (options.facilityId) headers['X-Swasthya-Facility'] = options.facilityId;
     if (options.branchId) headers['X-Swasthya-Branch'] = options.branchId;
+    if (options.tenantId) headers['X-Swasthya-Tenant'] = options.tenantId;
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? 20000);

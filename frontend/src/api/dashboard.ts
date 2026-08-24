@@ -86,6 +86,20 @@ export interface DashboardMetrics {
   // Platform mode (superadmin)
   totalOrganizations?: number;
   totalFacilities?: number;
+  totalStaff?: number;
+  totalUsers?: number;
+  totalDepartments?: number;
+  platformAdmins?: number;
+  totalRevenue?: number;
+  totalAppointments?: number;
+  organizations?: Array<{
+    id: string;
+    name: string;
+    code: string;
+    status: string;
+    facilityCount: number;
+    patientCount: number;
+  }>;
 }
 
 export interface TimeSeriesPoint {

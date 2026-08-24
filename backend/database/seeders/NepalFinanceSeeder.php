@@ -46,7 +46,14 @@ class NepalFinanceSeeder extends Seeder
     private const FY_START = '2026-07-16';
     private const FY_END = '2027-07-15';
 
-    public function run(): void
+    /**
+     * Seed Nepal financial data.
+     *
+     * Accepts parameters via:
+     *  - run(['tenant_id' => '...', 'facility_id' => '...'])
+     *  - Or via artisan command options when called from SeedNepalFinance command.
+     */
+    public function run(array $params = []): void
     {
         if (app()->environment('production')) {
             $this->command?->error(
@@ -57,16 +64,16 @@ class NepalFinanceSeeder extends Seeder
             return;
         }
 
-        $tenantId = $this->parameter('tenant_id');
+        $tenantId = $params['tenant_id'] ?? $this->command?->option('tenant_id') ?? null;
         if ($tenantId === null || $tenantId === '') {
             $this->command?->error(
-                'Usage: php artisan db:seed --class=NepalFinanceSeeder --tenant_id=<uuid>'
+                'Usage: php artisan nepal:finance:seed --tenant_id=<uuid>'
             );
 
             return;
         }
 
-        $facilityId = $this->parameter('facility_id') ?: null;
+        $facilityId = $params['facility_id'] ?? $this->command?->option('facility_id') ?? null;
 
         $this->seedTaxRules($tenantId, $facilityId);
         $this->seedPayers($tenantId);
@@ -91,7 +98,7 @@ class NepalFinanceSeeder extends Seeder
                 'rate_value_bps' => 1300, // 13%
                 'currency' => 'NPR',
                 'jurisdiction' => 'nepal',
-                'service_category' => null, // applies to all
+                'service_category' => 'all', // applies to all
                 'applies_to_opd' => true,
                 'applies_to_ipd' => true,
                 'applies_to_pharmacy' => true,
@@ -115,7 +122,7 @@ class NepalFinanceSeeder extends Seeder
                 'rate_value_bps' => 500, // 5%
                 'currency' => 'NPR',
                 'jurisdiction' => 'nepal',
-                'service_category' => null,
+                'service_category' => 'all',
                 'applies_to_opd' => true,
                 'applies_to_ipd' => true,
                 'applies_to_pharmacy' => true,
@@ -140,7 +147,7 @@ class NepalFinanceSeeder extends Seeder
                 'rate_value_bps' => 300, // 3%
                 'currency' => 'NPR',
                 'jurisdiction' => 'nepal',
-                'service_category' => null,
+                'service_category' => 'all',
                 'applies_to_opd' => true,
                 'applies_to_ipd' => true,
                 'applies_to_pharmacy' => true,
@@ -185,21 +192,21 @@ class NepalFinanceSeeder extends Seeder
             [
                 'code' => 'SSF',
                 'name' => 'Social Security Fund',
-                'payer_type' => 'insurance',
+                'payer_type' => 'government',
                 'payer_sub_type' => 'ssf',
                 'scheme_version' => 'SSF_2082',
             ],
             [
                 'code' => 'HIB',
                 'name' => 'Health Insurance Board',
-                'payer_type' => 'insurance',
+                'payer_type' => 'government',
                 'payer_sub_type' => 'hib',
                 'scheme_version' => 'HIB_BP_V3',
             ],
             [
                 'code' => 'SELF_PAY',
                 'name' => 'Self Pay / Cash',
-                'payer_type' => 'self_pay',
+                'payer_type' => 'other',
                 'payer_sub_type' => null,
                 'scheme_version' => null,
             ],
@@ -247,7 +254,7 @@ class NepalFinanceSeeder extends Seeder
                     'code' => 'SSF_MEDICAL',
                     'name' => 'SSF Medical Treatment Benefit',
                     'scheme_version' => 'SSF_2083',
-                    'service_category' => null, // covers all medical services
+                    'service_category' => 'all', // covers all medical services
                     'coverage_type' => 'capped',
                     'coverage_percent_bps' => 8000, // 80% (20% co-payment)
                     'limit_minor' => 10000000, // NPR 100,000 per annum
@@ -293,7 +300,7 @@ class NepalFinanceSeeder extends Seeder
                     'code' => 'HIB_FAMILY',
                     'name' => 'HIB Family Coverage (up to 5 members)',
                     'scheme_version' => 'HIB_2083',
-                    'service_category' => null, // covers OPD, IPD, emergency
+                    'service_category' => 'all', // covers OPD, IPD, emergency
                     'coverage_type' => 'capped',
                     'coverage_percent_bps' => 10000, // 100% up to limit
                     'limit_minor' => 10000000, // NPR 100,000 per year per family of 5
@@ -316,7 +323,7 @@ class NepalFinanceSeeder extends Seeder
                     'code' => 'HIB_ADDITIONAL',
                     'name' => 'HIB Additional Member Coverage',
                     'scheme_version' => 'HIB_2083',
-                    'service_category' => null,
+                    'service_category' => 'all',
                     'coverage_type' => 'capped',
                     'coverage_percent_bps' => 10000,
                     'limit_minor' => 2000000, // NPR 20,000 per additional member

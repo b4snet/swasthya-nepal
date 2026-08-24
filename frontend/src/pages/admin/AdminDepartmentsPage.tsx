@@ -42,7 +42,7 @@ const DEPT_TYPES = [
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
 const TYPE_COLORS: Record<string, { color: string; bg: string }> = {
-  medical: { color: '#0f766e', bg: '#f0fdfa' },
+  medical: { color: 'var(--blue-700)', bg: 'var(--blue-50)' },
   surgical: { color: '#dc2626', bg: '#fef2f2' },
   supportive: { color: '#2563eb', bg: '#eff6ff' },
   diagnostic: { color: '#7c3aed', bg: '#f5f3ff' },
@@ -107,9 +107,9 @@ export function AdminDepartmentsPage() {
           onClick={() => setTypeFilter('')}
           style={{
             padding: '4px 12px', borderRadius: 9999, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-            border: `1px solid ${!typeFilter ? '#0f766e' : 'var(--border-subtle)'}`,
+            border: `1px solid ${!typeFilter ? 'var(--blue-600)' : 'var(--border-subtle)'}`,
             background: !typeFilter ? '#f0fdfa' : 'transparent',
-            color: !typeFilter ? '#0f766e' : 'var(--text-secondary)',
+            color: !typeFilter ? 'var(--blue-600)' : 'var(--text-secondary)',
           }}
         >
           All ({data.length})

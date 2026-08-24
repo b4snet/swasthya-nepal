@@ -308,7 +308,8 @@ function Breadcrumbs({
 
 // ── Main shell ──
 export function AppShell() {
-  const hasRole = useTenant().hasRole;
+  const tenant = useTenant();
+  const hasRole = tenant.hasRole;
   const { t } = useI18n();
   const location = useLocation();
   const navigate = useNavigate();
@@ -469,7 +470,7 @@ export function AppShell() {
 
       <SidebarUser />
 
-      {useTenant().facilities.length > 0 && useTenant().selectedFacilityId === null && (
+      {tenant.ready && tenant.facilities.length > 0 && tenant.selectedFacilityId === null && (
         <div className="facility-required" role="status" data-testid="facility-required-banner">
           {t('shell.selectFacilityRequired')}
         </div>

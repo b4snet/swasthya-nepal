@@ -5,7 +5,7 @@ namespace App\Services;
 use App\Models\GeneratedDocument;
 use App\Models\HospitalBranding;
 use App\Models\Patient;
-use App\Support\DocumentNumberService;
+use App\Services\DocumentNumberService;
 
 /**
  * Centralized document generation service (Phase 84): renders documents

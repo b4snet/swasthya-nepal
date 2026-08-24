@@ -10,6 +10,7 @@ import './layout/shell.css';
 import './pages/pages.css';
 import './styles/dashboard.css';
 import './pages/clinical-workspace.css';
+import './pages/ai-assist.css';
 import './components/needs-attention.css';
 import './pages/onboarding.css';
 

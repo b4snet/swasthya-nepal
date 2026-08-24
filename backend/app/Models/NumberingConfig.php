@@ -5,7 +5,7 @@ namespace App\Models;
 use App\Services\DocumentNumberService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Spatie\LaravelUlid\HasUuid;
+use App\Models\Concerns\HasUuid;
 
 /**
  * Per-tenant configurable numbering (DATABASE.md document identity).
@@ -14,7 +14,7 @@ use Spatie\LaravelUlid\HasUuid;
  */
 class NumberingConfig extends Model
 {
-    use HasUuid, SoftDeletes;
+    use HasUuid;
 
     /**
      * Reset policies.

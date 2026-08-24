@@ -157,19 +157,19 @@
 
 /* ── Legacy design-system aliases (used by page-specific CSS) ── */
 :root {
-  /* Teal palette */
-  --teal-50: #f0fdfa;
-  --teal-100: #ccfbf1;
-  --teal-200: #99f6e4;
-  --teal-400: #2dd4bf;
-  --teal-500: #14b8a6;
-  --teal-600: #0d9488;
-  --teal-700: #0f766e;
-  --teal-800: #115e59;
+  /* Blue aliases — derived from primary token */
+  --teal-50: var(--blue-50);
+  --teal-100: var(--blue-100);
+  --teal-200: var(--blue-200);
+  --teal-400: var(--blue-400);
+  --teal-500: var(--blue-500);
+  --teal-600: var(--blue-600);
+  --teal-700: var(--blue-700);
+  --teal-800: var(--blue-800);
 
-  /* Slate palette */
-  --slate-400: #94a3b8;
-  --slate-500: #64748b;
+  /* Slate aliases — mapped to neutral grays */
+  --slate-400: var(--gray-400);
+  --slate-500: var(--gray-500);
 
   /* Surface aliases */
   --paper: #ffffff;
@@ -192,7 +192,7 @@
   --semantic-danger: #f04438;
 
   /* Tints */
-  --tint-teal: #f0fdfa;
+  --tint-teal: var(--blue-50);
   --tint-info: #eff8ff;
   --tint-success: #ecfdf3;
   --tint-warning: #fefbe8;
@@ -203,8 +203,8 @@
   --on-teal: #ffffff;
 
   /* Gradients */
-  --gradient-brand: linear-gradient(135deg, #0d9488 0%, #0f766e 100%);
-  --gradient-brand-light: linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 50%, #e0f2fe 100%);
+  --gradient-brand: linear-gradient(135deg, #2e90fa 0%, #1570ef 100%);
+  --gradient-brand-light: linear-gradient(135deg, #eff8ff 0%, #d1e9ff 50%, #f0f7ff 100%);
 
   /* Radius extra */
   --radius-pill: 9999px;

@@ -195,7 +195,18 @@ export function DashboardPage() {
 
   const m = metrics;
   const c = charts ?? EMPTY_CHARTS;
-  const platformStats = isPlatform ? { totalOrganizations: (m as any).totalOrganizations ?? 0, totalFacilities: (m as any).totalFacilities ?? 0 } : null;
+  const platform = isPlatform ? {
+    totalOrganizations: m.totalOrganizations ?? 0,
+    totalFacilities: m.totalFacilities ?? 0,
+    totalStaff: m.totalStaff ?? 0,
+    totalUsers: m.totalUsers ?? 0,
+    totalDepartments: m.totalDepartments ?? 0,
+    platformAdmins: m.platformAdmins ?? 0,
+    totalPatients: m.totalPatients ?? 0,
+    totalRevenue: m.totalRevenue ?? 0,
+    totalAppointments: m.totalAppointments ?? 0,
+    organizations: m.organizations ?? [],
+  } : null;
 
   const userName = access.getDisplayName();
 
@@ -263,21 +274,97 @@ export function DashboardPage() {
       </div>
 
       {/* ═══ PLATFORM OVERVIEW (superadmin) ═══ */}
-      {isPlatform && platformStats && (
-        <div className="dash-section dash-animate">
-          <div className="dash-section__head">
-            <h2 className="dash-section__title">Platform overview</h2>
-            <p className="dash-section__sub">All organizations and facilities</p>
+      {isPlatform && platform && (
+        <>
+          {/* ── Platform KPI Row 1: Infrastructure ── */}
+          <div className="dash-section dash-animate">
+            <div className="dash-section__head">
+              <h2 className="dash-section__title">Platform infrastructure</h2>
+              <p className="dash-section__sub">Organizations, facilities, and users across the system</p>
+            </div>
+            <div className="dash-hero-kpis">
+              <HeroKpi label="Organizations" value={platform.totalOrganizations} icon={Building2} color="blue" />
+              <HeroKpi label="Facilities" value={platform.totalFacilities} icon={Globe} color="green" />
+              <HeroKpi label="Active staff" value={platform.totalStaff} icon={Users} color="blue" />
+              <HeroKpi label="Departments" value={platform.totalDepartments} icon={FileText} color="amber" />
+            </div>
           </div>
-          <div className="dash-hero-kpis">
-            <HeroKpi label="Organizations" value={platformStats.totalOrganizations} icon={Building2} color="blue" />
-            <HeroKpi label="Facilities" value={platformStats.totalFacilities} icon={Globe} color="green" />
-            <HeroKpi label="Total patients" value={m.totalPatients} icon={Users} color="blue"
-              trend={m.newPatientsToday > 0 ? { text: `+${m.newPatientsToday} today`, dir: 'up' } : undefined} />
-            <HeroKpi label="Revenue this month" value={formatCurrency(m.revenueThisMonth)} icon={DollarSign} color="green"
-              trend={m.revenueToday > 0 ? { text: `${formatCurrency(m.revenueToday)} today`, dir: 'up' } : undefined} />
+
+          {/* ── Platform KPI Row 2: Operations ── */}
+          <div className="dash-section dash-animate">
+            <div className="dash-section__head">
+              <h2 className="dash-section__title">Cross-platform operations</h2>
+              <p className="dash-section__sub">Aggregate activity across all organizations</p>
+            </div>
+            <div className="dash-hero-kpis">
+              <HeroKpi label="Total patients" value={platform.totalPatients} icon={Users} color="blue"
+                trend={m.newPatientsToday > 0 ? { text: `+${m.newPatientsToday} today`, dir: 'up' } : undefined} />
+              <HeroKpi label="Today's appointments" value={platform.totalAppointments} icon={Calendar} color="blue" />
+              <HeroKpi label="Total revenue" value={formatCurrency(platform.totalRevenue)} icon={DollarSign} color="green"
+                trend={m.revenueToday > 0 ? { text: `${formatCurrency(m.revenueToday)} today`, dir: 'up' } : undefined} />
+              <HeroKpi label="Admins" value={platform.platformAdmins} icon={Stethoscope} color="amber" />
+            </div>
           </div>
-        </div>
+
+          {/* ── Organization Breakdown Table ── */}
+          {platform.organizations.length > 0 && (
+            <div className="dash-section dash-animate">
+              <div className="dash-section__head">
+                <h2 className="dash-section__title">Organizations</h2>
+                <p className="dash-section__sub">{platform.totalOrganizations} registered organization{platform.totalOrganizations !== 1 ? 's' : ''}</p>
+              </div>
+              <div className="dash-card">
+                <div className="dash-card__body">
+                  <table className="dash-table">
+                    <thead>
+                      <tr>
+                        <th>Organization</th>
+                        <th>Code</th>
+                        <th style={{ textAlign: 'right' }}>Facilities</th>
+                        <th style={{ textAlign: 'right' }}>Patients</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {platform.organizations.map((org) => (
+                        <tr key={org.id}>
+                          <td><strong>{org.name}</strong></td>
+                          <td>{org.code || '—'}</td>
+                          <td className="align-right">{org.facilityCount}</td>
+                          <td className="align-right">{org.patientCount.toLocaleString()}</td>
+                          <td>
+                            <span className={`dash-appt__status dash-appt__status--${org.status === 'active' ? 'completed' : 'cancelled'}`}>
+                              <span className="dash-appt__dot" />
+                              {org.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── System Alerts for Platform Admins ── */}
+          {(m.criticalValues > 0 || m.lowStockItems > 0) && (
+            <div className="dash-section dash-animate">
+              <div className="dash-section__head">
+                <h2 className="dash-section__title">System attention</h2>
+                <p className="dash-section__sub">Issues requiring cross-platform oversight</p>
+              </div>
+              <div className="dash-hero-kpis" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+                <HeroKpi label="Critical lab values" value={m.criticalValues} icon={AlertTriangle}
+                  color={m.criticalValues > 0 ? 'red' : 'green'} />
+                <HeroKpi label="Low stock items" value={m.lowStockItems} icon={Pill}
+                  color={m.lowStockItems > 0 ? 'amber' : 'green'} />
+                <HeroKpi label="ER waiting" value={m.erWaiting} icon={Clock}
+                  color={m.erWaiting > 0 ? 'amber' : 'green'} />
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* ═══ HERO KPIs ═══ */}

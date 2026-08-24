@@ -29,15 +29,29 @@ final class NepalFinanceController extends Controller
         private readonly AuditLogger $audit,
     ) {}
 
+    /**
+     * Resolve the tenant ID for queries. Platform-scoped users may pass
+     * an explicit tenantId query parameter; otherwise use the context.
+     */
+    private function resolveTenantId(Request $request): string
+    {
+        $context = TenantContext::current();
+        $tenantId = $request->input('tenantId') ?: $context->tenantId();
+
+        if ($tenantId === null) {
+            throw new ApiException(ErrorCodes::TENANT_REQUIRED, 'Organization context is required.', 400);
+        }
+
+        return $tenantId;
+    }
+
     /* ── Fiscal Years ────────────────────────────────────────── */
 
     /** GET /finance/fiscal-years */
     public function indexFiscalYears(Request $request): JsonResponse
     {
-        $context = TenantContext::current();
-
         $query = FinancialPeriod::query()
-            ->where('tenant_id', $context->tenantId())
+            ->where('tenant_id', $this->resolveTenantId($request))
             ->orderByDesc('fiscal_year')
             ->orderByDesc('period_number');
 
@@ -63,13 +77,13 @@ final class NepalFinanceController extends Controller
             'periodNumber' => 'nullable|integer|min:1|max:13',
         ]);
 
-        $context = TenantContext::current();
+        $tenantId = $this->resolveTenantId($request);
         $facilityId = $request->input('facilityId');
 
         // Calculate period number from start date if not provided
         $periodNumber = $validated['periodNumber'] ?? (int) \Carbon\Carbon::parse($validated['startDate'])->format('m');
 
-        $exists = FinancialPeriod::where('tenant_id', $context->tenantId())
+        $exists = FinancialPeriod::where('tenant_id', $tenantId)
             ->where('fiscal_year', $validated['fiscalYear'])
             ->where('period_number', $periodNumber)
             ->when($facilityId, fn ($q) => $q->where('facility_id', $facilityId))
@@ -80,7 +94,7 @@ final class NepalFinanceController extends Controller
         }
 
         $period = FinancialPeriod::create([
-            'tenant_id' => $context->tenantId(),
+            'tenant_id' => $tenantId,
             'facility_id' => $facilityId,
             'name' => $validated['name'],
             'fiscal_year' => $validated['fiscalYear'],
@@ -156,10 +170,8 @@ final class NepalFinanceController extends Controller
     /** GET /finance/payers */
     public function indexPayers(Request $request): JsonResponse
     {
-        $context = TenantContext::current();
-
         $payers = Payer::query()
-            ->where('tenant_id', $context->tenantId())
+            ->where('tenant_id', $this->resolveTenantId($request))
             ->orderBy('name')
             ->get()
             ->map(fn (Payer $payer): array => self::presentPayer($payer))
@@ -179,9 +191,9 @@ final class NepalFinanceController extends Controller
             'schemeVersion' => 'nullable|string|max:50',
         ]);
 
-        $context = TenantContext::current();
+        $tenantId = $this->resolveTenantId($request);
 
-        $exists = Payer::where('tenant_id', $context->tenantId())
+        $exists = Payer::where('tenant_id', $tenantId)
             ->whereRaw('lower(code) = ?', [strtolower($validated['code'])])
             ->exists();
 
@@ -190,7 +202,7 @@ final class NepalFinanceController extends Controller
         }
 
         $payer = Payer::create([
-            'tenant_id' => $context->tenantId(),
+            'tenant_id' => $tenantId,
             'name' => $validated['name'],
             'code' => $validated['code'],
             'payer_type' => $validated['payerType'],
@@ -219,10 +231,8 @@ final class NepalFinanceController extends Controller
     /** GET /finance/claims */
     public function indexClaims(Request $request): JsonResponse
     {
-        $context = TenantContext::current();
-
         $claims = InsuranceClaim::query()
-            ->where('tenant_id', $context->tenantId())
+            ->where('tenant_id', $this->resolveTenantId($request))
             ->orderByDesc('created_at')
             ->limit(100)
             ->get()

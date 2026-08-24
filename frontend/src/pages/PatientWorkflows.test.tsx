@@ -29,11 +29,10 @@ function renderPage(ui: React.ReactNode, entry: string = '/') {
   localStorage.setItem('swasthya.refreshToken', 'rt-test');
   sessionStorage.setItem('swasthya.accessToken', 'at-test');
   const sessionRes = sessionPayload(['hospital_admin']);
-  const emptyArr = jsonOk([]);
   let callCount = 0;
   const fn = vi.fn(async () => {
     callCount++;
-    return callCount === 1 ? sessionRes : emptyArr;
+    return callCount === 1 ? sessionRes : jsonOk([]);
   });
   vi.stubGlobal('fetch', fn);
   return render(

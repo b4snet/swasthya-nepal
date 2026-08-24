@@ -6,7 +6,7 @@ import react from '@vitejs/plugin-react';
 // Laravel server (CORS is additionally allowed for http://localhost:5173).
 // The backend remains authoritative: the proxy forwards Authorization and
 // X-Swasthya-Facility/-Branch headers untouched.
-const API_TARGET = process.env.SWASTHYA_API_TARGET ?? 'http://127.0.0.1:58999';
+const API_TARGET = process.env.SWASTHYA_API_TARGET ?? 'http://127.0.0.1:8000';
 
 export default defineConfig({
   plugins: [react()],

@@ -18,7 +18,9 @@ export function stubFetch(...responses: Response[]) {
   let i = 0;
   const fn = vi.fn(async () => {
     if (i >= responses.length) throw new Error(`stubFetch: no more responses (${responses.length} provided)`);
-    return responses[i++];
+    const resp = responses[i++];
+    // Response bodies can only be read once; clone so repeated calls work.
+    return resp.clone();
   });
   vi.stubGlobal('fetch', fn);
   return fn;

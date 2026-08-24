@@ -74,6 +74,54 @@ final class DocumentCenterController extends Controller
     }
 
     /**
+     * GET /documents/platform — platform-level list across all tenants.
+     */
+    public function platformIndex(Request $request): JsonResponse
+    {
+        $context = TenantContext::current();
+        $query = GeneratedDocument::query()->orderByDesc('created_at');
+
+        // Platform sees everything; tenant-scoped users see their tenant only.
+        if (! $context->isPlatform && $context->tenantId() !== null) {
+            $query->where('tenant_id', $context->tenantId());
+        }
+
+        if (! $context->isPlatform && $context->facilityId() !== null) {
+            $query->where('facility_id', $context->facilityId());
+        }
+
+        if ($request->filled('category')) {
+            $query->where('category', $request->validated('category'));
+        }
+        if ($request->filled('documentType')) {
+            $query->where('document_type', $request->validated('documentType'));
+        }
+        if ($request->filled('patientId')) {
+            $query->where('patient_id', $request->validated('patientId'));
+        }
+        if ($request->filled('status')) {
+            $query->where('status', $request->validated('status'));
+        }
+        if ($request->filled('search')) {
+            $search = $request->validated('search');
+            $query->where(function ($q) use ($search): void {
+                $q->where('title', 'ilike', "%{$search}%")
+                    ->orWhere('document_number', 'ilike', "%{$search}%")
+                    ->orWhere('content_text', 'ilike', "%{$search}%");
+            });
+        }
+
+        $documents = $query->paginate(50);
+
+        return Envelope::success(data: [
+            'data' => $documents->getCollection()->map(fn (GeneratedDocument $d): array => $d->present())->values(),
+            'total' => $documents->total(),
+            'page' => $documents->currentPage(),
+            'lastPage' => $documents->lastPage(),
+        ], request: $request);
+    }
+
+    /**
      * GET /documents/{document} — show document with content.
      */
     public function show(Request $request, GeneratedDocument $document): JsonResponse
@@ -227,7 +275,7 @@ final class DocumentCenterController extends Controller
      */
     public function categories(): JsonResponse
     {
-        return Envelope::json([
+        return Envelope::success(data: [
             'types' => GeneratedDocument::types(),
             'categories' => GeneratedDocument::categories(),
         ]);

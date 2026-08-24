@@ -1,8 +1,9 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTenant } from '../context/TenantContext';
 import { useFetch } from '../hooks/useFetch';
 import { api } from '../api/client';
 import { ApiError } from '../api/client';
+import { adminOrgsApi } from '../api/endpoints';
 import { Alert, Button, Card, Dialog, EmptyState, Input } from '../components/ui';
 import {
   Calendar,
@@ -14,40 +15,44 @@ import {
 
 /* ── API Client ──────────────────────────────────────────────────── */
 
-const opt = (facilityId?: string | null) => ({ facilityId } as Record<string, unknown>);
+/** Build request options with facility and tenant headers. */
+const opt = (fac?: string | null, tid?: string | null) => ({
+  facilityId: fac || undefined,
+  tenantId: tid || undefined,
+});
 
 const nepalFinanceApi = {
   // Fiscal Years
-  fiscalYears: (fac?: string | null) =>
-    api.request<unknown[]>(`/api/v1/finance/fiscal-years`, opt(fac)).catch(() => []),
-  storeFiscalYear: (payload: Record<string, unknown>, fac?: string | null) =>
-    api.request<unknown>('/api/v1/finance/fiscal-years', { method: 'POST', body: payload, ...opt(fac) }),
-  closeFiscalYear: (id: string, fac?: string | null) =>
-    api.request<unknown>(`/api/v1/finance/fiscal-years/${id}/close`, { method: 'POST', body: {}, ...opt(fac) }),
-  reopenFiscalYear: (id: string, fac?: string | null) =>
-    api.request<unknown>(`/api/v1/finance/fiscal-years/${id}/reopen`, { method: 'POST', body: {}, ...opt(fac) }),
+  fiscalYears: (fac?: string | null, tid?: string | null) =>
+    api.request<unknown[]>('/api/v1/enterprise/finance/fiscal-years', opt(fac, tid)).catch(() => []),
+  storeFiscalYear: (payload: Record<string, unknown>, fac?: string | null, tid?: string | null) =>
+    api.request<unknown>('/api/v1/enterprise/finance/fiscal-years', { method: 'POST', body: payload, ...opt(fac, tid) }),
+  closeFiscalYear: (id: string, fac?: string | null, tid?: string | null) =>
+    api.request<unknown>(`/api/v1/enterprise/finance/fiscal-years/${id}/close`, { method: 'POST', body: {}, ...opt(fac, tid) }),
+  reopenFiscalYear: (id: string, fac?: string | null, tid?: string | null) =>
+    api.request<unknown>(`/api/v1/enterprise/finance/fiscal-years/${id}/reopen`, { method: 'POST', body: {}, ...opt(fac, tid) }),
 
   // Tax Rules
-  taxRules: (fac?: string | null) =>
-    api.request<unknown[]>(`/api/v1/finance/tax-rules`, opt(fac)).catch(() => []),
-  storeTaxRule: (payload: Record<string, unknown>, fac?: string | null) =>
-    api.request<unknown>('/api/v1/finance/tax-rules', { method: 'POST', body: payload, ...opt(fac) }),
+  taxRules: (fac?: string | null, tid?: string | null) =>
+    api.request<unknown[]>('/api/v1/enterprise/finance/tax-rules', opt(fac, tid)).catch(() => []),
+  storeTaxRule: (payload: Record<string, unknown>, fac?: string | null, tid?: string | null) =>
+    api.request<unknown>('/api/v1/enterprise/finance/tax-rules', { method: 'POST', body: payload, ...opt(fac, tid) }),
 
   // Payers
-  payers: (fac?: string | null) =>
-    api.request<unknown[]>(`/api/v1/finance/payers`, opt(fac)).catch(() => []),
-  storePayer: (payload: Record<string, unknown>, fac?: string | null) =>
-    api.request<unknown>('/api/v1/finance/payers', { method: 'POST', body: payload, ...opt(fac) }),
+  payers: (fac?: string | null, tid?: string | null) =>
+    api.request<unknown[]>('/api/v1/enterprise/finance/payers', opt(fac, tid)).catch(() => []),
+  storePayer: (payload: Record<string, unknown>, fac?: string | null, tid?: string | null) =>
+    api.request<unknown>('/api/v1/enterprise/finance/payers', { method: 'POST', body: payload, ...opt(fac, tid) }),
 
   // Benefit Rules
-  benefitRules: (payerId: string, fac?: string | null) =>
-    api.request<unknown[]>(`/api/v1/finance/payers/${payerId}/benefit-rules`, opt(fac)).catch(() => []),
-  storeBenefitRule: (payerId: string, payload: Record<string, unknown>, fac?: string | null) =>
-    api.request<unknown>(`/api/v1/finance/payers/${payerId}/benefit-rules`, { method: 'POST', body: payload, ...opt(fac) }),
+  benefitRules: (payerId: string, fac?: string | null, tid?: string | null) =>
+    api.request<unknown[]>(`/api/v1/enterprise/finance/payers/${payerId}/benefit-rules`, opt(fac, tid)).catch(() => []),
+  storeBenefitRule: (payerId: string, payload: Record<string, unknown>, fac?: string | null, tid?: string | null) =>
+    api.request<unknown>(`/api/v1/enterprise/finance/payers/${payerId}/benefit-rules`, { method: 'POST', body: payload, ...opt(fac, tid) }),
 
   // Claims
-  claims: (fac?: string | null) =>
-    api.request<unknown[]>(`/api/v1/finance/claims`, opt(fac)).catch(() => []),
+  claims: (fac?: string | null, tid?: string | null) =>
+    api.request<unknown[]>('/api/v1/enterprise/finance/claims', opt(fac, tid)).catch(() => []),
 };
 
 /* ── Types ───────────────────────────────────────────────────────── */
@@ -167,12 +172,27 @@ function formatBps(bps: number): string {
 /* ── Main Component ──────────────────────────────────────────────── */
 
 export function NepalFinanceAdminPage() {
-  const { selectedFacilityId: fac } = useTenant();
+  const { selectedFacilityId: fac, organizationId: orgId } = useTenant();
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'fiscal' | 'tax' | 'payers' | 'benefits' | 'claims'>('fiscal');
   const [dlg, setDlg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [selectedPayerId, setSelectedPayerId] = useState<string | null>(null);
+
+  // For platform-level users with no org, resolve tenant from org list.
+  const [selectedTenantId, setSelectedTenantId] = useState<string | null>(orgId);
+  const orgsState = useFetch(() => orgId ? Promise.resolve([] as any[]) : adminOrgsApi.list().catch(() => []), [orgId]);
+  const orgs = orgsState.data ?? [];
+  const tenantId = orgId ?? selectedTenantId;
+  // Wait for orgs to load before fetching finance data for platform users.
+  const tenantReady = !!orgId || (selectedTenantId !== null) || (!orgId && orgs.length === 0 && !orgsState.loading);
+
+  // Auto-select first org for platform users.
+  useEffect(() => {
+    if (!orgId && orgs.length > 0 && !selectedTenantId) {
+      setSelectedTenantId(orgs[0].id);
+    }
+  }, [orgId, orgs, selectedTenantId]);
 
   // Forms
   const [fiscalForm, setFiscalForm] = useState({ name: '', fiscalYear: '', startDate: '', endDate: '', calendarType: 'nepal_fiscal', nepalFiscalYear: '' });
@@ -180,15 +200,16 @@ export function NepalFinanceAdminPage() {
   const [payerForm, setPayerForm] = useState({ name: '', code: '', payerType: 'insurance', payerSubType: 'private', schemeVersion: '' });
   const [benefitForm, setBenefitForm] = useState({ code: '', name: '', schemeVersion: '', serviceCategory: 'opd', coverageType: 'full', coveragePercentBps: 10000, limitMinor: 0, copayMinor: 0, effectiveFrom: '' });
 
-  // Data
-  const fiscalYears = useFetch(() => nepalFinanceApi.fiscalYears(fac), [fac]);
-  const taxRules = useFetch(() => nepalFinanceApi.taxRules(fac), [fac]);
-  const payers = useFetch(() => nepalFinanceApi.payers(fac), [fac]);
+  // Data — pass tenantId for platform-level users. Guard finance fetches
+  // until tenantId is resolved (platform users need orgs to load first).
+  const fiscalYears = useFetch(() => tenantReady ? nepalFinanceApi.fiscalYears(fac, tenantId) : Promise.resolve([]), [fac, tenantId, tenantReady]);
+  const taxRules = useFetch(() => tenantReady ? nepalFinanceApi.taxRules(fac, tenantId) : Promise.resolve([]), [fac, tenantId, tenantReady]);
+  const payers = useFetch(() => tenantReady ? nepalFinanceApi.payers(fac, tenantId) : Promise.resolve([]), [fac, tenantId, tenantReady]);
   const benefitRules = useFetch(
-    () => selectedPayerId ? nepalFinanceApi.benefitRules(selectedPayerId, fac) : Promise.resolve([]),
-    [selectedPayerId, fac],
+    () => selectedPayerId && tenantReady ? nepalFinanceApi.benefitRules(selectedPayerId, fac, tenantId) : Promise.resolve([]),
+    [selectedPayerId, fac, tenantId, tenantReady],
   );
-  const claims = useFetch(() => nepalFinanceApi.claims(fac), [fac]);
+  const claims = useFetch(() => tenantReady ? nepalFinanceApi.claims(fac, tenantId) : Promise.resolve([]), [fac, tenantId, tenantReady]);
 
   const allFiscalYears = useMemo(() => (fiscalYears.data ?? []) as FiscalYear[], [fiscalYears.data]);
   const allTaxRules = useMemo(() => (taxRules.data ?? []) as TaxRule[], [taxRules.data]);
@@ -224,6 +245,22 @@ export function NepalFinanceAdminPage() {
       <Alert tone="warning">
         <strong>Nepal Financial Rules:</strong> All statutory values (tax rates, SSF/HIB benefit limits) are configurable and effective-dated. Historical records use the rules that were active at posting time. Never hard-code mutable Nepal statutory values.
       </Alert>
+
+      {/* ── Tenant Selector (platform users only) ─────────── */}
+      {!orgId && orgs.length > 1 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+          <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink-muted)' }}>Organization:</label>
+          <select
+            value={selectedTenantId ?? ''}
+            onChange={(e) => setSelectedTenantId(e.target.value || null)}
+            style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)', fontSize: 13 }}
+          >
+            {orgs.map((o: any) => (
+              <option key={o.id} value={o.id}>{o.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* ── Census Dashboard ──────────────────────────────── */}
       <div className="ai-census">
@@ -297,10 +334,10 @@ export function NepalFinanceAdminPage() {
                   <StatusBadge status={fy.period_status} />
                   <span>
                     {fy.period_status === 'open' && (
-                      <Button variant="ghost" size="sm" onClick={() => void go(() => nepalFinanceApi.closeFiscalYear(fy.id, fac).then(() => fiscalYears.refresh()))}>Close</Button>
+                      <Button variant="ghost" size="sm" onClick={() => void go(() => nepalFinanceApi.closeFiscalYear(fy.id, fac, tenantId).then(() => fiscalYears.refresh()))}>Close</Button>
                     )}
                     {fy.period_status === 'closed' && (
-                      <Button variant="ghost" size="sm" onClick={() => void go(() => nepalFinanceApi.reopenFiscalYear(fy.id, fac).then(() => fiscalYears.refresh()))}>Reopen</Button>
+                      <Button variant="ghost" size="sm" onClick={() => void go(() => nepalFinanceApi.reopenFiscalYear(fy.id, fac, tenantId).then(() => fiscalYears.refresh()))}>Reopen</Button>
                     )}
                   </span>
                 </div>
@@ -475,7 +512,7 @@ export function NepalFinanceAdminPage() {
           <>
             <Button variant="ghost" onClick={() => setDlg(null)}>Cancel</Button>
             <Button onClick={async () => {
-              await go(() => nepalFinanceApi.storeFiscalYear(fiscalForm, fac).then(() => fiscalYears.refresh()));
+              await go(() => nepalFinanceApi.storeFiscalYear(fiscalForm, fac, tenantId).then(() => fiscalYears.refresh()));
               setDlg(null);
             }} loading={busy} disabled={!fiscalForm.name || !fiscalForm.startDate}>Create</Button>
           </>
@@ -498,7 +535,7 @@ export function NepalFinanceAdminPage() {
           <>
             <Button variant="ghost" onClick={() => setDlg(null)}>Cancel</Button>
             <Button onClick={async () => {
-              await go(() => nepalFinanceApi.storeTaxRule(taxForm, fac).then(() => taxRules.refresh()));
+              await go(() => nepalFinanceApi.storeTaxRule(taxForm, fac, tenantId).then(() => taxRules.refresh()));
               setDlg(null);
             }} loading={busy} disabled={!taxForm.code || !taxForm.name}>Add Rule</Button>
           </>
@@ -527,7 +564,7 @@ export function NepalFinanceAdminPage() {
           <>
             <Button variant="ghost" onClick={() => setDlg(null)}>Cancel</Button>
             <Button onClick={async () => {
-              await go(() => nepalFinanceApi.storePayer(payerForm, fac).then(() => payers.refresh()));
+              await go(() => nepalFinanceApi.storePayer(payerForm, fac, tenantId).then(() => payers.refresh()));
               setDlg(null);
             }} loading={busy} disabled={!payerForm.name || !payerForm.code}>Add Payer</Button>
           </>
@@ -554,7 +591,7 @@ export function NepalFinanceAdminPage() {
             <Button variant="ghost" onClick={() => setDlg(null)}>Cancel</Button>
             <Button onClick={async () => {
               if (!selectedPayerId) return;
-              await go(() => nepalFinanceApi.storeBenefitRule(selectedPayerId, benefitForm, fac).then(() => benefitRules.refresh()));
+              await go(() => nepalFinanceApi.storeBenefitRule(selectedPayerId, benefitForm, fac, tenantId).then(() => benefitRules.refresh()));
               setDlg(null);
             }} loading={busy} disabled={!benefitForm.code || !benefitForm.name}>Add Rule</Button>
           </>
