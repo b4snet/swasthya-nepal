@@ -49,7 +49,7 @@ describe('PharmacyPage', () => {
   it('shows prescription lookup input', async () => {
     stubFetch(sessionResponse());
     renderWithProviders(<PharmacyPage />);
-    const input = await screen.findByPlaceholderText('Enter prescription ID');
+    const input = await screen.findByPlaceholderText('Search patient, MRN, or prescriber...');
     expect(input).toBeTruthy();
   });
 });
