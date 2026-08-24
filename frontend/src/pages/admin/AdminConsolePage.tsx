@@ -179,7 +179,7 @@ export function AdminConsolePage() {
       {/* Facility info */}
       <div className="ac-facility-bar">
         <Building2 size={16} />
-        <span className="ac-facility-bar__label">Organization:</span>
+        <span className="ac-facility-bar__label">Hospital:</span>
         <span className="ac-facility-bar__value">{facilities[0]?.organizationCode ?? '—'}</span>
         <span className="ac-facility-bar__sep">·</span>
         <span className="ac-facility-bar__label">Facility:</span>

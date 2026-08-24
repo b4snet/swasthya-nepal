@@ -156,10 +156,10 @@ const ROLE_WORKSPACES: Array<{ roles: string[]; title: string; description: stri
   {
     roles: ['superadmin', 'org_admin', 'org_finance', 'support_agent'],
     title: 'Administration',
-    description: 'Platform and organization management',
+    description: 'Hospital administration',
     links: [
       { label: 'Administration', to: '/admin', icon: Building2, color: BLUE },
-      { label: 'Nepal Finance', to: '/finance/nepal-admin', icon: Landmark, color: GREEN },
+      { label: 'Finance Settings', to: '/finance/nepal-admin', icon: Landmark, color: GREEN },
       { label: 'Reports', to: '/reports', icon: FileText, color: AMBER },
     ],
   },
@@ -348,7 +348,7 @@ export function DashboardPage() {
         <div className="dash-pulse__left">
           <h1 className="dash-pulse__greeting">{greeting()}, {userName}</h1>
           <div className="dash-pulse__meta">
-            <span>{isPlatform ? 'Platform overview' : selectedFacilityName || formatDate(new Date())}</span>
+            <span>{isPlatform ? 'Hospital overview' : selectedFacilityName || formatDate(new Date())}</span>
             <span className="dash-pulse__live">
               <span className="dash-pulse__dot" />
               {clock}
@@ -410,11 +410,11 @@ export function DashboardPage() {
           {/* ── Platform KPI Row 1: Infrastructure ── */}
           <div className="dash-section dash-animate">
             <div className="dash-section__head">
-              <h2 className="dash-section__title">Platform infrastructure</h2>
-              <p className="dash-section__sub">Organizations, facilities, and users across the system</p>
+              <h2 className="dash-section__title">Hospital infrastructure</h2>
+              <p className="dash-section__sub">Hospital facilities, staff, and departments</p>
             </div>
             <div className="dash-hero-kpis">
-              <HeroKpi label="Organizations" value={platform.totalOrganizations} icon={Building2} color="blue" />
+              <HeroKpi label="Hospitals" value={platform.totalOrganizations} icon={Building2} color="blue" />
               <HeroKpi label="Facilities" value={platform.totalFacilities} icon={Globe} color="green" />
               <HeroKpi label="Active staff" value={platform.totalStaff} icon={Users} color="blue" />
               <HeroKpi label="Departments" value={platform.totalDepartments} icon={FileText} color="amber" />
@@ -437,7 +437,7 @@ export function DashboardPage() {
             </div>
           </div>
 
-          {/* ── Organization Breakdown Table ── */}
+          {/* ── Hospital Breakdown Table ── */}
           {platform.organizations.length > 0 && (
             <div className="dash-section dash-animate">
               <div className="dash-section__head">

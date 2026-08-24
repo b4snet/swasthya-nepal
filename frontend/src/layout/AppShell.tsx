@@ -42,7 +42,7 @@ function FacilitySwitcher() {
     return (
       <span className="facility-badge" data-testid="context-badge">
         <Building2 size={14} />
-        {facilities[0]?.name ?? 'Platform'}
+        {facilities[0]?.name ?? 'Hospital'}
       </span>
     );
   }

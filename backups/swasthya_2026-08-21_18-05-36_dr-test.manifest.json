@@ -1,0 +1,882 @@
+{
+    "version": 1,
+    "created_at": "2026-08-21T18:05:42+00:00",
+    "label": "dr-test",
+    "database": {
+        "host": "127.0.0.1",
+        "port": "5432",
+        "database": "swasthya"
+    },
+    "dump": {
+        "path": "C:\\Users\\dipso\\OneDrive\\Desktop\\Swasthya Nepal\\backups\\swasthya_2026-08-21_18-05-36_dr-test.dump",
+        "filename": "swasthya_2026-08-21_18-05-36_dr-test.dump",
+        "size_bytes": 29130634,
+        "sha256": "f117467dd94db80bbffd38e1cb6d5082e518de1967b9457ed4fedc45cd34254e",
+        "format": "pg_dump_custom",
+        "pg_dump_version": "pg_dump (PostgreSQL) 16.4"
+    },
+    "schema": {
+        "table_count": 213,
+        "total_rows": 415772,
+        "tables": [
+            {
+                "table": "admissions",
+                "row_count": 0
+            },
+            {
+                "table": "ai_drafts",
+                "row_count": 0
+            },
+            {
+                "table": "ai_features",
+                "row_count": 0
+            },
+            {
+                "table": "anesthesia_records",
+                "row_count": 0
+            },
+            {
+                "table": "appointments",
+                "row_count": 8000
+            },
+            {
+                "table": "asset_categories",
+                "row_count": 0
+            },
+            {
+                "table": "asset_transfers",
+                "row_count": 0
+            },
+            {
+                "table": "assets",
+                "row_count": 0
+            },
+            {
+                "table": "attendance_records",
+                "row_count": 0
+            },
+            {
+                "table": "audience_segments",
+                "row_count": 0
+            },
+            {
+                "table": "audit_events",
+                "row_count": 0
+            },
+            {
+                "table": "beds",
+                "row_count": 0
+            },
+            {
+                "table": "billing_adjustments",
+                "row_count": 0
+            },
+            {
+                "table": "blood_units",
+                "row_count": 0
+            },
+            {
+                "table": "branches",
+                "row_count": 0
+            },
+            {
+                "table": "broadcast_campaigns",
+                "row_count": 0
+            },
+            {
+                "table": "budget_lines",
+                "row_count": 0
+            },
+            {
+                "table": "budgets",
+                "row_count": 0
+            },
+            {
+                "table": "cache",
+                "row_count": 4
+            },
+            {
+                "table": "cache_locks",
+                "row_count": 0
+            },
+            {
+                "table": "care_plans",
+                "row_count": 0
+            },
+            {
+                "table": "cdss_check_results",
+                "row_count": 0
+            },
+            {
+                "table": "cdss_rules",
+                "row_count": 0
+            },
+            {
+                "table": "charges",
+                "row_count": 40000
+            },
+            {
+                "table": "checklist_items",
+                "row_count": 0
+            },
+            {
+                "table": "checklist_templates",
+                "row_count": 0
+            },
+            {
+                "table": "claim_lines",
+                "row_count": 0
+            },
+            {
+                "table": "claims",
+                "row_count": 0
+            },
+            {
+                "table": "clinical_notes",
+                "row_count": 0
+            },
+            {
+                "table": "communication_templates",
+                "row_count": 0
+            },
+            {
+                "table": "compatibility_results",
+                "row_count": 0
+            },
+            {
+                "table": "compliance_report_items",
+                "row_count": 0
+            },
+            {
+                "table": "compliance_reports",
+                "row_count": 0
+            },
+            {
+                "table": "consents",
+                "row_count": 0
+            },
+            {
+                "table": "critical_care_notes",
+                "row_count": 0
+            },
+            {
+                "table": "critical_value_events",
+                "row_count": 0
+            },
+            {
+                "table": "crossmatches",
+                "row_count": 0
+            },
+            {
+                "table": "csv_imports",
+                "row_count": 0
+            },
+            {
+                "table": "dashboard_kpis",
+                "row_count": 0
+            },
+            {
+                "table": "dashboards",
+                "row_count": 0
+            },
+            {
+                "table": "delivery_attempts",
+                "row_count": 0
+            },
+            {
+                "table": "departments",
+                "row_count": 10
+            },
+            {
+                "table": "deposit_allocations",
+                "row_count": 0
+            },
+            {
+                "table": "deposits",
+                "row_count": 0
+            },
+            {
+                "table": "diagnoses",
+                "row_count": 0
+            },
+            {
+                "table": "dispensings",
+                "row_count": 0
+            },
+            {
+                "table": "document_numbers",
+                "row_count": 0
+            },
+            {
+                "table": "donations",
+                "row_count": 0
+            },
+            {
+                "table": "donors",
+                "row_count": 0
+            },
+            {
+                "table": "egress_allowlist",
+                "row_count": 0
+            },
+            {
+                "table": "encounters",
+                "row_count": 200000
+            },
+            {
+                "table": "er_events",
+                "row_count": 0
+            },
+            {
+                "table": "er_registrations",
+                "row_count": 0
+            },
+            {
+                "table": "expense_categories",
+                "row_count": 0
+            },
+            {
+                "table": "expenses",
+                "row_count": 0
+            },
+            {
+                "table": "facilities",
+                "row_count": 6
+            },
+            {
+                "table": "facility_settings",
+                "row_count": 0
+            },
+            {
+                "table": "failed_jobs",
+                "row_count": 0
+            },
+            {
+                "table": "financial_periods",
+                "row_count": 0
+            },
+            {
+                "table": "follow_ups",
+                "row_count": 0
+            },
+            {
+                "table": "form_signatures",
+                "row_count": 0
+            },
+            {
+                "table": "form_submissions",
+                "row_count": 0
+            },
+            {
+                "table": "form_template_categories",
+                "row_count": 0
+            },
+            {
+                "table": "form_templates",
+                "row_count": 0
+            },
+            {
+                "table": "generated_documents",
+                "row_count": 0
+            },
+            {
+                "table": "goods_receipt_lines",
+                "row_count": 0
+            },
+            {
+                "table": "goods_receipts",
+                "row_count": 0
+            },
+            {
+                "table": "hospital_brandings",
+                "row_count": 0
+            },
+            {
+                "table": "icu_admissions",
+                "row_count": 0
+            },
+            {
+                "table": "icu_alerts",
+                "row_count": 0
+            },
+            {
+                "table": "icu_beds",
+                "row_count": 0
+            },
+            {
+                "table": "icu_observation_sets",
+                "row_count": 0
+            },
+            {
+                "table": "image_references",
+                "row_count": 0
+            },
+            {
+                "table": "insurance_policies",
+                "row_count": 0
+            },
+            {
+                "table": "integration_events",
+                "row_count": 0
+            },
+            {
+                "table": "integrations",
+                "row_count": 0
+            },
+            {
+                "table": "inventory_adjustment_requests",
+                "row_count": 0
+            },
+            {
+                "table": "inventory_items",
+                "row_count": 0
+            },
+            {
+                "table": "inventory_movements",
+                "row_count": 0
+            },
+            {
+                "table": "inventory_transfers",
+                "row_count": 0
+            },
+            {
+                "table": "invoice_lines",
+                "row_count": 0
+            },
+            {
+                "table": "invoices",
+                "row_count": 40000
+            },
+            {
+                "table": "iot_readings",
+                "row_count": 0
+            },
+            {
+                "table": "job_batches",
+                "row_count": 0
+            },
+            {
+                "table": "jobs",
+                "row_count": 0
+            },
+            {
+                "table": "kpi_definitions",
+                "row_count": 0
+            },
+            {
+                "table": "lab_order_items",
+                "row_count": 16000
+            },
+            {
+                "table": "lab_orders",
+                "row_count": 16000
+            },
+            {
+                "table": "lab_result_versions",
+                "row_count": 0
+            },
+            {
+                "table": "lab_tests",
+                "row_count": 10
+            },
+            {
+                "table": "leave_requests",
+                "row_count": 0
+            },
+            {
+                "table": "leave_types",
+                "row_count": 0
+            },
+            {
+                "table": "locations",
+                "row_count": 0
+            },
+            {
+                "table": "maintenance_schedules",
+                "row_count": 0
+            },
+            {
+                "table": "mar_entries",
+                "row_count": 0
+            },
+            {
+                "table": "medications",
+                "row_count": 500
+            },
+            {
+                "table": "metric_snapshots",
+                "row_count": 0
+            },
+            {
+                "table": "mfa_challenges",
+                "row_count": 0
+            },
+            {
+                "table": "migrations",
+                "row_count": 144
+            },
+            {
+                "table": "modalities",
+                "row_count": 0
+            },
+            {
+                "table": "module_entitlements",
+                "row_count": 0
+            },
+            {
+                "table": "modules",
+                "row_count": 23
+            },
+            {
+                "table": "mrn_counters",
+                "row_count": 0
+            },
+            {
+                "table": "multidisciplinary_reviews",
+                "row_count": 0
+            },
+            {
+                "table": "notification_recipients",
+                "row_count": 0
+            },
+            {
+                "table": "notification_templates",
+                "row_count": 0
+            },
+            {
+                "table": "notifications",
+                "row_count": 0
+            },
+            {
+                "table": "numbering_configs",
+                "row_count": 0
+            },
+            {
+                "table": "nursing_alerts",
+                "row_count": 0
+            },
+            {
+                "table": "nursing_notes",
+                "row_count": 0
+            },
+            {
+                "table": "nursing_tasks",
+                "row_count": 0
+            },
+            {
+                "table": "nursing_vitals",
+                "row_count": 0
+            },
+            {
+                "table": "oauth_partner_tokens",
+                "row_count": 0
+            },
+            {
+                "table": "oauth_partners",
+                "row_count": 0
+            },
+            {
+                "table": "onboarding_sessions",
+                "row_count": 0
+            },
+            {
+                "table": "oncology_diagnoses",
+                "row_count": 0
+            },
+            {
+                "table": "oncology_encounters",
+                "row_count": 0
+            },
+            {
+                "table": "oncology_profiles",
+                "row_count": 0
+            },
+            {
+                "table": "organizations",
+                "row_count": 2
+            },
+            {
+                "table": "password_reset_tokens",
+                "row_count": 0
+            },
+            {
+                "table": "patient_allergies",
+                "row_count": 0
+            },
+            {
+                "table": "patient_consent_records",
+                "row_count": 0
+            },
+            {
+                "table": "patient_contacts",
+                "row_count": 0
+            },
+            {
+                "table": "patient_documents",
+                "row_count": 0
+            },
+            {
+                "table": "patient_identifiers",
+                "row_count": 0
+            },
+            {
+                "table": "patient_notification_preferences",
+                "row_count": 0
+            },
+            {
+                "table": "patient_timeline_entries",
+                "row_count": 0
+            },
+            {
+                "table": "patients",
+                "row_count": 50000
+            },
+            {
+                "table": "payers",
+                "row_count": 0
+            },
+            {
+                "table": "payment_allocations",
+                "row_count": 0
+            },
+            {
+                "table": "payments",
+                "row_count": 7933
+            },
+            {
+                "table": "payroll_exports",
+                "row_count": 0
+            },
+            {
+                "table": "permissions",
+                "row_count": 155
+            },
+            {
+                "table": "personal_access_tokens",
+                "row_count": 24
+            },
+            {
+                "table": "pharmacy_returns",
+                "row_count": 0
+            },
+            {
+                "table": "portal_access_grants",
+                "row_count": 0
+            },
+            {
+                "table": "portal_accounts",
+                "row_count": 0
+            },
+            {
+                "table": "portal_invitations",
+                "row_count": 0
+            },
+            {
+                "table": "portal_sessions",
+                "row_count": 0
+            },
+            {
+                "table": "positions",
+                "row_count": 0
+            },
+            {
+                "table": "prescription_lines",
+                "row_count": 24051
+            },
+            {
+                "table": "prescriptions",
+                "row_count": 12000
+            },
+            {
+                "table": "procedure_billing_items",
+                "row_count": 0
+            },
+            {
+                "table": "procedure_requests",
+                "row_count": 0
+            },
+            {
+                "table": "procedures",
+                "row_count": 0
+            },
+            {
+                "table": "purchase_order_lines",
+                "row_count": 0
+            },
+            {
+                "table": "purchase_orders",
+                "row_count": 0
+            },
+            {
+                "table": "purchase_request_approvals",
+                "row_count": 0
+            },
+            {
+                "table": "purchase_request_lines",
+                "row_count": 0
+            },
+            {
+                "table": "purchase_requests",
+                "row_count": 0
+            },
+            {
+                "table": "radiology_reports",
+                "row_count": 0
+            },
+            {
+                "table": "reaction_reports",
+                "row_count": 0
+            },
+            {
+                "table": "realtime_event_receipts",
+                "row_count": 0
+            },
+            {
+                "table": "realtime_events",
+                "row_count": 0
+            },
+            {
+                "table": "receipts",
+                "row_count": 0
+            },
+            {
+                "table": "recovery_records",
+                "row_count": 0
+            },
+            {
+                "table": "refresh_tokens",
+                "row_count": 24
+            },
+            {
+                "table": "refund_requests",
+                "row_count": 0
+            },
+            {
+                "table": "report_acknowledgments",
+                "row_count": 0
+            },
+            {
+                "table": "report_lineage_entries",
+                "row_count": 0
+            },
+            {
+                "table": "report_runs",
+                "row_count": 0
+            },
+            {
+                "table": "report_schedules",
+                "row_count": 0
+            },
+            {
+                "table": "report_subscriptions",
+                "row_count": 0
+            },
+            {
+                "table": "report_template_versions",
+                "row_count": 0
+            },
+            {
+                "table": "report_templates",
+                "row_count": 0
+            },
+            {
+                "table": "role_assignments",
+                "row_count": 0
+            },
+            {
+                "table": "role_permissions",
+                "row_count": 664
+            },
+            {
+                "table": "roles",
+                "row_count": 15
+            },
+            {
+                "table": "rooms",
+                "row_count": 0
+            },
+            {
+                "table": "rosters",
+                "row_count": 0
+            },
+            {
+                "table": "rpm_alerts",
+                "row_count": 0
+            },
+            {
+                "table": "rpm_devices",
+                "row_count": 0
+            },
+            {
+                "table": "rpm_readings",
+                "row_count": 0
+            },
+            {
+                "table": "rt_dose_constraints",
+                "row_count": 0
+            },
+            {
+                "table": "rt_fraction_sessions",
+                "row_count": 0
+            },
+            {
+                "table": "rt_fractions",
+                "row_count": 0
+            },
+            {
+                "table": "rt_plan_approvals",
+                "row_count": 0
+            },
+            {
+                "table": "rt_structures",
+                "row_count": 0
+            },
+            {
+                "table": "rt_treatment_courses",
+                "row_count": 0
+            },
+            {
+                "table": "rt_treatment_machines",
+                "row_count": 0
+            },
+            {
+                "table": "rt_treatment_plans",
+                "row_count": 0
+            },
+            {
+                "table": "schedule_exceptions",
+                "row_count": 0
+            },
+            {
+                "table": "schedule_templates",
+                "row_count": 0
+            },
+            {
+                "table": "secure_messages",
+                "row_count": 0
+            },
+            {
+                "table": "services",
+                "row_count": 0
+            },
+            {
+                "table": "settlements",
+                "row_count": 0
+            },
+            {
+                "table": "shift_handovers",
+                "row_count": 0
+            },
+            {
+                "table": "shift_templates",
+                "row_count": 0
+            },
+            {
+                "table": "specimens",
+                "row_count": 0
+            },
+            {
+                "table": "staff",
+                "row_count": 200
+            },
+            {
+                "table": "stock_batches",
+                "row_count": 0
+            },
+            {
+                "table": "studies",
+                "row_count": 0
+            },
+            {
+                "table": "support_sessions",
+                "row_count": 0
+            },
+            {
+                "table": "surgical_events",
+                "row_count": 0
+            },
+            {
+                "table": "surgical_team_members",
+                "row_count": 0
+            },
+            {
+                "table": "teleconsults",
+                "row_count": 0
+            },
+            {
+                "table": "theatres",
+                "row_count": 0
+            },
+            {
+                "table": "token_counters",
+                "row_count": 0
+            },
+            {
+                "table": "toxicity_records",
+                "row_count": 0
+            },
+            {
+                "table": "transfer_events",
+                "row_count": 0
+            },
+            {
+                "table": "transfusions",
+                "row_count": 0
+            },
+            {
+                "table": "treatment_cycles",
+                "row_count": 0
+            },
+            {
+                "table": "treatment_medications",
+                "row_count": 0
+            },
+            {
+                "table": "treatment_plans",
+                "row_count": 0
+            },
+            {
+                "table": "triage_assignments",
+                "row_count": 0
+            },
+            {
+                "table": "triage_scales",
+                "row_count": 0
+            },
+            {
+                "table": "users",
+                "row_count": 7
+            },
+            {
+                "table": "vendor_contracts",
+                "row_count": 0
+            },
+            {
+                "table": "vendors",
+                "row_count": 0
+            },
+            {
+                "table": "video_sessions",
+                "row_count": 0
+            },
+            {
+                "table": "wards",
+                "row_count": 0
+            },
+            {
+                "table": "warning_scores",
+                "row_count": 0
+            },
+            {
+                "table": "work_orders",
+                "row_count": 0
+            }
+        ]
+    },
+    "checks": {
+        "dump_file_exists": true,
+        "dump_file_size_gt_zero": true,
+        "checksum_file_exists": true,
+        "manifest_complete": true
+    }
+}
