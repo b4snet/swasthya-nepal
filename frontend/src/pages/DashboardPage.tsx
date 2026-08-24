@@ -6,6 +6,7 @@ import {
   Users, Calendar, Clock, Bed, DollarSign, Pill, TestTube,
   Image, AlertTriangle, Stethoscope, CheckCircle, FileText,
   TrendingUp, TrendingDown, Building2, Globe,
+  ArrowRight, Siren, ClipboardList, ScanLine, Landmark, Boxes,
 } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar,
@@ -66,6 +67,136 @@ function formatTime(dateStr: string) {
 
 
 
+/* ── Workspace Quick Actions (role-specific) ── */
+interface WorkspaceLink {
+  label: string;
+  to: string;
+  icon: any;
+  color: string;
+}
+
+const ROLE_WORKSPACES: Array<{ roles: string[]; title: string; description: string; links: WorkspaceLink[] }> = [
+  {
+    roles: ['doctor'],
+    title: 'Clinical Workspace',
+    description: 'Your patients, encounters, and clinical tasks',
+    links: [
+      { label: 'Patients', to: '/clinical/patients', icon: Users, color: BLUE },
+      { label: 'Appointments', to: '/clinical/appointments', icon: Calendar, color: GREEN },
+      { label: 'Encounters', to: '/clinical/encounters', icon: Stethoscope, color: AMBER },
+      { label: 'Queue', to: '/clinical/queue', icon: ClipboardList, color: '#8b5cf6' },
+    ],
+  },
+  {
+    roles: ['nurse'],
+    title: 'Nursing Workspace',
+    description: 'Patient care, vitals, and nursing tasks',
+    links: [
+      { label: 'Nursing', to: '/nursing', icon: ClipboardList, color: BLUE },
+      { label: 'Patients', to: '/clinical/patients', icon: Users, color: GREEN },
+      { label: 'Queue', to: '/clinical/queue', icon: Clock, color: AMBER },
+    ],
+  },
+  {
+    roles: ['pharmacist'],
+    title: 'Pharmacy Workspace',
+    description: 'Prescriptions, dispensing, and inventory',
+    links: [
+      { label: 'Prescriptions', to: '/pharmacy/prescriptions', icon: Pill, color: BLUE },
+      { label: 'Dispensing', to: '/pharmacy/dispensing', icon: Pill, color: GREEN },
+      { label: 'Inventory', to: '/pharmacy/inventory', icon: Boxes, color: AMBER },
+    ],
+  },
+  {
+    roles: ['lab_technician', 'lab_supervisor'],
+    title: 'Laboratory Workspace',
+    description: 'Lab orders, results, and specimens',
+    links: [
+      { label: 'Orders', to: '/laboratory/orders', icon: TestTube, color: BLUE },
+      { label: 'Reports', to: '/laboratory/reports', icon: FileText, color: GREEN },
+    ],
+  },
+  {
+    roles: ['radiographer', 'radiologist'],
+    title: 'Radiology Workspace',
+    description: 'Imaging studies and reports',
+    links: [
+      { label: 'Worklist', to: '/radiology', icon: ScanLine, color: BLUE },
+    ],
+  },
+  {
+    roles: ['billing_clerk'],
+    title: 'Finance Workspace',
+    description: 'Billing, collections, and financial operations',
+    links: [
+      { label: 'Billing', to: '/finance/billing', icon: DollarSign, color: BLUE },
+      { label: 'Revenue Cycle', to: '/finance/revenue', icon: TrendingUp, color: GREEN },
+    ],
+  },
+  {
+    roles: ['hospital_admin', 'branch_manager'],
+    title: 'Hospital Operations',
+    description: 'Facility management and operations',
+    links: [
+      { label: 'Hospital Dashboard', to: '/hospital', icon: Building2, color: BLUE },
+      { label: 'Emergency', to: '/emergency', icon: Siren, color: RED },
+      { label: 'Beds', to: '/beds', icon: Bed, color: GREEN },
+    ],
+  },
+  {
+    roles: ['receptionist'],
+    title: 'Front Desk',
+    description: 'Patient registration and appointment management',
+    links: [
+      { label: 'Patients', to: '/clinical/patients', icon: Users, color: BLUE },
+      { label: 'Appointments', to: '/clinical/appointments', icon: Calendar, color: GREEN },
+      { label: 'Queue', to: '/clinical/queue', icon: ClipboardList, color: AMBER },
+    ],
+  },
+  {
+    roles: ['superadmin', 'org_admin', 'org_finance', 'support_agent'],
+    title: 'Administration',
+    description: 'Platform and organization management',
+    links: [
+      { label: 'Administration', to: '/admin', icon: Building2, color: BLUE },
+      { label: 'Nepal Finance', to: '/finance/nepal-admin', icon: Landmark, color: GREEN },
+      { label: 'Reports', to: '/reports', icon: FileText, color: AMBER },
+    ],
+  },
+];
+
+function WorkspaceQuickActions({ roles }: { roles: string[] }) {
+  const workspace = ROLE_WORKSPACES.find((w) => w.roles.some((r) => roles.includes(r)));
+  if (!workspace) return null;
+
+  return (
+    <div className="dash-section dash-animate">
+      <div className="dash-section__head">
+        <h2 className="dash-section__title">{workspace.title}</h2>
+        <p className="dash-section__sub">{workspace.description}</p>
+      </div>
+      <div className="dash-hero-kpis" style={{ gridTemplateColumns: `repeat(${Math.min(workspace.links.length, 4)}, 1fr)` }}>
+        {workspace.links.map((link) => (
+          <Link
+            key={link.to}
+            to={link.to}
+            className="dash-hero-kpi dash-hero-kpi--link"
+            style={{ textDecoration: 'none', color: 'inherit' }}
+          >
+            <div className="dash-hero-kpi__top">
+              <span className="dash-hero-kpi__label" style={{ fontSize: 13, fontWeight: 600 }}>{link.label}</span>
+              <span className={`dash-hero-kpi__icon dash-hero-kpi__icon--${link.color === BLUE ? 'blue' : link.color === GREEN ? 'green' : link.color === RED ? 'red' : link.color === AMBER ? 'amber' : 'blue'}`}><link.icon size={16} /></span>
+            </div>
+            <span className="dash-hero-kpi__trend" style={{ color: 'var(--blue-600)', fontSize: 12, marginTop: 4 }}>
+              Open <ArrowRight size={12} />
+            </span>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 const EMPTY_CHARTS: ChartData = {
   patientVolume: [],
   appointmentVolume: [],
@@ -83,7 +214,7 @@ const EMPTY_CHARTS: ChartData = {
 
 /* ── Page ── */
 export function DashboardPage() {
-  const { selectedFacilityId, selectedFacilityName } = useTenant();
+  const { selectedFacilityId, selectedFacilityName, roles } = useTenant();
   const access = useAccess();
   const fac = selectedFacilityId;
   const isPlatform = !fac; // Show platform overview when no facility is selected
@@ -400,6 +531,11 @@ export function DashboardPage() {
             <QueueStat label="In consultation" value={m.inConsultation} sub="with provider" color="blue" />
           </div>
         </div>
+      )}
+
+      {/* ═══ MY WORKSPACE ═══ */}
+      {!isPlatform && (
+        <WorkspaceQuickActions roles={roles} />
       )}
 
       {/* ═══ CHARTS ═══ */}
