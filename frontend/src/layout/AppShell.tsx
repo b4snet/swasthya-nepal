@@ -11,11 +11,12 @@ import {
   LogOut,
   Globe,
   Building2,
-  ChevronRight,
+  ChevronDown,
   MoreHorizontal,
   Bell,
   Search,
-  LayoutDashboard,
+  PanelLeftClose,
+  PanelLeft,
 } from 'lucide-react';
 import {
   MODULES,
@@ -209,94 +210,133 @@ function SidebarUser() {
   );
 }
 
-// ── Module icon rail (leftmost narrow column) ──
-function ModuleRail({
+// ── Single expandable sidebar ──
+function Sidebar({
   modules,
-  dashboardModule,
-  activeModule,
-  onSelect,
+  pathname,
+  collapsed,
+  onToggleCollapse,
 }: {
   modules: NavModule[];
-  dashboardModule: NavModule | undefined;
-  activeModule: NavModule | undefined;
-  onSelect: (m: NavModule) => void;
-}) {
-  const { t } = useI18n();
-  const location = useLocation();
-  const isDashboardActive = dashboardModule && (
-    location.pathname === dashboardModule.routePrefix ||
-    location.pathname === dashboardModule.defaultTo
-  );
-  return (
-    <nav className="module-rail" role="navigation" aria-label="Modules">
-      {/* Global Dashboard — always first, always visible */}
-      {dashboardModule && (
-        <button
-          type="button"
-          className={`module-rail__item module-rail__item--dashboard ${isDashboardActive ? 'module-rail__item--active' : ''}`}
-          onClick={() => onSelect(dashboardModule)}
-          title={t(dashboardModule.labelKey)}
-          aria-label={t(dashboardModule.labelKey)}
-          aria-current={isDashboardActive ? 'page' : undefined}
-          data-testid="module-dashboard"
-        >
-          <dashboardModule.Icon size={20} strokeWidth={1.75} />
-        </button>
-      )}
-      {/* Separator between Dashboard and modules */}
-      {dashboardModule && <div className="module-rail__separator" />}
-      {/* Feature modules */}
-      {modules.map((m) => (
-        <button
-          key={m.key}
-          type="button"
-          className={`module-rail__item ${activeModule?.key === m.key ? 'module-rail__item--active' : ''}`}
-          onClick={() => onSelect(m)}
-          title={t(m.labelKey)}
-          aria-label={t(m.labelKey)}
-          data-testid={`module-${m.key}`}
-        >
-          <m.Icon size={20} strokeWidth={1.75} />
-        </button>
-      ))}
-    </nav>
-  );
-}
-
-// ── Contextual sub-navigation panel ──
-function SubNav({
-  module: mod,
-  pathname,
-}: {
-  module: NavModule;
   pathname: string;
+  collapsed: boolean;
+  onToggleCollapse: () => void;
 }) {
   const { t } = useI18n();
+  const navigate = useNavigate();
+  const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
+
+  // Auto-expand the module whose route is active
+  useEffect(() => {
+    const active = getActiveModule(pathname);
+    if (active && active.children.length > 0) {
+      setExpandedKeys((prev) => {
+        if (prev.has(active.key)) return prev;
+        return new Set(prev).add(active.key);
+      });
+    }
+  }, [pathname]);
+
+  const toggleExpand = (key: string) => {
+    setExpandedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const handleModuleClick = (m: NavModule) => {
+    if (m.children.length === 0) {
+      navigate(m.defaultTo);
+    } else {
+      toggleExpand(m.key);
+      // Also navigate to the module's default if not already there
+      if (pathname === '/' || (!pathname.startsWith(m.routePrefix))) {
+        navigate(m.defaultTo);
+      }
+    }
+  };
+
+  const isActive = (m: NavModule) =>
+    pathname === m.routePrefix || pathname.startsWith(m.routePrefix + '/');
+
+  const isChildActive = (m: NavModule) =>
+    m.children.some((c) => pathname === c.to || pathname.startsWith(c.to + '/'));
+
   return (
-    <div className="subnav" role="navigation" aria-label={t(mod.labelKey)}>
-      <div className="subnav__header">
-        <mod.Icon size={16} strokeWidth={1.75} />
-        <span className="subnav__title">{t(mod.labelKey)}</span>
-      </div>
-      <div className="subnav__items">
-        {mod.children.map((child) => {
-          const isActive =
-            pathname === child.to ||
-            (child.to !== mod.defaultTo && pathname.startsWith(child.to + '/'));
+    <aside className={`sidebar ${collapsed ? 'sidebar--collapsed' : ''}`} role="navigation" aria-label="Main navigation">
+      <div className="sidebar__items">
+        {modules.map((m) => {
+          const active = isActive(m);
+          const childActive = isChildActive(m);
+          const expanded = expandedKeys.has(m.key);
+          const hasChildren = m.children.length > 0;
+
           return (
-            <NavLink
-              key={child.key}
-              to={child.to}
-              className={`subnav__link ${isActive ? 'subnav__link--active' : ''}`}
-              data-testid={`subnav-${child.key}`}
-            >
-              <child.Icon size={15} strokeWidth={1.75} />
-              <span>{t(child.labelKey)}</span>
-            </NavLink>
+            <div key={m.key} className={`sidebar__group ${active ? 'sidebar__group--active' : ''} ${childActive ? 'sidebar__group--child-active' : ''}`}>
+              <button
+                type="button"
+                className={`sidebar__item ${active ? 'sidebar__item--active' : ''}`}
+                onClick={() => handleModuleClick(m)}
+                title={t(m.labelKey)}
+                aria-label={t(m.labelKey)}
+                aria-expanded={hasChildren ? expanded : undefined}
+                aria-current={active && !hasChildren ? 'page' : undefined}
+                data-testid={`sidebar-${m.key}`}
+              >
+                <span className="sidebar__icon">
+                  <m.Icon size={18} strokeWidth={1.75} />
+                </span>
+                {!collapsed && (
+                  <>
+                    <span className="sidebar__label">{t(m.labelKey)}</span>
+                    {hasChildren && (
+                      <ChevronDown
+                        size={14}
+                        className={`sidebar__chevron ${expanded ? 'sidebar__chevron--open' : ''}`}
+                      />
+                    )}
+                  </>
+                )}
+              </button>
+
+              {/* Children expand below the parent */}
+              {!collapsed && hasChildren && expanded && (
+                <div className="sidebar__children">
+                  {m.children.map((child) => {
+                    const childIsCurrent =
+                      pathname === child.to ||
+                      (child.to !== m.defaultTo && pathname.startsWith(child.to + '/'));
+                    return (
+                      <NavLink
+                        key={child.key}
+                        to={child.to}
+                        className={`sidebar__child ${childIsCurrent ? 'sidebar__child--active' : ''}`}
+                        data-testid={`sidebar-${child.key}`}
+                      >
+                        {t(child.labelKey)}
+                      </NavLink>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           );
         })}
       </div>
-    </div>
+
+      {/* Collapse toggle */}
+      <button
+        type="button"
+        className="sidebar__collapse-btn"
+        onClick={onToggleCollapse}
+        title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+      >
+        {collapsed ? <PanelLeft size={18} /> : <PanelLeftClose size={18} />}
+      </button>
+    </aside>
   );
 }
 
@@ -329,11 +369,11 @@ function Breadcrumbs({
   return (
     <nav className="breadcrumbs" aria-label="Breadcrumb">
       <span className="breadcrumbs__item breadcrumbs__item--muted">Swasthya</span>
-      <ChevronRight size={12} className="breadcrumbs__sep" />
+      <span className="breadcrumbs__sep">/</span>
       <span className="breadcrumbs__item">{t(activeModule.labelKey)}</span>
       {activeChild && activeChild.to !== activeModule.defaultTo && (
         <>
-          <ChevronRight size={12} className="breadcrumbs__sep" />
+          <span className="breadcrumbs__sep">/</span>
           <span className="breadcrumbs__item breadcrumbs__item--current">{t(activeChild.labelKey)}</span>
         </>
       )}
@@ -344,34 +384,32 @@ function Breadcrumbs({
 // ── Main shell ──
 export function AppShell() {
   const tenant = useTenant();
-  const hasRole = tenant.hasRole;
   const { t } = useI18n();
   const location = useLocation();
   const navigate = useNavigate();
   const network = useNetworkStatus();
   const access = useAccess();
 
-  const allModules = filterModulesByRole(MODULES, hasRole);
-  // Split out the persistent Dashboard item (always first) from other modules
+  const allModules = filterModulesByRole(MODULES, tenant.hasRole);
   const dashboardModule = allModules.find((m) => m.persistent);
   const visibleModules = allModules.filter((m) => !m.persistent);
   const activeModule = getActiveModule(location.pathname);
 
-  // Mobile sub-nav state
-  const [mobileSubNavOpen, setMobileSubNavOpen] = useState(false);
+  // Sidebar collapsed state
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-  // When a module is selected from the rail, navigate to its default
-  const handleModuleSelect = (m: NavModule) => {
-    navigate(m.defaultTo);
-    setMobileSubNavOpen(false);
-  };
-
-  // Mobile: bottom nav shows the 4 most important modules
+  // Mobile bottom nav
   const mobileModules = visibleModules.slice(0, 4);
   const moreModules = visibleModules.slice(4);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Build the sidebar module list: Dashboard first, then other modules
+  const sidebarModules: NavModule[] = dashboardModule
+    ? [dashboardModule, ...visibleModules]
+    : visibleModules;
 
   return (
-    <div className="app-shell app-shell--module-first">
+    <div className={`app-shell ${sidebarCollapsed ? 'app-shell--collapsed' : ''}`}>
       <CommandPalette />
       <a className="skip-link" href="#content">{t('shell.skipToContent')}</a>
 
@@ -422,18 +460,13 @@ export function AppShell() {
       </header>
 
       <div className="app-body">
-        {/* ── Module rail (icon sidebar) ── */}
-        <ModuleRail
-          modules={visibleModules}
-          dashboardModule={dashboardModule}
-          activeModule={activeModule}
-          onSelect={handleModuleSelect}
+        {/* ── Single sidebar ── */}
+        <Sidebar
+          modules={sidebarModules}
+          pathname={location.pathname}
+          collapsed={sidebarCollapsed}
+          onToggleCollapse={() => setSidebarCollapsed((v) => !v)}
         />
-
-        {/* ── Contextual sub-navigation ── */}
-        {activeModule && (
-          <SubNav module={activeModule} pathname={location.pathname} />
-        )}
 
         {/* ── Content ── */}
         <main className="app-content" id="content" tabIndex={-1}>
@@ -453,7 +486,7 @@ export function AppShell() {
             onClick={() => navigate('/dashboard')}
             aria-label={t(dashboardModule.labelKey)}
           >
-            <LayoutDashboard size={20} strokeWidth={1.75} />
+            <dashboardModule.Icon size={20} strokeWidth={1.75} />
             <span>{t(dashboardModule.labelKey)}</span>
           </button>
         )}
@@ -462,7 +495,7 @@ export function AppShell() {
             key={m.key}
             type="button"
             className={`bottom-nav__item ${activeModule?.key === m.key ? 'bottom-nav__item--active' : ''}`}
-            onClick={() => handleModuleSelect(m)}
+            onClick={() => { navigate(m.defaultTo); setMobileMenuOpen(false); }}
           >
             <m.Icon size={20} strokeWidth={1.75} />
             <span>{t(m.labelKey)}</span>
@@ -472,7 +505,7 @@ export function AppShell() {
           <button
             type="button"
             className="bottom-nav__item"
-            onClick={() => setMobileSubNavOpen((v) => !v)}
+            onClick={() => setMobileMenuOpen((v) => !v)}
           >
             <MoreHorizontal size={20} strokeWidth={1.75} />
             <span>{t('shell.more')}</span>
@@ -481,40 +514,18 @@ export function AppShell() {
       </nav>
 
       {/* ── Mobile module drawer ── */}
-      {mobileSubNavOpen && (
+      {mobileMenuOpen && (
         <div className="mobile-sheet" role="menu" aria-label="More modules">
           {moreModules.map((m) => (
             <button
               key={m.key}
               type="button"
               className="mobile-sheet__item"
-              onClick={() => handleModuleSelect(m)}
+              onClick={() => { navigate(m.defaultTo); setMobileMenuOpen(false); }}
             >
               <m.Icon size={18} strokeWidth={1.75} />
               <span>{t(m.labelKey)}</span>
-              <ChevronRight size={14} className="mobile-sheet__chevron" />
             </button>
-          ))}
-        </div>
-      )}
-
-      {/* ── Mobile sub-navigation drawer (when a module is active) ── */}
-      {activeModule && mobileSubNavOpen && (
-        <div className="mobile-sheet mobile-sheet--subnav" role="menu" aria-label={t(activeModule.labelKey)}>
-          <div className="mobile-sheet__header">
-            <activeModule.Icon size={16} strokeWidth={1.75} />
-            <span>{t(activeModule.labelKey)}</span>
-          </div>
-          {activeModule.children.map((child) => (
-            <NavLink
-              key={child.key}
-              to={child.to}
-              className="mobile-sheet__item"
-              onClick={() => setMobileSubNavOpen(false)}
-            >
-              <child.Icon size={16} strokeWidth={1.75} />
-              <span>{t(child.labelKey)}</span>
-            </NavLink>
           ))}
         </div>
       )}

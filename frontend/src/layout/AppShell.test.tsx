@@ -34,66 +34,76 @@ async function renderShell(roles: string[]) {
       </AuthProvider>
     </MemoryRouter>,
   );
-  // Wait for the app shell to render (module rail or mobile nav)
+  // Wait for the app shell to render
   await waitFor(() => {
     expect(screen.queryByTestId('user-menu-trigger')).not.toBeNull();
   });
 }
 
-const countModule = (key: string) => screen.queryAllByTestId(`module-${key}`).length;
+const countSidebar = (key: string) => screen.queryAllByTestId(`sidebar-${key}`).length;
 
-describe('AppShell module-first navigation', () => {
-  it('shows module rail with top-level modules', async () => {
+describe('AppShell sidebar navigation', () => {
+  it('shows sidebar with top-level modules', async () => {
     await renderShell(['superadmin']);
     // Core modules should always be visible
-    expect(countModule('hospital')).toBeGreaterThan(0);
-    expect(countModule('clinical')).toBeGreaterThan(0);
-    expect(countModule('pharmacy')).toBeGreaterThan(0);
-    expect(countModule('finance')).toBeGreaterThan(0);
+    expect(countSidebar('hospital')).toBeGreaterThan(0);
+    expect(countSidebar('clinical')).toBeGreaterThan(0);
+    expect(countSidebar('pharmacy')).toBeGreaterThan(0);
+    expect(countSidebar('finance')).toBeGreaterThan(0);
+    // Dashboard always present
+    expect(countSidebar('dashboard')).toBeGreaterThan(0);
   });
 
   it('hides admin module from non-admin roles', async () => {
     await renderShell(['doctor']);
-    expect(countModule('admin')).toBe(0);
+    expect(countSidebar('admin')).toBe(0);
   });
 
   it('hides hospital module from doctor role (admin-only module)', async () => {
     await renderShell(['doctor']);
-    expect(countModule('hospital')).toBe(0);
+    expect(countSidebar('hospital')).toBe(0);
   });
 
   it('hides finance module from doctor role', async () => {
     await renderShell(['doctor']);
-    expect(countModule('finance')).toBe(0);
+    expect(countSidebar('finance')).toBe(0);
   });
 
   it('shows admin module to admin roles', async () => {
     await renderShell(['superadmin']);
-    expect(countModule('admin')).toBeGreaterThan(0);
+    expect(countSidebar('admin')).toBeGreaterThan(0);
   });
 
-  it('shows queue sub-nav inside clinical module for clinical roles', async () => {
+  it('shows children below clinical module for clinical roles', async () => {
     await renderShell(['receptionist']);
-    // Click on clinical module to open its sub-nav
-    const clinicalBtn = screen.getByTestId('module-clinical');
+    // Click on clinical module to expand its children
+    const clinicalBtn = screen.getByTestId('sidebar-clinical');
     clinicalBtn.click();
-    // Wait for sub-nav to appear with Queue
+    // Wait for children to appear with Queue
     await waitFor(() => {
-      expect(screen.queryByTestId('subnav-clin-queue')).not.toBeNull();
+      expect(screen.queryByTestId('sidebar-clin-queue')).not.toBeNull();
     });
   });
 
   it('shows finance module to billing clerk', async () => {
     await renderShell(['billing_clerk']);
-    expect(countModule('finance')).toBeGreaterThan(0);
+    expect(countSidebar('finance')).toBeGreaterThan(0);
   });
 
-  it('shows billing sub-nav to billing clerk', async () => {
+  it('shows billing child under finance for billing clerk', async () => {
     await renderShell(['billing_clerk']);
-    const financeBtn = screen.getByTestId('module-finance');
+    const financeBtn = screen.getByTestId('sidebar-finance');
     financeBtn.click();
     await waitFor(() => {
-      expect(screen.queryByTestId('subnav-fin-billing')).not.toBeNull();
+      expect(screen.queryByTestId('sidebar-fin-billing')).not.toBeNull();
     });
+  });
+
+  it('dashboard is always the first sidebar item', async () => {
+    await renderShell(['doctor']);
+    const dashboardBtn = screen.getByTestId('sidebar-dashboard');
+    // Dashboard should be before all other sidebar items
+    const allSidebarItems = screen.getAllByTestId(/^sidebar-/);
+    expect(allSidebarItems[0]).toBe(dashboardBtn);
   });
 });
