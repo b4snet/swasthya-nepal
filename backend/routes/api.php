@@ -642,6 +642,8 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
     Route::post('goods-receipts/{grn}/match', [ProcurementController::class, 'matchReceipt'])
         ->middleware('authorize:procurement:receive');
     Route::get('purchase-orders/{order}/goods-receipts', [ProcurementController::class, 'indexReceipts'])
+    Route::get('prescriptions', [PharmacyController::class, 'index'])
+
         ->middleware('authorize:procurement:view');
     Route::get('prescriptions/{prescription}', [PharmacyController::class, 'show'])
         ->middleware('authorize:pharmacy:view');

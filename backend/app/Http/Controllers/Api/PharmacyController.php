@@ -47,6 +47,64 @@ final class PharmacyController extends Controller
     ) {}
 
     /**
+     * GET /prescriptions — pharmacy worklist: prescriptions filtered by status,
+     * with patient name, prescriber, line count, and facility stock info.
+     */
+    public function index(Request $request): JsonResponse
+    {
+        $context = TenantContext::current();
+        $facilityId = $request->input('facilityId') ?? $context->facility?->getKey();
+        $status = $request->input('status');
+        $search = $request->input('search');
+        $perPage = min((int) $request->input('perPage', 50), 100);
+
+        $query = Prescription::query()
+            ->where('tenant_id', $context->tenantId)
+            ->with('lines.medication:id,generic_name,brand_name,strength,form,unit,is_controlled,price_minor,currency');
+
+        if ($facilityId !== null) {
+            $query->whereHas('encounter', fn ($q) => $q->where('facility_id', $facilityId));
+        }
+
+        if ($status !== null && $status !== '') {
+            $query->where('status', $status);
+        }
+
+        if ($search !== null && $search !== '') {
+            $searchTerm = '%'.mb_strtolower($search).'%';
+            $query->where(function ($q) use ($searchTerm) {
+                $q->whereHas('patient', fn ($pq) => $pq->whereRaw('LOWER(name) LIKE ?', [$searchTerm]))
+                    ->orWhereHas('patient', fn ($pq) => $pq->whereRaw('LOWER(mrn) LIKE ?', [$searchTerm]))
+                    ->orWhereHas('prescriber', fn ($sq) => $sq->whereRaw('LOWER(first_name) LIKE ? OR LOWER(last_name) LIKE ?', [$searchTerm, $searchTerm]));
+            });
+        }
+
+        $prescriptions = $query->orderByDesc('created_at')
+            ->paginate($perPage)
+            ->through(function (Prescription $p) use ($facilityId): array {
+                $patient = $p->patient;
+                $prescriber = $p->prescriber;
+
+                return [
+                    'id' => $p->getKey(),
+                    'patientId' => $p->patient_id,
+                    'patientName' => $patient?->name,
+                    'patientMrn' => $patient?->mrn,
+                    'encounterId' => $p->encounter_id,
+                    'prescriberName' => $prescriber ? trim(($prescriber->first_name ?? '').' '.($prescriber->last_name ?? '')) : null,
+                    'status' => $p->status,
+                    'lineCount' => $p->lines->count(),
+                    'orderedLineCount' => $p->lines->where('status', PrescriptionLine::STATUS_ORDERED)->count(),
+                    'dispensedLineCount' => $p->lines->where('status', PrescriptionLine::STATUS_DISPENSED)->count(),
+                    'verifiedAt' => $p->verified_at?->toIso8601String(),
+                    'createdAt' => $p->created_at?->toIso8601String(),
+                ];
+            });
+
+        return Envelope::success(data: $prescriptions, request: $request);
+    }
+
+    /**
      * GET /prescriptions/{prescription} — the pharmacy's view: header, lines
      * with their medication, and the current on-hand quantity at the
      * facility (the stock-check step of the workflow).

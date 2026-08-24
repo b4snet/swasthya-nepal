@@ -1037,6 +1037,17 @@ export const radiologyApi = {
    ------------------------------------------------------------------ */
 
 export const pharmacyApi = {
+  list: (params: { status?: string; search?: string; facilityId?: string | null; perPage?: number } = {}) => {
+    const qs = new URLSearchParams();
+    if (params.status) qs.set('status', params.status);
+    if (params.search) qs.set('search', params.search);
+    if (params.facilityId) qs.set('facilityId', params.facilityId);
+    if (params.perPage) qs.set('perPage', String(params.perPage));
+    const q = qs.toString();
+    return api.request<{ data: PharmacyPrescription[]; current_page: number; last_page: number; per_page: number; total: number }>(
+      `/api/v1/prescriptions?${q}`,
+    );
+  },
   showPrescription: (id: string, facilityId?: string | null) =>
     api.request<PharmacyPrescription>(`/api/v1/prescriptions/${id}`, opt(facilityId)),
 

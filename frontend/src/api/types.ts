@@ -697,6 +697,14 @@ export interface PharmacyPrescription {
   verifiedAt: string | null;
   lockVersion: number;
   lines: PharmacyPrescriptionLine[];
+  /** List-only fields (present from index endpoint, absent from show) */
+  patientName?: string;
+  patientMrn?: string;
+  prescriberName?: string;
+  lineCount?: number;
+  orderedLineCount?: number;
+  dispensedLineCount?: number;
+  createdAt?: string;
 }
 
 /* ------------------------------------------------------------------

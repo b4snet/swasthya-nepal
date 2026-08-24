@@ -116,3 +116,157 @@
     width: 100%;
   }
 }
+
+/* ====================================================================
+   Pharmacy Workspace — census, worklist, detail dialog
+   ==================================================================== */
+
+/* ── Page header ── */
+.pharmacy-page .page__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--sp-6);
+}
+
+.pharmacy-actions { display: flex; gap: var(--sp-3); }
+
+/* ── Census cards ── */
+.pharmacy-census {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-6);
+}
+
+.pharmacy-census-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--sp-5) var(--sp-4);
+  background: var(--paper);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-lg);
+  text-align: center;
+  transition: border-color 0.15s;
+}
+
+.pharmacy-census-card:hover { border-color: var(--blue-300); }
+
+.pharmacy-census-value {
+  font-size: var(--fs-h2);
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.2;
+}
+
+.pharmacy-census-label {
+  font-size: var(--fs-caption);
+  color: var(--ink-muted);
+  margin-top: var(--sp-1);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.pharmacy-census-card--pending .pharmacy-census-value { color: var(--semantic-warning); }
+.pharmacy-census-card--verified .pharmacy-census-value { color: var(--semantic-info); }
+.pharmacy-census-card--dispensed .pharmacy-census-value { color: var(--semantic-success); }
+
+/* ── Filters ── */
+.pharmacy-filters {
+  display: flex;
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-4);
+}
+
+/* ── Section card ── */
+.pharmacy-section-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+/* ── Table enhancements ── */
+.pharmacy-table .pharmacy-row { cursor: default; }
+.pharmacy-table .pharmacy-row:hover { background: var(--tint-blue); }
+
+.pharmacy-patient-link {
+  font-weight: 600;
+  color: var(--blue-600);
+  text-decoration: none;
+}
+.pharmacy-patient-link:hover { text-decoration: underline; }
+
+.pharmacy-mrn {
+  display: block;
+  font-size: var(--fs-caption);
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+}
+
+.pharmacy-time {
+  font-size: var(--fs-caption);
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+
+.pharmacy-row-actions {
+  display: flex;
+  gap: var(--sp-2);
+}
+
+/* ── Detail dialog ── */
+.pharma-detail-header {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-5);
+  padding-bottom: var(--sp-4);
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.pharma-detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.pharma-detail-label {
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* ── Lines table ── */
+.pharma-lines-table { margin-top: var(--sp-3); }
+
+.pharma-med-name { font-weight: 600; color: var(--ink); }
+.pharma-med-strength { font-size: var(--fs-caption); color: var(--ink-muted); margin-left: var(--sp-2); }
+
+.pharma-batch-tag {
+  display: inline-block;
+  margin-left: var(--sp-2);
+  padding: 1px 6px;
+  font-size: 11px;
+  background: var(--tint-info);
+  color: var(--semantic-info);
+  border-radius: var(--radius-sm);
+}
+
+.pharma-dual-tag {
+  display: inline-block;
+  margin-left: var(--sp-2);
+  padding: 1px 6px;
+  font-size: 11px;
+  background: #fef3c7;
+  color: #d97706;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+}
+
+/* ── Responsive ── */
+@media (max-width: 767px) {
+  .pharmacy-census { grid-template-columns: repeat(2, 1fr); }
+  .pharma-detail-header { grid-template-columns: 1fr; }
+}
