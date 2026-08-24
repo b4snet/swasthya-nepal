@@ -46,10 +46,10 @@ describe('AppShell sidebar navigation', () => {
   it('shows sidebar with top-level modules', async () => {
     await renderShell(['superadmin']);
     // Core modules should always be visible
-    expect(countSidebar('hospital')).toBeGreaterThan(0);
     expect(countSidebar('clinical')).toBeGreaterThan(0);
     expect(countSidebar('pharmacy')).toBeGreaterThan(0);
     expect(countSidebar('finance')).toBeGreaterThan(0);
+    expect(countSidebar('admin')).toBeGreaterThan(0);
     // Dashboard always present
     expect(countSidebar('dashboard')).toBeGreaterThan(0);
   });
@@ -59,9 +59,9 @@ describe('AppShell sidebar navigation', () => {
     expect(countSidebar('admin')).toBe(0);
   });
 
-  it('hides hospital module from doctor role (admin-only module)', async () => {
+  it('hides admin module from doctor role (admin-only module)', async () => {
     await renderShell(['doctor']);
-    expect(countSidebar('hospital')).toBe(0);
+    expect(countSidebar('admin')).toBe(0);
   });
 
   it('hides finance module from doctor role', async () => {

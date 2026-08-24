@@ -43,30 +43,30 @@ async function renderLocalizedShell(roles: string[]) {
     </MemoryRouter>,
   );
   await waitFor(() => {
-    expect(screen.queryByTestId('sidebar-hospital')).not.toBeNull();
+    expect(screen.queryByTestId('sidebar-admin')).not.toBeNull();
   });
 }
 
 describe('localized app shell (Phase 22)', () => {
   it('renders the shell in English by default', async () => {
-    await renderLocalizedShell(['receptionist']);
+    await renderLocalizedShell(['hospital_admin']);
     // Module rail renders with English labels
-    expect(screen.getByTestId('sidebar-hospital')).toHaveAttribute('aria-label', 'Hospital');
+    expect(screen.getByTestId('sidebar-admin')).toHaveAttribute('aria-label', 'Administration');
     expect(screen.getByTestId('sidebar-clinical')).toHaveAttribute('aria-label', 'Clinical');
     expect(document.documentElement.lang).toBe('en');
   });
 
   it('toggles the whole shell into Nepali Devanagari and back', async () => {
     const user = userEvent.setup();
-    await renderLocalizedShell(['receptionist']);
+    await renderLocalizedShell(['hospital_admin']);
     await user.click(screen.getByTestId('lang-toggle'));
     expect(document.documentElement.lang).toBe('ne');
     // Module labels are now in Nepali
-    expect(screen.getByTestId('sidebar-hospital')).toHaveAttribute('aria-label', 'अस्पताल');
+    expect(screen.getByTestId('sidebar-admin')).toHaveAttribute('aria-label', 'प्रशासन');
     expect(screen.getByTestId('sidebar-clinical')).toHaveAttribute('aria-label', 'क्लिनिकल');
     expect(screen.getByRole('button', { name: 'साइन आउट' })).toBeTruthy();
     await user.click(screen.getByTestId('lang-toggle'));
     expect(document.documentElement.lang).toBe('en');
-    expect(screen.getByTestId('sidebar-hospital')).toHaveAttribute('aria-label', 'Hospital');
+    expect(screen.getByTestId('sidebar-admin')).toHaveAttribute('aria-label', 'Administration');
   });
 });
