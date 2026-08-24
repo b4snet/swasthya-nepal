@@ -410,3 +410,4 @@
     width: 100%;
   }
 }
+.appts__slot-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:6px;margin-top:6px}.appts__slot{padding:8px 4px;border:1px solid var(--border);border-radius:6px;background:var(--white);font-size:13px;font-weight:500;cursor:pointer;text-align:center;transition:all .15s}.appts__slot:hover{border-color:var(--blue-300);background:var(--blue-50)}.appts__slot--selected{border-color:var(--blue-500);background:var(--blue-100);color:var(--blue-700)}
