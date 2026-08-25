@@ -458,6 +458,17 @@ final class EncounterController extends Controller
                             continue;
                         }
 
+                        // Cross-module guard: skip if a charge was already posted
+                        // for this line (e.g. pharmacy dispensed it first).
+                        $lineAlreadyCharged = Charge::query()
+                            ->where('tenant_id', $encounter->tenant_id)
+                            ->where('prescription_line_id', $line->getKey())
+                            ->where('status', Charge::STATUS_POSTED)
+                            ->exists();
+                        if ($lineAlreadyCharged) {
+                            continue;
+                        }
+
                         $quantity = max(1, (int) ($line->quantity_minor ?? 1));
                         Charge::query()->create([
                             'tenant_id' => $encounter->tenant_id,

@@ -281,23 +281,34 @@ final class PharmacyController extends Controller
                     $controlledDualPending = true;
                 }
 
-                Charge::query()->create([
-                    'tenant_id' => $prescription->tenant_id,
-                    'facility_id' => $encounter->facility_id,
-                    'patient_id' => $prescription->patient_id,
-                    'source_type' => Charge::SOURCE_PRESCRIPTION,
-                    'encounter_id' => $encounter->getKey(),
-                    'prescription_id' => $prescription->getKey(),
-                    // The line linkage a return traces back to (slice 8).
-                    'prescription_line_id' => $line->getKey(),
-                    'description' => $medication->generic_name.' ('.$medication->strength.') × '.$quantity,
-                    'amount_minor' => $medication->price_minor * $quantity,
-                    'currency' => $medication->currency,
-                    ...Charge::resolveTaxFields($encounter->facility_id, 'pharmacy'),
-                    'status' => Charge::STATUS_POSTED,
-                    'charged_at' => now(),
-                    'created_by' => $context->user?->getKey(),
-                ]);
+                // Cross-module guard: skip if a charge was already posted for this
+                // line (e.g. encounter invoicing pre-created it). Prevents double
+                // billing at the pharmacy→billing boundary.
+                $existingCharge = Charge::query()
+                    ->where('tenant_id', $prescription->tenant_id)
+                    ->where('prescription_line_id', $line->getKey())
+                    ->where('status', Charge::STATUS_POSTED)
+                    ->exists();
+
+                if (! $existingCharge) {
+                    Charge::query()->create([
+                        'tenant_id' => $prescription->tenant_id,
+                        'facility_id' => $encounter->facility_id,
+                        'patient_id' => $prescription->patient_id,
+                        'source_type' => Charge::SOURCE_PRESCRIPTION,
+                        'encounter_id' => $encounter->getKey(),
+                        'prescription_id' => $prescription->getKey(),
+                        // The line linkage a return traces back to (slice 8).
+                        'prescription_line_id' => $line->getKey(),
+                        'description' => $medication->generic_name.' ('.$medication->strength.') × '.$quantity,
+                        'amount_minor' => $medication->price_minor * $quantity,
+                        'currency' => $medication->currency,
+                        ...Charge::resolveTaxFields($encounter->facility_id, 'pharmacy'),
+                        'status' => Charge::STATUS_POSTED,
+                        'charged_at' => now(),
+                        'created_by' => $context->user?->getKey(),
+                    ]);
+                }
 
                 $totalMinor += $medication->price_minor * $quantity;
             }

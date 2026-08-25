@@ -68,7 +68,7 @@ export function ReferralsPage() {
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
     return (
-      r.patient?.full_name?.toLowerCase().includes(q) ||
+      r.patient?.fullName?.toLowerCase().includes(q) ||
       r.patient?.mrn?.toLowerCase().includes(q) ||
       r.reason?.toLowerCase().includes(q) ||
       r.receiving_facility_name?.toLowerCase().includes(q) ||
@@ -148,7 +148,7 @@ export function ReferralsPage() {
                   <tr key={r.id}>
                     <td>
                       <div className="referral-patient">
-                        <strong>{r.patient?.full_name ?? 'Unknown'}</strong>
+                        <strong>{r.patient?.fullName ?? 'Unknown'}</strong>
                         <span className="text-muted">{r.patient?.mrn}</span>
                       </div>
                     </td>
@@ -158,10 +158,10 @@ export function ReferralsPage() {
                         {r.specialty && <span className="text-muted">{r.specialty}</span>}
                       </div>
                     </td>
-                    <td>{r.receiving_facility_name || r.receivingStaff?.full_name || '—'}</td>
-                    <td><span className={`badge ${URGENCY_BADGE[r.urgency] ?? 'badge-neutral'}`}>{r.urgency}</span></td>
+                    <td>{r.receiving_facility_name || r.receivingStaff?.fullName || '—'}</td>
+                    <td><span className={`badge ${URGENCY_BADGE[r.urgency ?? ''] ?? 'badge-neutral'}`}>{r.urgency}</span></td>
                     <td><StatusChip tone={STATUS_COLOR[r.status] ?? 'neutral'} label={r.status} /></td>
-                    <td className="text-muted">{new Date(r.created_at).toLocaleDateString()}</td>
+                    <td className="text-muted">{new Date(r.created_at ?? r.createdAt ?? "").toLocaleDateString()}</td>
                     <td>
                       <div className="referral-actions">
                         {r.status === 'pending' && (

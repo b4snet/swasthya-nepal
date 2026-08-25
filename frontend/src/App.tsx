@@ -90,6 +90,7 @@ const AdminSettingsPage = lazy(() => import('./pages/admin/AdminSettingsPage').t
 const AdminBrandingPage = lazy(() => import('./pages/admin/AdminBrandingPage').then(m => ({ default: m.AdminBrandingPage })));
 const AdminConsolePage = lazy(() => import('./pages/admin/AdminConsolePage').then(m => ({ default: m.AdminConsolePage })));
 
+const CriticalValuesPage = lazy(() => import('./pages/CriticalValuesPage').then(m => ({ default: m.CriticalValuesPage })));
 function FullScreenSpinner({ label }: { label: string }) {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -210,6 +211,7 @@ export function App() {
               <Route path="/laboratory" element={<LazySuspense><LaboratoryDashboard /></LazySuspense>} />
               <Route path="/laboratory/orders" element={<LazySuspense><LabOrdersPage /></LazySuspense>} />
               <Route path="/laboratory/reports" element={<LazySuspense><LabOrdersPage /></LazySuspense>} />
+              <Route path="/laboratory/critical-values" element={<LazySuspense><CriticalValuesPage /></LazySuspense>} />
 
               {/* ═══ RADIOLOGY MODULE ═══ */}
               <Route path="/radiology" element={<LazySuspense><RadiologyPage /></LazySuspense>} />

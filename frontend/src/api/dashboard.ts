@@ -1,11 +1,11 @@
-import { api } from './client';
-
 /**
  * Dashboard data layer.
  *
  * All metrics come from the backend via authorized, tenant-scoped endpoints.
  * No client-side aggregation from raw datasets.
  */
+
+import { api } from './client';
 
 function opt(facilityId?: string | null) {
   return facilityId ? { facilityId } : {};

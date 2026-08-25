@@ -197,6 +197,158 @@ function WorkspaceQuickActions({ roles }: { roles: string[] }) {
   );
 }
 
+
+
+/* Role-specific My Work KPIs */
+interface RoleKpiConfig {
+  roles: string[];
+  title: string;
+  subtitle: string;
+  kpis: Array<{
+    label: string;
+    getValue: (m: DashboardMetrics) => string | number;
+    icon: any;
+    color: string | ((m: DashboardMetrics) => string);
+    getTrend?: (m: DashboardMetrics) => { text: string; dir: 'up' | 'down' | 'neutral' } | undefined;
+  }>;
+}
+
+const ROLE_KPI_CONFIGS: RoleKpiConfig[] = [
+  {
+    roles: ['doctor'],
+    title: 'My Day',
+    subtitle: 'Your clinical workload',
+    kpis: [
+      { label: 'Appointments', getValue: (m) => m.appointmentsToday, icon: Calendar, color: 'blue',
+        getTrend: (m) => ({ text: `${m.completedToday} completed`, dir: 'up' as const }) },
+      { label: 'Waiting', getValue: (m) => m.inQueue, icon: Clock, color: (m) => m.inQueue > 5 ? 'amber' : 'blue',
+        getTrend: (m) => ({ text: `avg ${m.avgWaitMinutes}min`, dir: 'neutral' as const }) },
+      { label: 'Encounters', getValue: (m) => m.encountersToday, icon: Stethoscope, color: 'green',
+        getTrend: (m) => ({ text: `${m.encountersThisWeek} this week`, dir: 'up' as const }) },
+      { label: 'Results to review', getValue: (m) => m.criticalValues + m.pendingLabOrders, icon: TestTube,
+        color: (m) => m.criticalValues > 0 ? 'red' : 'blue' },
+    ],
+  },
+  {
+    roles: ['nurse'],
+    title: 'My Shift',
+    subtitle: 'Patient care and nursing tasks',
+    kpis: [
+      { label: 'In queue', getValue: (m) => m.inQueue + m.inConsultation, icon: Clock, color: 'blue' },
+      { label: 'Encounters', getValue: (m) => m.encountersToday, icon: Stethoscope, color: 'green' },
+      { label: 'Inpatients', getValue: (m) => m.occupiedBeds, icon: Bed, color: 'blue' },
+      { label: 'Critical values', getValue: (m) => m.criticalValues, icon: AlertTriangle,
+        color: (m) => m.criticalValues > 0 ? 'red' : 'green' },
+    ],
+  },
+  {
+    roles: ['pharmacist'],
+    title: 'Pharmacy Today',
+    subtitle: 'Prescriptions and inventory',
+    kpis: [
+      { label: 'Prescriptions', getValue: (m) => m.prescriptionsToday, icon: Pill, color: 'blue' },
+      { label: 'Low stock', getValue: (m) => m.lowStockItems, icon: AlertTriangle,
+        color: (m) => m.lowStockItems > 0 ? 'red' : 'green' },
+      { label: 'Encounters', getValue: (m) => m.encountersToday, icon: Stethoscope, color: 'green' },
+      { label: 'Appointments', getValue: (m) => m.appointmentsToday, icon: Calendar, color: 'blue' },
+    ],
+  },
+  {
+    roles: ['lab_technician', 'lab_supervisor'],
+    title: 'Laboratory Today',
+    subtitle: 'Orders, specimens, and results',
+    kpis: [
+      { label: 'Pending orders', getValue: (m) => m.pendingLabOrders, icon: TestTube, color: 'blue' },
+      { label: 'Critical values', getValue: (m) => m.criticalValues, icon: AlertTriangle,
+        color: (m) => m.criticalValues > 0 ? 'red' : 'green' },
+      { label: 'Appointments', getValue: (m) => m.appointmentsToday, icon: Calendar, color: 'blue' },
+      { label: 'Results today', getValue: (m) => m.completedStudiesToday, icon: CheckCircle, color: 'green' },
+    ],
+  },
+  {
+    roles: ['radiographer', 'radiologist'],
+    title: 'Radiology Today',
+    subtitle: 'Studies and reporting',
+    kpis: [
+      { label: 'Pending studies', getValue: (m) => m.pendingStudies, icon: Image, color: 'blue' },
+      { label: 'Completed today', getValue: (m) => m.completedStudiesToday, icon: CheckCircle, color: 'green' },
+      { label: 'Reports pending', getValue: (m) => m.pendingReports, icon: FileText, color: 'amber' },
+      { label: 'Appointments', getValue: (m) => m.appointmentsToday, icon: Calendar, color: 'blue' },
+    ],
+  },
+  {
+    roles: ['billing_clerk', 'finance_manager', 'accountant'],
+    title: 'Finance Today',
+    subtitle: 'Billing, collections, and revenue',
+    kpis: [
+      { label: 'Revenue', getValue: (m) => formatCurrency(m.revenueToday), icon: DollarSign, color: 'green' },
+      { label: 'Outstanding', getValue: (m) => formatCurrency(m.outstandingAmount), icon: TrendingDown,
+        color: (m) => m.outstandingAmount > 0 ? 'amber' : 'green' },
+      { label: 'Appointments', getValue: (m) => m.appointmentsToday, icon: Calendar, color: 'blue' },
+      { label: 'Encounters', getValue: (m) => m.encountersToday, icon: Stethoscope, color: 'blue' },
+    ],
+  },
+  {
+    roles: ['hospital_admin', 'branch_manager'],
+    title: 'Hospital Today',
+    subtitle: 'Operations overview',
+    kpis: [
+      { label: 'Appointments', getValue: (m) => m.appointmentsToday, icon: Calendar, color: 'blue' },
+      { label: 'Encounters', getValue: (m) => m.encountersToday, icon: Stethoscope, color: 'green' },
+      { label: 'Revenue', getValue: (m) => formatCurrency(m.revenueToday), icon: DollarSign, color: 'green' },
+      { label: 'Occupancy', getValue: (m) => m.totalBeds > 0 ? `${Math.round((m.occupiedBeds / m.totalBeds) * 100)}%` : 'N/A',
+        icon: Bed, color: 'blue' },
+    ],
+  },
+  {
+    roles: ['receptionist'],
+    title: 'Front Desk',
+    subtitle: 'Registration and patient flow',
+    kpis: [
+      { label: 'Check-ins', getValue: (m) => m.checkInsToday, icon: Users, color: 'green' },
+      { label: 'In queue', getValue: (m) => m.inQueue, icon: Clock,
+        color: (m) => m.inQueue > 10 ? 'amber' : 'blue' },
+      { label: 'Appointments', getValue: (m) => m.appointmentsToday, icon: Calendar, color: 'blue' },
+      { label: 'Waiting ER', getValue: (m) => m.erWaiting, icon: Siren,
+        color: (m) => m.erWaiting > 0 ? 'red' : 'green' },
+    ],
+  },
+];
+
+/* Role-Specific Dashboard Content */
+function RoleSpecificDashboard({ metrics, roles }: { metrics: DashboardMetrics; roles: string[] }) {
+  const config = ROLE_KPI_CONFIGS.find(c => c.roles.some(r => roles.includes(r)));
+  if (!config) return null;
+  const m = metrics;
+
+  return (
+    <div className="dash-section dash-animate">
+      <div className="dash-section__head">
+        <h2 className="dash-section__title">{config.title}</h2>
+        <p className="dash-section__sub">{config.subtitle}</p>
+      </div>
+      <div className="dash-hero-kpis" style={{ gridTemplateColumns: `repeat(${Math.min(config.kpis.length, 4)}, 1fr)` }}>
+        {config.kpis.map((kpi, i) => {
+          const rawColor = typeof kpi.color === 'function' ? kpi.color(m) : kpi.color;
+          const value = kpi.getValue(m);
+          const trend = kpi.getTrend?.(m);
+          return (
+            <HeroKpi
+              key={i}
+              label={kpi.label}
+              value={value}
+              icon={kpi.icon}
+              color={rawColor}
+              trend={trend}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+
 const EMPTY_CHARTS: ChartData = {
   patientVolume: [],
   appointmentVolume: [],
@@ -498,24 +650,9 @@ export function DashboardPage() {
         </>
       )}
 
-      {/* ═══ HERO KPIs ═══ */}
+      {/* ═══ ROLE-SPECIFIC DASHBOARD ═══ */}
       {!isPlatform && (
-        <div className="dash-section dash-animate">
-          <div className="dash-section__head">
-            <h2 className="dash-section__title">Today</h2>
-            <p className="dash-section__sub">{formatDate(new Date())}</p>
-          </div>
-          <div className="dash-hero-kpis">
-            <HeroKpi label="Appointments" value={m.appointmentsToday} icon={Calendar} color="blue"
-              trend={m.completedToday > 0 ? { text: `${m.completedToday} done`, dir: 'up' } : undefined} />
-            <HeroKpi label="In queue" value={m.inQueue + m.inConsultation} icon={Clock}
-              color={m.inQueue > 10 ? 'amber' : 'blue'} />
-            <HeroKpi label="Encounters" value={m.encountersToday} icon={Stethoscope} color="green"
-              trend={{ text: `${m.encountersThisWeek} this week`, dir: 'neutral' }} />
-            <HeroKpi label="Revenue" value={formatCurrency(m.revenueToday)} icon={DollarSign} color="green"
-              trend={m.outstandingAmount > 0 ? { text: `${formatCurrency(m.outstandingAmount)} outstanding`, dir: 'down' } : undefined} />
-          </div>
-        </div>
+        <RoleSpecificDashboard metrics={m} roles={roles} />
       )}
 
       {/* ═══ QUEUE SNAPSHOT ═══ */}

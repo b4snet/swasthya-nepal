@@ -180,6 +180,7 @@ export const MODULES: NavModule[] = [
       { key: 'lab-worklists', labelKey: 'nav.worklists', to: '/laboratory/orders', Icon: ListOrdered, roles: LAB_ROLES },
       { key: 'lab-results', labelKey: 'nav.results', to: '/laboratory/reports', Icon: FileText, roles: LAB_ROLES },
       { key: 'lab-reports', labelKey: 'nav.labReports', to: '/laboratory/reports', Icon: BarChart3, roles: LAB_ROLES },
+      { key: 'lab-critical-values', labelKey: 'nav.criticalValues' as any, to: '/laboratory/critical-values', Icon: ShieldAlert, roles: LAB_ROLES },
     ],
   },
 

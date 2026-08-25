@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\CommunicationController;
 use App\Http\Controllers\Api\ComplianceController;
 use App\Http\Controllers\Api\ConsentController;
 use App\Http\Controllers\Api\CriticalValueEventController;
+use App\Http\Controllers\Api\DrugInteractionController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DepartmentController;
 use App\Http\Controllers\Api\DoctorScheduleController;
@@ -1686,7 +1687,7 @@ Route::middleware(['throttle:api', ResolveTenantContext::class])->prefix('notifi
     Route::get('stats', [NotificationController::class, 'stats'])
         ->middleware('authorize:notification:view');
 
-// Governance — Policies, Incidents, CAPA, Credentials, Complaints, Disclosures
+// Governance ï¿½ Policies, Incidents, CAPA, Credentials, Complaints, Disclosures
     Route::get('governance/dashboard', [GovernanceController::class, 'dashboard'])
         ->middleware('authorize:quality:view');
     Route::get('governance/policies', [GovernanceController::class, 'listPolicies'])
@@ -1729,7 +1730,7 @@ Route::middleware(['throttle:api', ResolveTenantContext::class])->prefix('notifi
         ->middleware('authorize:quality:manage');
 
 
-    // Orchestration — Queue, Resource Booking, Capacity, Patient Flow
+    // Orchestration ï¿½ Queue, Resource Booking, Capacity, Patient Flow
     Route::post('orchestration/queue', [OrchestrationController::class, 'enqueue'])->middleware('authorize:clinical:manage');
     Route::get('orchestration/queue', [OrchestrationController::class, 'listQueue'])->middleware('authorize:clinical:view');
     Route::post('orchestration/queue/{department}/call-next', [OrchestrationController::class, 'callNext'])->middleware('authorize:clinical:manage');

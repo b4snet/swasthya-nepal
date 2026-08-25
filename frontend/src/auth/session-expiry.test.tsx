@@ -1,6 +1,6 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, beforeEach } from 'vitest';
 import { AuthProvider } from './AuthProvider';
 import { LoginPage } from '../pages/LoginPage';
 import { I18nProvider } from '../i18n/I18nProvider';
@@ -19,6 +19,11 @@ function renderLogin() {
 }
 
 describe('Session expiry UX', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+  });
+
   it('shows expired session banner when refresh token fails', async () => {
     // Seed a refresh token so AuthProvider attempts refresh on mount.
     localStorage.setItem('swasthya.refreshToken', 'expired-rt');
@@ -64,8 +69,6 @@ describe('Session expiry UX', () => {
   });
 
   it('does not show expired banner when there were no stored tokens', async () => {
-    localStorage.removeItem('swasthya.refreshToken');
-    sessionStorage.removeItem('swasthya.accessToken');
     renderLogin();
     await act(async () => { await Promise.resolve(); });
     expect(screen.queryByTestId('session-expired-banner')).not.toBeInTheDocument();

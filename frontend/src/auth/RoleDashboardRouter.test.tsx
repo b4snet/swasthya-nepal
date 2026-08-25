@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { useEffect } from 'react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { describe, expect, it, beforeEach } from 'vitest';
@@ -59,104 +59,134 @@ describe('RoleDashboardRouter', () => {
     renderRouter([
       { organizationId: 'org-1', organizationCode: 'A', facilityId: null, facilityName: null, roles: ['superadmin'] },
     ]);
-    expect(await screen.findByTestId('location')).toHaveTextContent('/dashboard');
+    await waitFor(() => {
+      expect(screen.getByTestId('location')).toHaveTextContent('/dashboard');
+    });
   });
 
   it('routes superadmin (with facility) to /dashboard', async () => {
     renderRouter([
       { organizationId: 'org-1', organizationCode: 'A', facilityId: 'fac-1', facilityName: 'Hospital A', roles: ['superadmin'] },
     ]);
-    expect(await screen.findByTestId('location')).toHaveTextContent('/dashboard');
+    await waitFor(() => {
+      expect(screen.getByTestId('location')).toHaveTextContent('/dashboard');
+    });
   });
 
   it('routes org_admin to /dashboard', async () => {
     renderRouter([
       { organizationId: 'org-1', organizationCode: 'A', facilityId: null, facilityName: null, roles: ['org_admin'] },
     ]);
-    expect(await screen.findByTestId('location')).toHaveTextContent('/dashboard');
+    await waitFor(() => {
+      expect(screen.getByTestId('location')).toHaveTextContent('/dashboard');
+    });
   });
 
   it('routes hospital_admin to /dashboard (Model A)', async () => {
     renderRouter([
       { organizationId: 'org-1', organizationCode: 'A', facilityId: 'fac-1', facilityName: 'Hospital A', roles: ['hospital_admin'] },
     ]);
-    expect(await screen.findByTestId('location')).toHaveTextContent('/dashboard');
+    await waitFor(() => {
+      expect(screen.getByTestId('location')).toHaveTextContent('/dashboard');
+    });
   });
 
   it('routes doctor to /dashboard (Model A)', async () => {
     renderRouter([
       { organizationId: 'org-1', organizationCode: 'A', facilityId: 'fac-1', facilityName: 'Hospital A', roles: ['doctor'] },
     ]);
-    expect(await screen.findByTestId('location')).toHaveTextContent('/dashboard');
+    await waitFor(() => {
+      expect(screen.getByTestId('location')).toHaveTextContent('/dashboard');
+    });
   });
 
   it('routes nurse to /dashboard (Model A)', async () => {
     renderRouter([
       { organizationId: 'org-1', organizationCode: 'A', facilityId: 'fac-1', facilityName: 'Hospital A', roles: ['nurse'] },
     ]);
-    expect(await screen.findByTestId('location')).toHaveTextContent('/dashboard');
+    await waitFor(() => {
+      expect(screen.getByTestId('location')).toHaveTextContent('/dashboard');
+    });
   });
 
   it('routes pharmacist to /dashboard (Model A)', async () => {
     renderRouter([
       { organizationId: 'org-1', organizationCode: 'A', facilityId: 'fac-1', facilityName: 'Hospital A', roles: ['pharmacist'] },
     ]);
-    expect(await screen.findByTestId('location')).toHaveTextContent('/dashboard');
+    await waitFor(() => {
+      expect(screen.getByTestId('location')).toHaveTextContent('/dashboard');
+    });
   });
 
   it('routes lab_technician to /dashboard (Model A)', async () => {
     renderRouter([
       { organizationId: 'org-1', organizationCode: 'A', facilityId: 'fac-1', facilityName: 'Hospital A', roles: ['lab_technician'] },
     ]);
-    expect(await screen.findByTestId('location')).toHaveTextContent('/dashboard');
+    await waitFor(() => {
+      expect(screen.getByTestId('location')).toHaveTextContent('/dashboard');
+    });
   });
 
   it('routes radiologist to /dashboard (Model A)', async () => {
     renderRouter([
       { organizationId: 'org-1', organizationCode: 'A', facilityId: 'fac-1', facilityName: 'Hospital A', roles: ['radiologist'] },
     ]);
-    expect(await screen.findByTestId('location')).toHaveTextContent('/dashboard');
+    await waitFor(() => {
+      expect(screen.getByTestId('location')).toHaveTextContent('/dashboard');
+    });
   });
 
   it('routes billing_clerk to /dashboard (Model A)', async () => {
     renderRouter([
       { organizationId: 'org-1', organizationCode: 'A', facilityId: 'fac-1', facilityName: 'Hospital A', roles: ['billing_clerk'] },
     ]);
-    expect(await screen.findByTestId('location')).toHaveTextContent('/dashboard');
+    await waitFor(() => {
+      expect(screen.getByTestId('location')).toHaveTextContent('/dashboard');
+    });
   });
 
   it('routes receptionist to /dashboard (Model A)', async () => {
     renderRouter([
       { organizationId: 'org-1', organizationCode: 'A', facilityId: 'fac-1', facilityName: 'Hospital A', roles: ['receptionist'] },
     ]);
-    expect(await screen.findByTestId('location')).toHaveTextContent('/dashboard');
+    await waitFor(() => {
+      expect(screen.getByTestId('location')).toHaveTextContent('/dashboard');
+    });
   });
 
   it('routes org_finance to /dashboard', async () => {
     renderRouter([
       { organizationId: 'org-1', organizationCode: 'A', facilityId: null, facilityName: null, roles: ['org_finance'] },
     ]);
-    expect(await screen.findByTestId('location')).toHaveTextContent('/dashboard');
+    await waitFor(() => {
+      expect(screen.getByTestId('location')).toHaveTextContent('/dashboard');
+    });
   });
 
   it('routes unknown role to /dashboard (fallback)', async () => {
     renderRouter([
       { organizationId: 'org-1', organizationCode: 'A', facilityId: 'fac-1', facilityName: 'Hospital A', roles: ['support_agent'] },
     ]);
-    expect(await screen.findByTestId('location')).toHaveTextContent('/dashboard');
+    await waitFor(() => {
+      expect(screen.getByTestId('location')).toHaveTextContent('/dashboard');
+    });
   });
 
   it('routes doctor with no facility to /dashboard', async () => {
     renderRouter([
       { organizationId: 'org-1', organizationCode: 'A', facilityId: null, facilityName: null, roles: ['doctor'] },
     ]);
-    expect(await screen.findByTestId('location')).toHaveTextContent('/dashboard');
+    await waitFor(() => {
+      expect(screen.getByTestId('location')).toHaveTextContent('/dashboard');
+    });
   });
 
   it('routes multi-role user to /dashboard (Model A)', async () => {
     renderRouter([
       { organizationId: 'org-1', organizationCode: 'A', facilityId: 'fac-1', facilityName: 'Hospital A', roles: ['doctor', 'pharmacist'] },
     ]);
-    expect(await screen.findByTestId('location')).toHaveTextContent('/dashboard');
+    await waitFor(() => {
+      expect(screen.getByTestId('location')).toHaveTextContent('/dashboard');
+    });
   });
 });

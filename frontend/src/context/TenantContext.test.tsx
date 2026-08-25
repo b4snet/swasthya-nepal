@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { useEffect } from 'react';
 import { describe, expect, it, beforeEach } from 'vitest';
 import { AuthProvider, useAuth } from '../auth/AuthProvider';
@@ -62,10 +62,12 @@ describe('TenantContext', () => {
     renderTenant([
       { organizationId: 'org-1', organizationCode: 'A', facilityId: 'fac-1', facilityName: 'Smoke Central', roles: ['hospital_admin'] },
     ]);
-    expect(await screen.findByTestId('fac')).toHaveTextContent('fac-1');
+    await waitFor(() => {
+      expect(screen.getByTestId('fac')).toHaveTextContent('fac-1');
+      expect(screen.getByTestId('ready')).toHaveTextContent('true');
+    });
     expect(screen.getByTestId('org')).toHaveTextContent('org-1');
     expect(screen.getByTestId('admin')).toHaveTextContent('true');
-    expect(screen.getByTestId('ready')).toHaveTextContent('true');
   });
 
   it('requires explicit choice when multiple facilities are authorized', async () => {
@@ -120,8 +122,10 @@ describe('TenantContext', () => {
   it('sets ready=true after auth resolves with no facilities (platform user)', async () => {
     // Platform-only user: no facilities in assignments.
     renderTenant([]);
-    expect(await screen.findByTestId('loading')).toHaveTextContent('false');
-    expect(screen.getByTestId('ready')).toHaveTextContent('true');
+    await waitFor(() => {
+      expect(screen.getByTestId('loading')).toHaveTextContent('false');
+      expect(screen.getByTestId('ready')).toHaveTextContent('true');
+    });
     expect(screen.getByTestId('fac')).toHaveTextContent('none');
   });
 
@@ -130,9 +134,11 @@ describe('TenantContext', () => {
     renderTenant([
       { organizationId: 'org-1', organizationCode: 'A', facilityId: null, facilityName: null, roles: ['org_admin'] },
     ]);
-    expect(await screen.findByTestId('org')).toHaveTextContent('org-1');
+    await waitFor(() => {
+      expect(screen.getByTestId('org')).toHaveTextContent('org-1');
+      expect(screen.getByTestId('ready')).toHaveTextContent('true');
+    });
     expect(screen.getByTestId('fac')).toHaveTextContent('none');
-    expect(screen.getByTestId('ready')).toHaveTextContent('true');
   });
 
   it('persists selected facility in sessionStorage and restores on re-mount', async () => {
@@ -140,9 +146,10 @@ describe('TenantContext', () => {
     renderTenant([
       { organizationId: 'org-1', organizationCode: 'A', facilityId: 'fac-1', facilityName: 'Smoke Central', roles: ['hospital_admin'] },
     ]);
-    expect(await screen.findByTestId('fac')).toHaveTextContent('fac-1');
-    // sessionStorage should have the persisted value.
-    expect(sessionStorage.getItem('swasthya.selectedFacilityId')).toBe('fac-1');
+    await waitFor(() => {
+      expect(screen.getByTestId('fac')).toHaveTextContent('fac-1');
+      expect(sessionStorage.getItem('swasthya.selectedFacilityId')).toBe('fac-1');
+    });
   });
 
   it('validates restored facility is still in current assignments (cross-user safety)', async () => {
@@ -152,7 +159,9 @@ describe('TenantContext', () => {
       { organizationId: 'org-1', organizationCode: 'A', facilityId: 'fac-2', facilityName: 'Fac B', roles: ['hospital_admin'] },
     ]);
     // fac-1 is not in the current assignments, so it should not be selected.
-    expect(await screen.findByTestId('fac')).toHaveTextContent('fac-2');
+    await waitFor(() => {
+      expect(screen.getByTestId('fac')).toHaveTextContent('fac-2');
+    });
     expect(sessionStorage.getItem('swasthya.selectedFacilityId')).toBe('fac-2');
   });
 

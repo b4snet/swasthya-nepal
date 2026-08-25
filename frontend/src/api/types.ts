@@ -572,22 +572,31 @@ export interface LabOrder {
 
 export interface CriticalValueEvent {
   id: string;
-  labOrderId: string;
-  labOrderItemId: string;
-  testId: string;
+  facilityId: string | null;
+  patientId: string | null;
+  encounterId: string | null;
+  itemId: string | null;
+  testId: string | null;
   testName: string | null;
   resultValue: string;
-  referenceRange: string | null;
-  severity: string;
+  resultUnit: string | null;
+  targetStaffId: string | null;
   status: string;
-  orderedByStaffId: string;
-  acknowledgedByStaffId: string | null;
-  acknowledgedAt: string | null;
+  detectedByStaffId: string | null;
+  detectedAt: string | null;
   escalatedByStaffId: string | null;
   escalatedAt: string | null;
-  escalationTarget: string | null;
-  escalationReason: string | null;
-  createdAt: string | null;
+  acknowledgedByStaffId: string | null;
+  acknowledgedAt: string | null;
+  lockVersion: number;
+  orderedByStaffId?: string;
+  referenceRange?: string | null;
+  severity?: string;
+  escalationTarget?: string | null;
+  escalationReason?: string | null;
+  labOrderId?: string;
+  labOrderItemId?: string;
+  createdAt?: string | null;
 }
 
 /* ------------------------------------------------------------------
@@ -961,7 +970,7 @@ export interface GeneratedDocument {
 
 
 /* ------------------------------------------------------------------
-   HR types — Positions, Shift Templates, Rosters, Attendance, Leave, Payroll
+   HR types ï¿½ Positions, Shift Templates, Rosters, Attendance, Leave, Payroll
    ------------------------------------------------------------------ */
 
 export interface Position {
@@ -1041,7 +1050,7 @@ export interface PayrollExport {
 }
 
 /* ------------------------------------------------------------------
-   Asset types — Register, Lifecycle, Maintenance, Work Orders
+   Asset types ï¿½ Register, Lifecycle, Maintenance, Work Orders
    ------------------------------------------------------------------ */
 
 export interface AssetCategory {
@@ -1102,4 +1111,33 @@ export interface WorkOrder {
   description: string | null;
   certificationRef: string | null;
   lockVersion: number;
+}
+
+export interface Referral {
+  id: string;
+  patientId: string;
+  patient?: Patient;
+  fromFacilityId: string;
+  toFacilityId: string | null;
+  receiving_facility_name?: string;
+  fromDepartmentId: string | null;
+  toDepartmentId: string | null;
+  specialty?: string;
+  reason: string;
+  status: string;
+  urgency: string | null;
+  receivingStaff?: Staff;
+  created_at?: string | null;
+  createdAt: string | null;
+}
+
+export interface PatientSearchResult {
+  id: string;
+  firstName: string;
+  lastName: string;
+  mrn: string;
+  dateOfBirth: string | null;
+  gender: string | null;
+  phone: string | null;
+  fullName: string;
 }
