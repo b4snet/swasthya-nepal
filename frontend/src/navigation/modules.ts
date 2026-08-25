@@ -32,6 +32,7 @@ import {
   ChartNoAxesCombined,
   ShoppingCart,
   PillBottle,
+  Bot,
   TestTube,
   ShieldAlert,
   Link,
@@ -339,6 +340,7 @@ export const MODULES: NavModule[] = [
     children: [
       { key: 'rpt-analytics', labelKey: 'nav.analytics', to: '/reports/analytics', Icon: ChartNoAxesCombined, roles: ANALYTICS_ROLES },
       { key: 'rpt-operations', labelKey: 'nav.operationsCenter', to: '/reports/operations', Icon: Activity, roles: ANALYTICS_ROLES },
+      { key: 'rpt-ai', labelKey: 'nav.aiAssist', to: '/reports/ai', Icon: Bot, roles: ANALYTICS_ROLES },
     ],
   },
 

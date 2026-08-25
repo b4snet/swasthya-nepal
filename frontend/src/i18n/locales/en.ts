@@ -253,6 +253,7 @@ export const messages = {
   'nav.services': 'Services',
   'nav.analytics': 'Analytics',
   'nav.operationsCenter': 'Operations',
+  'nav.aiAssist': 'AI Assist',
   'nav.notifications': 'Notifications',
   'nav.communications': 'Messaging',
   'nav.forms': 'Forms & Templates',

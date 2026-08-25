@@ -243,7 +243,7 @@ export function App() {
               <Route path="/assets" element={<LazySuspense><AssetPage /></LazySuspense>} />
 
               {/* ═══ AI ASSIST ═══ */}
-              <Route path="/analytics/ai" element={<LazySuspense><AiAssistPage /></LazySuspense>} />
+              <Route path="/reports/ai" element={<LazySuspense><AiAssistPage /></LazySuspense>} />
               <Route path="/reports/research" element={<LazySuspense><ResearchPage /></LazySuspense>} />
 
               {/* ═══ INTEROPERABILITY ═══ */}
