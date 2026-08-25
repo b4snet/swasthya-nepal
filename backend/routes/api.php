@@ -30,6 +30,7 @@ use App\Http\Controllers\Api\FacilityController;
 use App\Http\Controllers\Api\FacilitySettingsController;
 use App\Http\Controllers\Api\GovernanceController;
 use App\Http\Controllers\Api\OrchestrationController;
+use App\Http\Controllers\Api\DocumentPlatformController;
 use App\Http\Controllers\Api\FinanceController;
 use App\Http\Controllers\Api\FinancialPeriodController;
 use App\Http\Controllers\Api\FollowUpController;
@@ -1741,6 +1742,20 @@ Route::middleware(['throttle:api', ResolveTenantContext::class])->prefix('notifi
     Route::get('orchestration/capacity', [OrchestrationController::class, 'hospitalCapacity'])->middleware('authorize:clinical:view');
     Route::get('orchestration/patient-flow', [OrchestrationController::class, 'patientFlow'])->middleware('authorize:clinical:view');
     Route::get('orchestration/dashboard', [OrchestrationController::class, 'dashboard'])->middleware('authorize:clinical:view');
+
+    // Document Platform
+    Route::get('documents/platform', [DocumentPlatformController::class, 'listDocuments'])->middleware('authorize:document:view');
+    Route::post('documents/platform', [DocumentPlatformController::class, 'storeDocument'])->middleware('authorize:document:manage');
+    Route::get('documents/platform/dashboard', [DocumentPlatformController::class, 'dashboard'])->middleware('authorize:document:view');
+    Route::get('documents/platform/{document}', [DocumentPlatformController::class, 'showDocument'])->middleware('authorize:document:view');
+    Route::put('documents/platform/{document}', [DocumentPlatformController::class, 'updateDocument'])->middleware('authorize:document:manage');
+    Route::post('documents/platform/{document}/finalize', [DocumentPlatformController::class, 'finalizeDocument'])->middleware('authorize:document:manage');
+    Route::post('documents/platform/{document}/archive', [DocumentPlatformController::class, 'archiveDocument'])->middleware('authorize:document:manage');
+    Route::get('documents/platform/{document}/versions', [DocumentPlatformController::class, 'listVersions'])->middleware('authorize:document:view');
+    Route::post('documents/platform/{document}/versions', [DocumentPlatformController::class, 'createVersion'])->middleware('authorize:document:manage');
+    Route::post('documents/platform/{document}/acknowledgements', [DocumentPlatformController::class, 'requestAcknowledgement'])->middleware('authorize:document:manage');
+    Route::get('documents/platform/{document}/acknowledgements', [DocumentPlatformController::class, 'listAcknowledgements'])->middleware('authorize:document:view');
+    Route::post('document-acknowledgements/{ack}/acknowledge', [DocumentPlatformController::class, 'acknowledge'])->middleware('authorize:document:manage');
 });
 
 // Document center routes have been moved inside the v1 authenticated group above.
