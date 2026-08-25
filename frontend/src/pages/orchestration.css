@@ -1,0 +1,42 @@
+.orch-page { padding: 1.5rem; }
+.orch-tabs { display: flex; gap: 0; border-bottom: 2px solid #e5e7eb; margin-bottom: 1.5rem; }
+.orch-tab { padding: 0.625rem 1.25rem; border: none; background: none; cursor: pointer; font-size: 0.875rem; color: #6b7280; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.15s; }
+.orch-tab:hover { color: #111827; }
+.orch-tab--active { color: #111827; border-bottom-color: #4fa9ff; font-weight: 500; }
+.orch-census { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.75rem; margin-bottom: 1.5rem; }
+.orch-census-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1rem; display: flex; flex-direction: column; gap: 0.25rem; }
+.orch-census-value { font-size: 1.5rem; font-weight: 600; color: #111827; }
+.orch-census-label { font-size: 0.75rem; color: #6b7280; }
+.orch-section-card { margin-bottom: 1.5rem; }
+.orch-section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+.orch-section-header h3 { margin: 0; font-size: 1rem; font-weight: 600; }
+.orch-flow-strip { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+.orch-flow-item { background: #fff; border: 1px solid #e5e7eb; border-left: 3px solid; border-radius: 0.375rem; padding: 0.75rem 1rem; min-width: 100px; text-align: center; }
+.orch-flow-value { display: block; font-size: 1.25rem; font-weight: 600; }
+.orch-flow-label { display: block; font-size: 0.7rem; color: #6b7280; margin-top: 0.125rem; }
+.orch-table { border: 1px solid #e5e7eb; border-radius: 0.5rem; overflow: hidden; }
+.orch-table-header { display: grid; grid-template-columns: 1fr 2fr 1fr 1fr 1fr 1fr 100px; gap: 0.5rem; padding: 0.5rem 1rem; background: #f9fafb; font-size: 0.75rem; font-weight: 500; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; }
+.orch-table-row { display: grid; grid-template-columns: 1fr 2fr 1fr 1fr 1fr 1fr 100px; gap: 0.5rem; padding: 0.75rem 1rem; border-top: 1px solid #e5e7eb; font-size: 0.875rem; align-items: center; }
+.orch-mono { font-family: monospace; font-size: 0.8rem; }
+.orch-badge { display: inline-block; padding: 0.125rem 0.5rem; border-radius: 9999px; font-size: 0.7rem; font-weight: 500; }
+.orch-badge--emergency { background: #fef2f2; color: #dc2626; }
+.orch-badge--urgent { background: #fef3c7; color: #d97706; }
+.orch-badge--normal { background: #dbeafe; color: #2563eb; }
+.orch-badge--routine { background: #f3f4f6; color: #6b7280; }
+.orch-badge--waiting { background: #fef3c7; color: #d97706; }
+.orch-badge--called { background: #dbeafe; color: #2563eb; }
+.orch-badge--in_progress { background: #f5f3ff; color: #7c3aed; }
+.orch-badge--completed { background: #ecfdf5; color: #059669; }
+.orch-badge--cancelled { background: #f3f4f6; color: #6b7280; }
+.orch-badge--reserved { background: #dbeafe; color: #2563eb; }
+.orch-badge--confirmed { background: #ecfdf5; color: #059669; }
+.orch-badge--ot { background: #f5f3ff; color: #7c3aed; }
+.orch-badge--imaging { background: #dbeafe; color: #2563eb; }
+.orch-badge--equipment { background: #fef3c7; color: #d97706; }
+.orch-badge--room { background: #ecfdf5; color: #059669; }
+.orch-badge--bed { background: #fef2f2; color: #dc2626; }
+.orch-table-actions { display: flex; gap: 0.25rem; }
+.orch-form { display: flex; flex-direction: column; gap: 1rem; }
+.orch-form-field { display: flex; flex-direction: column; gap: 0.25rem; }
+.orch-label { font-size: 0.75rem; font-weight: 500; color: #374151; }
+.orch-actions { display: flex; gap: 0.5rem; }

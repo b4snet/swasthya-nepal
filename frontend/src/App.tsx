@@ -69,6 +69,7 @@ const ClinicalWorkspace = lazy(() => import('./pages/ClinicalWorkspace').then(m 
 const HospitalOnboarding = lazy(() => import('./pages/HospitalOnboarding').then(m => ({ default: m.HospitalOnboarding })));
 const LabOrdersPage = lazy(() => import('./pages/LabOrdersPage').then(m => ({ default: m.LabOrdersPage })));
 const QualityPage = lazy(() => import('./pages/QualityPage').then(m => ({ default: m.QualityPage })));
+const OrchestrationPage = lazy(() => import('./pages/OrchestrationPage').then(m => ({ default: m.OrchestrationPage })));
 const HrPage = lazy(() => import('./pages/HrPage').then(m => ({ default: m.HrPage })));
 const AssetPage = lazy(() => import('./pages/AssetPage').then(m => ({ default: m.AssetPage })));
 const ResearchPage = lazy(() => import('./pages/ResearchPage').then(m => ({ default: m.ResearchPage })));
@@ -239,6 +240,7 @@ export function App() {
               <Route path="/reports/operations" element={<LazySuspense><OperationsCenterPage /></LazySuspense>} />
               {/* ═══ QUALITY & SAFETY ═══ */}
               <Route path="/quality" element={<LazySuspense><QualityPage /></LazySuspense>} />
+              <Route path="/orchestration" element={<LazySuspense><OrchestrationPage /></LazySuspense>} />
               <Route path="/quality/audit" element={<LazySuspense><AuditPage /></LazySuspense>} />
               {/* ═══ STAFF & HR ═══ */}
               <Route path="/hr" element={<LazySuspense><HrPage /></LazySuspense>} />

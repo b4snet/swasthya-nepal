@@ -29,6 +29,7 @@ use App\Http\Controllers\Api\ExpenseController;
 use App\Http\Controllers\Api\FacilityController;
 use App\Http\Controllers\Api\FacilitySettingsController;
 use App\Http\Controllers\Api\GovernanceController;
+use App\Http\Controllers\Api\OrchestrationController;
 use App\Http\Controllers\Api\FinanceController;
 use App\Http\Controllers\Api\FinancialPeriodController;
 use App\Http\Controllers\Api\FollowUpController;
@@ -1726,6 +1727,20 @@ Route::middleware(['throttle:api', ResolveTenantContext::class])->prefix('notifi
     Route::post('governance/disclosures', [GovernanceController::class, 'storeDisclosure'])
         ->middleware('authorize:quality:manage');
 
+
+    // Orchestration — Queue, Resource Booking, Capacity, Patient Flow
+    Route::post('orchestration/queue', [OrchestrationController::class, 'enqueue'])->middleware('authorize:clinical:manage');
+    Route::get('orchestration/queue', [OrchestrationController::class, 'listQueue'])->middleware('authorize:clinical:view');
+    Route::post('orchestration/queue/{department}/call-next', [OrchestrationController::class, 'callNext'])->middleware('authorize:clinical:manage');
+    Route::post('orchestration/queue/{entry}/start', [OrchestrationController::class, 'startConsultation'])->middleware('authorize:clinical:manage');
+    Route::post('orchestration/queue/{entry}/complete', [OrchestrationController::class, 'completeQueue'])->middleware('authorize:clinical:manage');
+    Route::post('orchestration/bookings', [OrchestrationController::class, 'bookResource'])->middleware('authorize:clinical:manage');
+    Route::get('orchestration/bookings', [OrchestrationController::class, 'listBookings'])->middleware('authorize:clinical:view');
+    Route::post('orchestration/bookings/{booking}/cancel', [OrchestrationController::class, 'cancelBooking'])->middleware('authorize:clinical:manage');
+    Route::get('orchestration/provider-availability', [OrchestrationController::class, 'providerAvailability'])->middleware('authorize:clinical:view');
+    Route::get('orchestration/capacity', [OrchestrationController::class, 'hospitalCapacity'])->middleware('authorize:clinical:view');
+    Route::get('orchestration/patient-flow', [OrchestrationController::class, 'patientFlow'])->middleware('authorize:clinical:view');
+    Route::get('orchestration/dashboard', [OrchestrationController::class, 'dashboard'])->middleware('authorize:clinical:view');
 });
 
 // Document center routes have been moved inside the v1 authenticated group above.

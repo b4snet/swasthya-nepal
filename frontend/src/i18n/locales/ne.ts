@@ -249,6 +249,7 @@ export const messages: Record<MessageKey, string> = {
   'nav.departments': 'विभागहरू',
   'nav.services': 'सेवाहरू',
   'nav.analytics': 'एनालिटिक्स',
+  'nav.hospitalOps': 'अस्पताल सञ्चालन',
   'nav.operationsCenter': 'सञ्चालन',
   'nav.aiAssist': 'AI सहायता',
   'nav.notifications': 'सूचनाहरू',

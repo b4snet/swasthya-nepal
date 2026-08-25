@@ -341,6 +341,7 @@ export const MODULES: NavModule[] = [
     routePrefix: '/reports',
     children: [
       { key: 'rpt-analytics', labelKey: 'nav.analytics', to: '/reports/analytics', Icon: ChartNoAxesCombined, roles: ANALYTICS_ROLES },
+      { key: 'orch-ops', labelKey: 'nav.hospitalOps', to: '/orchestration', Icon: Activity, roles: ['hospital_admin','superadmin','org_admin'] },
       { key: 'rpt-operations', labelKey: 'nav.operationsCenter', to: '/reports/operations', Icon: Activity, roles: ANALYTICS_ROLES },
       { key: 'rpt-ai', labelKey: 'nav.aiAssist', to: '/reports/ai', Icon: Bot, roles: ANALYTICS_ROLES },
     ],
