@@ -1543,6 +1543,19 @@ Route::middleware(['throttle:api', ResolveTenantContext::class])->prefix('enterp
     Route::post('financial-periods/{period}/close', [FinancialPeriodController::class, 'close']);
     Route::post('financial-periods/{period}/lock', [FinancialPeriodController::class, 'lock']);
     Route::post('financial-periods/{period}/reopen', [FinancialPeriodController::class, 'reopen']);
+    // Accounting Engine — Chart of Accounts, Journals, Trial Balance
+    Route::get('accounts', [AccountingController::class, 'indexAccounts'])
+        ->middleware('authorize:billing:view');
+    Route::post('accounts', [AccountingController::class, 'storeAccount'])
+        ->middleware('authorize:billing:manage');
+    Route::get('journals', [AccountingController::class, 'indexJournals'])
+        ->middleware('authorize:billing:view');
+    Route::post('journals', [AccountingController::class, 'storeJournal'])
+        ->middleware('authorize:billing:manage');
+    Route::post('journals/{journalEntry}/post', [AccountingController::class, 'postJournal'])
+        ->middleware('authorize:billing:manage');
+    Route::get('trial-balance', [AccountingController::class, 'trialBalance'])
+        ->middleware('authorize:billing:view');
 
     // Nepal Financial Architecture — Tax Rules (effective-dated)
     Route::get('finance/tax-rules', [TaxRuleController::class, 'index'])

@@ -246,6 +246,7 @@ export const messages = {
   'nav.budgets': 'Budgets',
   'nav.expenses': 'Expenses',
   'nav.financialPeriods': 'Financial Periods',
+  'nav.accounting': 'Accounting',
   'nav.financeSettings': 'Settings',
   'nav.staff': 'Staff',
   'nav.rolesPermissions': 'Roles & Permissions',

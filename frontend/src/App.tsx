@@ -73,6 +73,7 @@ const HrPage = lazy(() => import('./pages/HrPage').then(m => ({ default: m.HrPag
 const AssetPage = lazy(() => import('./pages/AssetPage').then(m => ({ default: m.AssetPage })));
 const ResearchPage = lazy(() => import('./pages/ResearchPage').then(m => ({ default: m.ResearchPage })));
 const InteropPage = lazy(() => import('./pages/InteropPage').then(m => ({ default: m.InteropPage })));
+const AccountingPage = lazy(() => import('./pages/AccountingPage').then(m => ({ default: m.AccountingPage })));
 const AiAssistPage = lazy(() => import('./pages/AiAssistPage').then(m => ({ default: m.AiAssistPage })));
 const NotificationCenterPage = lazy(() => import('./pages/NotificationCenterPage').then(m => ({ default: m.NotificationCenterPage })));
 
@@ -223,6 +224,7 @@ export function App() {
               <Route path="/finance/revenue" element={<LazySuspense><RevenueCyclePage /></LazySuspense>} />
               <Route path="/finance/budgets" element={<LazySuspense><BudgetPage /></LazySuspense>} />
               <Route path="/finance/expenses" element={<LazySuspense><ExpensePage /></LazySuspense>} />
+              <Route path="/finance/accounting" element={<LazySuspense><AccountingPage /></LazySuspense>} />
               <Route path="/finance/periods" element={<LazySuspense><FinancialPeriodPage /></LazySuspense>} />
               <Route path="/finance/nepal-admin" element={<LazySuspense><NepalFinanceAdminPage /></LazySuspense>} />
 
