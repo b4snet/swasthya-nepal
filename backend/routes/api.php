@@ -28,6 +28,7 @@ use App\Http\Controllers\Api\ErController;
 use App\Http\Controllers\Api\ExpenseController;
 use App\Http\Controllers\Api\FacilityController;
 use App\Http\Controllers\Api\FacilitySettingsController;
+use App\Http\Controllers\Api\GovernanceController;
 use App\Http\Controllers\Api\FinanceController;
 use App\Http\Controllers\Api\FinancialPeriodController;
 use App\Http\Controllers\Api\FollowUpController;
@@ -1682,6 +1683,49 @@ Route::middleware(['throttle:api', ResolveTenantContext::class])->prefix('notifi
     // Stats
     Route::get('stats', [NotificationController::class, 'stats'])
         ->middleware('authorize:notification:view');
+
+// Governance — Policies, Incidents, CAPA, Credentials, Complaints, Disclosures
+    Route::get('governance/dashboard', [GovernanceController::class, 'dashboard'])
+        ->middleware('authorize:quality:view');
+    Route::get('governance/policies', [GovernanceController::class, 'listPolicies'])
+        ->middleware('authorize:quality:view');
+    Route::post('governance/policies', [GovernanceController::class, 'storePolicy'])
+        ->middleware('authorize:quality:manage');
+    Route::get('governance/policies/{policy}', [GovernanceController::class, 'showPolicy'])
+        ->middleware('authorize:quality:view');
+    Route::put('governance/policies/{policy}', [GovernanceController::class, 'updatePolicy'])
+        ->middleware('authorize:quality:manage');
+    Route::delete('governance/policies/{policy}', [GovernanceController::class, 'destroyPolicy'])
+        ->middleware('authorize:quality:manage');
+    Route::get('governance/incidents', [GovernanceController::class, 'listIncidents'])
+        ->middleware('authorize:quality:view');
+    Route::post('governance/incidents', [GovernanceController::class, 'storeIncident'])
+        ->middleware('authorize:quality:manage');
+    Route::get('governance/incidents/{incident}', [GovernanceController::class, 'showIncident'])
+        ->middleware('authorize:quality:view');
+    Route::put('governance/incidents/{incident}', [GovernanceController::class, 'updateIncident'])
+        ->middleware('authorize:quality:manage');
+    Route::get('governance/actions', [GovernanceController::class, 'listActions'])
+        ->middleware('authorize:quality:view');
+    Route::post('governance/actions', [GovernanceController::class, 'storeAction'])
+        ->middleware('authorize:quality:manage');
+    Route::put('governance/actions/{action}', [GovernanceController::class, 'updateAction'])
+        ->middleware('authorize:quality:manage');
+    Route::get('governance/credentials', [GovernanceController::class, 'listCredentials'])
+        ->middleware('authorize:quality:view');
+    Route::post('governance/credentials', [GovernanceController::class, 'storeCredential'])
+        ->middleware('authorize:quality:manage');
+    Route::get('governance/complaints', [GovernanceController::class, 'listComplaints'])
+        ->middleware('authorize:quality:view');
+    Route::post('governance/complaints', [GovernanceController::class, 'storeComplaint'])
+        ->middleware('authorize:quality:manage');
+    Route::put('governance/complaints/{complaint}', [GovernanceController::class, 'updateComplaint'])
+        ->middleware('authorize:quality:manage');
+    Route::get('governance/disclosures', [GovernanceController::class, 'listDisclosures'])
+        ->middleware('authorize:quality:view');
+    Route::post('governance/disclosures', [GovernanceController::class, 'storeDisclosure'])
+        ->middleware('authorize:quality:manage');
+
 });
 
 // Document center routes have been moved inside the v1 authenticated group above.

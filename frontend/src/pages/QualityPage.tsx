@@ -23,6 +23,11 @@ const qualityApi = {
     api.request<unknown>(`/api/v1/compliance-reports/${reportId}/publish`, { method: 'POST', body: {}, ...opt(fac) }),
   acknowledge: (reportId: string, fac?: string | null) =>
     api.request<unknown>(`/api/v1/compliance-reports/${reportId}/acknowledge`, { method: 'POST', body: {}, ...opt(fac) }),
+  governanceDashboard: () => api.request<Record<string, number>>('/api/v1/governance/dashboard'),
+  listIncidents: () => api.request<{data: unknown[]}>('/api/v1/governance/incidents'),
+  storeIncident: (p: Record<string, unknown>) => api.request<unknown>('/api/v1/governance/incidents', { method: 'POST', body: p }),
+  listActions: () => api.request<{data: unknown[]}>('/api/v1/governance/actions'),
+  storeAction: (p: Record<string, unknown>) => api.request<unknown>('/api/v1/governance/actions', { method: 'POST', body: p }),
 };
 
 /* ── Types ───────────────────────────────────────────────────────── */
@@ -40,6 +45,9 @@ interface ComplianceReport {
   acknowledgedAt: string | null;
   version: number;
 }
+
+interface GovIncident { id: string; incident_code: string; title: string; category: string; severity: string; status: string; reported_at: string | null; }
+interface GovAction { id: string; action_code: string; title: string; action_type: string; status: string; due_date: string | null; }
 
 /* ── Constants ───────────────────────────────────────────────────── */
 
@@ -104,6 +112,12 @@ export function QualityPage() {
   );
 
   const allReports = useMemo(() => (reports.data ?? []) as unknown as ComplianceReport[], [reports.data]);
+  const govDash = useFetch(() => qualityApi.governanceDashboard().catch(() => ({})), []);
+  const gd = useMemo(() => (govDash.data ?? {}) as Record<string, number>, [govDash.data]);
+  const incs = useFetch(() => qualityApi.listIncidents().then(r => r?.data ?? []).catch(() => []), []);
+  const allIncs = useMemo(() => (incs.data ?? []) as unknown as GovIncident[], [incs.data]);
+  const caps = useFetch(() => qualityApi.listActions().then(r => r?.data ?? []).catch(() => []), []);
+  const allCaps = useMemo(() => (caps.data ?? []) as unknown as GovAction[], [caps.data]);
 
   const go = useCallback(async <T,>(fn: () => Promise<T>): Promise<T | null> => {
     setBusy(true); setError(null);
@@ -173,12 +187,12 @@ export function QualityPage() {
           <span className="q-census-label">Acknowledged</span>
         </div>
         <div className="q-census-card q-census-card--safety">
-          <span className="q-census-value">—</span>
-          <span className="q-census-label">Safety Events</span>
+          <span className="q-census-value">{gd.openIncidents ?? 0}</span>
+          <span className="q-census-label">Open Incidents</span>
         </div>
         <div className="q-census-card q-census-card--capa">
-          <span className="q-census-value">—</span>
-          <span className="q-census-label">Open CAPAs</span>
+          <span className="q-census-value">{gd.overdueActions ?? 0}</span>
+          <span className="q-census-label">Overdue Actions</span>
         </div>
       </div>
 
@@ -201,20 +215,20 @@ export function QualityPage() {
             </div>
             <div className="q-overview-grid">
               <div className="q-overview-card">
-                <span className="q-overview-label">Incidents This Month</span>
-                <span className="q-overview-value">—</span>
-              </div>
-              <div className="q-overview-card">
-                <span className="q-overview-label">Open CAPAs</span>
-                <span className="q-overview-value q-overview-value--warning">—</span>
+                <span className="q-overview-label">Open Incidents</span>
+                <span className="q-overview-value">{gd.openIncidents ?? 0}</span>
               </div>
               <div className="q-overview-card">
                 <span className="q-overview-label">Overdue Actions</span>
-                <span className="q-overview-value q-overview-value--danger">—</span>
+                <span className="q-overview-value q-overview-value--warning">{gd.overdueActions ?? 0}</span>
               </div>
               <div className="q-overview-card">
-                <span className="q-overview-label">Compliance Score</span>
-                <span className="q-overview-value q-overview-value--success">—</span>
+                <span className="q-overview-label">Critical Incidents</span>
+                <span className="q-overview-value q-overview-value--danger">{gd.criticalIncidents ?? 0}</span>
+              </div>
+              <div className="q-overview-card">
+                <span className="q-overview-label">Open Complaints</span>
+                <span className="q-overview-value q-overview-value--success">{gd.openComplaints ?? 0}</span>
               </div>
             </div>
           </Card>
@@ -253,7 +267,7 @@ export function QualityPage() {
             <h3>Incident Management</h3>
             <Button variant="primary" size="sm" onClick={() => setDlg('new-safety')}>+ Report Incident</Button>
           </div>
-          <EmptyState title="Incident reports" body="Report and track safety incidents, near-misses, and quality events." />
+          {allIncs.length === 0 ? <EmptyState title="No incidents" body="Report and track safety incidents." /> : <div className="q-table"><div className="q-table-header"><span>Code</span><span>Title</span><span>Severity</span><span>Status</span><span>Reported</span></div>{allIncs.map((i: GovIncident) => <div key={i.id} className="q-table-row"><span className="q-mono">{i.incident_code}</span><span className="q-name">{i.title}</span><span>{i.severity}</span><span>{i.status}</span><span>{i.reported_at ? new Date(i.reported_at).toLocaleDateString() : "�"}</span></div>)}</div>}
         </Card>
       )}
 
@@ -281,7 +295,7 @@ export function QualityPage() {
             <h3>Corrective & Preventive Actions</h3>
             <Button variant="primary" size="sm" onClick={() => setDlg('new-capa')}>+ New CAPA</Button>
           </div>
-          <EmptyState title="No open CAPAs" body="Track corrective and preventive actions from incident investigations." />
+          {allCaps.length === 0 ? <EmptyState title="No CAPAs" body="Track corrective and preventive actions." /> : <div className="q-table"><div className="q-table-header"><span>Code</span><span>Title</span><span>Type</span><span>Status</span><span>Due</span></div>{allCaps.map((a: GovAction) => <div key={a.id} className="q-table-row"><span className="q-mono">{a.action_code}</span><span className="q-name">{a.title}</span><span>{a.action_type}</span><span>{a.status}</span><span>{a.due_date ? new Date(a.due_date).toLocaleDateString() : "�"}</span></div>)}</div>}
         </Card>
       )}
 
@@ -390,7 +404,7 @@ export function QualityPage() {
         <Dialog open onClose={() => setDlg(null)} title="Report Safety Event" footer={
           <>
             <Button variant="ghost" onClick={() => setDlg(null)}>Cancel</Button>
-            <Button onClick={() => { setDlg(null); }} loading={busy}>Submit Report</Button>
+            <Button onClick={async () => { await go(() => qualityApi.storeIncident({ title: safetyForm.type, category: safetyForm.type.toLowerCase().replace(/\s+/g,'_'), severity: safetyForm.severity, description: {text: safetyForm.description, dept: safetyForm.department} })); setDlg(null); incs.refresh(); govDash.refresh(); }} loading={busy}>Submit Report</Button>
           </>
         }>
           <form className="q-form">
@@ -418,7 +432,7 @@ export function QualityPage() {
         <Dialog open onClose={() => setDlg(null)} title="New CAPA" footer={
           <>
             <Button variant="ghost" onClick={() => setDlg(null)}>Cancel</Button>
-            <Button onClick={() => { setDlg(null); }} loading={busy}>Create CAPA</Button>
+            <Button onClick={async () => { await go(() => qualityApi.storeAction({ title: capaForm.action, action_type: 'corrective', description: capaForm.action, due_date: capaForm.deadline || undefined })); setDlg(null); caps.refresh(); govDash.refresh(); }} loading={busy}>Create CAPA</Button>
           </>
         }>
           <form className="q-form">
