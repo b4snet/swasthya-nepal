@@ -642,9 +642,9 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
     Route::post('goods-receipts/{grn}/match', [ProcurementController::class, 'matchReceipt'])
         ->middleware('authorize:procurement:receive');
     Route::get('purchase-orders/{order}/goods-receipts', [ProcurementController::class, 'indexReceipts'])
-    Route::get('prescriptions', [PharmacyController::class, 'index'])
-
         ->middleware('authorize:procurement:view');
+    Route::get('prescriptions', [PharmacyController::class, 'index'])
+        ->middleware('authorize:pharmacy:view');
     Route::get('prescriptions/{prescription}', [PharmacyController::class, 'show'])
         ->middleware('authorize:pharmacy:view');
     Route::post('prescriptions/{prescription}/verify', [PharmacyController::class, 'verify'])
@@ -987,6 +987,8 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
         ->middleware('authorize:icu:admit');
     Route::post('icu-admissions', [IcuController::class, 'admitToIcu'])
         ->middleware('authorize:icu:admit');
+    Route::get('icu-admissions', [IcuController::class, 'admissions'])
+        ->middleware('authorize:icu:observe');
     Route::get('icu-admissions/{icuAdmission}', [IcuController::class, 'showAdmission'])
         ->middleware('authorize:icu:observe');
     Route::post('icu-admissions/{icuAdmission}/observations', [IcuController::class, 'recordObservation'])
@@ -1016,6 +1018,8 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
         ->middleware('authorize:bloodbank:issue');
     Route::post('blood-units/{bloodUnit}/issue', [BloodBankController::class, 'issueBloodUnit'])
         ->middleware('authorize:bloodbank:issue');
+    Route::get('transfusions', [BloodBankController::class, 'transfusions'])
+        ->middleware('authorize:bloodbank:transfuse');
     Route::post('transfusions', [BloodBankController::class, 'startTransfusion'])
         ->middleware('authorize:bloodbank:transfuse');
     Route::post('transfusions/{transfusion}/verify', [BloodBankController::class, 'verifyTransfusion'])
@@ -1026,6 +1030,8 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
         ->middleware('authorize:bloodbank:transfuse');
     Route::post('transfusions/{transfusion}/reaction', [BloodBankController::class, 'reportReaction'])
         ->middleware('authorize:bloodbank:transfuse');
+    Route::get('blood-units', [BloodBankController::class, 'units'])
+        ->middleware('authorize:bloodbank:process');
     Route::post('blood-units/{bloodUnit}/discard', [BloodBankController::class, 'discardBloodUnit'])
         ->middleware('authorize:bloodbank:discard');
 
@@ -1493,6 +1499,17 @@ Route::middleware(['throttle:api', ResolveTenantContext::class])->prefix('oncolo
 
     // Stats
     Route::get('stats', [OncologyController::class, 'stats']);
+});
+
+// ── Specialty Care Framework ──
+Route::middleware(['throttle:api', ResolveTenantContext::class])->prefix('specialty')->group(function (): void {
+    Route::get('profiles', [SpecialtyController::class, 'listProfiles']);
+    Route::post('profiles', [SpecialtyController::class, 'storeProfile']);
+    Route::get('profiles/{specialtyProfile}', [SpecialtyController::class, 'showProfile']);
+    Route::post('profiles/{specialtyProfile}/assessments', [SpecialtyController::class, 'storeAssessment']);
+    Route::post('profiles/{specialtyProfile}/care-plans', [SpecialtyController::class, 'storeCarePlan']);
+    Route::post('care-plans/{carePlan}/activate', [SpecialtyController::class, 'activateCarePlan']);
+    Route::post('care-plans/{carePlan}/complete', [SpecialtyController::class, 'completeCarePlan']);
 });
 
 // ── Phase 17: Enterprise Budget, Expense & Financial Periods ──

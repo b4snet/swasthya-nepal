@@ -442,6 +442,58 @@ final class BloodBankController extends Controller
         ];
     }
 
+    /**
+     * GET blood-units — list blood units within scope, with optional status filter.
+     */
+    public function units(Request $request): JsonResponse
+    {
+        $context = TenantContext::current();
+        $status = $request->query('status');
+
+        $query = BloodUnit::query()
+            ->where('tenant_id', (string) $context->tenantId())
+            ->when($context->facilityId() !== null, fn ($q) => $q->where('facility_id', $context->facilityId()));
+
+        if ($status !== null && $status !== '') {
+            $query->where('status', $status);
+        }
+
+        $units = $query
+            ->orderByDesc('created_at')
+            ->limit(200)
+            ->get()
+            ->map(fn (BloodUnit $unit): array => self::presentUnit($unit))
+            ->values();
+
+        return Envelope::success(data: $units, request: $request);
+    }
+
+    /**
+     * GET transfusions — list transfusions within scope, with optional status filter.
+     */
+    public function transfusions(Request $request): JsonResponse
+    {
+        $context = TenantContext::current();
+        $status = $request->query('status');
+
+        $query = Transfusion::query()
+            ->where('tenant_id', (string) $context->tenantId())
+            ->when($context->facilityId() !== null, fn ($q) => $q->where('facility_id', $context->facilityId()));
+
+        if ($status !== null && $status !== '') {
+            $query->where('status', $status);
+        }
+
+        $transfusions = $query
+            ->orderByDesc('created_at')
+            ->limit(200)
+            ->get()
+            ->map(fn (Transfusion $t): array => self::presentTransfusion($t))
+            ->values();
+
+        return Envelope::success(data: $transfusions, request: $request);
+    }
+
     private function currentStaffId(TenantContext $context): ?string
     {
         return $context->user?->staff()

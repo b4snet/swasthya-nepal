@@ -80,6 +80,7 @@ const NOTE_TYPES = [
 
 export function IcuPage() {
   const beds = useFetch(() => icuApi.beds(), ['icu-beds']);
+  const admissions = useFetch(() => icuApi.admissions(), ['icu-admissions']);
   const [selectedAdmission, setSelectedAdmission] = useState<IcuAdmissionDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'beds' | 'admissions' | 'alerts'>('beds');
@@ -203,12 +204,26 @@ export function IcuPage() {
   }, [selectedAdmission, transferNotes, beds]);
 
   const handleSelectBed = useCallback(async (bed: IcuBed) => {
-    if (bed.status !== 'occupied') return;
-    // For occupied beds, we need to show admission detail
-    // The bed list doesn't include admission IDs — we need to find them
-    // For now, clicking an occupied bed opens the admit dialog pre-filled
-    setAdmitBedId(bed.id);
-  }, []);
+    if (bed.status !== 'occupied') {
+      // Pre-fill the admit dialog with this bed
+      setAdmitBedId(bed.id);
+      return;
+    }
+    const allAds = admissions.data ?? [];
+    const match = allAds.find(a => a.icuBedId === bed.id && a.status === 'admitted');
+    if (match) {
+      try {
+        const detail = await icuApi.show(match.id);
+        setSelectedAdmission(detail);
+        setActiveTab('alerts');
+      } catch {
+        // If we can't load, just open the admit dialog pre-filled
+        setAdmitBedId(bed.id);
+      }
+    } else {
+      setAdmitBedId(bed.id);
+    }
+  }, [admissions]);
 
   /* ── Census calculations ────────────────────────────────── */
   const allBeds = beds.data ?? [];
@@ -336,8 +351,41 @@ export function IcuPage() {
         <Card className="icu-section-card">
           <div className="icu-section-header">
             <h3>ICU Admissions</h3>
+            <Button variant="ghost" size="sm" onClick={() => void admissions.refresh()}>Refresh</Button>
           </div>
-          <EmptyState title="Select a patient from bed board" body="Click an occupied bed to view admission details." />
+          {(admissions.data ?? []).length === 0 ? (
+            <EmptyState title="No ICU admissions" body="Admit a patient to see them here." />
+          ) : (
+            <div className="icu-admission-list">
+              {(admissions.data ?? []).map(ad => {
+                const cfg = ACUITY_OPTIONS.find(a => a.value === ad.acuity) ?? ACUITY_OPTIONS[2];
+                return (
+                  <div
+                    key={ad.id}
+                    className="icu-admission-row"
+                    onClick={async () => { try { const d = await icuApi.show(ad.id); setSelectedAdmission(d); } catch { /* ignore */ } }}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={async (e) => { if (e.key === 'Enter') { try { const d = await icuApi.show(ad.id); setSelectedAdmission(d); } catch { /* ignore */ } } }}
+                  >
+                    <div className="icu-admission-info">
+                      <span className="icu-admission-patient">{ad.patientId.slice(0, 12)}...</span>
+                      <span className="icu-status-badge" style={{ backgroundColor: cfg.bg, color: cfg.color }}>
+                        {ad.acuity}
+                      </span>
+                    </div>
+                    <div className="icu-admission-meta">
+                      <span>{ad.source ?? "—"}</span>
+                      <span>{ad.admittedAt ? new Date(ad.admittedAt).toLocaleString() : "—"}</span>
+                    </div>
+                    <span className="icu-admission-status" style={{ color: ad.status === 'admitted' ? '#10b981' : '#6b7280' }}>
+                      {ad.status}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </Card>
       )}
 

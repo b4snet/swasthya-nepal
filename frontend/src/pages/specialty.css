@@ -1,0 +1,25 @@
+.page.spec-page { padding: 0 1.5rem 2rem; }
+.spec-census { display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+.spec-census-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem 1.25rem; min-width: 140px; text-align: center; border-top: 3px solid var(--primary, #4FA9FF); }
+.spec-census-value { display: block; font-size: 1.5rem; font-weight: 700; color: #111827; }
+.spec-census-label { display: block; font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem; }
+.spec-tabs { display: flex; gap: 0; border-bottom: 2px solid #e5e7eb; margin-bottom: 1.5rem; }
+.spec-tab { padding: 0.6rem 1rem; border: none; background: none; cursor: pointer; font-size: 0.875rem; font-weight: 500; color: #6b7280; border-bottom: 2px solid transparent; margin-bottom: -2px; }
+.spec-tab:hover { color: #374151; }
+.spec-tab--active { color: var(--primary, #4FA9FF); border-bottom-color: var(--primary, #4FA9FF); }
+.spec-badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 99px; font-size: 0.75rem; font-weight: 600; }
+.spec-section { margin-bottom: 1.5rem; }
+.spec-section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+.spec-section-header h3 { margin: 0; font-size: 1rem; }
+.spec-profile-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
+.spec-profile-card { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem; cursor: pointer; transition: border-color 0.15s; }
+.spec-profile-card:hover { border-color: var(--primary, #4FA9FF); }
+.spec-profile-card--selected { border-color: var(--primary, #4FA9FF); background: #eff6ff; }
+.spec-profile-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem; }
+.spec-profile-diagnosis { font-weight: 600; font-size: 0.875rem; }
+.spec-profile-meta { display: flex; gap: 1rem; font-size: 0.75rem; color: #6b7280; }
+.spec-list { display: flex; flex-direction: column; gap: 0.5rem; }
+.spec-list-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; }
+.spec-list-type { font-weight: 500; font-size: 0.875rem; }
+.spec-list-time { font-size: 0.75rem; color: #6b7280; margin-left: auto; }
+.spec-list-goals { font-size: 0.75rem; color: #3b82f6; }

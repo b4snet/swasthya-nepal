@@ -256,6 +256,7 @@ export const messages = {
   'nav.notifications': 'Notifications',
   'nav.communications': 'Messaging',
   'nav.forms': 'Forms & Templates',
+  'nav.integrations': 'Integrations',
   'nav.pharmacy': 'Pharmacy',
   'nav.referrals': 'Referrals',
   'nav.oncology': 'Oncology',

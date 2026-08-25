@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { bbApi } from '../api/endpoints';
 import { ApiError } from '../api/client';
 import { Alert, Button, Card, Dialog, EmptyState, Input, Select, SkeletonTable } from '../components/ui';
@@ -35,6 +35,8 @@ const REACTION_SEVERITIES = [
 
 export function BloodBankPage() {
   const donors = useFetch(() => bbApi.donors(), ['bb-donors']);
+  const units = useFetch(() => bbApi.units(), ['bb-units']);
+  const transfusions = useFetch(() => bbApi.transfusions(), ['bb-transfusions']);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'inventory' | 'donors' | 'requests' | 'transfusions'>('inventory');
   const [dlg, setDlg] = useState<string | null>(null);
@@ -84,7 +86,20 @@ export function BloodBankPage() {
   };
 
   const allDonors = donors.data ?? [];
-  const refresh = () => { void donors.refresh(); };
+  const allUnits = units.data ?? [];
+  const census = useMemo(() => {
+    const total = allUnits.length;
+    const available = allUnits.filter(u => u.status === 'available').length;
+    const reserved = allUnits.filter(u => u.status === 'crossmatched').length;
+    const issued = allUnits.filter(u => u.status === 'issued').length;
+    const expiring = allUnits.filter(u => {
+      if (!u.expiryAt) return false;
+      const diff = new Date(u.expiryAt).getTime() - Date.now();
+      return diff > 0 && diff < 7 * 24 * 60 * 60 * 1000;
+    }).length;
+    return { total, available, reserved, issued, expiring };
+  }, [allUnits]);
+  const refresh = () => { void donors.refresh(); void units.refresh(); void transfusions.refresh(); };
 
   return (
     <div className="page bb-page">
@@ -108,23 +123,23 @@ export function BloodBankPage() {
           <span className="bb-census-label">Donors</span>
         </div>
         <div className="bb-census-card bb-census-card--units">
-          <span className="bb-census-value">—</span>
+          <span className="bb-census-value">{census.total}</span>
           <span className="bb-census-label">Blood Units</span>
         </div>
         <div className="bb-census-card bb-census-card--available">
-          <span className="bb-census-value">—</span>
+          <span className="bb-census-value">{census.available}</span>
           <span className="bb-census-label">Available</span>
         </div>
         <div className="bb-census-card bb-census-card--reserved">
-          <span className="bb-census-value">—</span>
+          <span className="bb-census-value">{census.reserved}</span>
           <span className="bb-census-label">Reserved</span>
         </div>
         <div className="bb-census-card bb-census-card--issued">
-          <span className="bb-census-value">—</span>
+          <span className="bb-census-value">{census.issued}</span>
           <span className="bb-census-label">Issued</span>
         </div>
         <div className="bb-census-card bb-census-card--expiring">
-          <span className="bb-census-value">—</span>
+          <span className="bb-census-value">{census.expiring}</span>
           <span className="bb-census-label">Expiring Soon</span>
         </div>
       </div>

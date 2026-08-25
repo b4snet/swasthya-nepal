@@ -730,7 +730,7 @@ it('enforces claim lifecycle: draft → submitted → pending → accepted/denie
 // HELPERS
 // ══════════════════════════════════════════════════════════════
 
-private function ctx(): array
+function ctx(): array
 {
     $org = Identity::organization();
     $facility = Identity::facility($org);
@@ -740,7 +740,7 @@ private function ctx(): array
     return ['org' => $org, 'facility' => $facility, 'admin' => $admin];
 }
 
-private function createSignedEncounter(array $ctx, Patient $patient): Encounter
+function createSignedEncounter(array $ctx, Patient $patient): Encounter
 {
     $department = Department::factory()->create([
         'tenant_id' => $ctx['org']->getKey(),
@@ -764,7 +764,7 @@ private function createSignedEncounter(array $ctx, Patient $patient): Encounter
     ]);
 }
 
-private function postCharge(array $ctx, Patient $patient, Encounter $encounter, int $amountMinor, string $category): Charge
+function postCharge(array $ctx, Patient $patient, Encounter $encounter, int $amountMinor, string $category): Charge
 {
     return Charge::query()->create([
         'tenant_id' => $ctx['org']->getKey(),

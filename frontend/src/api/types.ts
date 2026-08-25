@@ -958,3 +958,148 @@ export interface GeneratedDocument {
   createdAt: string;
   updatedAt: string;
 }
+
+
+/* ------------------------------------------------------------------
+   HR types — Positions, Shift Templates, Rosters, Attendance, Leave, Payroll
+   ------------------------------------------------------------------ */
+
+export interface Position {
+  id: string;
+  departmentId: string;
+  code: string;
+  name: string;
+  status: string;
+}
+
+export interface ShiftTemplate {
+  id: string;
+  departmentId: string;
+  code: string;
+  name: string;
+  shiftType: string;
+  startsAt: string | null;
+  endsAt: string | null;
+  workingMinutes: number | null;
+  status: string;
+}
+
+export interface Roster {
+  id: string;
+  staffId: string;
+  shiftTemplateId: string;
+  shiftType: string | null;
+  rosterDate: string;
+  status: string;
+  notes: string | null;
+  lockVersion: number;
+}
+
+export interface AttendanceRecord {
+  id: string;
+  staffId: string;
+  attendanceDate: string;
+  clockInAt: string | null;
+  clockOutAt: string | null;
+  status: string;
+  source: string;
+  correctionStatus: string;
+  lockVersion: number;
+}
+
+export interface LeaveType {
+  id: string;
+  code: string;
+  name: string;
+  paidDaysPerYear: number;
+  carryoverDays: number;
+  status: string;
+}
+
+export interface LeaveRequest {
+  id: string;
+  staffId: string;
+  leaveTypeId: string;
+  leaveTypeCode: string | null;
+  startsOn: string;
+  endsOn: string;
+  daysRequested: number;
+  status: string;
+  decidedAt: string | null;
+  lockVersion: number;
+}
+
+export interface PayrollExport {
+  id: string;
+  periodStart: string;
+  periodEnd: string;
+  exportedByStaffId: string | null;
+  rowCount: number;
+  format: string;
+  payloadHash: string;
+  exportedAt: string | null;
+}
+
+/* ------------------------------------------------------------------
+   Asset types — Register, Lifecycle, Maintenance, Work Orders
+   ------------------------------------------------------------------ */
+
+export interface AssetCategory {
+  id: string;
+  code: string;
+  name: string;
+  status: string;
+}
+
+export interface Asset {
+  id: string;
+  categoryId: string;
+  name: string;
+  serialNumber: string | null;
+  rfidTag: string | null;
+  barcode: string | null;
+  currentLocationId: string | null;
+  purchaseValueMinor: number | null;
+  purchaseDate: string | null;
+  warrantyUntil: string | null;
+  lifecycleStatus: string;
+  status: string;
+  lockVersion: number;
+}
+
+export interface AssetTransfer {
+  id: string;
+  fromLocationId: string | null;
+  toLocationId: string | null;
+  transferredAt: string | null;
+  transferredByStaffId: string | null;
+}
+
+export interface MaintenanceSchedule {
+  id: string;
+  assetId: string;
+  scheduleType: string;
+  frequencyDays: number | null;
+  nextDueDate: string;
+  lastCompletedAt: string | null;
+  contractRef: string | null;
+  status: string;
+  lockVersion: number;
+}
+
+export interface WorkOrder {
+  id: string;
+  workOrderNumber: string;
+  assetId: string;
+  maintenanceScheduleId: string | null;
+  status: string;
+  openedAt: string | null;
+  openedByStaffId: string | null;
+  completedAt: string | null;
+  completedByStaffId: string | null;
+  downtimeStartedAt: string | null;
+  downtimeEndedAt: string | null;
+  description: string | null;
+  certificationRef: string | null;
+  lockVersion: number;
+}

@@ -56,6 +56,18 @@ import type {
   Deposit,
   AgingEntry,
   GeneratedDocument,
+  Position,
+  ShiftTemplate,
+  Roster,
+  AttendanceRecord,
+  LeaveType,
+  LeaveRequest,
+  PayrollExport,
+  AssetCategory,
+  Asset,
+  AssetTransfer,
+  MaintenanceSchedule,
+  WorkOrder,
 } from './types';
 
 const opt = (facilityId?: string | null): RequestOptions => ({ facilityId });
@@ -608,6 +620,13 @@ export const icuApi = {
     api.request<{ id: string; status: string }>(
       `/api/v1/icu-admissions/${admissionId}/transfer`, { method: 'POST', body: payload },
     ),
+  admissions: (status?: string) => {
+    const qs = status ? ("?status=" + status) : "";
+    return api.request<Array<{
+      id: string; patientId: string; icuBedId: string; acuity: string; status: string; source: string | null;
+      admittedAt: string | null; nextObservationDueAt: string | null;
+    }>>("/api/v1/icu-admissions" + qs);
+  },
 };
 
 export const erApi = {
@@ -780,6 +799,21 @@ export const bbApi = {
     api.request<{ id: string; unitNumber: string; status: string }>(
       `/api/v1/blood-units/${unitId}/discard`, { method: 'POST', body: payload },
     ),
+  units: (status?: string) => {
+    const qs = status ? '?status=' + status : '';
+    return api.request<Array<{
+      id: string; unitNumber: string; componentType: string; bloodGroup: string;
+      rhFactor: string; expiryAt: string | null; tested: boolean; status: string;
+    }>>('/api/v1/blood-units' + qs);
+  },
+  transfusions: (status?: string) => {
+    const qs = status ? '?status=' + status : '';
+    return api.request<Array<{
+      id: string; bloodUnitId: string; patientId: string; status: string;
+      startedAt: string | null; verifiedAt: string | null; stoppedAt: string | null;
+      volumeTransfusedMl: number | null;
+    }>>('/api/v1/transfusions' + qs);
+  },
 };
 
 /* ------------------------------------------------------------------
@@ -1144,6 +1178,91 @@ export const procurementApi = {
   receiveGoods: (id: string, payload: { lines: Array<{ purchaseOrderLineId: string; quantityReceived: number }> }, facilityId?: string | null) =>
     api.request<PurchaseOrder>(`/api/v1/purchase-orders/${id}/goods-receipts`, { method: 'POST', body: payload, ...opt(facilityId) }),
 };
+
+/* ------------------------------------------------------------------
+   HR — Positions, Shift Templates, Rosters, Attendance, Leave, Payroll
+   ------------------------------------------------------------------ */
+
+export const hrApi = {
+  positions: (facilityId?: string | null) =>
+    api.request<Position[]>('/api/v1/positions', opt(facilityId)),
+  storePosition: (payload: { departmentId: string; code: string; name: string; status?: string }, facilityId?: string | null) =>
+    api.request<Position>('/api/v1/positions', { method: 'POST', body: payload, ...opt(facilityId) }),
+
+  shiftTemplates: (facilityId?: string | null) =>
+    api.request<ShiftTemplate[]>('/api/v1/shift-templates', opt(facilityId)),
+  storeShiftTemplate: (payload: { departmentId: string; code: string; name: string; shiftType: string; startsAt: string; endsAt: string; workingMinutes: number; status?: string }, facilityId?: string | null) =>
+    api.request<ShiftTemplate>('/api/v1/shift-templates', { method: 'POST', body: payload, ...opt(facilityId) }),
+
+  rosters: (facilityId?: string | null, date?: string | null) =>
+    api.request<Roster[]>(`/api/v1/rosters` + (date ? `?date=${date}` : ''), opt(facilityId)),
+  storeRoster: (payload: { staffId: string; shiftTemplateId: string; rosterDate: string; notes?: string }, facilityId?: string | null) =>
+    api.request<Roster>('/api/v1/rosters', { method: 'POST', body: payload, ...opt(facilityId) }),
+  confirmRoster: (id: string, facilityId?: string | null) =>
+    api.request<Roster>(`/api/v1/rosters/${id}/confirm`, { method: 'POST', body: {}, ...opt(facilityId) }),
+
+  attendance: (facilityId?: string | null, date?: string | null) =>
+    api.request<AttendanceRecord[]>(`/api/v1/attendance` + (date ? `?date=${date}` : ''), opt(facilityId)),
+  storeAttendance: (payload: { staffId: string; attendanceDate: string; clockInAt?: string; clockOutAt?: string; status?: string; source?: string }, facilityId?: string | null) =>
+    api.request<AttendanceRecord>('/api/v1/attendance', { method: 'POST', body: payload, ...opt(facilityId) }),
+
+  leaveTypes: (facilityId?: string | null) =>
+    api.request<LeaveType[]>('/api/v1/leave-types', opt(facilityId)),
+  storeLeaveType: (payload: { code: string; name: string; paidDaysPerYear: number; carryoverDays: number; status?: string }, facilityId?: string | null) =>
+    api.request<LeaveType>('/api/v1/leave-types', { method: 'POST', body: payload, ...opt(facilityId) }),
+  leaveRequests: (facilityId?: string | null) =>
+    api.request<LeaveRequest[]>('/api/v1/leave-requests', opt(facilityId)),
+  storeLeaveRequest: (payload: { staffId: string; leaveTypeId: string; startsOn: string; endsOn: string; daysRequested: number; reason?: string }, facilityId?: string | null) =>
+    api.request<LeaveRequest>('/api/v1/leave-requests', { method: 'POST', body: payload, ...opt(facilityId) }),
+  approveLeaveRequest: (id: string, notes?: string, facilityId?: string | null) =>
+    api.request<LeaveRequest>(`/api/v1/leave-requests/${id}/approve`, { method: 'POST', body: { notes }, ...opt(facilityId) }),
+  rejectLeaveRequest: (id: string, notes?: string, facilityId?: string | null) =>
+    api.request<LeaveRequest>(`/api/v1/leave-requests/${id}/reject`, { method: 'POST', body: { notes }, ...opt(facilityId) }),
+
+  payrollExports: (facilityId?: string | null) =>
+    api.request<PayrollExport[]>('/api/v1/payroll-exports', opt(facilityId)),
+  generatePayrollExport: (payload: { periodStart: string; periodEnd: string; format?: string }, facilityId?: string | null) =>
+    api.request<{ export: PayrollExport; payload: unknown }>('/api/v1/payroll-exports', { method: 'POST', body: payload, ...opt(facilityId) }),
+};
+
+/* ------------------------------------------------------------------
+   Assets — Register, Lifecycle, Maintenance, Work Orders, IoT
+   ------------------------------------------------------------------ */
+
+export const assetApi = {
+  categories: (facilityId?: string | null) =>
+    api.request<AssetCategory[]>('/api/v1/asset-categories', opt(facilityId)),
+  storeCategory: (payload: { code: string; name: string; status?: string }, facilityId?: string | null) =>
+    api.request<AssetCategory>('/api/v1/asset-categories', { method: 'POST', body: payload, ...opt(facilityId) }),
+
+  list: (facilityId?: string | null, lifecycleStatus?: string | null) =>
+    api.request<Asset[]>(`/api/v1/assets` + (lifecycleStatus ? `?lifecycleStatus=${lifecycleStatus}` : ''), opt(facilityId)),
+  store: (payload: { categoryId: string; name: string; serialNumber?: string; rfidTag?: string; barcode?: string; currentLocationId?: string; purchaseValueMinor?: number; purchaseDate?: string; warrantyUntil?: string }, facilityId?: string | null) =>
+    api.request<Asset>('/api/v1/assets', { method: 'POST', body: payload, ...opt(facilityId) }),
+  deploy: (id: string, facilityId?: string | null) =>
+    api.request<Asset>(`/api/v1/assets/${id}/deploy`, { method: 'POST', body: {}, ...opt(facilityId) }),
+  retire: (id: string, facilityId?: string | null) =>
+    api.request<Asset>(`/api/v1/assets/${id}/retire`, { method: 'POST', body: {}, ...opt(facilityId) }),
+  transfer: (id: string, payload: { toLocationId: string; reason?: string }, facilityId?: string | null) =>
+    api.request<Asset>(`/api/v1/assets/${id}/transfer`, { method: 'POST', body: payload, ...opt(facilityId) }),
+  transfers: (id: string, facilityId?: string | null) =>
+    api.request<AssetTransfer[]>(`/api/v1/assets/${id}/transfers`, opt(facilityId)),
+
+  maintenanceSchedules: (facilityId?: string | null) =>
+    api.request<MaintenanceSchedule[]>('/api/v1/maintenance-schedules', opt(facilityId)),
+  storeMaintenanceSchedule: (payload: { assetId: string; scheduleType: string; frequencyDays: number; nextDueDate: string; contractRef?: string; status?: string }, facilityId?: string | null) =>
+    api.request<MaintenanceSchedule>('/api/v1/maintenance-schedules', { method: 'POST', body: payload, ...opt(facilityId) }),
+
+  workOrders: (facilityId?: string | null) =>
+    api.request<WorkOrder[]>('/api/v1/work-orders', opt(facilityId)),
+  openWorkOrder: (payload: { assetId: string; description?: string; downtimeStartedAt?: string; maintenanceScheduleId?: string }, facilityId?: string | null) =>
+    api.request<{ workOrder: WorkOrder; assetLifecycleStatus: string }>('/api/v1/work-orders', { method: 'POST', body: payload, ...opt(facilityId) }),
+  completeWorkOrder: (id: string, payload: { downtimeEndedAt?: string; certificationRef?: string }, facilityId?: string | null) =>
+    api.request<{ workOrder: WorkOrder; assetLifecycleStatus: string }>(`/api/v1/work-orders/${id}/complete`, { method: 'POST', body: payload, ...opt(facilityId) }),
+  cancelWorkOrder: (id: string, facilityId?: string | null) =>
+    api.request<{ workOrder: WorkOrder; assetLifecycleStatus: string }>(`/api/v1/work-orders/${id}/cancel`, { method: 'POST', body: {}, ...opt(facilityId) }),
+};
+
 
 /* ------------------------------------------------------------------
    Finance (PRODUCT_REQUIREMENTS Â§6.13â€“Â§6.14)
@@ -1634,4 +1753,52 @@ export const referralsApi = {
 
   cancel: (id: string, cancellationReason?: string, facilityId?: string | null) =>
     api.request<Referral>(`/api/v1/referrals/${id}/cancel`, { method: 'POST', body: { cancellation_reason: cancellationReason }, facilityId }),
+};
+
+/* ------------------------------------------------------------------
+   Specialty Care Framework
+   ------------------------------------------------------------------ */
+
+export const specialtyApi = {
+  listProfiles: (departmentId?: string, status?: string) => {
+    const params = new URLSearchParams();
+    if (departmentId) params.set('departmentId', departmentId);
+    if (status) params.set('status', status);
+    const qs = params.toString();
+    return api.request<Array<{
+      id: string; patientId: string; departmentId: string; encounterId: string | null;
+      primaryDiagnosis: string | null; diagnosisCode: string | null; status: string;
+      clinicalSummary: string | null; customFields: Record<string, unknown> | null;
+      diagnosedAt: string | null; createdAt: string;
+    }>>('/api/v1/specialty/profiles' + (qs ? '?' + qs : ''));
+  },
+  storeProfile: (payload: {
+    patientId: string; departmentId: string; encounterId?: string;
+    primaryDiagnosis?: string; diagnosisCode?: string; clinicalSummary?: string;
+    customFields?: Record<string, unknown>; diagnosedAt?: string;
+  }) => api.request<{ id: string; patientId: string; departmentId: string }>(
+    '/api/v1/specialty/profiles', { method: 'POST', body: payload },
+  ),
+  showProfile: (id: string) => api.request<{
+    profile: { id: string; patientId: string; departmentId: string; primaryDiagnosis: string | null; status: string; clinicalSummary: string | null; customFields: Record<string, unknown> | null; diagnosedAt: string | null };
+    assessments: Array<{ id: string; assessmentType: string; status: string; responses: Record<string, unknown> | null; assessedAt: string | null }>;
+    carePlans: Array<{ id: string; planName: string; status: string; goals: string[] | null; interventions: string[] | null; startDate: string | null; reviewDate: string | null }>;
+  }>('/api/v1/specialty/profiles/' + id),
+  storeAssessment: (profileId: string, payload: {
+    assessmentType: string; formTemplateId?: string; responses?: Record<string, unknown>; notes?: string;
+  }) => api.request<{ id: string; assessmentType: string; status: string }>(
+    '/api/v1/specialty/profiles/' + profileId + '/assessments', { method: 'POST', body: payload },
+  ),
+  storeCarePlan: (profileId: string, payload: {
+    planName: string; goals?: string[]; interventions?: string[]; milestones?: string[];
+    responsibleStaffId?: string; startDate?: string; targetEndDate?: string; reviewDate?: string;
+  }) => api.request<{ id: string; planName: string; status: string }>(
+    '/api/v1/specialty/profiles/' + profileId + '/care-plans', { method: 'POST', body: payload },
+  ),
+  activateCarePlan: (planId: string) => api.request<{ id: string; status: string }>(
+    '/api/v1/specialty/care-plans/' + planId + '/activate', { method: 'POST' },
+  ),
+  completeCarePlan: (planId: string) => api.request<{ id: string; status: string }>(
+    '/api/v1/specialty/care-plans/' + planId + '/complete', { method: 'POST' },
+  ),
 };

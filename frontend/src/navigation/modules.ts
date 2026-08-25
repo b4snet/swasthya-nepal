@@ -34,6 +34,7 @@ import {
   PillBottle,
   TestTube,
   ShieldAlert,
+  Link,
   type LucideIcon as _LI,
 } from 'lucide-react';
 
@@ -56,6 +57,7 @@ const ONCOLOGY_ROLES = ['superadmin', 'doctor', 'nurse', 'hospital_admin', 'org_
 const FINANCE_ROLES = ['superadmin', 'billing_clerk', 'hospital_admin', 'org_admin', 'org_finance'];
 const HR_ROLES = ['superadmin', 'hospital_admin', 'org_admin'];
 const QUALITY_ROLES = ['superadmin', 'hospital_admin', 'org_admin', 'org_finance'];
+const INTEROP_ROLES = ['superadmin', 'hospital_admin', 'org_admin'];
 const ANALYTICS_ROLES = ['superadmin', 'hospital_admin', 'org_admin', 'org_finance'];
 
 export interface NavItem {
@@ -354,6 +356,7 @@ export const MODULES: NavModule[] = [
       { key: 'adm-settings', labelKey: 'admin.nav.settings', to: '/admin/settings', Icon: Settings, roles: ADMIN_ROLES },
       { key: 'adm-branding', labelKey: 'admin.nav.branding', to: '/admin/branding', Icon: LayoutDashboard, roles: ADMIN_ROLES },
       { key: 'adm-forms', labelKey: 'nav.forms', to: '/clinical/forms', Icon: FileText, roles: ADMIN_ROLES },
+      { key: 'adm-integrations', labelKey: 'nav.integrations', to: '/admin/integrations', Icon: Link, roles: INTEROP_ROLES },
     ],
   },
 ];

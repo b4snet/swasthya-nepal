@@ -292,6 +292,32 @@ final class IcuController extends Controller
         ];
     }
 
+    /**
+     * GET icu-admissions — list ICU admissions within scope, with optional status filter.
+     */
+    public function admissions(Request $request): JsonResponse
+    {
+        $context = TenantContext::current();
+        $status = $request->query('status');
+
+        $query = IcuAdmission::query()
+            ->where('tenant_id', (string) $context->tenantId())
+            ->when($context->facilityId() !== null, fn ($q) => $q->where('facility_id', $context->facilityId()));
+
+        if ($status !== null && $status !== '') {
+            $query->where('status', $status);
+        }
+
+        $admissions = $query
+            ->orderByDesc('admitted_at')
+            ->limit(200)
+            ->get()
+            ->map(fn (IcuAdmission $ad): array => self::presentAdmission($ad))
+            ->values();
+
+        return Envelope::success(data: $admissions, request: $request);
+    }
+
     private function currentStaffId(TenantContext $context): ?string
     {
         return $context->user?->staff()

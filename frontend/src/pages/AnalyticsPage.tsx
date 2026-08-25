@@ -4,6 +4,7 @@ import { useFetch } from '../hooks/useFetch';
 import { analyticsApi } from '../api/endpoints';
 import { ApiError } from '../api/client';
 import { Alert, Button, Card, EmptyState } from '../components/ui';
+import { dashboardApi } from '../api/dashboard';
 import '../pages/analytics-cmd.css';
 
 /* ── Types ───────────────────────────────────────────────────────── */
@@ -34,6 +35,49 @@ interface ReportTemplate {
   category: string;
   scope: string;
   status: string;
+}
+
+/* Domain summary types from backend AnalyticsService */
+interface OperationalSummary {
+  patientsRegisteredToday: number;
+  appointmentsToday: number;
+  activeEncounters: number;
+  bedOccupancy: { occupied: number; total: number };
+}
+interface ClinicalSummary {
+  encountersLast7Days: number;
+  prescriptionsLast7Days: number;
+  pendingCriticalValues: number;
+  followUpsDueIn3Days: number;
+}
+interface FinancialSummary {
+  revenueTodayMinor: number;
+  outstandingMinor: number;
+  pendingRefunds: number;
+  chargesToday: number;
+}
+interface PharmacySummary {
+  dispensedToday: number;
+  lowStockItems: number;
+  totalReturns: number;
+}
+interface LabSummary {
+  ordersToday: number;
+  pendingResults: number;
+  criticalPending: number;
+}
+interface RadiologySummary {
+  studiesToday: number;
+  pendingReports: number;
+}
+interface ProcurementSummary {
+  pendingRequests: number;
+  openOrders: number;
+  pendingReceipts: number;
+}
+interface HrSummary {
+  activeStaff: number;
+  pendingLeaveRequests: number;
 }
 
 /* ── Constants ───────────────────────────────────────────────────── */
@@ -83,6 +127,25 @@ export function AnalyticsPage() {
   const allKpis = useMemo(() => (kpis.data ?? []) as KpiDefinition[], [kpis.data]);
   const allDashboards = useMemo(() => (dashboards.data ?? []) as unknown as Dashboard[], [dashboards.data]);
   const allReports = useMemo(() => (reportTemplates.data ?? []) as unknown as ReportTemplate[], [reportTemplates.data]);
+
+  // Domain summaries — real data from the backend
+  const opsData = useFetch(() => dashboardApi.domainSummary('operational', fac).catch(() => ({})), [fac]);
+  const clinData = useFetch(() => dashboardApi.domainSummary('clinical', fac).catch(() => ({})), [fac]);
+  const finData = useFetch(() => dashboardApi.domainSummary('financial', fac).catch(() => ({})), [fac]);
+  const pharmData = useFetch(() => dashboardApi.domainSummary('pharmacy', fac).catch(() => ({})), [fac]);
+  const labData = useFetch(() => dashboardApi.domainSummary('laboratory', fac).catch(() => ({})), [fac]);
+  const radData = useFetch(() => dashboardApi.domainSummary('radiology', fac).catch(() => ({})), [fac]);
+  const procData = useFetch(() => dashboardApi.domainSummary('procurement', fac).catch(() => ({})), [fac]);
+  const hrData = useFetch(() => dashboardApi.domainSummary('hr', fac).catch(() => ({})), [fac]);
+
+  const ops = useMemo(() => (opsData.data ?? {}) as OperationalSummary, [opsData.data]);
+  const clin = useMemo(() => (clinData.data ?? {}) as ClinicalSummary, [clinData.data]);
+  const fin = useMemo(() => (finData.data ?? {}) as FinancialSummary, [finData.data]);
+  const pharm = useMemo(() => (pharmData.data ?? {}) as PharmacySummary, [pharmData.data]);
+  const lab = useMemo(() => (labData.data ?? {}) as LabSummary, [labData.data]);
+  const rad = useMemo(() => (radData.data ?? {}) as RadiologySummary, [radData.data]);
+  const proc = useMemo(() => (procData.data ?? {}) as ProcurementSummary, [procData.data]);
+  const hr = useMemo(() => (hrData.data ?? {}) as HrSummary, [hrData.data]);
 
   const go = useCallback(async <T,>(fn: () => Promise<T>): Promise<T | null> => {
     setBusy(true); setError(null);
@@ -173,34 +236,34 @@ export function AnalyticsPage() {
             </div>
             <div className="analytics-ops-grid">
               <div className="analytics-ops-card">
-                <span className="analytics-ops-label">ED Census</span>
-                <span className="analytics-ops-value">—</span>
-                <span className="analytics-ops-sub">Emergency patients</span>
+                <span className="analytics-ops-label">Patients Today</span>
+                <span className="analytics-ops-value">{ops.patientsRegisteredToday ?? 0}</span>
+                <span className="analytics-ops-sub">New registrations</span>
               </div>
               <div className="analytics-ops-card">
-                <span className="analytics-ops-label">OPD Visits</span>
-                <span className="analytics-ops-value">—</span>
-                <span className="analytics-ops-sub">Outpatient encounters</span>
+                <span className="analytics-ops-label">Appointments</span>
+                <span className="analytics-ops-value">{ops.appointmentsToday ?? 0}</span>
+                <span className="analytics-ops-sub">Scheduled today</span>
               </div>
               <div className="analytics-ops-card">
-                <span className="analytics-ops-label">IPD Census</span>
-                <span className="analytics-ops-value">—</span>
-                <span className="analytics-ops-sub">Inpatient beds occupied</span>
+                <span className="analytics-ops-label">Active Encounters</span>
+                <span className="analytics-ops-value">{ops.activeEncounters ?? 0}</span>
+                <span className="analytics-ops-sub">Open consultations</span>
               </div>
               <div className="analytics-ops-card">
-                <span className="analytics-ops-label">ICU Census</span>
-                <span className="analytics-ops-value">—</span>
-                <span className="analytics-ops-sub">Critical care patients</span>
+                <span className="analytics-ops-label">Bed Occupancy</span>
+                <span className="analytics-ops-value">{ops.bedOccupancy?.total ? Math.round((ops.bedOccupancy.occupied / ops.bedOccupancy.total) * 100) + '%' : '—'}</span>
+                <span className="analytics-ops-sub">{ops.bedOccupancy?.occupied ?? 0} / {ops.bedOccupancy?.total ?? 0} beds</span>
               </div>
               <div className="analytics-ops-card">
-                <span className="analytics-ops-label">OT Cases</span>
-                <span className="analytics-ops-value">—</span>
-                <span className="analytics-ops-sub">Surgeries completed</span>
+                <span className="analytics-ops-label">Encounters (7d)</span>
+                <span className="analytics-ops-value">{clin.encountersLast7Days ?? 0}</span>
+                <span className="analytics-ops-sub">Last 7 days</span>
               </div>
               <div className="analytics-ops-card">
-                <span className="analytics-ops-label">Discharges</span>
-                <span className="analytics-ops-value">—</span>
-                <span className="analytics-ops-sub">Patients discharged</span>
+                <span className="analytics-ops-label">Active Staff</span>
+                <span className="analytics-ops-value">{hr.activeStaff ?? 0}</span>
+                <span className="analytics-ops-sub">On duty</span>
               </div>
             </div>
           </Card>
@@ -216,28 +279,28 @@ export function AnalyticsPage() {
                 <div className="analytics-dept-bar">
                   <div className="analytics-dept-fill" style={{ width: '0%', backgroundColor: '#8b5cf6' }} />
                 </div>
-                <span className="analytics-dept-stat">— pending orders</span>
+                <span className="analytics-dept-stat">{lab.pendingResults ?? 0} pending results</span>
               </div>
               <div className="analytics-dept-card">
                 <span className="analytics-dept-name">Radiology</span>
                 <div className="analytics-dept-bar">
                   <div className="analytics-dept-fill" style={{ width: '0%', backgroundColor: '#06b6d4' }} />
                 </div>
-                <span className="analytics-dept-stat">— pending studies</span>
+                <span className="analytics-dept-stat">{rad.pendingReports ?? 0} pending reports</span>
               </div>
               <div className="analytics-dept-card">
                 <span className="analytics-dept-name">Pharmacy</span>
                 <div className="analytics-dept-bar">
                   <div className="analytics-dept-fill" style={{ width: '0%', backgroundColor: '#f59e0b' }} />
                 </div>
-                <span className="analytics-dept-stat">— pending prescriptions</span>
+                <span className="analytics-dept-stat">{pharm.dispensedToday ?? 0} dispensed today</span>
               </div>
               <div className="analytics-dept-card">
                 <span className="analytics-dept-name">Blood Bank</span>
                 <div className="analytics-dept-bar">
                   <div className="analytics-dept-fill" style={{ width: '0%', backgroundColor: '#ef4444' }} />
                 </div>
-                <span className="analytics-dept-stat">— pending requests</span>
+                <span className="analytics-dept-stat">{proc.openOrders ?? 0} open orders</span>
               </div>
             </div>
           </Card>
@@ -249,20 +312,20 @@ export function AnalyticsPage() {
             </div>
             <div className="analytics-fin-grid">
               <div className="analytics-fin-card">
-                <span className="analytics-fin-label">Revenue</span>
-                <span className="analytics-fin-value">—</span>
+                <span className="analytics-fin-label">Revenue Today</span>
+                <span className="analytics-fin-value">NPR {((fin.revenueTodayMinor ?? 0) / 100).toLocaleString()}</span>
               </div>
               <div className="analytics-fin-card">
                 <span className="analytics-fin-label">Outstanding</span>
-                <span className="analytics-fin-value analytics-fin-value--warning">—</span>
+                <span className="analytics-fin-value analytics-fin-value--warning">NPR {((fin.outstandingMinor ?? 0) / 100).toLocaleString()}</span>
               </div>
               <div className="analytics-fin-card">
-                <span className="analytics-fin-label">Collections</span>
-                <span className="analytics-fin-value analytics-fin-value--success">—</span>
+                <span className="analytics-fin-label">Charges Today</span>
+                <span className="analytics-fin-value analytics-fin-value--success">{fin.chargesToday ?? 0}</span>
               </div>
               <div className="analytics-fin-card">
-                <span className="analytics-fin-label">Refunds</span>
-                <span className="analytics-fin-value">—</span>
+                <span className="analytics-fin-label">Pending Refunds</span>
+                <span className="analytics-fin-value">{fin.pendingRefunds ?? 0}</span>
               </div>
             </div>
           </Card>
