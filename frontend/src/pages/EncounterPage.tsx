@@ -10,6 +10,8 @@ import { ApiError } from '../api/client';
 import { money } from '../components/ui';
 import { BILLING_ROLES } from '../auth/roles';
 import './encounters.css';
+import { CdssWarning } from '../components/CdssWarning';
+import '../components/cdss-warning.css';
 
 export function EncounterPage() {
   const { id } = useParams<{ id: string }>();
@@ -277,6 +279,17 @@ function PrescriptionTab({ encounterId, fac, signed, medications, onError, onSav
   const [duration, setDuration] = useState('');
   const [instructions, setInstructions] = useState('');
   const [busy, setBusy] = useState(false);
+  const [cdssMedicationIds, setCdssMedicationIds] = useState<string[]>([]);
+
+  // When medication changes, run CDSS check with all medications in this encounter
+  const handleMedicationChange = (newId: string) => {
+    setMedicationId(newId);
+    if (newId) {
+      // Build list: all existing prescription meds + the new one
+      const existing = cdssMedicationIds.filter(id => id !== newId);
+      setCdssMedicationIds([...existing, newId]);
+    }
+  };
 
   const submit = async () => {
     setBusy(true);
@@ -306,7 +319,7 @@ function PrescriptionTab({ encounterId, fac, signed, medications, onError, onSav
     <Card title="New prescription">
       {signed && <p className="muted">Encounter is signed — prescriptions are immutable history.</p>}
       <div className="stack">
-        <Select label="Medication" value={medicationId} onChange={(e) => setMedicationId(e.target.value)}>
+        <Select label="Medication" value={medicationId} onChange={(e) => handleMedicationChange(e.target.value)}>
           <option value="">Select medication…</option>
           {(medications.data ?? []).map((m) => (
             <option key={m.id} value={m.id}>
@@ -333,6 +346,9 @@ function PrescriptionTab({ encounterId, fac, signed, medications, onError, onSav
           <p className="muted small">
             Unit price: {money(selected.priceMinor, selected.currency)} — quantity pricing is applied at billing.
           </p>
+        )}
+        {cdssMedicationIds.length >= 2 && (
+          <CdssWarning medicationIds={cdssMedicationIds} facilityId={fac} />
         )}
         {!signed && (
           <div className="row">

@@ -1,0 +1,83 @@
+{
+    "timestamp": "2026-08-25T14:46:43+00:00",
+    "config": {
+        "url": "http:\/\/127.0.0.1:8000",
+        "concurrency": 5,
+        "requests": 50
+    },
+    "summary": {
+        "time_s": 12.46,
+        "total": 50,
+        "ok": 0,
+        "fail": 50,
+        "rps": 4,
+        "p50": 728.5,
+        "p95": 1310.9,
+        "p99": 1427
+    },
+    "by_endpoint": {
+        "POST \/auth\/login": {
+            "count": 6,
+            "p50": 728.5,
+            "p95": 1310.9,
+            "p99": 1310.9,
+            "errors": 6
+        },
+        "GET \/patients": {
+            "count": 6,
+            "p50": 706.1,
+            "p95": 1218.7,
+            "p99": 1218.7,
+            "errors": 6
+        },
+        "GET \/appointments": {
+            "count": 6,
+            "p50": 942.5,
+            "p95": 1212.1,
+            "p99": 1212.1,
+            "errors": 6
+        },
+        "GET \/encounters": {
+            "count": 6,
+            "p50": 949.9,
+            "p95": 1181.9,
+            "p99": 1181.9,
+            "errors": 6
+        },
+        "GET \/dashboard\/metrics": {
+            "count": 6,
+            "p50": 951.3,
+            "p95": 1427,
+            "p99": 1427,
+            "errors": 6
+        },
+        "GET \/prescriptions": {
+            "count": 5,
+            "p50": 704.1,
+            "p95": 1336.3,
+            "p99": 1336.3,
+            "errors": 5
+        },
+        "GET \/lab-orders": {
+            "count": 5,
+            "p50": 820.2,
+            "p95": 1209.2,
+            "p99": 1209.2,
+            "errors": 5
+        },
+        "GET \/finance\/overview": {
+            "count": 5,
+            "p50": 773.9,
+            "p95": 1122.9,
+            "p99": 1122.9,
+            "errors": 5
+        },
+        "GET \/inventory": {
+            "count": 5,
+            "p50": 675.2,
+            "p95": 1260.2,
+            "p99": 1260.2,
+            "errors": 5
+        }
+    }
+}

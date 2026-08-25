@@ -22,7 +22,8 @@ export function stubFetch(...responses: Response[]) {
     // Response bodies can only be read once; clone so repeated calls work.
     return resp.clone();
   });
-  vi.stubGlobal('fetch', fn);
+  // Use spyOn so vi.restoreAllMocks() can properly restore the original.
+  vi.spyOn(globalThis, 'fetch').mockImplementation(fn);
   return fn;
 }
 

@@ -7,6 +7,8 @@ import { Alert, Button, Card, Dialog, EmptyState, Input, SkeletonTable, StatusCh
 import { useFetch } from '../hooks/useFetch';
 import type { PharmacyPrescription, PharmacyPrescriptionLine } from '../api/types';
 import './pharmacy.css';
+import { CdssWarning } from '../components/CdssWarning';
+import '../components/cdss-warning.css';
 
 interface StockAlert {
   id: string;
@@ -217,6 +219,8 @@ function PrescriptionDetailDialog({ prescription: rx, onClose, onAction, onError
 }) {
   const { selectedFacilityId: fac } = useTenant();
   const [busy, setBusy] = useState(false);
+  // Extract medication IDs for CDSS check
+  const medIds = rx.lines.map(l => l.medication?.id).filter(Boolean) as string[];
   const handleVerify = async () => { setBusy(true); try { await pharmacyApi.verify(rx.id, fac); onAction(); } catch (e: unknown) { onError(e instanceof ApiError ? e.message : 'Verification failed.'); } finally { setBusy(false); } };
   const handleDispense = async () => { setBusy(true); try { await pharmacyApi.dispense(rx.id, {}, fac); onAction(); } catch (e: unknown) { onError(e instanceof ApiError ? e.message : 'Dispensing failed.'); } finally { setBusy(false); } };
 
@@ -231,6 +235,9 @@ function PrescriptionDetailDialog({ prescription: rx, onClose, onAction, onError
         <div className="pharma-detail-item"><span className="pharma-detail-label">Status</span><StatusChip tone={STATUS_CONFIG[rx.status]?.tone ?? "neutral"} label={STATUS_CONFIG[rx.status]?.label ?? rx.status} /></div>
         <div className="pharma-detail-item"><span className="pharma-detail-label">Verified</span><span>{rx.verifiedAt ? new Date(rx.verifiedAt).toLocaleString() : "-"}</span></div>
       </div>
+      {medIds.length >= 2 && (
+        <CdssWarning medicationIds={medIds} facilityId={fac} />
+      )}
       {rx.lines.length > 0 && (
         <table className="data-table pharma-lines-table">
           <thead><tr><th>Medication</th><th>Dose</th><th>Route</th><th>Freq</th><th>Qty</th><th>Stock</th><th>Status</th></tr></thead>

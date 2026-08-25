@@ -11,11 +11,11 @@ const opt = (facilityId?: string | null) => ({ facilityId } as Record<string, un
 
 const interopApi = {
   integrations: (fac?: string | null) =>
-    api.request<unknown[]>(`/api/v1/interop/integrations`, opt(fac)),
+    api.request<{ integrations: unknown[] }>(`/api/v1/interop/integrations`, opt(fac)),
   partners: (fac?: string | null) =>
-    api.request<unknown[]>(`/api/v1/interop/partners`, opt(fac)),
+    api.request<{ partners: unknown[] }>(`/api/v1/interop/partners`, opt(fac)),
   egressAllowlist: (fac?: string | null) =>
-    api.request<unknown[]>(`/api/v1/interop/egress-allowlist`, opt(fac)),
+    api.request<{ destinations: unknown[] }>(`/api/v1/interop/egress-allowlist`, opt(fac)),
   registerIntegration: (payload: Record<string, unknown>) =>
     api.request<unknown>('/api/v1/interop/integrations', { method: 'POST', body: payload }),
   recordStatus: (integrationId: string, payload: Record<string, unknown>) =>
@@ -99,23 +99,23 @@ export function InteropPage() {
 
   // Data fetching
   const integrations = useFetch(
-    () => interopApi.integrations(fac).catch(() => []),
+    () => interopApi.integrations(fac).catch(() => ({ integrations: [] })),
     [fac],
   );
 
   const partners = useFetch(
-    () => interopApi.partners(fac).catch(() => []),
+    () => interopApi.partners(fac).catch(() => ({ partners: [] })),
     [fac],
   );
 
   const egress = useFetch(
-    () => interopApi.egressAllowlist(fac).catch(() => []),
+    () => interopApi.egressAllowlist(fac).catch(() => ({ destinations: [] })),
     [fac],
   );
 
-  const allIntegrations = useMemo(() => (integrations.data ?? []) as Integration[], [integrations.data]);
-  const allPartners = useMemo(() => (partners.data ?? []) as Partner[], [partners.data]);
-  const allEgress = useMemo(() => (egress.data ?? []) as EgressEntry[], [egress.data]);
+  const allIntegrations = useMemo(() => (integrations.data?.integrations ?? []) as Integration[], [integrations.data]);
+  const allPartners = useMemo(() => (partners.data?.partners ?? []) as Partner[], [partners.data]);
+  const allEgress = useMemo(() => (egress.data?.destinations ?? []) as EgressEntry[], [egress.data]);
 
   const go = useCallback(async <T,>(fn: () => Promise<T>): Promise<T | null> => {
     setBusy(true); setError(null);

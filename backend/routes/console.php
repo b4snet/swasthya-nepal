@@ -8,3 +8,6 @@ use Illuminate\Support\Facades\Schedule;
 // unacknowledged after the timeout are automatically escalated to
 // ensure they are never silently lost (CLINICAL_SAFETY §7).
 Schedule::command(AutoEscalateCriticalValues::class)->everyFifteenMinutes();
+
+// Phase 33 — Process domain event outbox every minute
+Schedule::command('outbox:process', ['--once'])->everyMinute();

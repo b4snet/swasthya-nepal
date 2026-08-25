@@ -1394,6 +1394,17 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
         ->middleware('authorize:document:view');
     Route::post('documents/{document}/pdf', [DocumentCenterController::class, 'regeneratePdf'])
         ->middleware('authorize:document:manage');
+
+    // ── Domain Events (Phase 33 outbox observation) ──
+    // Requires authentication + tenant context + integration:view permission.
+    Route::get('/domain-events', [\App\Http\Controllers\Api\DomainEventController::class, 'index'])
+        ->middleware('authorize:integration:view');
+    Route::get('/domain-events/{event}', [\App\Http\Controllers\Api\DomainEventController::class, 'show'])
+        ->middleware('authorize:integration:view');
+    Route::post('/domain-events/{event}/retry', [\App\Http\Controllers\Api\DomainEventController::class, 'retry'])
+        ->middleware('authorize:integration:manage');
+    Route::delete('/domain-events/{event}', [\App\Http\Controllers\Api\DomainEventController::class, 'discard'])
+        ->middleware('authorize:integration:manage');
 });
 
 // Patient Portal — portal-authenticated surface (Phase 3 slice 22,
@@ -1760,3 +1771,5 @@ Route::middleware(['throttle:api', ResolveTenantContext::class])->prefix('notifi
 });
 
 // Document center routes have been moved inside the v1 authenticated group above.
+
+

@@ -202,8 +202,10 @@ describe('TenantContext', () => {
       await Promise.resolve();
     });
 
-    expect(screen.getByTestId('fac')).toHaveTextContent('none');
-    expect(screen.getByTestId('ready')).toHaveTextContent('false');
+    await waitFor(() => {
+      expect(screen.getByTestId('fac')).toHaveTextContent('none');
+      expect(screen.getByTestId('ready')).toHaveTextContent('false');
+    });
     expect(sessionStorage.getItem('swasthya.selectedFacilityId')).toBeNull();
   });
 });
