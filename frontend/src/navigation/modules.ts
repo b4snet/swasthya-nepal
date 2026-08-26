@@ -157,6 +157,7 @@ export const MODULES: NavModule[] = [
     defaultTo: '/ipd',
     routePrefix: '/ipd',
     children: [
+      { key: 'ipd-ops', labelKey: 'nav.hospitalOps', to: '/hospital/operations', Icon: Activity, roles: ['hospital_admin', 'org_admin', 'superadmin'], description: 'Hospital operations control center' },
       { key: 'ipd-admissions', labelKey: 'nav.admissions', to: '/ipd', Icon: Bed, roles: IPD_ROLES, description: 'Patient admissions' },
       { key: 'ipd-wards', labelKey: 'nav.wards', to: '/beds', Icon: Bed, roles: IPD_ROLES, description: 'Ward and bed overview' },
       { key: 'ipd-beds', labelKey: 'nav.beds', to: '/beds', Icon: Bed, roles: IPD_ROLES, description: 'Bed occupancy status' },

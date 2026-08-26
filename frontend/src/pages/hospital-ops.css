@@ -1,0 +1,556 @@
+/* ─── Hospital Operations Control Center ─── */
+
+.ops-page {
+  padding: 1.5rem 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.ops-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
+
+.ops-header-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ops-header-title h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.ops-header-title svg {
+  color: #2563eb;
+}
+
+.ops-subtitle {
+  margin: 2px 0 0;
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+/* ─── Capacity Section ─── */
+
+.ops-capacity {
+  margin-bottom: 1.5rem;
+}
+
+.ops-capacity-header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 0.75rem;
+}
+
+.ops-capacity-header h3 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.ops-capacity-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.ops-capacity-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px !important;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ops-capacity-card:hover {
+  border-color: #3b82f6;
+}
+
+.ops-capacity-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ops-capacity-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.ops-capacity-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ops-capacity-numbers {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+
+.ops-capacity-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.ops-capacity-total {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.ops-capacity-sep {
+  font-size: 0.875rem;
+  color: #94a3b8;
+  margin: 0 2px;
+}
+
+.ops-capacity-desc {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.ops-capacity-pct {
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-left: 4px;
+}
+
+.ops-capacity-bar {
+  height: 4px;
+  background: #e2e8f0;
+  border-radius: 2px;
+  margin-top: 6px;
+  overflow: hidden;
+}
+
+.ops-capacity-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.ops-arrow {
+  color: #cbd5e1;
+  flex-shrink: 0;
+}
+
+/* ─── Two-Column Layout ─── */
+
+.ops-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.ops-col-main,
+.ops-col-side {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* ─── Section ─── */
+
+.ops-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.ops-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ops-section-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.ops-count {
+  font-size: 0.8125rem;
+  color: #64748b;
+}
+
+/* ─── Ward Grid ─── */
+
+.ops-ward-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ops-ward-card {
+  padding: 12px 16px !important;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.ops-ward-card:hover {
+  border-color: #3b82f6;
+}
+
+.ops-ward-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.ops-ward-header h4 {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.ops-ward-type {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.ops-ward-rate {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.ops-ward-beds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ops-bed-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.ops-bed-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+/* ─── Patient Flow ─── */
+
+.ops-flow-strip {
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+}
+
+.ops-flow-stage {
+  flex: 1;
+  min-width: 100px;
+  padding: 12px;
+  border-left: 3px solid;
+  cursor: pointer;
+  transition: background 0.15s;
+  position: relative;
+}
+
+.ops-flow-stage:hover {
+  background: #f8fafc;
+}
+
+.ops-flow-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.ops-flow-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.ops-flow-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.ops-flow-arrow {
+  position: absolute;
+  right: -6px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.75rem;
+  color: #cbd5e1;
+  z-index: 1;
+}
+
+/* ─── ER Queue ─── */
+
+.ops-er-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.ops-er-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #f1f5f9;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.ops-er-row:hover {
+  background: #f8fafc;
+}
+
+.ops-er-row:last-child {
+  border-bottom: none;
+}
+
+.ops-triage {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 24px;
+  border-radius: 6px;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.ops-er-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ops-er-id {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #1e293b;
+}
+
+.ops-er-complaint {
+  font-size: 0.75rem;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ops-er-time {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+/* ─── Exceptions ─── */
+
+.ops-exceptions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ops-exception {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+
+.ops-exception:hover {
+  transform: translateX(2px);
+}
+
+.ops-exception-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ops-exception-type {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ops-exception-msg {
+  font-size: 0.8125rem;
+  color: #334155;
+}
+
+/* ─── Quick Actions ─── */
+
+.ops-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.ops-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: white;
+  cursor: pointer;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #334155;
+  transition: all 0.15s ease;
+}
+
+.ops-action-btn:hover {
+  border-color: #3b82f6;
+  color: #2563eb;
+  background: #f0f7ff;
+}
+
+.ops-action-btn svg {
+  color: #64748b;
+  flex-shrink: 0;
+}
+
+.ops-action-btn:hover svg {
+  color: #2563eb;
+}
+
+/* ─── Badges ─── */
+
+.ops-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.ops-badge--green {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.ops-badge--alert {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+/* ─── Empty Card ─── */
+
+.ops-empty-card {
+  text-align: center;
+  padding: 2rem !important;
+}
+
+.ops-empty-icon {
+  margin-bottom: 8px;
+}
+
+.ops-empty-text {
+  margin: 0 0 4px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.ops-empty-sub {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: #64748b;
+}
+
+/* ─── Responsive ─── */
+
+@media (max-width: 900px) {
+  .ops-page {
+    padding: 1rem;
+  }
+
+  .ops-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .ops-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .ops-capacity-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ops-flow-strip {
+    flex-wrap: wrap;
+  }
+
+  .ops-flow-stage {
+    min-width: calc(50% - 4px);
+    flex-basis: calc(50% - 4px);
+  }
+
+  .ops-flow-arrow {
+    display: none;
+  }
+
+  .ops-actions-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .ops-header-title h1 {
+    font-size: 1.25rem;
+  }
+
+  .ops-flow-stage {
+    min-width: 100%;
+    flex-basis: 100%;
+  }
+
+  .ops-actions-grid {
+    grid-template-columns: 1fr;
+  }
+}
