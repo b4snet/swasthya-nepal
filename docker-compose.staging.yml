@@ -1,0 +1,86 @@
+# ============================================================================
+# Swasthya — Local Staging Verification
+# ============================================================================
+#
+# Usage:
+#   docker compose -f docker-compose.staging.yml up -d
+#   docker compose -f docker-compose.staging.yml exec app php artisan migrate --force
+#   docker compose -f docker-compose.staging.yml exec app php artisan role:seed
+#   docker compose -f docker-compose.staging.yml exec app php artisan nepal-hospital:seed
+#
+# This compose file replicates the Render deployment topology locally:
+#   - PostgreSQL 17 (database)
+#   - Laravel PHP-FPM + nginx (API)
+#   - Optional Redis for caching/queues (set ENABLE_REDIS=1)
+#
+# SECURITY: No secrets in this file. All credentials come from environment
+# variables or .env files. See SECURITY.md §29.
+# ============================================================================
+
+services:
+  # ---- PostgreSQL Database ----
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: swasthya_staging
+      POSTGRES_USER: swasthya
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-staging-dev-password}
+    ports:
+      - "5434:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backend/database/security/roles.sql:/docker-entrypoint-initdb.d/01-roles.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U swasthya -d swasthya_staging"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ---- Laravel API (PHP-FPM + nginx) ----
+  app:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:80"
+    environment:
+      APP_ENV: staging
+      APP_DEBUG: "false"
+      APP_KEY: ${APP_KEY:-base64:SWASTHYA_STAGING_KEY_GENERATE_ONCE}
+      APP_URL: http://localhost:8000
+      DB_CONNECTION: pgsql
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_DATABASE: swasthya_staging
+      DB_USERNAME: swasthya
+      DB_PASSWORD: ${DB_PASSWORD:-staging-dev-password}
+      CACHE_STORE: database
+      SESSION_DRIVER: database
+      QUEUE_CONNECTION: sync
+      MAIL_MAILER: log
+      LOG_CHANNEL: stack
+      LOG_LEVEL: info
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend/storage:/var/www/html/storage
+    restart: unless-stopped
+
+  # ---- Redis (optional — enable with ENABLE_REDIS=1) ----
+  # Uncomment to add Redis for caching and async queues:
+  #
+  # redis:
+  #   image: redis:7-alpine
+  #   ports:
+  #     - "6379:6379"
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 5s
+  #     timeout: 3s
+  #     retries: 3
+  #   restart: unless-stopped
+
+volumes:
+  pgdata:
