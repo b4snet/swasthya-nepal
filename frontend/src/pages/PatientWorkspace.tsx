@@ -48,6 +48,7 @@ import {
   Circle,
 } from 'lucide-react';
 import './patient-workspace.css';
+import { PatientCommunicationHub } from './PatientCommunicationHub';
 
 // ─── Timeline helper (reused from PatientProfilePage) ───
 function timelineSummary(summary: any): string {
@@ -122,7 +123,8 @@ export const PATIENT_WORKSPACES: WorkspaceDef[] = [
   { id: 'admissions', label: 'Admissions', Icon: Bed, roles: ['doctor', 'nurse', 'hospital_admin', 'org_admin', 'superadmin'], description: 'Inpatient admissions' },
   { id: 'referrals', label: 'Referrals', Icon: GitPullRequestArrow, roles: ['doctor', 'nurse', 'hospital_admin', 'org_admin', 'superadmin'], description: 'Internal and external referrals' },
   { id: 'appointments', label: 'Appointments', Icon: CalendarDays, roles: [], description: 'Scheduled visits and follow-ups' },
-  { id: 'documents', label: 'Documents', Icon: FileText, roles: [], description: 'Notes, consents, and records' }
+  { id: 'documents', label: 'Documents', Icon: FileText, roles: [], description: 'Notes, consents, and records' },
+  { id: 'communication', label: 'Communication', Icon: MessageSquare, roles: [], description: 'Messages, reminders, care coordination' },
 ];
 
 // ─── Quick Action definitions ───
@@ -828,6 +830,9 @@ export function PatientWorkspace() {
             ]}
           />
         );
+
+      case 'communication':
+        return <PatientCommunicationHub />;
 
       default:
         return <EmptyState title="Workspace not found" body="Select a workspace from above." />;
