@@ -322,6 +322,7 @@ function OverviewView({
   labOrders,
   admissions,
   appointments,
+  onEncounterClick,
 }: {
   encounters: any[];
   diagnoses: any[];
@@ -329,6 +330,7 @@ function OverviewView({
   labOrders: any[];
   admissions: any[];
   appointments: any[];
+  onEncounterClick?: (encounter: any) => void;
 }) {
   const activeEncounters = encounters.filter((e: any) => e.status === 'open');
   const activeDiagnoses = diagnoses.filter((d: any) => d.status === 'active');
@@ -437,7 +439,7 @@ function OverviewView({
           <h3 className="pw-overview__heading">Recent Encounters</h3>
           <ul className="pw-list">
             {encounters.slice(0, 5).map((e: any) => (
-              <li key={e.id} className="pw-list__item">
+              <li key={e.id} className="pw-list__item pw-list__item--clickable" onClick={() => onEncounterClick?.(e)} role="button" tabIndex={0} onKeyDown={(ev) => { if (ev.key === 'Enter') onEncounterClick?.(e); }}>
                 <span className="pw-list__icon"><Stethoscope size={14} /></span>
                 <span className="pw-list__content">
                   <span className="pw-list__primary">{e.type} — {e.providerName || 'Unknown'}</span>
@@ -512,6 +514,7 @@ function DataTableView({
   emptyBody,
   columns,
   refresh,
+  onRowClick,
 }: {
   title: string;
   data: any[];
@@ -521,6 +524,7 @@ function DataTableView({
   emptyBody: string;
   columns: { key: string; label: string; render?: (item: any) => React.ReactNode; className?: string }[];
   refresh?: () => void;
+  onRowClick?: (item: any) => void;
 }) {
   if (loading) return <Spinner label={`Loading ${title.toLowerCase()}…`} />;
   if (error) return <ErrorState error={error} onRetry={refresh ? () => refresh() : undefined} />;
@@ -536,9 +540,8 @@ function DataTableView({
             ))}
           </tr>
         </thead>
-        <tbody>
-          {data.map((item: any) => (
-            <tr key={item.id}>
+        <tbody>              {data.map((item: any) => (
+                <tr key={item.id} onClick={onRowClick ? () => onRowClick(item) : undefined} className={onRowClick ? 'pw-clickable-row' : undefined} role={onRowClick ? 'button' : undefined} tabIndex={onRowClick ? 0 : undefined} onKeyDown={onRowClick ? (e) => { if (e.key === 'Enter') onRowClick(item); } : undefined}>
               {columns.map((col) => (
                 <td key={col.key} data-label={col.label} className={col.className}>
                   {col.render ? col.render(item) : (item[col.key] ?? '—')}
@@ -614,6 +617,7 @@ export function PatientWorkspace() {
             labOrders={(labOrders.data as any[]) || []}
             admissions={(admissions.data as any[]) || []}
             appointments={(appointments.data as any[]) || []}
+            onEncounterClick={(e) => navigate(`/clinical/encounters/${e.id}`)}
           />
         );
 
@@ -627,6 +631,7 @@ export function PatientWorkspace() {
             emptyTitle="No encounters yet"
             emptyBody="Consultations and visits will appear here."
             refresh={() => void encounters.refresh()}
+            onRowClick={(e) => navigate(`/clinical/encounters/${e.id}`)}
             columns={[
               { key: 'startedAt', label: 'Date', className: 'mono', render: (e) => formatDateTime(e.startedAt) },
               { key: 'type', label: 'Type', className: 'capitalize' },

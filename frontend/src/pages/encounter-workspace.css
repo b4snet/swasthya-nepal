@@ -1,0 +1,467 @@
+/* ==========================================================================
+   Encounter Workspace — Phase 83
+   Patient → Encounter → Workspace hierarchy
+   ========================================================================== */
+
+/* ── Page Layout ────────────────────────────────────────────── */
+.ew-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  max-width: 1100px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* ── Patient Context Bar ────────────────────────────────────── */
+.ew-patient-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px 14px;
+  background: var(--teal-50);
+  border: 1px solid var(--teal-200);
+  border-radius: var(--radius-pill);
+  color: var(--teal-700);
+  text-decoration: none;
+  font-size: var(--fs-label, 0.75rem);
+  font-weight: 500;
+  transition: all var(--duration-fast) var(--ease);
+  align-self: flex-start;
+}
+
+.ew-patient-bar:hover {
+  background: var(--teal-100);
+  border-color: var(--teal-400);
+  text-decoration: none;
+}
+
+.ew-patient-bar__arrow {
+  opacity: 0.5;
+  transition: opacity var(--duration-fast) var(--ease);
+}
+
+.ew-patient-bar:hover .ew-patient-bar__arrow {
+  opacity: 1;
+}
+
+.ew-patient-bar__name {
+  font-weight: 600;
+}
+
+/* ── Breadcrumb ─────────────────────────────────────────────── */
+.ew-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--fs-label, 0.75rem);
+  color: var(--text-tertiary);
+}
+
+.ew-breadcrumb__link {
+  color: var(--blue-600);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.ew-breadcrumb__link:hover {
+  text-decoration: underline;
+}
+
+.ew-breadcrumb__current {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* ── Encounter Header ───────────────────────────────────────── */
+.ew-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  background: linear-gradient(135deg, var(--blue-50, #eff6ff) 0%, var(--white) 50%, var(--teal-50, #f0fdfa) 100%);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+}
+
+.ew-header__content {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.ew-header__main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.ew-header__type {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--blue-600);
+}
+
+.ew-header__title {
+  font-size: var(--fs-h3, 1.25rem);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.ew-header__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--fs-body, 0.875rem);
+  color: var(--text-secondary);
+}
+
+.ew-header__meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ew-header__meta-sep {
+  color: var(--border-subtle);
+}
+
+.ew-header__signed {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--blue-50, #eff6ff);
+  border: 1px solid rgba(37, 99, 235, 0.1);
+  border-radius: var(--radius-md);
+  font-size: var(--fs-label, 0.75rem);
+  font-weight: 500;
+  color: var(--blue-600);
+}
+
+/* ── Encounter Workspace Nav ────────────────────────────────── */
+.ew-nav {
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: var(--space-2);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.ew-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.ew-nav__grid {
+  display: flex;
+  gap: var(--space-2);
+  min-width: min-content;
+}
+
+.ew-nav__card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 8px 14px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  background: transparent;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.ew-nav__card:hover {
+  background: var(--gray-50);
+  border-color: var(--border-subtle);
+}
+
+.ew-nav__card:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.ew-nav__card--active {
+  background: var(--blue-50);
+  border-color: var(--blue-200);
+}
+
+.ew-nav__card--active .ew-nav__icon {
+  color: var(--blue-600);
+  background: var(--blue-100);
+}
+
+.ew-nav__card--active .ew-nav__label {
+  color: var(--blue-700);
+  font-weight: 600;
+}
+
+.ew-nav__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-md);
+  background: var(--gray-50);
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.ew-nav__label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-label, 0.75rem);
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.ew-nav__badge {
+  font-size: 11px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--gray-200);
+  color: var(--text-secondary);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ew-nav__card--active .ew-nav__badge {
+  background: var(--blue-200);
+  color: var(--blue-700);
+}
+
+/* ── Workspace Content ──────────────────────────────────────── */
+.ew-content {
+  min-height: 300px;
+}
+
+/* ── Overview ───────────────────────────────────────────────── */
+.ew-overview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.ew-overview__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.ew-overview__heading {
+  font-size: var(--fs-h4, 1rem);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.ew-overview__cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--space-3);
+}
+
+.ew-status-card {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--white);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  transition: all var(--duration-fast) var(--ease);
+}
+
+.ew-status-card:hover {
+  box-shadow: var(--shadow-sm);
+}
+
+.ew-status-card--ok {
+  border-left: 3px solid var(--green-500, #22c55e);
+}
+
+.ew-status-card--warning {
+  border-left: 3px solid var(--amber-500, #f59e0b);
+}
+
+.ew-status-card--quiet {
+  border-left: 3px solid var(--gray-300);
+}
+
+.ew-status-card__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  background: var(--gray-50);
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.ew-status-card--ok .ew-status-card__icon {
+  background: rgba(34, 197, 94, 0.1);
+  color: var(--green-600, #16a34a);
+}
+
+.ew-status-card--warning .ew-status-card__icon {
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--amber-600, #d97706);
+}
+
+.ew-status-card__info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ew-status-card__label {
+  font-size: var(--fs-label, 0.75rem);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.ew-status-card__detail {
+  font-size: var(--fs-caption, 0.75rem);
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Forms ──────────────────────────────────────────────────── */
+.ew-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.ew-note-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.ew-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+.ew-form-actions {
+  display: flex;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
+}
+
+.ew-lab-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--space-2);
+}
+
+/* ── Order cards ────────────────────────────────────────────── */
+.ew-order-card {
+  border-left: 3px solid var(--blue-200);
+  margin-bottom: var(--space-2);
+}
+
+.ew-order-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.ew-order-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.ew-order-label {
+  font-size: var(--fs-caption, 0.75rem);
+  font-weight: 600;
+  color: var(--text-tertiary);
+  min-width: 80px;
+  flex-shrink: 0;
+}
+
+/* ── Billing card ───────────────────────────────────────────── */
+.ew-billing-card {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.05) 0%, var(--white) 100%);
+  border: 1px solid rgba(34, 197, 94, 0.15);
+}
+
+/* ── Notes list ─────────────────────────────────────────────── */
+.ew-notes-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.ew-note-card {
+  border-left: 3px solid var(--teal-500);
+}
+
+/* ── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 767px) {
+  .ew-page {
+    padding: var(--space-3);
+    gap: var(--space-2);
+  }
+
+  .ew-header {
+    padding: var(--space-4);
+  }
+
+  .ew-header__content {
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .ew-header__meta {
+    flex-wrap: wrap;
+  }
+
+  .ew-form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .ew-overview__cards {
+    grid-template-columns: 1fr;
+  }
+
+  .ew-nav {
+    margin: 0 calc(-1 * var(--space-3));
+    padding: 0 var(--space-3) var(--space-2);
+  }
+
+  .ew-order-row {
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .ew-order-label {
+    min-width: auto;
+  }
+}
+
+/* ── Focus visible global ───────────────────────────────────── */
+.ew-page :focus-visible {
+  outline: 2px solid var(--interactive-focus, #4f46e5);
+  outline-offset: 2px;
+}

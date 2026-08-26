@@ -623,3 +623,23 @@
   outline: 2px solid var(--interactive-focus, #4f46e5);
   outline-offset: 2px;
 }
+
+/* Clickable table rows */
+.pw-clickable-row {
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+.pw-clickable-row:hover {
+  background-color: var(--blue-50);
+}
+.pw-clickable-row:focus-visible {
+  outline: 2px solid var(--interactive-focus, #4f46e5);
+  outline-offset: 2px;
+}
+.pw-list__item--clickable {
+  cursor: pointer;
+}
+.pw-list__item--clickable:hover {
+  background: var(--blue-50);
+  border-color: var(--blue-200);
+}

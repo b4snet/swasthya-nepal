@@ -33,6 +33,7 @@ const AppointmentsPage = lazy(() => import('./pages/AppointmentsPage').then(m =>
 const AppointmentDetailPage = lazy(() => import('./pages/AppointmentDetailPage').then(m => ({ default: m.AppointmentDetailPage })));
 const QueuePage = lazy(() => import('./pages/QueuePage').then(m => ({ default: m.QueuePage })));
 const EncounterPage = lazy(() => import('./pages/EncounterPage').then(m => ({ default: m.EncounterPage })));
+const EncounterWorkspace = lazy(() => import('./pages/EncounterWorkspace').then(m => ({ default: m.EncounterWorkspace })));
 const BillingPage = lazy(() => import('./pages/BillingPage').then(m => ({ default: m.BillingPage })));
 const PharmacyPage = lazy(() => import('./pages/PharmacyPage').then(m => ({ default: m.PharmacyPage })));
 const InventoryPage = lazy(() => import('./pages/InventoryPage').then(m => ({ default: m.InventoryPage })));
@@ -196,7 +197,8 @@ export function App() {
               <Route path="/clinical/appointments/:id" element={<LazySuspense><AppointmentDetailPage /></LazySuspense>} />
               <Route path="/clinical/queue" element={<LazySuspense><QueuePage /></LazySuspense>} />
               <Route path="/clinical/encounters" element={<LazySuspense><EncounterPage /></LazySuspense>} />
-              <Route path="/clinical/encounters/:id" element={<LazySuspense><EncounterPage /></LazySuspense>} />
+              <Route path="/clinical/encounters/:encounterId" element={<LazySuspense><EncounterWorkspace /></LazySuspense>} />
+              <Route path="/clinical/encounters/:encounterId/edit" element={<LazySuspense><EncounterPage /></LazySuspense>} />
               <Route path="/clinical/forms" element={<LazySuspense><FormsPage /></LazySuspense>} />
               <Route path="/clinical/referrals" element={<LazySuspense><ReferralsPage /></LazySuspense>} />
               <Route path="/clinical/scheduling" element={<LazySuspense><PhysicianSchedulingPage /></LazySuspense>} />
