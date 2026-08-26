@@ -34,6 +34,7 @@ const AppointmentDetailPage = lazy(() => import('./pages/AppointmentDetailPage')
 const QueuePage = lazy(() => import('./pages/QueuePage').then(m => ({ default: m.QueuePage })));
 const EncounterPage = lazy(() => import('./pages/EncounterPage').then(m => ({ default: m.EncounterPage })));
 const EncounterWorkspace = lazy(() => import('./pages/EncounterWorkspace').then(m => ({ default: m.EncounterWorkspace })));
+const PatientFlowOrchestrator = lazy(() => import('./pages/PatientFlowOrchestrator').then(m => ({ default: m.PatientFlowOrchestrator })));
 const BillingPage = lazy(() => import('./pages/BillingPage').then(m => ({ default: m.BillingPage })));
 const PharmacyPage = lazy(() => import('./pages/PharmacyPage').then(m => ({ default: m.PharmacyPage })));
 const InventoryPage = lazy(() => import('./pages/InventoryPage').then(m => ({ default: m.InventoryPage })));
@@ -195,6 +196,7 @@ export function App() {
               <Route path="/clinical/patients/import" element={<LazySuspense><PatientImportPage /></LazySuspense>} />
               <Route path="/clinical/appointments" element={<LazySuspense><AppointmentsPage /></LazySuspense>} />
               <Route path="/clinical/appointments/:id" element={<LazySuspense><AppointmentDetailPage /></LazySuspense>} />
+              <Route path="/clinical/flow" element={<LazySuspense><PatientFlowOrchestrator /></LazySuspense>} />
               <Route path="/clinical/queue" element={<LazySuspense><QueuePage /></LazySuspense>} />
               <Route path="/clinical/encounters" element={<LazySuspense><EncounterPage /></LazySuspense>} />
               <Route path="/clinical/encounters/:encounterId" element={<LazySuspense><EncounterWorkspace /></LazySuspense>} />

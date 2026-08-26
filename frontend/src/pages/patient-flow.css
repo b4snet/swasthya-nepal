@@ -1,0 +1,511 @@
+/* ==========================================================================
+   Patient Flow Orchestrator — Phase 85
+   Unified access, scheduling, queue, and patient flow
+   ========================================================================== */
+
+/* ── Page Layout ────────────────────────────────────────────── */
+.flow-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.flow-page__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.flow-page__header h1 {
+  font-size: var(--fs-h2, 1.5rem);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.flow-page__date-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.flow-date-btn {
+  padding: 6px 12px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--white);
+  color: var(--text-secondary);
+  font-size: var(--fs-label, 0.75rem);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease);
+}
+
+.flow-date-btn:hover {
+  border-color: var(--blue-200);
+  color: var(--blue-600);
+}
+
+.flow-date-input {
+  padding: 6px 12px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  font-size: var(--fs-label, 0.75rem);
+  min-width: 160px;
+}
+
+/* ── Status Bar ─────────────────────────────────────────────── */
+.flow-status-bar {
+  display: flex;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-5);
+  background: var(--white);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.flow-status-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 80px;
+}
+
+.flow-status-value {
+  font-size: var(--fs-h3, 1.25rem);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.flow-status-label {
+  font-size: var(--fs-caption, 0.75rem);
+  color: var(--text-tertiary);
+}
+
+/* ── Main Content Layout ────────────────────────────────────── */
+.flow-content {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: var(--space-4);
+  align-items: start;
+}
+
+/* ── Appointments List ──────────────────────────────────────── */
+.flow-appointments {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.flow-appointments h2 {
+  font-size: var(--fs-h4, 1rem);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.flow-appointments-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* ── Appointment Flow Card ──────────────────────────────────── */
+.flow-card {
+  transition: all var(--duration-fast) var(--ease);
+}
+
+.flow-card--actionable {
+  border-color: var(--blue-200);
+  box-shadow: 0 0 0 1px var(--blue-100);
+}
+
+.flow-card--actionable:hover {
+  border-color: var(--blue-300);
+  box-shadow: 0 0 0 2px var(--blue-100);
+}
+
+.flow-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-2);
+}
+
+.flow-card__patient-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-primary);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.flow-card__patient-link:hover {
+  color: var(--blue-600);
+}
+
+.flow-card__mrn {
+  font-size: var(--fs-caption, 0.75rem);
+  color: var(--text-tertiary);
+  padding: 1px 6px;
+  background: var(--gray-50);
+  border-radius: var(--radius-sm);
+}
+
+.flow-card__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--fs-caption, 0.75rem);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-3);
+}
+
+.flow-card__token {
+  font-size: var(--fs-body, 0.875rem);
+  font-weight: 700;
+  color: var(--blue-600);
+  padding: 2px 8px;
+  background: var(--blue-50);
+  border-radius: var(--radius-md);
+}
+
+.flow-card__time,
+.flow-card__provider {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.flow-card__actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+/* ── Flow Steps Indicator ───────────────────────────────────── */
+.flow-steps {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: var(--space-2) 0;
+}
+
+.flow-step {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  position: relative;
+}
+
+.flow-step__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.flow-step--completed .flow-step__icon {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+}
+
+.flow-step--current .flow-step__icon {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.flow-step--pending .flow-step__icon {
+  background: var(--gray-100);
+  color: var(--text-tertiary);
+}
+
+.flow-step--blocked .flow-step__icon {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.flow-step__info {
+  display: flex;
+  flex-direction: column;
+  margin-right: var(--space-2);
+}
+
+.flow-step__label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.flow-step__desc {
+  font-size: 10px;
+  color: var(--text-tertiary);
+}
+
+.flow-step__connector {
+  width: 20px;
+  height: 2px;
+  margin: 0 var(--space-1);
+}
+
+.flow-step__connector--complete {
+  background: #10b981;
+}
+
+.flow-step__connector--pending {
+  background: var(--gray-200);
+  border-top: 1px dashed var(--gray-300);
+}
+
+/* ── Sidebar ────────────────────────────────────────────────── */
+.flow-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  position: sticky;
+  top: var(--space-4);
+}
+
+/* ── Queue Card ─────────────────────────────────────────────── */
+.flow-queue-card {
+  border-top: 3px solid var(--teal-500);
+}
+
+.flow-queue__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+}
+
+.flow-queue__header h3 {
+  margin: 0;
+  font-size: var(--fs-h4, 1rem);
+  font-weight: 600;
+}
+
+.flow-queue__count {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: var(--teal-50);
+  border: 1px solid var(--teal-200);
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-caption, 0.75rem);
+  font-weight: 600;
+  color: var(--teal-700);
+}
+
+.flow-queue__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-6) var(--space-4);
+  color: var(--text-tertiary);
+  text-align: center;
+}
+
+.flow-queue__summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.flow-queue__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.flow-queue__section-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.flow-queue__patient {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px 8px;
+  border-radius: var(--radius-md);
+  font-size: var(--fs-body, 0.875rem);
+  color: var(--text-primary);
+}
+
+.flow-queue__patient:hover {
+  background: var(--gray-50);
+}
+
+.flow-queue__patient--active {
+  background: var(--purple-50, #f5f3ff);
+}
+
+.flow-queue__position {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--teal-100);
+  color: var(--teal-700);
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.flow-queue__position--active {
+  background: var(--purple-100, #ede9fe);
+  color: var(--purple-700, #7c3aed);
+}
+
+.flow-queue__more {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  padding-left: 32px;
+}
+
+.flow-queue__call-btn {
+  margin-top: var(--space-3);
+  width: 100%;
+}
+
+/* ── Schedule Overview ──────────────────────────────────────── */
+.flow-schedule {
+  border-top: 3px solid var(--blue-400);
+}
+
+.flow-schedule__hours {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.flow-schedule__hour {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: 4px 0;
+}
+
+.flow-schedule__time {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  min-width: 36px;
+  font-variant-numeric: tabular-nums;
+}
+
+.flow-schedule__slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  flex: 1;
+}
+
+.flow-schedule__slot {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  text-decoration: none;
+  color: var(--text-primary);
+  background: var(--gray-50);
+  border: 1px solid var(--border-subtle);
+  transition: all var(--duration-fast) var(--ease);
+}
+
+.flow-schedule__slot:hover {
+  background: var(--blue-50);
+  border-color: var(--blue-200);
+}
+
+.flow-schedule__slot--booked {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.2);
+}
+
+.flow-schedule__slot--checked_in {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.2);
+}
+
+.flow-schedule__slot--in_consultation {
+  background: rgba(139, 92, 246, 0.1);
+  border-color: rgba(139, 92, 246, 0.2);
+}
+
+.flow-schedule__slot--completed {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.2);
+}
+
+.flow-schedule__slot-time {
+  font-weight: 600;
+}
+
+.flow-schedule__slot-patient {
+  color: var(--text-secondary);
+}
+
+/* ── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .flow-content {
+    grid-template-columns: 1fr;
+  }
+
+  .flow-sidebar {
+    position: static;
+  }
+}
+
+@media (max-width: 767px) {
+  .flow-page {
+    padding: var(--space-3);
+  }
+
+  .flow-page__header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .flow-status-bar {
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    padding: var(--space-3);
+  }
+
+  .flow-status-item {
+    min-width: 60px;
+  }
+
+  .flow-steps {
+    flex-wrap: wrap;
+  }
+
+  .flow-step__connector {
+    display: none;
+  }
+
+  .flow-card__meta {
+    flex-wrap: wrap;
+  }
+}

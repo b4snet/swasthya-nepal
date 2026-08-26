@@ -112,6 +112,7 @@ export const MODULES: NavModule[] = [
     routePrefix: '/clinical',
     children: [
       { key: 'clin-patients', labelKey: 'nav.patients', to: '/clinical/patients', Icon: Users, roles: CLINICAL_ROLES, description: 'Patient records and search' },
+      { key: 'clin-flow', labelKey: 'nav.patientFlow', to: '/clinical/flow', Icon: Activity, roles: ['hospital_admin', 'receptionist', 'doctor', 'nurse'], description: 'Unified patient flow and queue' },
       { key: 'clin-appointments', labelKey: 'nav.appointments', to: '/clinical/appointments', Icon: CalendarDays, roles: CLINICAL_ROLES, description: 'Schedule and manage visits' },
       { key: 'clin-queue', labelKey: 'nav.queue', to: '/clinical/queue', Icon: ListOrdered, roles: ['hospital_admin', 'doctor', 'nurse', 'receptionist'], description: 'Active patient queue' },
       { key: 'clin-encounters', labelKey: 'nav.encounters', to: '/clinical/encounters', Icon: FileText, roles: DOCTOR_ROLES, description: 'Clinical encounter records' },

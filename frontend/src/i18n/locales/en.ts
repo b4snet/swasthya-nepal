@@ -13,6 +13,7 @@ export const messages = {
   'nav.patientImport': 'Import',
   'nav.appointments': 'Appointments',
   'nav.queue': 'Queue',
+  'nav.patientFlow': 'Patient Flow',
   'nav.audit': 'Audit',
   'nav.admin': 'Admin',
   'nav.orders': 'Orders',
