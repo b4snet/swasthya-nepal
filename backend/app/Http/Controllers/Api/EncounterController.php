@@ -625,7 +625,7 @@ final class EncounterController extends Controller
     public function byPatient(Request $request, string $patientId): JsonResponse
     {
         $tenantId = TenantContext::current()->tenantId;
-        $facilityId = $request->header('X-Facility-Id');
+        $facilityId = $request->header('X-Swasthya-Facility') ?? $request->header('X-Facility-Id');
 
         $encounters = Encounter::query()
             ->where('tenant_id', $tenantId)

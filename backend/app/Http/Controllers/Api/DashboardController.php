@@ -17,8 +17,7 @@ use Illuminate\Support\Facades\DB;
  * No client-side aggregation from raw datasets.
  *
  * The endpoint respects:
- * - Tenant isolation (claims-based)
- * - Facility scoping (X-Facility-Id header)
+ * - Tenant isolation (claims-based)     * - Facility scoping (X-Swasthya-Facility header, falls back to X-Facility-Id)
  * - Role-based visibility
  * - Platform mode (no tenant → cross-tenant aggregates)
  */
@@ -47,7 +46,7 @@ class DashboardController extends Controller
     public function metrics(Request $request): JsonResponse
     {
         $tenantId = TenantContext::current()->tenantId();
-        $facilityId = $request->header('X-Facility-Id');
+        $facilityId = $request->header('X-Swasthya-Facility') ?? $request->header('X-Facility-Id');
         $today = Carbon::today();
         $weekStart = Carbon::now()->startOfWeek();
         $monthStart = Carbon::now()->startOfMonth();
@@ -216,7 +215,7 @@ class DashboardController extends Controller
     public function charts(Request $request): JsonResponse
     {
         $tenantId = TenantContext::current()->tenantId();
-        $facilityId = $request->header('X-Facility-Id');
+        $facilityId = $request->header('X-Swasthya-Facility') ?? $request->header('X-Facility-Id');
         $days = (int) $request->query('days', 30);
         $startDate = Carbon::now()->subDays($days);
 

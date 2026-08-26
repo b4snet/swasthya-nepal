@@ -15,7 +15,7 @@ class ReferralController extends Controller
     public function index(Request $request): JsonResponse
     {
         $tenantId = TenantContext::current()->tenantId;
-        $facilityId = $request->header('X-Facility-Id');
+        $facilityId = $request->header('X-Swasthya-Facility') ?? $request->header('X-Facility-Id');
         $patientId = $request->query('patient_id');
         $status = $request->query('status');
 
@@ -46,7 +46,7 @@ class ReferralController extends Controller
         ]);
 
         $tenantId = TenantContext::current()->tenantId;
-        $facilityId = $request->header('X-Facility-Id');
+        $facilityId = $request->header('X-Swasthya-Facility') ?? $request->header('X-Facility-Id');
         $userId = TenantContext::current()->user?->getKey();
         $staff = Staff::where('user_id', $userId)->where('tenant_id', $tenantId)->first();
         $staffId = $staff?->getKey();
