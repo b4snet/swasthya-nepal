@@ -32,7 +32,7 @@ function RolesTab({ data }: { data: ReturnType<typeof useFetch<Array<{ id: strin
   if (data.loading) return <Spinner />;
   if (data.error) return <ErrorState error={data.error} onRetry={() => void data.refresh()} />;
 
-  const items = data.data ?? [];
+  const items = Array.isArray(data.data) ? data.data : [];
   if (items.length === 0) return <EmptyState title={t('admin.roles.empty')} />;
 
   return (
@@ -52,7 +52,7 @@ function RolesTab({ data }: { data: ReturnType<typeof useFetch<Array<{ id: strin
               <td data-label={t('admin.roles.name')}>{r.name}</td>
               <td data-label={t('admin.roles.code')} className="mono">{r.code}</td>
               <td data-label={t('admin.roles.scope')} className="capitalize">{r.scopeType}</td>
-              <td data-label={t('admin.roles.permissionCount')} className="num">{r.permissions.length}</td>
+              <td data-label={t('admin.roles.permissionCount')} className="num">{r.permissions?.length ?? 0}</td>
             </tr>
           ))}
         </tbody>
@@ -66,7 +66,7 @@ function PermissionsTab({ data }: { data: ReturnType<typeof useFetch<Array<{ id:
   if (data.loading) return <Spinner />;
   if (data.error) return <ErrorState error={data.error} onRetry={() => void data.refresh()} />;
 
-  const items = data.data ?? [];
+  const items = Array.isArray(data.data) ? data.data : [];
   if (items.length === 0) return <EmptyState title={t('admin.permissions.empty')} />;
 
   // Group by domain.

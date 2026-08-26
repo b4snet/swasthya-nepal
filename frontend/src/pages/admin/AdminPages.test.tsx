@@ -33,14 +33,13 @@ function renderPage(ui: React.ReactNode) {
   localStorage.setItem('swasthya.refreshToken', 'rt-admin');
   sessionStorage.setItem('swasthya.accessToken', 'at-admin');
   // Smart stub: first call is auth/refresh (session payload), everything else gets empty array.
-  const sessionRes = sessionPayload(['org_admin']);
-  const emptyArr = jsonOk([]);
-  let callCount = 0;
+  // Use a mock that handles unlimited calls after the first.
+  let first = true;
   const fn = vi.fn(async () => {
-    callCount++;
-    return callCount === 1 ? sessionRes : emptyArr;
+    if (first) { first = false; return sessionPayload(['org_admin']); }
+    return jsonOk([]);
   });
-  vi.stubGlobal('fetch', fn);
+  vi.spyOn(globalThis, 'fetch').mockImplementation(fn);
   return render(
     <MemoryRouter>
       <I18nProvider>
