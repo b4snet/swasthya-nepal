@@ -41,7 +41,7 @@ class FiscalPeriodWorkflowTest extends TestCase
 
         // Create an open period
         $create = $this->withToken(Identity::tokenFor($ctx['admin']))
-            ->postJson('/api/v1/finance/fiscal-years', [
+            ->postJson('/api/v1/enterprise/finance/fiscal-years', [
                 'name' => 'FY 2082/83',
                 'fiscalYear' => 2082,
                 'startDate' => '2025-07-16',
@@ -54,13 +54,13 @@ class FiscalPeriodWorkflowTest extends TestCase
 
         // Close it
         $this->withToken(Identity::tokenFor($ctx['admin']))
-            ->postJson("/api/v1/finance/fiscal-years/{$id}/close")
+            ->postJson("/api/v1/enterprise/finance/fiscal-years/{$id}/close")
             ->assertOk()
             ->assertJsonPath('data.period_status', 'closed');
 
         // Lock it
         $this->withToken(Identity::tokenFor($ctx['admin']))
-            ->postJson("/api/v1/finance/fiscal-years/{$id}/close")
+            ->postJson("/api/v1/enterprise/finance/fiscal-years/{$id}/close")
             ->assertStatus(409); // already closed
 
         // Use the original FinancialPeriodController lock route
@@ -75,7 +75,7 @@ class FiscalPeriodWorkflowTest extends TestCase
         $ctx = $this->ctx();
 
         $create = $this->withToken(Identity::tokenFor($ctx['admin']))
-            ->postJson('/api/v1/finance/fiscal-years', [
+            ->postJson('/api/v1/enterprise/finance/fiscal-years', [
                 'name' => 'FY 2082/83',
                 'fiscalYear' => 2082,
                 'startDate' => '2025-07-16',
@@ -87,12 +87,12 @@ class FiscalPeriodWorkflowTest extends TestCase
 
         // Close
         $this->withToken(Identity::tokenFor($ctx['admin']))
-            ->postJson("/api/v1/finance/fiscal-years/{$id}/close")
+            ->postJson("/api/v1/enterprise/finance/fiscal-years/{$id}/close")
             ->assertOk();
 
         // Reopen
         $this->withToken(Identity::tokenFor($ctx['admin']))
-            ->postJson("/api/v1/finance/fiscal-years/{$id}/reopen")
+            ->postJson("/api/v1/enterprise/finance/fiscal-years/{$id}/reopen")
             ->assertOk()
             ->assertJsonPath('data.period_status', 'open');
     }
@@ -102,7 +102,7 @@ class FiscalPeriodWorkflowTest extends TestCase
         $ctx = $this->ctx();
 
         $create = $this->withToken(Identity::tokenFor($ctx['admin']))
-            ->postJson('/api/v1/finance/fiscal-years', [
+            ->postJson('/api/v1/enterprise/finance/fiscal-years', [
                 'name' => 'FY 2082/83',
                 'fiscalYear' => 2082,
                 'startDate' => '2025-07-16',
@@ -114,7 +114,7 @@ class FiscalPeriodWorkflowTest extends TestCase
 
         // Close
         $this->withToken(Identity::tokenFor($ctx['admin']))
-            ->postJson("/api/v1/finance/fiscal-years/{$id}/close")
+            ->postJson("/api/v1/enterprise/finance/fiscal-years/{$id}/close")
             ->assertOk();
 
         // Lock
@@ -124,7 +124,7 @@ class FiscalPeriodWorkflowTest extends TestCase
 
         // Try to reopen — should fail
         $this->withToken(Identity::tokenFor($ctx['admin']))
-            ->postJson("/api/v1/finance/fiscal-years/{$id}/reopen")
+            ->postJson("/api/v1/enterprise/finance/fiscal-years/{$id}/reopen")
             ->assertStatus(409)
             ->assertJsonPath('error.code', 'CONFLICT');
     }
@@ -134,7 +134,7 @@ class FiscalPeriodWorkflowTest extends TestCase
         $ctx = $this->ctx();
 
         $create = $this->withToken(Identity::tokenFor($ctx['admin']))
-            ->postJson('/api/v1/finance/fiscal-years', [
+            ->postJson('/api/v1/enterprise/finance/fiscal-years', [
                 'name' => 'FY 2082/83',
                 'fiscalYear' => 2082,
                 'startDate' => '2025-07-16',
@@ -146,7 +146,7 @@ class FiscalPeriodWorkflowTest extends TestCase
 
         // Try to reopen an open period — should fail
         $this->withToken(Identity::tokenFor($ctx['admin']))
-            ->postJson("/api/v1/finance/fiscal-years/{$id}/reopen")
+            ->postJson("/api/v1/enterprise/finance/fiscal-years/{$id}/reopen")
             ->assertStatus(409);
     }
 
@@ -211,7 +211,7 @@ class FiscalPeriodWorkflowTest extends TestCase
 
     public function test_fiscal_year_requires_auth(): void
     {
-        $this->postJson('/api/v1/finance/fiscal-years', [])->assertUnauthorized();
+        $this->postJson('/api/v1/enterprise/finance/fiscal-years', [])->assertUnauthorized();
     }
 
     public function test_fiscal_year_requires_billing_manage_permission(): void
@@ -221,7 +221,7 @@ class FiscalPeriodWorkflowTest extends TestCase
         Identity::assign($viewer, 'receptionist', $ctx['org'], $ctx['facility']);
 
         $this->withToken(Identity::tokenFor($viewer))
-            ->postJson('/api/v1/finance/fiscal-years', [
+            ->postJson('/api/v1/enterprise/finance/fiscal-years', [
                 'name' => 'Test',
                 'fiscalYear' => 2082,
                 'startDate' => '2025-07-16',

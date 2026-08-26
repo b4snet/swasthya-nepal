@@ -1,6 +1,16 @@
 <?php
 
-namespace AppHttpControllersApi;
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Http\Support\Envelope;
+use App\Models\Account;
+use App\Models\JournalEntry;
+use App\Services\AccountingService;
+use App\Services\AuditLogger;
+use App\Support\TenantContext;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 final class AccountingController extends Controller
 {

@@ -35,8 +35,8 @@ class NepalFinanceTest extends TestCase
 
     public function test_tax_rule_requires_auth(): void
     {
-        $this->getJson('/api/v1/finance/tax-rules')->assertUnauthorized();
-        $this->postJson('/api/v1/finance/tax-rules', [])->assertUnauthorized();
+        $this->getJson('/api/v1/enterprise/finance/tax-rules')->assertUnauthorized();
+        $this->postJson('/api/v1/enterprise/finance/tax-rules', [])->assertUnauthorized();
     }
 
     public function test_tax_rule_requires_billing_view(): void
@@ -46,7 +46,7 @@ class NepalFinanceTest extends TestCase
         Identity::assign($viewer, 'receptionist', $ctx['org'], $ctx['facility']);
 
         $this->withToken(Identity::tokenFor($viewer))
-            ->getJson('/api/v1/finance/tax-rules')
+            ->getJson('/api/v1/enterprise/finance/tax-rules')
             ->assertForbidden();
     }
 
@@ -55,7 +55,7 @@ class NepalFinanceTest extends TestCase
         $ctx = $this->ctx();
 
         $this->withToken(Identity::tokenFor($ctx['admin']))
-            ->getJson('/api/v1/finance/tax-rules')
+            ->getJson('/api/v1/enterprise/finance/tax-rules')
             ->assertOk()
             ->assertJsonCount(0, 'data');
     }
@@ -76,14 +76,14 @@ class NepalFinanceTest extends TestCase
         ];
 
         $this->withToken(Identity::tokenFor($ctx['admin']))
-            ->postJson('/api/v1/finance/tax-rules', $payload)
+            ->postJson('/api/v1/enterprise/finance/tax-rules', $payload)
             ->assertCreated()
             ->assertJsonPath('data.code', 'VAT_13')
             ->assertJsonPath('data.rateValueBps', 1300)
             ->assertJsonPath('data.status', 'active');
 
         $this->withToken(Identity::tokenFor($ctx['admin']))
-            ->getJson('/api/v1/finance/tax-rules')
+            ->getJson('/api/v1/enterprise/finance/tax-rules')
             ->assertOk()
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.code', 'VAT_13');
@@ -103,11 +103,11 @@ class NepalFinanceTest extends TestCase
         ];
 
         $this->withToken(Identity::tokenFor($ctx['admin']))
-            ->postJson('/api/v1/finance/tax-rules', $payload)
+            ->postJson('/api/v1/enterprise/finance/tax-rules', $payload)
             ->assertCreated();
 
         $this->withToken(Identity::tokenFor($ctx['admin']))
-            ->postJson('/api/v1/finance/tax-rules', $payload)
+            ->postJson('/api/v1/enterprise/finance/tax-rules', $payload)
             ->assertStatus(409);
     }
 
@@ -116,11 +116,11 @@ class NepalFinanceTest extends TestCase
         $ctx = $this->ctx();
 
         $this->withToken(Identity::tokenFor($ctx['admin']))
-            ->postJson('/api/v1/finance/tax-rules', [])
+            ->postJson('/api/v1/enterprise/finance/tax-rules', [])
             ->assertStatus(422);
 
         $this->withToken(Identity::tokenFor($ctx['admin']))
-            ->postJson('/api/v1/finance/tax-rules', [
+            ->postJson('/api/v1/enterprise/finance/tax-rules', [
                 'code' => 'bad',
                 'name' => 'X',
                 'taxType' => 'vat',
@@ -136,7 +136,7 @@ class NepalFinanceTest extends TestCase
         $ctx = $this->ctx();
 
         $create = $this->withToken(Identity::tokenFor($ctx['admin']))
-            ->postJson('/api/v1/finance/tax-rules', [
+            ->postJson('/api/v1/enterprise/finance/tax-rules', [
                 'code' => 'VAT_13',
                 'name' => 'VAT',
                 'taxType' => 'vat',
@@ -149,7 +149,7 @@ class NepalFinanceTest extends TestCase
         $id = $create->json('data.id');
 
         $this->withToken(Identity::tokenFor($ctx['admin']))
-            ->patchJson("/api/v1/finance/tax-rules/{$id}", [
+            ->patchJson("/api/v1/enterprise/finance/tax-rules/{$id}", [
                 'name' => 'Standard VAT 13%',
             ])
             ->assertOk()
@@ -161,7 +161,7 @@ class NepalFinanceTest extends TestCase
         $ctx = $this->ctx();
 
         $create = $this->withToken(Identity::tokenFor($ctx['admin']))
-            ->postJson('/api/v1/finance/tax-rules', [
+            ->postJson('/api/v1/enterprise/finance/tax-rules', [
                 'code' => 'VAT_13',
                 'name' => 'VAT',
                 'taxType' => 'vat',
@@ -174,7 +174,7 @@ class NepalFinanceTest extends TestCase
         $id = $create->json('data.id');
 
         $this->withToken(Identity::tokenFor($ctx['admin']))
-            ->deleteJson("/api/v1/finance/tax-rules/{$id}")
+            ->deleteJson("/api/v1/enterprise/finance/tax-rules/{$id}")
             ->assertOk()
             ->assertJsonPath('data.status', 'inactive');
     }
@@ -186,7 +186,7 @@ class NepalFinanceTest extends TestCase
 
         // Create tax rule in tenant A
         $this->withToken(Identity::tokenFor($ctxA['admin']))
-            ->postJson('/api/v1/finance/tax-rules', [
+            ->postJson('/api/v1/enterprise/finance/tax-rules', [
                 'code' => 'VAT_A',
                 'name' => 'Tenant A VAT',
                 'taxType' => 'vat',
@@ -198,7 +198,7 @@ class NepalFinanceTest extends TestCase
 
         // Tenant B should see empty list
         $this->withToken(Identity::tokenFor($ctxB['admin']))
-            ->getJson('/api/v1/finance/tax-rules')
+            ->getJson('/api/v1/enterprise/finance/tax-rules')
             ->assertOk()
             ->assertJsonCount(0, 'data');
     }
@@ -207,7 +207,7 @@ class NepalFinanceTest extends TestCase
 
     public function test_benefit_rule_requires_auth(): void
     {
-        $this->getJson('/api/v1/finance/payers/nonexistent/benefit-rules')->assertUnauthorized();
+        $this->getJson('/api/v1/enterprise/finance/payers/nonexistent/benefit-rules')->assertUnauthorized();
     }
 
     public function test_benefit_rule_crud(): void
@@ -225,13 +225,13 @@ class NepalFinanceTest extends TestCase
 
         // List empty
         $this->withToken(Identity::tokenFor($ctx['admin']))
-            ->getJson("/api/v1/finance/payers/{$payer->getKey()}/benefit-rules")
+            ->getJson("/api/v1/enterprise/finance/payers/{$payer->getKey()}/benefit-rules")
             ->assertOk()
             ->assertJsonCount(0, 'data');
 
         // Create benefit rule
         $this->withToken(Identity::tokenFor($ctx['admin']))
-            ->postJson("/api/v1/finance/payers/{$payer->getKey()}/benefit-rules", [
+            ->postJson("/api/v1/enterprise/finance/payers/{$payer->getKey()}/benefit-rules", [
                 'code' => 'SSF_OPD_MED',
                 'name' => 'SSF OPD Medicine',
                 'schemeVersion' => 'SSF_2082',
@@ -246,7 +246,7 @@ class NepalFinanceTest extends TestCase
 
         // List should have 1
         $this->withToken(Identity::tokenFor($ctx['admin']))
-            ->getJson("/api/v1/finance/payers/{$payer->getKey()}/benefit-rules")
+            ->getJson("/api/v1/enterprise/finance/payers/{$payer->getKey()}/benefit-rules")
             ->assertOk()
             ->assertJsonCount(1, 'data');
     }
@@ -256,7 +256,7 @@ class NepalFinanceTest extends TestCase
         $ctx = $this->ctx();
 
         $this->withToken(Identity::tokenFor($ctx['admin']))
-            ->getJson('/api/v1/finance/payers/nonexistent/benefit-rules')
+            ->getJson('/api/v1/enterprise/finance/payers/nonexistent/benefit-rules')
             ->assertStatus(404);
     }
 
@@ -273,7 +273,7 @@ class NepalFinanceTest extends TestCase
         ]);
 
         $this->withToken(Identity::tokenFor($ctx['admin']))
-            ->postJson("/api/v1/finance/payers/{$payer->getKey()}/benefit-rules", [])
+            ->postJson("/api/v1/enterprise/finance/payers/{$payer->getKey()}/benefit-rules", [])
             ->assertStatus(422);
     }
 
@@ -285,13 +285,13 @@ class NepalFinanceTest extends TestCase
 
         // List empty
         $this->withToken(Identity::tokenFor($ctx['admin']))
-            ->getJson('/api/v1/finance/fiscal-years')
+            ->getJson('/api/v1/enterprise/finance/fiscal-years')
             ->assertOk()
             ->assertJsonCount(0, 'data');
 
         // Create
         $this->withToken(Identity::tokenFor($ctx['admin']))
-            ->postJson('/api/v1/finance/fiscal-years', [
+            ->postJson('/api/v1/enterprise/finance/fiscal-years', [
                 'name' => 'Nepal FY 2082/83',
                 'fiscalYear' => 2082,
                 'startDate' => '2025-07-16',
@@ -306,7 +306,7 @@ class NepalFinanceTest extends TestCase
 
         // List should have 1
         $this->withToken(Identity::tokenFor($ctx['admin']))
-            ->getJson('/api/v1/finance/fiscal-years')
+            ->getJson('/api/v1/enterprise/finance/fiscal-years')
             ->assertOk()
             ->assertJsonCount(1, 'data');
     }
@@ -316,7 +316,7 @@ class NepalFinanceTest extends TestCase
         $ctx = $this->ctx();
 
         $create = $this->withToken(Identity::tokenFor($ctx['admin']))
-            ->postJson('/api/v1/finance/fiscal-years', [
+            ->postJson('/api/v1/enterprise/finance/fiscal-years', [
                 'name' => 'Nepal FY 2082/83',
                 'fiscalYear' => 2082,
                 'startDate' => '2025-07-16',
@@ -327,13 +327,13 @@ class NepalFinanceTest extends TestCase
         $id = $create->json('data.id');
 
         $this->withToken(Identity::tokenFor($ctx['admin']))
-            ->postJson("/api/v1/finance/fiscal-years/{$id}/close")
+            ->postJson("/api/v1/enterprise/finance/fiscal-years/{$id}/close")
             ->assertOk()
             ->assertJsonPath('data.period_status', 'closed');
 
         // Cannot close again
         $this->withToken(Identity::tokenFor($ctx['admin']))
-            ->postJson("/api/v1/finance/fiscal-years/{$id}/close")
+            ->postJson("/api/v1/enterprise/finance/fiscal-years/{$id}/close")
             ->assertStatus(409);
     }
 
@@ -343,13 +343,13 @@ class NepalFinanceTest extends TestCase
 
         // List empty
         $this->withToken(Identity::tokenFor($ctx['admin']))
-            ->getJson('/api/v1/finance/payers')
+            ->getJson('/api/v1/enterprise/finance/payers')
             ->assertOk()
             ->assertJsonCount(0, 'data');
 
         // Create SSF payer
         $this->withToken(Identity::tokenFor($ctx['admin']))
-            ->postJson('/api/v1/finance/payers', [
+            ->postJson('/api/v1/enterprise/finance/payers', [
                 'name' => 'Social Security Fund',
                 'code' => 'SSF',
                 'payerType' => 'insurance',
@@ -362,7 +362,7 @@ class NepalFinanceTest extends TestCase
 
         // Create HIB payer
         $this->withToken(Identity::tokenFor($ctx['admin']))
-            ->postJson('/api/v1/finance/payers', [
+            ->postJson('/api/v1/enterprise/finance/payers', [
                 'name' => 'Health Insurance Board',
                 'code' => 'HIB',
                 'payerType' => 'insurance',
@@ -373,7 +373,7 @@ class NepalFinanceTest extends TestCase
 
         // List should have 2
         $this->withToken(Identity::tokenFor($ctx['admin']))
-            ->getJson('/api/v1/finance/payers')
+            ->getJson('/api/v1/enterprise/finance/payers')
             ->assertOk()
             ->assertJsonCount(2, 'data');
     }
@@ -389,11 +389,11 @@ class NepalFinanceTest extends TestCase
         ];
 
         $this->withToken(Identity::tokenFor($ctx['admin']))
-            ->postJson('/api/v1/finance/payers', $payload)
+            ->postJson('/api/v1/enterprise/finance/payers', $payload)
             ->assertCreated();
 
         $this->withToken(Identity::tokenFor($ctx['admin']))
-            ->postJson('/api/v1/finance/payers', $payload)
+            ->postJson('/api/v1/enterprise/finance/payers', $payload)
             ->assertStatus(409);
     }
 
@@ -402,16 +402,16 @@ class NepalFinanceTest extends TestCase
         $ctx = $this->ctx();
 
         $this->withToken(Identity::tokenFor($ctx['admin']))
-            ->getJson('/api/v1/finance/claims')
+            ->getJson('/api/v1/enterprise/finance/claims')
             ->assertOk()
             ->assertJsonCount(0, 'data');
     }
 
     public function test_nepal_finance_requires_auth(): void
     {
-        $this->getJson('/api/v1/finance/fiscal-years')->assertUnauthorized();
-        $this->getJson('/api/v1/finance/payers')->assertUnauthorized();
-        $this->getJson('/api/v1/finance/claims')->assertUnauthorized();
+        $this->getJson('/api/v1/enterprise/finance/fiscal-years')->assertUnauthorized();
+        $this->getJson('/api/v1/enterprise/finance/payers')->assertUnauthorized();
+        $this->getJson('/api/v1/enterprise/finance/claims')->assertUnauthorized();
     }
 
     public function test_nepal_finance_requires_billing_permission(): void
@@ -421,15 +421,15 @@ class NepalFinanceTest extends TestCase
         Identity::assign($viewer, 'receptionist', $ctx['org'], $ctx['facility']);
 
         $this->withToken(Identity::tokenFor($viewer))
-            ->getJson('/api/v1/finance/fiscal-years')
+            ->getJson('/api/v1/enterprise/finance/fiscal-years')
             ->assertForbidden();
 
         $this->withToken(Identity::tokenFor($viewer))
-            ->getJson('/api/v1/finance/payers')
+            ->getJson('/api/v1/enterprise/finance/payers')
             ->assertForbidden();
 
         $this->withToken(Identity::tokenFor($viewer))
-            ->getJson('/api/v1/finance/claims')
+            ->getJson('/api/v1/enterprise/finance/claims')
             ->assertForbidden();
     }
 

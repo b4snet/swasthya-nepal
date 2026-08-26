@@ -1,6 +1,10 @@
 <?php
 
 use App\Models\Bed;
+use App\Models\Facility;
+use App\Models\Organization;
+use App\Models\Room;
+use App\Models\Ward;
 use App\Support\BedStatus;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -32,10 +36,15 @@ it('bed status blocks invalid transitions', function () {
 });
 
 it('bed model stores admission id', function () {
+    $org = Organization::create(['name' => 'Test Org', 'code' => 'TST', 'status' => 'active']);
+    $facility = Facility::create(['tenant_id' => $org->id, 'name' => 'Test Facility', 'code' => 'TF', 'status' => 'active', 'timezone' => 'UTC', 'address' => '{}', 'settings' => '{}']);
+    $ward = Ward::create(['tenant_id' => $org->id, 'facility_id' => $facility->id, 'name' => 'W1', 'code' => 'W1', 'ward_type' => 'general', 'status' => 'active']);
+    $room = Room::create(['tenant_id' => $org->id, 'facility_id' => $facility->id, 'ward_id' => $ward->id, 'name' => 'R1', 'code' => 'R1', 'room_type' => 'general', 'status' => 'active']);
+
     $bed = Bed::create([
-        'tenant_id' => '00000000-0000-0000-0000-000000000001',
-        'facility_id' => '00000000-0000-0000-0000-000000000010',
-        'room_id' => '00000000-0000-0000-0000-000000000020',
+        'tenant_id' => $org->id,
+        'facility_id' => $facility->id,
+        'room_id' => $room->id,
         'bed_code' => 'A-101',
         'status' => BedStatus::AVAILABLE,
         'lock_version' => 0,

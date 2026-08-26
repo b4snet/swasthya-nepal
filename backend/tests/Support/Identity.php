@@ -7,6 +7,8 @@ use App\Models\Organization;
 use App\Models\Role;
 use App\Models\RoleAssignment;
 use App\Models\User;
+use Database\Seeders\RolePermissionSeeder;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Test-support helpers for building tenants, identities, and assignments.
@@ -46,7 +48,17 @@ final class Identity
         ?Organization $organization = null,
         ?Facility $facility = null,
     ): RoleAssignment {
-        $role = Role::query()->where('code', $roleCode)->firstOrFail();
+        $role = Role::query()->where('code', $roleCode)->first();
+
+        // Auto-seed RBAC catalog if the role doesn't exist yet.
+        // This handles tests that don't explicitly call seedIdentity().
+        if (! $role) {
+            DB::unprepared('TRUNCATE TABLE role_permissions CASCADE');
+            DB::unprepared('TRUNCATE TABLE roles CASCADE');
+            DB::unprepared('TRUNCATE TABLE permissions CASCADE');
+            app(RolePermissionSeeder::class)->run();
+            $role = Role::query()->where('code', $roleCode)->firstOrFail();
+        }
 
         return RoleAssignment::query()->create([
             'user_id' => $user->getKey(),

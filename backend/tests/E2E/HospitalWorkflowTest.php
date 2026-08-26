@@ -77,7 +77,7 @@ class HospitalWorkflowTest extends TestCase
     public function finance_overview_accessible(): void
     {
         $this->loginAs();
-        $this->withHeaders($this->authHeaders())->getJson('/api/v1/finance/overview')->assertOk();
+        $this->withHeaders($this->authHeaders())->getJson('/api/v1/enterprise/finance/overview')->assertOk();
     }
 
     /** @test */
