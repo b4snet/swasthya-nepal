@@ -25,10 +25,10 @@ return new class extends Migration
             // One interaction per medication pair per tenant (bidirectional)
             $table->unique(['tenant_id', 'medication_a_id', 'medication_b_id'], 'uq_drug_interaction_pair');
 
-            // Prevent self-interaction
-            $table->check('medication_a_id != medication_b_id', 'ck_drug_interaction_no_self');
+            // Note: self-interaction prevention handled at application level
+            // (Blueprint::check() not available in this Laravel version)
 
-            $table->foreign('tenant_id')->references('id')->on('tenants');
+            $table->foreign('tenant_id')->references('id')->on('organizations');
             $table->foreign('medication_a_id')->references('id')->on('medications');
             $table->foreign('medication_b_id')->references('id')->on('medications');
         });

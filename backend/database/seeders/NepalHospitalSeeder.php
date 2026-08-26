@@ -143,7 +143,7 @@ class NepalHospitalSeeder extends Seeder
         $encounters = $this->createEncounters($org, $facility, $patients, $staff, $services);
 
         // 9. Clinical data (diagnoses, notes, prescriptions, lab orders)
-        $this->createClinicalData($org, $encounters, $staff, $medications);
+        $this->createClinicalData($org, $facility, $encounters, $staff, $medications);
 
         // 10. Admissions
         $this->createAdmissions($org, $facility, $patients, $encounters, $wards);
@@ -228,11 +228,11 @@ class NepalHospitalSeeder extends Seeder
         $wardDefs = [
             ['name' => 'Medical Ward A', 'code' => 'med-a', 'type' => 'general', 'rooms' => 6, 'beds_per_room' => 4],
             ['name' => 'Medical Ward B', 'code' => 'med-b', 'type' => 'general', 'rooms' => 6, 'beds_per_room' => 4],
-            ['name' => 'Surgical Ward', 'code' => 'surg-ward', 'type' => 'surgical', 'rooms' => 5, 'beds_per_room' => 4],
+            ['name' => 'Surgical Ward', 'code' => 'surg-ward', 'type' => 'surgery', 'rooms' => 5, 'beds_per_room' => 4],
             ['name' => 'Maternity Ward', 'code' => 'maternity', 'type' => 'maternity', 'rooms' => 4, 'beds_per_room' => 3],
-            ['name' => 'Paediatric Ward', 'code' => 'paeds-ward', 'type' => 'paediatric', 'rooms' => 3, 'beds_per_room' => 4],
+            ['name' => 'Paediatric Ward', 'code' => 'paeds-ward', 'type' => 'pediatric', 'rooms' => 3, 'beds_per_room' => 4],
             ['name' => 'ICU', 'code' => 'icu', 'type' => 'icu', 'rooms' => 2, 'beds_per_room' => 6],
-            ['name' => 'Emergency Holding', 'code' => 'er-hold', 'type' => 'emergency', 'rooms' => 2, 'beds_per_room' => 4],
+            ['name' => 'Emergency Holding', 'code' => 'er-hold', 'type' => 'general', 'rooms' => 2, 'beds_per_room' => 4],
         ];
 
         $wards = [];
@@ -251,7 +251,7 @@ class NepalHospitalSeeder extends Seeder
                     ['tenant_id' => $org->id, 'facility_id' => $facility->id, 'ward_id' => $ward->id, 'code' => "{$wd['code']}-r{$r}"],
                     [
                         'name' => "{$wd['name']} — Room {$r}",
-                        'room_type' => $wd['type'],
+                        'room_type' => ($wd['type'] === 'surgery' || $wd['type'] === 'maternity' || $wd['type'] === 'pediatric') ? 'general' : $wd['type'],
                         'daily_rate_minor' => $wd['type'] === 'icu' ? 1500000 : ($wd['type'] === 'maternity' ? 500000 : 300000),
                         'currency' => 'NPR',
                         'status' => Room::STATUS_ACTIVE,
@@ -404,7 +404,7 @@ class NepalHospitalSeeder extends Seeder
 
             $user = User::updateOrCreate(
                 ['email' => $s['email']],
-                ['password_hash' => 'UAT2026!', 'status' => 'active']
+                ['password_hash' => \Hash::make('UAT2026!'), 'status' => 'active']
             );
 
             $role = Role::where('code', $s['role'])->first();
@@ -525,7 +525,7 @@ class NepalHospitalSeeder extends Seeder
                     'status' => Encounter::STATUS_SIGNED,
                     'started_at' => $startsAt,
                     'ended_at' => $startsAt->copy()->addMinutes(rand(10, 30)),
-                    'signed_by' => $doctor->id,
+                    'signed_by' => $doctor->user_id,
                     'signed_at' => $startsAt->copy()->addMinutes(rand(15, 45)),
                     'disposition' => Encounter::DISPOSITION_HOME,
                 ]);
@@ -539,6 +539,7 @@ class NepalHospitalSeeder extends Seeder
 
     private function createClinicalData(
         Organization $org,
+        Facility $facility,
         array $encounters,
         array $staff,
         array $medications
@@ -552,6 +553,28 @@ class NepalHospitalSeeder extends Seeder
 
         $medArray = array_values($medications);
 
+        // Create lab tests that lab_order_items can reference
+        $labTestDefs = [
+            ['code' => 'CBC', 'name' => 'Complete Blood Count', 'category' => 'hematology', 'unit' => 'g/dL', 'range' => '12.0-16.0'],
+            ['code' => 'RBS', 'name' => 'Random Blood Sugar', 'category' => 'biochemistry', 'unit' => 'mg/dL', 'range' => '70-140'],
+            ['code' => 'URINE', 'name' => 'Urinalysis', 'category' => 'laboratory', 'unit' => '', 'range' => 'Normal'],
+        ];
+
+        $labTests = [];
+        foreach ($labTestDefs as $lt) {
+            $labTests[$lt['code']] = \App\Models\LabTest::updateOrCreate(
+                ['tenant_id' => $org->id, 'facility_id' => $facility->id, 'code' => $lt['code']],
+                [
+                    'name' => $lt['name'],
+                    'category' => $lt['category'],
+                    'unit' => $lt['unit'],
+                    'reference_range' => $lt['range'],
+                    'status' => 'active',
+                    'lock_version' => 0,
+                ]
+            );
+        }
+
         foreach ($encounters as $encounter) {
             $doctor = $doctors[array_rand($doctors)];
             $diag = $this->diagnoses[array_rand($this->diagnoses)];
@@ -562,7 +585,7 @@ class NepalHospitalSeeder extends Seeder
                     'tenant_id' => $org->id,
                     'encounter_id' => $encounter->id,
                     'code' => $diag['code'],
-                    'coding_system' => 'ICD-10',
+                    'coding_system' => 'icd10',
                     'description' => $diag['desc'],
                     'diagnosis_type' => $diag['type'],
                     'is_primary' => true,
@@ -636,12 +659,9 @@ class NepalHospitalSeeder extends Seeder
 
             // Lab order (40% chance)
             if (rand(1, 100) <= 40 && !empty($labStaff)) {
-                $labTests = [
-                    ['code' => 'CBC', 'name' => 'Complete Blood Count', 'value' => '12.5', 'unit' => 'g/dL', 'range' => '12.0-16.0'],
-                    ['code' => 'RBS', 'name' => 'Random Blood Sugar', 'value' => '110', 'unit' => 'mg/dL', 'range' => '70-140'],
-                    ['code' => 'URINE', 'name' => 'Urinalysis', 'value' => 'Normal', 'unit' => '', 'range' => 'Normal'],
-                ];
-                $test = $labTests[array_rand($labTests)];
+                $labTestKeys = array_keys($labTests);
+                $testKey = $labTestKeys[array_rand($labTestKeys)];
+                $labTestObj = $labTests[$testKey];
 
                 $labOrder = LabOrder::create([
                     'tenant_id' => $org->id,
@@ -661,9 +681,10 @@ class NepalHospitalSeeder extends Seeder
                     'tenant_id' => $org->id,
                     'facility_id' => $encounter->facility_id,
                     'lab_order_id' => $labOrder->id,
-                    'result_value' => $test['value'],
-                    'result_unit' => $test['unit'],
-                    'reference_range' => $test['range'],
+                    'lab_test_id' => $labTestObj->id,
+                    'result_value' => '12.5',
+                    'result_unit' => 'g/dL',
+                    'reference_range' => '12.0-16.0',
                     'entered_by_staff_id' => $labStaff[array_rand($labStaff)]->id,
                     'entered_at' => $encounter->signed_at,
                     'verified_by_staff_id' => $labStaff[array_rand($labStaff)]->id,
@@ -680,13 +701,19 @@ class NepalHospitalSeeder extends Seeder
         array $encounters,
         array $wards
     ): void {
-        // Create 5 admissions for recent encounters
+        // Create up to 5 admissions, ensuring one admission per patient max
         $wardList = array_values($wards);
+        $admittedPatientIds = [];
         $admissionCount = 0;
 
         foreach ($encounters as $encounter) {
             if ($admissionCount >= 5) {
                 break;
+            }
+
+            // Skip if this patient already has an open admission
+            if (in_array($encounter->patient_id, $admittedPatientIds, true)) {
+                continue;
             }
 
             // 10% chance of admission
@@ -711,6 +738,7 @@ class NepalHospitalSeeder extends Seeder
                 'encounter_id' => $encounter->id,
                 'admission_number' => 'ADM-' . str_pad((string) ($admissionCount + 1), 6, '0', STR_PAD_LEFT),
                 'admission_type' => Admission::TYPE_PLANNED,
+                'admitting_diagnosis' => 'Admission for observation and treatment',
                 'admitted_at' => $encounter->started_at,
                 'status' => Admission::STATUS_ADMITTED,
             ]);
@@ -720,6 +748,7 @@ class NepalHospitalSeeder extends Seeder
                 'current_admission_id' => $admission->id,
             ]);
 
+            $admittedPatientIds[] = $encounter->patient_id;
             $admissionCount++;
         }
     }
@@ -782,12 +811,12 @@ class NepalHospitalSeeder extends Seeder
                     'tenant_id' => $org->id,
                     'facility_id' => $facility->id,
                     'patient_id' => $encounter->patient_id,
-                    'invoice_id' => $invoice->id,
                     'amount_minor' => $chargeAmount + $taxAmount,
                     'currency' => 'NPR',
-                    'payment_method' => 'cash',
-                    'status' => 'completed',
-                    'paid_at' => $encounter->signed_at ?? $encounter->started_at,
+                    'method' => 'cash',
+                    'status' => 'captured',
+                    'received_at' => $encounter->signed_at ?? $encounter->started_at,
+                    'idempotency_key' => \Str::uuid()->toString(),
                 ]);
 
                 $invoice->update([
