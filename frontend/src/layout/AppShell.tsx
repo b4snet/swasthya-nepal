@@ -307,6 +307,28 @@ function Breadcrumbs({
     );
   }
 
+  // Patient workspace — show: Clinical > Patient > Workspace
+  const patientMatch = pathname.match(/^\/clinical\/patients\/([^/]+)/);
+  if (patientMatch) {
+    const searchParams = new URLSearchParams(window.location.search);
+    const ws = searchParams.get('ws') || 'overview';
+    const wsLabels: Record<string, string> = {
+      overview: 'Overview', encounters: 'Encounters', timeline: 'Timeline',
+      diagnoses: 'Diagnoses', medications: 'Medications', lab: 'Laboratory',
+      radiology: 'Radiology', admissions: 'Admissions', referrals: 'Referrals',
+      appointments: 'Appointments', documents: 'Documents',
+    };
+    return (
+      <nav className="breadcrumbs" aria-label="Breadcrumb">
+        <span className="breadcrumbs__item breadcrumbs__item--muted">{t('module.clinical')}</span>
+        <ChevronRight size={12} className="breadcrumbs__sep" />
+        <span className="breadcrumbs__item breadcrumbs__item--muted">{t('nav.patients')}</span>
+        <ChevronRight size={12} className="breadcrumbs__sep" />
+        <span className="breadcrumbs__item breadcrumbs__item--current">{wsLabels[ws] || ws}</span>
+      </nav>
+    );
+  }
+
   if (!activeModule) return null;
 
   // Find the active child

@@ -28,6 +28,7 @@ const CommunicationsDashboard = lazy(() => import('./pages/modules/Communication
 const PatientsPage = lazy(() => import('./pages/PatientsPage').then(m => ({ default: m.PatientsPage })));
 const PatientRegisterPage = lazy(() => import('./pages/PatientRegisterPage').then(m => ({ default: m.PatientRegisterPage })));
 const PatientProfilePage = lazy(() => import('./pages/PatientProfilePage').then(m => ({ default: m.PatientProfilePage })));
+const PatientWorkspace = lazy(() => import('./pages/PatientWorkspace').then(m => ({ default: m.PatientWorkspace })));
 const AppointmentsPage = lazy(() => import('./pages/AppointmentsPage').then(m => ({ default: m.AppointmentsPage })));
 const AppointmentDetailPage = lazy(() => import('./pages/AppointmentDetailPage').then(m => ({ default: m.AppointmentDetailPage })));
 const QueuePage = lazy(() => import('./pages/QueuePage').then(m => ({ default: m.QueuePage })));
@@ -188,7 +189,8 @@ export function App() {
               <Route path="/clinical/workspace" element={<LazySuspense><ClinicalWorkspace /></LazySuspense>} />
               <Route path="/clinical/patients" element={<LazySuspense><PatientsPage /></LazySuspense>} />
               <Route path="/clinical/patients/new" element={<LazySuspense><PatientRegisterPage /></LazySuspense>} />
-              <Route path="/clinical/patients/:id" element={<LazySuspense><PatientProfilePage /></LazySuspense>} />
+              <Route path="/clinical/patients/:id" element={<LazySuspense><PatientWorkspace /></LazySuspense>} />
+              <Route path="/clinical/patients/:id/profile" element={<LazySuspense><PatientProfilePage /></LazySuspense>} />
               <Route path="/clinical/patients/import" element={<LazySuspense><PatientImportPage /></LazySuspense>} />
               <Route path="/clinical/appointments" element={<LazySuspense><AppointmentsPage /></LazySuspense>} />
               <Route path="/clinical/appointments/:id" element={<LazySuspense><AppointmentDetailPage /></LazySuspense>} />
@@ -282,6 +284,7 @@ export function App() {
               <Route path="/patients" element={<Navigate to="/clinical/patients" replace />} />
               <Route path="/patients/new" element={<Navigate to="/clinical/patients/new" replace />} />
               <Route path="/patients/:id" element={<Navigate to="/clinical/patients/:id" replace />} />
+              <Route path="/patients/:id/profile" element={<Navigate to="/clinical/patients/:id/profile" replace />} />
               <Route path="/patients/import" element={<Navigate to="/clinical/patients/import" replace />} />
               <Route path="/appointments" element={<Navigate to="/clinical/appointments" replace />} />
               <Route path="/appointments/:id" element={<Navigate to="/clinical/appointments/:id" replace />} />
