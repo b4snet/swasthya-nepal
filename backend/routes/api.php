@@ -1363,6 +1363,8 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
     Route::post('onboarding/{id}/activate', [OnboardingController::class, 'activate']);
     Route::get('onboarding/modules', [OnboardingController::class, 'modules']);
     Route::get('onboarding/modules/{moduleCode}/check', [OnboardingController::class, 'checkModule']);
+    Route::get('onboarding/readiness', [OnboardingController::class, 'readiness']);
+    Route::post('onboarding/validate', [OnboardingController::class, 'validate']);
 
     // Profile onboarding (first-login identity completion)
     Route::get('onboarding/profile/steps', [OnboardingProfileController::class, 'steps']);

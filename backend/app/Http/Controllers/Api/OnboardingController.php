@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Services\ConfigurationValidationService;
 use App\Services\OnboardingService;
 use App\Support\TenantContext;
 use Illuminate\Http\JsonResponse;
@@ -10,7 +11,10 @@ use Illuminate\Http\Request;
 
 class OnboardingController extends Controller
 {
-    public function __construct(protected OnboardingService $onboardingService) {}
+    public function __construct(
+        protected OnboardingService $onboardingService,
+        protected ConfigurationValidationService $validation,
+    ) {}
 
     public function store(Request $request): JsonResponse
     {
@@ -76,5 +80,44 @@ class OnboardingController extends Controller
             'module' => $moduleCode,
             'enabled' => $this->onboardingService->isModuleEnabled($ctx->tenantId(), $moduleCode, $ctx->facilityId()),
         ]);
+    }
+
+    /**
+     * GET /onboarding/readiness
+     *
+     * Returns a completeness score and category breakdown for the
+     * current organization/facility, answering:
+     *   - What is configured?
+     *   - What is missing?
+     *   - What percentage ready?
+     */
+    public function readiness(Request $request): JsonResponse
+    {
+        $ctx = TenantContext::current();
+
+        $score = $this->validation->readinessScore(
+            $ctx->tenantId(),
+            $ctx->facilityId(),
+        );
+
+        return response()->json($score);
+    }
+
+    /**
+     * POST /onboarding/validate
+     *
+     * Validates that all mandatory configuration is in place before
+     * activation. Returns errors (blocking) and warnings (advisory).
+     */
+    public function validate(Request $request): JsonResponse
+    {
+        $ctx = TenantContext::current();
+
+        $result = $this->validation->validateForActivation(
+            $ctx->tenantId(),
+            $ctx->facilityId(),
+        );
+
+        return response()->json($result, $result['valid'] ? 200 : 422);
     }
 }
