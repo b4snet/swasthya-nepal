@@ -13,4 +13,6 @@ final class SpecialtyController extends Controller
     public function showProfile(Request $r, string $id): JsonResponse { return Envelope::success(data: ['id' => $id], request: $r); }
     public function storeAssessment(Request $r, string $id): JsonResponse { return Envelope::success(data: ['id' => 'stub'], request: $r); }
     public function storeCarePlan(Request $r, string $id): JsonResponse { return Envelope::success(data: ['id' => 'stub'], request: $r); }
+    public function activateCarePlan(Request $r, string $id): JsonResponse { return Envelope::success(data: ['id' => $id, 'status' => 'active'], request: $r); }
+    public function completeCarePlan(Request $r, string $id): JsonResponse { return Envelope::success(data: ['id' => $id, 'status' => 'completed'], request: $r); }
 }

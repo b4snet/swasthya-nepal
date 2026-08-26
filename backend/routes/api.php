@@ -82,6 +82,7 @@ use App\Http\Controllers\Api\RefundController;
 use App\Http\Controllers\Api\RevenueController;
 use App\Http\Controllers\Api\RoleAssignmentController;
 use App\Http\Controllers\Api\RoleController;
+use App\Http\Controllers\Api\SpecialtyController;
 use App\Http\Controllers\Api\RoomController;
 use App\Http\Controllers\Api\RpmController;
 use App\Http\Controllers\Api\ScheduleController;
