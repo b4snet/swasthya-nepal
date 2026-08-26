@@ -21,8 +21,11 @@ class JournalEntry extends Model
     use HasFactory, HasUuid;
 
     public const STATUS_DRAFT = 'draft';
+
     public const STATUS_REVIEWED = 'reviewed';
+
     public const STATUS_POSTED = 'posted';
+
     public const STATUS_REVERSED = 'reversed';
 
     /**

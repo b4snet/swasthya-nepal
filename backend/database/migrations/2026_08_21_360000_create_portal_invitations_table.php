@@ -41,7 +41,7 @@ return new class extends Migration
         DB::statement('ALTER TABLE public.portal_invitations ENABLE ROW LEVEL SECURITY');
         DB::statement('ALTER TABLE public.portal_invitations FORCE ROW LEVEL SECURITY');
 
-        DB::statement("
+        DB::statement('
             CREATE POLICY p_rls_portal_invitations ON public.portal_invitations
             USING (
                 swasthya_rls_is_platform() = true
@@ -51,7 +51,7 @@ return new class extends Migration
                 swasthya_rls_is_platform() = true
                 OR tenant_id = swasthya_rls_tenant_id()
             )
-        ");
+        ');
     }
 
     public function down(): void

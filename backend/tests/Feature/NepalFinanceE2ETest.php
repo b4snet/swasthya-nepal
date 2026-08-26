@@ -1,21 +1,21 @@
 <?php
 
+use App\Exceptions\ApiException;
 use App\Models\BenefitRule;
 use App\Models\Charge;
 use App\Models\Department;
 use App\Models\Encounter;
+use App\Models\FinancialPeriod;
 use App\Models\InsuranceClaim;
-use App\Models\InsuranceClaimLine;
 use App\Models\InsurancePolicy;
 use App\Models\Invoice;
-use App\Models\Payer;
 use App\Models\Patient;
+use App\Models\Payer;
 use App\Models\Payment;
-use App\Models\PaymentAllocation;
-use App\Models\RefundRequest;
+use App\Models\Staff;
 use App\Models\TaxRule;
 use App\Services\BillingService;
-use App\Services\TaxResolver;
+use App\Services\FinanceService;
 use Tests\Support\Identity;
 
 /**
@@ -91,7 +91,7 @@ it('completes a full self-pay patient journey: encounter → charge → tax → 
         invoiceId: $invoice->getKey(),
         method: 'cash',
         amountMinor: 56500,
-        idempotencyKey: 'self-pay-' . $invoice->getKey(),
+        idempotencyKey: 'self-pay-'.$invoice->getKey(),
     );
 
     expect($payment->status)->toBe('captured');
@@ -173,7 +173,7 @@ it('completes a private insurance flow: eligibility → charge → claim → inv
         invoiceId: $invoice->getKey(),
         method: 'cash',
         amountMinor: $patientShare,
-        idempotencyKey: 'ins-patient-' . $invoice->getKey(),
+        idempotencyKey: 'ins-patient-'.$invoice->getKey(),
     );
 
     expect($payment->status)->toBe('captured');
@@ -489,7 +489,7 @@ it('rejects charges against locked fiscal periods', function () {
     $ctx = $this->ctx();
 
     // Create and lock a period
-    \App\Models\FinancialPeriod::create([
+    FinancialPeriod::create([
         'tenant_id' => $ctx['org']->getKey(),
         'facility_id' => $ctx['facility']->getKey(),
         'name' => 'Locked Period',
@@ -502,14 +502,14 @@ it('rejects charges against locked fiscal periods', function () {
     ]);
 
     // Charge should be rejected
-    $this->expectException(\App\Exceptions\ApiException::class);
+    $this->expectException(ApiException::class);
     Charge::resolveTaxFields($ctx['facility']->getKey(), 'opd');
 });
 
 it('allows charges in open fiscal periods', function () {
     $ctx = $this->ctx();
 
-    \App\Models\FinancialPeriod::create([
+    FinancialPeriod::create([
         'tenant_id' => $ctx['org']->getKey(),
         'facility_id' => $ctx['facility']->getKey(),
         'name' => 'Open Period',
@@ -554,7 +554,7 @@ it('processes a refund through the complete lifecycle: request → approve → c
         invoiceId: $invoice->getKey(),
         method: 'cash',
         amountMinor: $invoice->total_minor,
-        idempotencyKey: 'refund-test-' . $invoice->getKey(),
+        idempotencyKey: 'refund-test-'.$invoice->getKey(),
     );
 
     // Request refund
@@ -624,7 +624,7 @@ it('enforces financial invariants: no negative, no duplicate, no over-refund', f
         invoiceId: $invoice->getKey(),
         method: 'cash',
         amountMinor: $invoice->total_minor,
-        idempotencyKey: 'invariant-' . $invoice->getKey(),
+        idempotencyKey: 'invariant-'.$invoice->getKey(),
     );
 
     // INVARIANT: Cannot over-refund
@@ -636,7 +636,7 @@ it('enforces financial invariants: no negative, no duplicate, no over-refund', f
     expect($refundable2)->toBe(50000); // no refunds yet
 
     // Try to refund more than the charge
-    $this->expectException(\App\Exceptions\ApiException::class);
+    $this->expectException(ApiException::class);
     $billing->requestRefund(
         tenantId: $ctx['org']->getKey(),
         facilityId: $ctx['facility']->getKey(),
@@ -696,7 +696,7 @@ it('enforces claim lifecycle: draft → submitted → pending → accepted/denie
     expect($claim->status)->toBe('draft');
 
     // Submit
-    $financeService = app(\App\Services\FinanceService::class);
+    $financeService = app(FinanceService::class);
     $submitted = $financeService->submitClaim($claim, $ctx['admin']->getKey());
     expect($submitted->status)->toBe('submitted');
 
@@ -747,7 +747,7 @@ function createSignedEncounter(array $ctx, Patient $patient): Encounter
         'facility_id' => $ctx['facility']->getKey(),
     ]);
 
-    $staff = \App\Models\Staff::factory()->create([
+    $staff = Staff::factory()->create([
         'tenant_id' => $ctx['org']->getKey(),
         'facility_id' => $ctx['facility']->getKey(),
         'department_id' => $department->getKey(),

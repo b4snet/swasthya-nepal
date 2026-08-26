@@ -7,6 +7,7 @@ use App\Models\BenefitRule;
 use App\Models\Payer;
 use App\Support\ErrorCodes;
 use App\Support\TenantContext;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -22,7 +23,7 @@ final class BenefitRuleService
     /**
      * List benefit rules for a specific payer within the current tenant.
      */
-    public function list(string $payerId): \Illuminate\Support\Collection
+    public function list(string $payerId): Collection
     {
         $context = TenantContext::current();
 

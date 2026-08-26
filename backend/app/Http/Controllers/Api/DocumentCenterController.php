@@ -335,7 +335,7 @@ final class DocumentCenterController extends Controller
             );
 
             return response()->file(
-                storage_path('app/' . $document->pdf_path),
+                storage_path('app/'.$document->pdf_path),
                 [
                     'Content-Type' => 'application/pdf',
                     'Content-Disposition' => 'inline; filename="'.$document->document_number.'.pdf"',
@@ -368,7 +368,7 @@ final class DocumentCenterController extends Controller
         );
 
         return response()->file(
-            storage_path('app/' . $result['path']),
+            storage_path('app/'.$result['path']),
             [
                 'Content-Type' => 'application/pdf',
                 'Content-Disposition' => 'inline; filename="'.$document->document_number.'.pdf"',

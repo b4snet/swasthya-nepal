@@ -6,7 +6,6 @@ use App\Models\BenefitRule;
 use App\Models\FinancialPeriod;
 use App\Models\Payer;
 use App\Models\TaxRule;
-use App\Support\TenantContext;
 use Illuminate\Database\Seeder;
 
 /**
@@ -42,8 +41,11 @@ class NepalFinanceSeeder extends Seeder
      * Nepal fiscal year: mid-Shrawan to mid-Shrawan (July 16 to July 15).
      */
     private const NEPAL_FISCAL_YEAR = 2083;
+
     private const NEPAL_FISCAL_BS = '2083/84';
+
     private const FY_START = '2026-07-16';
+
     private const FY_END = '2027-07-15';
 
     /**
@@ -390,7 +392,7 @@ class NepalFinanceSeeder extends Seeder
                 'nepal_fiscal_year' => self::NEPAL_FISCAL_BS,
                 'period_status' => 'open',
             ]);
-            $this->command?->info("  ✓ Fiscal year: Nepal FY ".self::NEPAL_FISCAL_BS);
+            $this->command?->info('  ✓ Fiscal year: Nepal FY '.self::NEPAL_FISCAL_BS);
         }
     }
 }

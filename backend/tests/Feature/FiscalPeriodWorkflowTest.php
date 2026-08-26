@@ -2,10 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Exceptions\ApiException;
 use App\Models\Charge;
-use App\Models\Encounter;
 use App\Models\FinancialPeriod;
-use App\Models\Patient;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\Identity;
 use Tests\TestCase;
@@ -169,7 +168,7 @@ class FiscalPeriodWorkflowTest extends TestCase
         ]);
 
         // Try to resolve tax fields (which now calls PeriodGuard)
-        $this->expectException(\App\Exceptions\ApiException::class);
+        $this->expectException(ApiException::class);
         $this->expectExceptionMessage('locked');
 
         Charge::resolveTaxFields($ctx['facility']->getKey(), 'opd');

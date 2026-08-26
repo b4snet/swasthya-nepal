@@ -13,19 +13,31 @@ class HospitalDocument extends Model
     use HasFactory, HasUuid;
 
     public const STATUS_UPLOADING = 'uploading';
+
     public const STATUS_PROCESSING = 'processing';
+
     public const STATUS_DRAFT = 'draft';
+
     public const STATUS_FINAL = 'final';
+
     public const STATUS_RELEASED = 'released';
+
     public const STATUS_ARCHIVED = 'archived';
+
     public const STATUS_SUPERSEDED = 'superseded';
 
     public const CATEGORY_CLINICAL = 'clinical';
+
     public const CATEGORY_FINANCIAL = 'financial';
+
     public const CATEGORY_HR = 'hr';
+
     public const CATEGORY_ADMINISTRATIVE = 'administrative';
+
     public const CATEGORY_GOVERNANCE = 'governance';
+
     public const CATEGORY_PROCUREMENT = 'procurement';
+
     public const CATEGORY_PATIENT = 'patient_generated';
 
     protected $fillable = [

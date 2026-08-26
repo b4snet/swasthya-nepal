@@ -29,17 +29,25 @@ class TaxRule extends Model
     use HasFactory, HasUuid;
 
     public const TYPE_VAT = 'vat';
+
     public const TYPE_HEALTH_SERVICE_TAX = 'health_service_tax';
+
     public const TYPE_HEALTH_EQUITY_FEE = 'health_equity_fee';
+
     public const TYPE_EXCISE = 'excise';
+
     public const TYPE_OTHER = 'other';
 
     public const METHOD_PERCENTAGE = 'percentage';
+
     public const METHOD_FIXED = 'fixed_amount';
+
     public const METHOD_PER_UNIT = 'per_unit';
 
     public const STATUS_ACTIVE = 'active';
+
     public const STATUS_INACTIVE = 'inactive';
+
     public const STATUS_SUPERSEDED = 'superseded';
 
     /**
@@ -151,6 +159,7 @@ class TaxRule extends Model
     public function isCurrentlyEffective(): bool
     {
         $now = now()->toDateString();
+
         return $this->effective_from <= $now
             && ($this->effective_to === null || $this->effective_to >= $now);
     }

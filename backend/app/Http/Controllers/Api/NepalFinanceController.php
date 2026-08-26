@@ -11,8 +11,8 @@ use App\Support\AccessCheck;
 use App\Support\AuditLogger;
 use App\Support\Envelope;
 use App\Support\ErrorCodes;
-use App\Support\FacilityScope;
 use App\Support\TenantContext;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -81,7 +81,7 @@ final class NepalFinanceController extends Controller
         $facilityId = $request->input('facilityId');
 
         // Calculate period number from start date if not provided
-        $periodNumber = $validated['periodNumber'] ?? (int) \Carbon\Carbon::parse($validated['startDate'])->format('m');
+        $periodNumber = $validated['periodNumber'] ?? (int) Carbon::parse($validated['startDate'])->format('m');
 
         $exists = FinancialPeriod::where('tenant_id', $tenantId)
             ->where('fiscal_year', $validated['fiscalYear'])

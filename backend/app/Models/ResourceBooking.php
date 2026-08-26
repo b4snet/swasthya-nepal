@@ -12,15 +12,23 @@ class ResourceBooking extends Model
     use HasFactory, HasUuid;
 
     public const STATUS_RESERVED = 'reserved';
+
     public const STATUS_CONFIRMED = 'confirmed';
+
     public const STATUS_IN_PROGRESS = 'in_progress';
+
     public const STATUS_COMPLETED = 'completed';
+
     public const STATUS_CANCELLED = 'cancelled';
 
     public const RESOURCE_TYPE_OT = 'ot';
+
     public const RESOURCE_TYPE_IMAGING = 'imaging';
+
     public const RESOURCE_TYPE_EQUIPMENT = 'equipment';
+
     public const RESOURCE_TYPE_ROOM = 'room';
+
     public const RESOURCE_TYPE_BED = 'bed';
 
     protected $fillable = [

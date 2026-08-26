@@ -159,9 +159,9 @@ return new class extends Migration
             // Use string interpolation so $$ dollar-quoting is passed literally
             DB::statement(
                 "CREATE OR REPLACE FUNCTION public.swasthya_rls_{$claim}() "
-                . 'RETURNS uuid LANGUAGE sql STABLE AS ' . '$$'
-                . " SELECT nullif(public.swasthya_rls_claim('app_{$claim}'), '')::uuid "
-                . '$$;'
+                .'RETURNS uuid LANGUAGE sql STABLE AS '.'$$'
+                ." SELECT nullif(public.swasthya_rls_claim('app_{$claim}'), '')::uuid "
+                .'$$;'
             );
         }
 

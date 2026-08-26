@@ -1,12 +1,15 @@
 <?php
 
 use App\Console\Commands\ProcessOutbox;
+use App\Exceptions\ApiException;
 use App\Models\DomainEvent;
+use App\Models\Integration;
+use App\Models\IntegrationEvent;
+use App\Models\Notification;
 use App\Services\Events\EventDispatcher;
 use App\Services\Events\EventProcessor;
 use App\Services\Events\Handlers\CriticalValueDetectedHandler;
 use App\Services\Events\Handlers\SendNotificationHandler;
-use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -266,7 +269,7 @@ it('creates an in-app notification from the event payload', function (): void {
 
     app(SendNotificationHandler::class)->handle($event->fresh());
 
-    $notification = \App\Models\Notification::query()
+    $notification = Notification::query()
         ->where('user_id', Identity::user()->getKey())
         ->where('title', 'Appointment Confirmed')
         ->first();
@@ -296,7 +299,7 @@ it('is idempotent — does not create duplicate notifications', function (): voi
     app(SendNotificationHandler::class)->handle($event->fresh());
     app(SendNotificationHandler::class)->handle($event->fresh());
 
-    $count = \App\Models\Notification::query()
+    $count = Notification::query()
         ->where('user_id', $userId)
         ->where('title', 'Duplicate Test')
         ->count();
@@ -317,7 +320,7 @@ it('skips notification when user_id is missing from payload', function (): void 
 
     app(SendNotificationHandler::class)->handle($event->fresh());
 
-    expect(\App\Models\Notification::query()->where('title', 'No User')->count())->toBe(0);
+    expect(Notification::query()->where('title', 'No User')->count())->toBe(0);
 });
 
 // ─────────────────── CriticalValueDetectedHandler ───────────────────
@@ -424,8 +427,8 @@ it('handles mixed success and failure events in one batch', function (): void {
 // ─────────────────── Integration Event Lifecycle ───────────────────
 
 it('records integration events with direction, type, and correlation', function (): void {
-    $integration = \App\Models\Integration::factory()->create();
-    $service = app(\App\Services\IntegrationRegistryService::class);
+    $integration = Integration::factory()->create();
+    $service = app(App\Services\IntegrationRegistryService::class);
 
     $event = $service->recordEvent(
         $integration,
@@ -436,36 +439,36 @@ it('records integration events with direction, type, and correlation', function 
         mappingVersion: '1.0',
     );
 
-    expect($event)->toBeInstanceOf(\App\Models\IntegrationEvent::class)
+    expect($event)->toBeInstanceOf(IntegrationEvent::class)
         ->and($event->direction)->toBe('outbound')
         ->and($event->message_type)->toBe('FHIR Patient')
         ->and($event->consent_basis)->toBe('consent-123')
         ->and($event->mapping_version)->toBe('1.0')
-        ->and($event->status)->toBe(\App\Models\IntegrationEvent::STATUS_QUEUED)
+        ->and($event->status)->toBe(IntegrationEvent::STATUS_QUEUED)
         ->and($event->correlation_id)->not->toBeEmpty();
 });
 
 it('retries integration events with bounded budget and quarantines', function (): void {
-    $integration = \App\Models\Integration::factory()->create();
-    $service = app(\App\Services\IntegrationRegistryService::class);
+    $integration = Integration::factory()->create();
+    $service = app(App\Services\IntegrationRegistryService::class);
 
     $event = $service->recordEvent($integration, 'outbound', 'test', []);
 
     // Retry up to the budget
     for ($i = 0; $i < IntegrationRegistryService::RETRY_BUDGET; $i++) {
         $event = $service->markRetry($event, "attempt {$i}");
-        expect($event->status)->toBe(\App\Models\IntegrationEvent::STATUS_RETRYING);
+        expect($event->status)->toBe(IntegrationEvent::STATUS_RETRYING);
     }
 
     // One more retry exceeds the budget → quarantined
     $event = $service->markRetry($event, 'final attempt');
-    expect($event->status)->toBe(\App\Models\IntegrationEvent::STATUS_QUARANTINED);
+    expect($event->status)->toBe(IntegrationEvent::STATUS_QUARANTINED);
 });
 
 it('rejects invalid integration event direction', function (): void {
-    $integration = \App\Models\Integration::factory()->create();
-    $service = app(\App\Services\IntegrationRegistryService::class);
+    $integration = Integration::factory()->create();
+    $service = app(App\Services\IntegrationRegistryService::class);
 
     expect(fn () => $service->recordEvent($integration, 'sideways', 'test', []))
-        ->toThrow(\App\Exceptions\ApiException::class, 'direction');
+        ->toThrow(ApiException::class, 'direction');
 });

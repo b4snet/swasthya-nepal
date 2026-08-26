@@ -14,6 +14,7 @@ use App\Models\Facility;
 use App\Models\Invoice;
 use App\Models\LabOrder;
 use App\Models\LabOrderItem;
+use App\Models\LabTest;
 use App\Models\Medication;
 use App\Models\Organization;
 use App\Models\Patient;
@@ -28,7 +29,6 @@ use App\Models\Staff;
 use App\Models\User;
 use App\Models\Ward;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Str;
 
 /**
  * Realistic Nepal hospital data seeder for meaningful UAT.
@@ -154,10 +154,10 @@ class NepalHospitalSeeder extends Seeder
         $this->command?->info('✅ Nepal hospital seeder complete.');
         $this->command?->info("   Organization: {$org->name}");
         $this->command?->info("   Facility: {$facility->name}");
-        $this->command?->info("   Departments: " . count($departments));
-        $this->command?->info("   Wards: " . count($wards));
-        $this->command?->info("   Staff: " . count($staff));
-        $this->command?->info("   Patients: " . count($patients));
+        $this->command?->info('   Departments: '.count($departments));
+        $this->command?->info('   Wards: '.count($wards));
+        $this->command?->info('   Staff: '.count($staff));
+        $this->command?->info('   Patients: '.count($patients));
     }
 
     private function createOrganization(): Organization
@@ -454,13 +454,13 @@ class NepalHospitalSeeder extends Seeder
             $fullName = "{$firstName} {$lastName}";
 
             $dob = now()->subYears(rand(1, 85))->subDays(rand(0, 364));
-            $phone = '98' . str_pad((string) rand(0, 99999999), 8, '0', STR_PAD_LEFT);
+            $phone = '98'.str_pad((string) rand(0, 99999999), 8, '0', STR_PAD_LEFT);
             $village = $this->villages[array_rand($this->villages)];
 
             $patient = Patient::create([
                 'tenant_id' => $org->id,
                 'facility_id' => $facility->id,
-                'mrn' => 'MRN-' . str_pad((string) ($i + 1), 6, '0', STR_PAD_LEFT),
+                'mrn' => 'MRN-'.str_pad((string) ($i + 1), 6, '0', STR_PAD_LEFT),
                 'full_name' => $fullName,
                 'date_of_birth' => $dob->format('Y-m-d'),
                 'sex' => $sex,
@@ -481,7 +481,7 @@ class NepalHospitalSeeder extends Seeder
         array $staff,
         array $services
     ): array {
-        $doctors = array_filter($staff, fn($s) => $s->designation === 'doctor');
+        $doctors = array_filter($staff, fn ($s) => $s->designation === 'doctor');
         $doctors = array_values($doctors);
         $opdService = $services['opd-consult'];
 
@@ -544,11 +544,11 @@ class NepalHospitalSeeder extends Seeder
         array $staff,
         array $medications
     ): void {
-        $doctors = array_filter($staff, fn($s) => $s->designation === 'doctor');
+        $doctors = array_filter($staff, fn ($s) => $s->designation === 'doctor');
         $doctors = array_values($doctors);
-        $labStaff = array_filter($staff, fn($s) => $s->designation === 'laboratory');
+        $labStaff = array_filter($staff, fn ($s) => $s->designation === 'laboratory');
         $labStaff = array_values($labStaff);
-        $pharmacists = array_filter($staff, fn($s) => $s->designation === 'pharmacist');
+        $pharmacists = array_filter($staff, fn ($s) => $s->designation === 'pharmacist');
         $pharmacists = array_values($pharmacists);
 
         $medArray = array_values($medications);
@@ -562,7 +562,7 @@ class NepalHospitalSeeder extends Seeder
 
         $labTests = [];
         foreach ($labTestDefs as $lt) {
-            $labTests[$lt['code']] = \App\Models\LabTest::updateOrCreate(
+            $labTests[$lt['code']] = LabTest::updateOrCreate(
                 ['tenant_id' => $org->id, 'facility_id' => $facility->id, 'code' => $lt['code']],
                 [
                     'name' => $lt['name'],
@@ -658,7 +658,7 @@ class NepalHospitalSeeder extends Seeder
             }
 
             // Lab order (40% chance)
-            if (rand(1, 100) <= 40 && !empty($labStaff)) {
+            if (rand(1, 100) <= 40 && ! empty($labStaff)) {
                 $labTestKeys = array_keys($labTests);
                 $testKey = $labTestKeys[array_rand($labTestKeys)];
                 $labTestObj = $labTests[$testKey];
@@ -727,7 +727,7 @@ class NepalHospitalSeeder extends Seeder
                 ->where('status', 'available')
                 ->first();
 
-            if (!$availableBed) {
+            if (! $availableBed) {
                 continue;
             }
 
@@ -736,7 +736,7 @@ class NepalHospitalSeeder extends Seeder
                 'facility_id' => $facility->id,
                 'patient_id' => $encounter->patient_id,
                 'encounter_id' => $encounter->id,
-                'admission_number' => 'ADM-' . str_pad((string) ($admissionCount + 1), 6, '0', STR_PAD_LEFT),
+                'admission_number' => 'ADM-'.str_pad((string) ($admissionCount + 1), 6, '0', STR_PAD_LEFT),
                 'admission_type' => Admission::TYPE_PLANNED,
                 'admitting_diagnosis' => 'Admission for observation and treatment',
                 'admitted_at' => $encounter->started_at,
@@ -792,7 +792,7 @@ class NepalHospitalSeeder extends Seeder
             ]);
 
             // Invoice
-            $invoiceNumber = 'INV-' . date('Ym') . '-' . str_pad((string) ($invoiceCount + 1), 4, '0', STR_PAD_LEFT);
+            $invoiceNumber = 'INV-'.date('Ym').'-'.str_pad((string) ($invoiceCount + 1), 4, '0', STR_PAD_LEFT);
             $invoice = Invoice::create([
                 'tenant_id' => $org->id,
                 'facility_id' => $facility->id,

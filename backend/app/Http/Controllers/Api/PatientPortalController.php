@@ -8,12 +8,14 @@ use App\Http\Requests\Portal\GrantAccessRequest;
 use App\Http\Requests\Portal\LoginRequest;
 use App\Http\Requests\Portal\ProvisionAccountRequest;
 use App\Models\AuditEvent;
+use App\Models\GeneratedDocument;
 use App\Models\Organization;
 use App\Models\Patient;
 use App\Models\PatientConsentRecord;
 use App\Models\PortalAccessGrant;
 use App\Models\PortalAccount;
 use App\Services\PatientPortalService;
+use App\Services\PdfGenerator;
 use App\Support\AccessCheck;
 use App\Support\AuditLogger;
 use App\Support\Envelope;
@@ -173,7 +175,7 @@ final class PatientPortalController extends Controller
     {
         $account = $this->currentAccount($request);
 
-        $doc = \App\Models\GeneratedDocument::query()
+        $doc = GeneratedDocument::query()
             ->where('tenant_id', $account->tenant_id)
             ->where('patient_id', $account->patient_id)
             ->where('id', $documentId)
@@ -209,7 +211,7 @@ final class PatientPortalController extends Controller
     {
         $account = $this->currentAccount($request);
 
-        $doc = \App\Models\GeneratedDocument::query()
+        $doc = GeneratedDocument::query()
             ->where('tenant_id', $account->tenant_id)
             ->where('patient_id', $account->patient_id)
             ->where('id', $documentId)
@@ -223,10 +225,10 @@ final class PatientPortalController extends Controller
 
         // Serve existing PDF
         if ($doc->pdf_path) {
-            $pdfService = app(\App\Services\PdfGenerator::class);
+            $pdfService = app(PdfGenerator::class);
             if ($pdfService->exists($doc->pdf_path)) {
                 return response()->file(
-                    storage_path('app/' . $doc->pdf_path),
+                    storage_path('app/'.$doc->pdf_path),
                     [
                         'Content-Type' => 'application/pdf',
                         'Content-Disposition' => 'inline; filename="'.$doc->document_number.'.pdf"',
@@ -240,7 +242,7 @@ final class PatientPortalController extends Controller
             return response()->json(['message' => 'Document content not available'], 404);
         }
 
-        $pdfService = app(\App\Services\PdfGenerator::class);
+        $pdfService = app(PdfGenerator::class);
         $result = $pdfService->generate($doc->content_html, $doc->getKey(), $doc->tenant_id);
 
         $doc->update([
@@ -249,7 +251,7 @@ final class PatientPortalController extends Controller
         ]);
 
         return response()->file(
-            storage_path('app/' . $result['path']),
+            storage_path('app/'.$result['path']),
             [
                 'Content-Type' => 'application/pdf',
                 'Content-Disposition' => 'inline; filename="'.$doc->document_number.'.pdf"',

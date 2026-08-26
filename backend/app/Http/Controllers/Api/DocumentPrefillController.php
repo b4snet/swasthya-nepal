@@ -207,7 +207,7 @@ final class DocumentPrefillController extends Controller
                     'heading' => 'Diagnoses',
                     'fields' => $diagnoses->map(fn ($d) => [
                         'label' => $d->description,
-                        'value' => $d->diagnosis_type . ($d->is_primary ? ' (Primary)' : ''),
+                        'value' => $d->diagnosis_type.($d->is_primary ? ' (Primary)' : ''),
                     ])->toArray(),
                 ],
                 [
@@ -262,7 +262,7 @@ final class DocumentPrefillController extends Controller
                     'heading' => 'Previous Prescriptions',
                     'fields' => $prescriptions->flatMap(fn ($rx) => $rx->lines->map(fn ($line) => [
                         'label' => $line->medication?->generic_name ?? 'Medication',
-                        'value' => "{$line->dose} {$line->route} {$line->frequency}" . ($line->duration ? " x {$line->duration}" : ''),
+                        'value' => "{$line->dose} {$line->route} {$line->frequency}".($line->duration ? " x {$line->duration}" : ''),
                     ]))->toArray(),
                 ],
             ],

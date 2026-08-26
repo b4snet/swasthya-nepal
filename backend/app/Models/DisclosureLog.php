@@ -12,8 +12,11 @@ class DisclosureLog extends Model
     use HasFactory, HasUuid;
 
     public const STATUS_REQUESTED = 'requested';
+
     public const STATUS_APPROVED = 'approved';
+
     public const STATUS_COMPLETED = 'completed';
+
     public const STATUS_DENIED = 'denied';
 
     protected $fillable = [

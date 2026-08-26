@@ -29,6 +29,7 @@ final class SendNotificationHandler implements EventHandlerInterface
             Log::warning('SendNotificationHandler: no user_id in payload', [
                 'event_id' => $event->getKey(),
             ]);
+
             return;
         }
 

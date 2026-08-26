@@ -2,10 +2,9 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasUuid;
 use App\Services\DocumentNumberService;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Models\Concerns\HasUuid;
 
 /**
  * Per-tenant configurable numbering (DATABASE.md document identity).

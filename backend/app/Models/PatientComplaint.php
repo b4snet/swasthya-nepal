@@ -12,10 +12,15 @@ class PatientComplaint extends Model
     use HasFactory, HasUuid;
 
     public const STATUS_SUBMITTED = 'submitted';
+
     public const STATUS_TRIAGED = 'triaged';
+
     public const STATUS_ASSIGNED = 'assigned';
+
     public const STATUS_INVESTIGATING = 'investigating';
+
     public const STATUS_RESPONDED = 'responded';
+
     public const STATUS_CLOSED = 'closed';
 
     protected $fillable = [

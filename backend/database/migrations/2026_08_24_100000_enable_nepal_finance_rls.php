@@ -24,7 +24,7 @@ return new class extends Migration
     {
         // Functions return uuid (or NULL when no JWT context). No NULLIF wrappers needed.
         $tenantOnly = 'tenant_id = swasthya_rls_tenant_id()';
-        $tenantFacility = $tenantOnly . ' AND (facility_id = swasthya_rls_facility_id() OR swasthya_rls_facility_id() IS NULL)';
+        $tenantFacility = $tenantOnly.' AND (facility_id = swasthya_rls_facility_id() OR swasthya_rls_facility_id() IS NULL)';
 
         foreach (self::ALL_TABLES as $table) {
             DB::statement("ALTER TABLE public.{$table} ENABLE ROW LEVEL SECURITY");

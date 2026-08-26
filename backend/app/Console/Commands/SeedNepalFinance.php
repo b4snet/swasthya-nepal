@@ -30,7 +30,7 @@ final class SeedNepalFinance extends Command
 
         $facilityId = $this->option('facility_id') ?: null;
 
-        $seeder = new NepalFinanceSeeder();
+        $seeder = new NepalFinanceSeeder;
         $seeder->setCommand($this);
         $seeder->run([
             'tenant_id' => $tenantId,

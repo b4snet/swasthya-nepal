@@ -21,7 +21,7 @@ class StoreBenefitRuleRequest extends ApiRequest
             'name' => ['required', 'string', 'min:2', 'max:255'],
             'schemeVersion' => ['required', 'string', 'max:100'],
             'serviceCategory' => ['required', 'string', 'in:opd,ipd,medicine,diagnostic,surgery,maternity,emergency'],
-            'coverageType' => ['required', 'in:' . implode(',', [
+            'coverageType' => ['required', 'in:'.implode(',', [
                 BenefitRule::COVERAGE_FULL,
                 BenefitRule::COVERAGE_CO_PAY,
                 BenefitRule::COVERAGE_DEDUCTIBLE,

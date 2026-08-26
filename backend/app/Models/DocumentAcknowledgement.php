@@ -12,7 +12,9 @@ class DocumentAcknowledgement extends Model
     use HasFactory, HasUuid;
 
     public const STATUS_PENDING = 'pending';
+
     public const STATUS_READ = 'read';
+
     public const STATUS_ACKNOWLEDGED = 'acknowledged';
 
     protected $fillable = [

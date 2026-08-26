@@ -2,11 +2,6 @@
 
 namespace AppModels;
 
-use IlluminateDatabaseEloquentConcernsHasUuids;
-use IlluminateDatabaseEloquentModel;
-use IlluminateDatabaseEloquentRelationsBelongsTo;
-use IlluminateDatabaseEloquentRelationsHasMany;
-
 /**
  * Generic specialty patient profile. Replaces per-specialty profile models
  * (e.g. OncologyProfile) with a single configurable entity linked to a
@@ -25,7 +20,9 @@ class SpecialtyProfile extends Model
     ];
 
     const STATUS_ACTIVE = 'active';
+
     const STATUS_COMPLETED = 'completed';
+
     const STATUS_INACTIVE = 'inactive';
 
     public function patient(): BelongsTo

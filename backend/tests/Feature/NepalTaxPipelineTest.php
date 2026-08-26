@@ -4,11 +4,13 @@ use App\Models\BenefitRule;
 use App\Models\Charge;
 use App\Models\Department;
 use App\Models\Encounter;
-use App\Models\InsuranceClaim;
 use App\Models\Invoice;
-use App\Models\Payer;
 use App\Models\Patient;
+use App\Models\Payer;
+use App\Models\Staff;
 use App\Models\TaxRule;
+use App\Services\BillingService;
+use App\Services\TaxResolver;
 use Tests\Support\Identity;
 
 /**
@@ -61,7 +63,7 @@ it('resolves the correct tax rule on a charge and calculates invoice tax', funct
     $staff = Identity::user();
     Identity::assign($staff, 'hospital_admin', $org, $facility);
 
-    $staffModel = \App\Models\Staff::factory()->create([
+    $staffModel = Staff::factory()->create([
         'tenant_id' => $org->getKey(),
         'facility_id' => $facility->getKey(),
         'department_id' => $department->getKey(),
@@ -104,7 +106,7 @@ it('resolves the correct tax rule on a charge and calculates invoice tax', funct
         ->and($linkedRule->code)->toBe('VAT_13');
 
     // ── Step 4: Issue an invoice — should use TaxRule for tax ─
-    $billing = app(\App\Services\BillingService::class);
+    $billing = app(BillingService::class);
 
     $invoice = $billing->issueInvoice(
         tenantId: $org->getKey(),
@@ -174,7 +176,7 @@ it('uses the facility-specific tax rule when one exists over the org-wide rule',
         'status' => 'active',
     ]);
 
-    $resolver = app(\App\Services\TaxResolver::class);
+    $resolver = app(TaxResolver::class);
     $resolved = $resolver->resolve($facility->getKey(), 'opd');
 
     // Facility-specific rule should win
@@ -187,7 +189,7 @@ it('returns no tax when no rules are configured', function () {
     $org = Identity::organization();
     $facility = Identity::facility($org);
 
-    $resolver = app(\App\Services\TaxResolver::class);
+    $resolver = app(TaxResolver::class);
     $resolved = $resolver->resolve($facility->getKey(), 'opd');
 
     expect($resolved)->toBeNull();
@@ -214,7 +216,7 @@ it('applies tax only to the matching service category', function () {
         'status' => 'active',
     ]);
 
-    $resolver = app(\App\Services\TaxResolver::class);
+    $resolver = app(TaxResolver::class);
 
     // OPD should resolve
     $opd = $resolver->resolve($facility->getKey(), 'opd');
@@ -256,7 +258,7 @@ it('respects effective dates — expired rules are not resolved', function () {
         'status' => 'active',
     ]);
 
-    $resolver = app(\App\Services\TaxResolver::class);
+    $resolver = app(TaxResolver::class);
 
     // Resolving for 2025 should only find NEW_TAX
     $resolved = $resolver->resolve($facility->getKey(), 'opd', '2025-08-15');
@@ -377,7 +379,7 @@ it('generates a receipt after payment with correct tax breakdown', function () {
     ]);
 
     // Issue invoice
-    $billing = app(\App\Services\BillingService::class);
+    $billing = app(BillingService::class);
     $invoice = $billing->issueInvoice(
         tenantId: $org->getKey(),
         facilityId: $facility->getKey(),

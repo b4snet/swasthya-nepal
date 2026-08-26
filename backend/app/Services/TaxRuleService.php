@@ -6,6 +6,7 @@ use App\Exceptions\ApiException;
 use App\Models\TaxRule;
 use App\Support\ErrorCodes;
 use App\Support\TenantContext;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -20,7 +21,7 @@ final class TaxRuleService
     /**
      * List tax rules for the current tenant, optionally filtered by facility.
      */
-    public function list(?string $facilityId = null): \Illuminate\Support\Collection
+    public function list(?string $facilityId = null): Collection
     {
         $context = TenantContext::current();
         $query = TaxRule::query()

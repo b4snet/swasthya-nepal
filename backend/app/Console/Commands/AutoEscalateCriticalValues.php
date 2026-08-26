@@ -46,6 +46,7 @@ final class AutoEscalateCriticalValues extends Command
 
         if ($events->isEmpty()) {
             $this->info('No critical values require escalation.');
+
             return 0;
         }
 
@@ -54,10 +55,11 @@ final class AutoEscalateCriticalValues extends Command
         if ($dryRun) {
             foreach ($events as $event) {
                 $testName = $event->item?->test?->name ?? 'Unknown test';
-                $patientName = $event->patient?->first_name . ' ' . $event->patient?->last_name;
+                $patientName = $event->patient?->first_name.' '.$event->patient?->last_name;
                 $this->line("  - {$testName} (patient: {$patientName}, detected: {$event->detected_at})");
             }
             $this->info('Dry run — no changes made.');
+
             return 0;
         }
 
@@ -83,6 +85,7 @@ final class AutoEscalateCriticalValues extends Command
 
             if (! $supervisor) {
                 $this->warn("  Skipping event {$event->getKey()}: no available supervisor to escalate.");
+
                 continue;
             }
 
@@ -100,13 +103,14 @@ final class AutoEscalateCriticalValues extends Command
 
             if ($result !== 1) {
                 $this->warn("  Skipped event {$event->getKey()}: concurrent modification.");
+
                 continue;
             }
 
             // Send in-app notification to the target clinician
             if ($event->target?->user_id) {
                 $testName = $event->item?->test?->name ?? 'Unknown test';
-                $patientName = trim(($event->patient?->first_name ?? '') . ' ' . ($event->patient?->last_name ?? ''));
+                $patientName = trim(($event->patient?->first_name ?? '').' '.($event->patient?->last_name ?? ''));
 
                 $notifications->createNotification(
                     tenantId: $event->tenant_id,
@@ -130,6 +134,7 @@ final class AutoEscalateCriticalValues extends Command
         }
 
         $this->info("Auto-escalated {$escalated} critical value(s).");
+
         return 0;
     }
 }

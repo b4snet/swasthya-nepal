@@ -13,14 +13,21 @@ class HospitalIncident extends Model
     use HasFactory, HasUuid;
 
     public const STATUS_REPORTED = 'reported';
+
     public const STATUS_REVIEWING = 'reviewing';
+
     public const STATUS_INVESTIGATING = 'investigating';
+
     public const STATUS_ACTIONS = 'actions_pending';
+
     public const STATUS_CLOSED = 'closed';
 
     public const SEVERITY_CRITICAL = 'critical';
+
     public const SEVERITY_HIGH = 'high';
+
     public const SEVERITY_MEDIUM = 'medium';
+
     public const SEVERITY_LOW = 'low';
 
     protected $table = 'hospital_incidents';

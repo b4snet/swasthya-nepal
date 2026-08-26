@@ -12,8 +12,11 @@ class StaffCredential extends Model
     use HasFactory, HasUuid;
 
     public const STATUS_ACTIVE = 'active';
+
     public const STATUS_EXPIRING = 'expiring';
+
     public const STATUS_EXPIRED = 'expired';
+
     public const STATUS_REVOKED = 'revoked';
 
     protected $fillable = [

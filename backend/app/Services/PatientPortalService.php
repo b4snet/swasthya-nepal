@@ -6,6 +6,7 @@ use App\Exceptions\ApiException;
 use App\Models\Appointment;
 use App\Models\Diagnosis;
 use App\Models\Encounter;
+use App\Models\GeneratedDocument;
 use App\Models\Invoice;
 use App\Models\LabOrder;
 use App\Models\LabOrderItem;
@@ -562,7 +563,7 @@ final class PatientPortalService
                 ]);
 
             // Staff-generated documents shared with this patient
-            $sharedDocs = \App\Models\GeneratedDocument::query()
+            $sharedDocs = GeneratedDocument::query()
                 ->where('tenant_id', $account->tenant_id)
                 ->where('patient_id', $account->patient_id)
                 ->where('shared_with_patient', true)

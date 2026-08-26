@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Exceptions\ApiException;
 use App\Models\Concerns\HasUuid;
+use App\Services\PeriodGuard;
 use App\Services\TaxResolver;
 use Database\Factories\ChargeFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -86,12 +88,12 @@ class Charge extends Model
      *
      * @return array{tax_rule_id: string|null, tax_rate_bps: int}
      *
-     * @throws \App\Exceptions\ApiException if the fiscal period is closed or locked
+     * @throws ApiException if the fiscal period is closed or locked
      */
     public static function resolveTaxFields(string $facilityId, ?string $serviceCategory = null): array
     {
         // Validate the fiscal period is open before posting a charge.
-        app(\App\Services\PeriodGuard::class)->assertOpen($facilityId);
+        app(PeriodGuard::class)->assertOpen($facilityId);
 
         $resolver = app(TaxResolver::class);
         $rule = $resolver->resolve($facilityId, $serviceCategory);

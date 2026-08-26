@@ -27,12 +27,17 @@ class BenefitRule extends Model
     use HasFactory, HasUuid;
 
     public const COVERAGE_FULL = 'full';
+
     public const COVERAGE_CO_PAY = 'co_pay';
+
     public const COVERAGE_DEDUCTIBLE = 'deductible';
+
     public const COVERAGE_CAPPED = 'capped';
+
     public const COVERAGE_EXCLUDED = 'excluded';
 
     public const STATUS_ACTIVE = 'active';
+
     public const STATUS_INACTIVE = 'inactive';
 
     /**
@@ -135,6 +140,7 @@ class BenefitRule extends Model
     public function isCurrentlyEffective(): bool
     {
         $now = now()->toDateString();
+
         return $this->effective_from <= $now
             && ($this->effective_to === null || $this->effective_to >= $now);
     }

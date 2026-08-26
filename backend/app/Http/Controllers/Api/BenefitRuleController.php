@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Finance\StoreBenefitRuleRequest;
 use App\Models\BenefitRule;
+use App\Models\Payer;
 use App\Services\BenefitRuleService;
 use App\Support\AccessCheck;
 use App\Support\AuditLogger;
@@ -31,7 +32,7 @@ final class BenefitRuleController extends Controller
     public function index(Request $request, string $payer): JsonResponse
     {
         // Scope-check the payer belongs to this tenant.
-        $payerModel = \App\Models\Payer::query()->find($payer);
+        $payerModel = Payer::query()->find($payer);
         if ($payerModel === null) {
             return Envelope::error('NOT_FOUND', 'Payer not found.', 404, request: $request);
         }
@@ -47,7 +48,7 @@ final class BenefitRuleController extends Controller
 
     public function store(StoreBenefitRuleRequest $request, string $payer): JsonResponse
     {
-        $payerModel = \App\Models\Payer::query()->find($payer);
+        $payerModel = Payer::query()->find($payer);
         if ($payerModel === null) {
             return Envelope::error('NOT_FOUND', 'Payer not found.', 404, request: $request);
         }

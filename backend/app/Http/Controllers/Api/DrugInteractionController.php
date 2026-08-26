@@ -6,14 +6,12 @@ use App\Exceptions\ApiException;
 use App\Http\Controllers\Controller;
 use App\Models\DrugInteraction;
 use App\Models\Medication;
-use App\Support\AccessCheck;
 use App\Support\AuditLogger;
 use App\Support\Envelope;
 use App\Support\ErrorCodes;
 use App\Support\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Drug interaction clinical decision support (PHASE 29).
@@ -67,14 +65,16 @@ final class DrugInteractionController extends Controller
                 // Check both directions: A→B and B→A
                 foreach ($medicationIds as $i => $a) {
                     foreach ($medicationIds as $j => $b) {
-                        if ($i >= $j) continue; // avoid duplicates and self
+                        if ($i >= $j) {
+                            continue;
+                        } // avoid duplicates and self
                         $query->orWhere(function ($q) use ($a, $b) {
                             $q->where('medication_a_id', $a)
-                              ->where('medication_b_id', $b);
+                                ->where('medication_b_id', $b);
                         });
                         $query->orWhere(function ($q) use ($a, $b) {
                             $q->where('medication_a_id', $b)
-                              ->where('medication_b_id', $a);
+                                ->where('medication_b_id', $a);
                         });
                     }
                 }

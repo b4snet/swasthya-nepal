@@ -19,7 +19,7 @@ class StoreTaxRuleRequest extends ApiRequest
         return [
             'code' => ['required', 'string', 'regex:/^[A-Z][A-Z0-9_]{1,49}$/', 'max:50'],
             'name' => ['required', 'string', 'min:2', 'max:255'],
-            'taxType' => ['required', 'in:' . implode(',', [
+            'taxType' => ['required', 'in:'.implode(',', [
                 TaxRule::TYPE_VAT,
                 TaxRule::TYPE_HEALTH_SERVICE_TAX,
                 TaxRule::TYPE_HEALTH_EQUITY_FEE,
@@ -27,7 +27,7 @@ class StoreTaxRuleRequest extends ApiRequest
                 TaxRule::TYPE_OTHER,
             ])],
             'description' => ['nullable', 'string', 'max:1000'],
-            'rateMethod' => ['required', 'in:' . implode(',', [
+            'rateMethod' => ['required', 'in:'.implode(',', [
                 TaxRule::METHOD_PERCENTAGE,
                 TaxRule::METHOD_FIXED,
                 TaxRule::METHOD_PER_UNIT,

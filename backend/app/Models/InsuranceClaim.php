@@ -45,7 +45,9 @@ class InsuranceClaim extends Model
 
     public const STATUS_PAID = 'paid';
 
-    public const STATUS_DENIED = 'denied';    /**
+    public const STATUS_DENIED = 'denied';
+
+    /**
      * @var list<string>
      */
     protected $fillable = [

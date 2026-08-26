@@ -13,10 +13,15 @@ class HospitalPolicy extends Model
     use HasFactory, HasUuid;
 
     public const STATUS_DRAFT = 'draft';
+
     public const STATUS_REVIEW = 'review';
+
     public const STATUS_APPROVED = 'approved';
+
     public const STATUS_PUBLISHED = 'published';
+
     public const STATUS_SUPERSEDED = 'superseded';
+
     public const STATUS_RETIRED = 'retired';
 
     protected $fillable = [

@@ -27,15 +27,23 @@ final class GovernanceController extends Controller
     {
         $ctx = TenantContext::current();
         $query = HospitalPolicy::where('tenant_id', $ctx->tenantId());
-        if ($facility = $request->query('facility_id')) $query->where('facility_id', $facility);
-        if ($category = $request->query('category')) $query->where('category', $category);
-        if ($status = $request->query('status')) $query->where('status', $status);
+        if ($facility = $request->query('facility_id')) {
+            $query->where('facility_id', $facility);
+        }
+        if ($category = $request->query('category')) {
+            $query->where('category', $category);
+        }
+        if ($status = $request->query('status')) {
+            $query->where('status', $status);
+        }
+
         return Envelope::success(data: $query->orderByDesc('created_at')->paginate(25), request: $request);
     }
 
     public function showPolicy(Request $request, HospitalPolicy $policy): JsonResponse
     {
         AccessCheck::scoped($policy, write: false);
+
         return Envelope::success(data: $policy, request: $request);
     }
 
@@ -49,12 +57,13 @@ final class GovernanceController extends Controller
         $ctx = TenantContext::current();
         $policy = HospitalPolicy::create([
             'tenant_id' => $ctx->tenantId(), 'facility_id' => $data['facility_id'] ?? $ctx->facilityId(),
-            'policy_code' => 'POL-' . strtoupper(Str::random(8)), 'title' => $data['title'],
+            'policy_code' => 'POL-'.strtoupper(Str::random(8)), 'title' => $data['title'],
             'category' => $data['category'], 'content' => $data['content'] ?? null,
             'effective_date' => $data['effective_date'] ?? null, 'review_date' => $data['review_date'] ?? null,
             'status' => 'draft', 'owner_staff_id' => $ctx->user?->getKey(),
         ]);
         $this->audit->record('policy.created', 'policy', $policy->getKey(), ['policyCode' => $policy->policy_code], $request);
+
         return Envelope::success(data: $policy, status: 201, request: $request);
     }
 
@@ -68,6 +77,7 @@ final class GovernanceController extends Controller
         ]);
         $policy->update($data);
         $this->audit->record('policy.updated', 'policy', $policy->getKey(), ['changes' => array_keys($data)], $request);
+
         return Envelope::success(data: $policy, request: $request);
     }
 
@@ -76,6 +86,7 @@ final class GovernanceController extends Controller
         AccessCheck::scoped($policy, write: true);
         $policy->update(['status' => 'retired']);
         $this->audit->record('policy.retired', 'policy', $policy->getKey(), [], $request);
+
         return Envelope::success(data: ['id' => $policy->getKey(), 'status' => $policy->status], request: $request);
     }
 
@@ -83,9 +94,16 @@ final class GovernanceController extends Controller
     {
         $ctx = TenantContext::current();
         $query = HospitalIncident::where('tenant_id', $ctx->tenantId());
-        if ($status = $request->query('status')) $query->where('status', $status);
-        if ($severity = $request->query('severity')) $query->where('severity', $severity);
-        if ($category = $request->query('category')) $query->where('category', $category);
+        if ($status = $request->query('status')) {
+            $query->where('status', $status);
+        }
+        if ($severity = $request->query('severity')) {
+            $query->where('severity', $severity);
+        }
+        if ($category = $request->query('category')) {
+            $query->where('category', $category);
+        }
+
         return Envelope::success(data: $query->withCount('correctiveActions')->orderByDesc('reported_at')->paginate(25), request: $request);
     }
 
@@ -93,6 +111,7 @@ final class GovernanceController extends Controller
     {
         AccessCheck::scoped($incident, write: false);
         $incident->load('correctiveActions');
+
         return Envelope::success(data: $incident, request: $request);
     }
 
@@ -106,13 +125,14 @@ final class GovernanceController extends Controller
         $ctx = TenantContext::current();
         $incident = HospitalIncident::create([
             'tenant_id' => $ctx->tenantId(), 'facility_id' => $ctx->facilityId(),
-            'incident_code' => 'INC-' . strtoupper(Str::random(8)), 'title' => $data['title'],
+            'incident_code' => 'INC-'.strtoupper(Str::random(8)), 'title' => $data['title'],
             'category' => $data['category'], 'severity' => $data['severity'],
             'description' => $data['description'] ?? null, 'reported_by' => $ctx->user?->getKey(),
             'reported_at' => now(), 'status' => 'reported',
             'patient_id' => $data['patient_id'] ?? null, 'encounter_id' => $data['encounter_id'] ?? null,
         ]);
         $this->audit->record('incident.reported', 'incident', $incident->getKey(), ['incidentCode' => $incident->incident_code, 'severity' => $incident->severity], $request);
+
         return Envelope::success(data: $incident, status: 201, request: $request);
     }
 
@@ -127,6 +147,7 @@ final class GovernanceController extends Controller
         ]);
         $incident->update($data);
         $this->audit->record('incident.updated', 'incident', $incident->getKey(), ['changes' => array_keys($data)], $request);
+
         return Envelope::success(data: $incident, request: $request);
     }
 
@@ -134,8 +155,13 @@ final class GovernanceController extends Controller
     {
         $ctx = TenantContext::current();
         $query = CorrectiveAction::where('tenant_id', $ctx->tenantId());
-        if ($status = $request->query('status')) $query->where('status', $status);
-        if ($incidentId = $request->query('incident_id')) $query->where('incident_id', $incidentId);
+        if ($status = $request->query('status')) {
+            $query->where('status', $status);
+        }
+        if ($incidentId = $request->query('incident_id')) {
+            $query->where('incident_id', $incidentId);
+        }
+
         return Envelope::success(data: $query->orderByDesc('created_at')->paginate(25), request: $request);
     }
 
@@ -150,13 +176,14 @@ final class GovernanceController extends Controller
         $ctx = TenantContext::current();
         $action = CorrectiveAction::create([
             'tenant_id' => $ctx->tenantId(), 'facility_id' => $ctx->facilityId(),
-            'action_code' => 'CA-' . strtoupper(Str::random(8)), 'title' => $data['title'],
+            'action_code' => 'CA-'.strtoupper(Str::random(8)), 'title' => $data['title'],
             'description' => $data['description'] ?? null, 'action_type' => $data['action_type'],
             'incident_id' => $data['incident_id'] ?? null, 'compliance_report_id' => $data['compliance_report_id'] ?? null,
             'owner_staff_id' => $data['owner_staff_id'] ?? null, 'due_date' => $data['due_date'] ?? null,
             'status' => 'open',
         ]);
         $this->audit->record('action.created', 'corrective_action', $action->getKey(), ['actionCode' => $action->action_code], $request);
+
         return Envelope::success(data: $action, status: 201, request: $request);
     }
 
@@ -167,9 +194,12 @@ final class GovernanceController extends Controller
             'status' => 'sometimes|string|in:open,in_progress,verified,closed',
             'completed_date' => 'nullable|date', 'verified_by' => 'nullable|uuid', 'evidence' => 'nullable|array',
         ]);
-        if (isset($data['verified_by'])) $data['verified_at'] = now();
+        if (isset($data['verified_by'])) {
+            $data['verified_at'] = now();
+        }
         $action->update($data);
         $this->audit->record('action.updated', 'corrective_action', $action->getKey(), ['changes' => array_keys($data)], $request);
+
         return Envelope::success(data: $action, request: $request);
     }
 
@@ -177,8 +207,13 @@ final class GovernanceController extends Controller
     {
         $ctx = TenantContext::current();
         $query = StaffCredential::where('tenant_id', $ctx->tenantId());
-        if ($staffId = $request->query('staff_id')) $query->where('staff_id', $staffId);
-        if ($status = $request->query('status')) $query->where('status', $status);
+        if ($staffId = $request->query('staff_id')) {
+            $query->where('staff_id', $staffId);
+        }
+        if ($status = $request->query('status')) {
+            $query->where('status', $status);
+        }
+
         return Envelope::success(data: $query->orderByDesc('created_at')->paginate(25), request: $request);
     }
 
@@ -200,6 +235,7 @@ final class GovernanceController extends Controller
             'document_id' => $data['document_id'] ?? null, 'status' => 'active',
         ]);
         $this->audit->record('credential.created', 'staff_credential', $cred->getKey(), ['staffId' => $cred->staff_id], $request);
+
         return Envelope::success(data: $cred, status: 201, request: $request);
     }
 
@@ -207,7 +243,10 @@ final class GovernanceController extends Controller
     {
         $ctx = TenantContext::current();
         $query = PatientComplaint::where('tenant_id', $ctx->tenantId());
-        if ($status = $request->query('status')) $query->where('status', $status);
+        if ($status = $request->query('status')) {
+            $query->where('status', $status);
+        }
+
         return Envelope::success(data: $query->orderByDesc('created_at')->paginate(25), request: $request);
     }
 
@@ -221,12 +260,13 @@ final class GovernanceController extends Controller
         $ctx = TenantContext::current();
         $complaint = PatientComplaint::create([
             'tenant_id' => $ctx->tenantId(), 'facility_id' => $ctx->facilityId(),
-            'complaint_code' => 'CMP-' . strtoupper(Str::random(8)), 'patient_id' => $data['patient_id'] ?? null,
+            'complaint_code' => 'CMP-'.strtoupper(Str::random(8)), 'patient_id' => $data['patient_id'] ?? null,
             'category' => $data['category'], 'title' => $data['title'],
             'description' => $data['description'] ?? null, 'severity' => $data['severity'] ?? 'medium',
             'status' => 'submitted',
         ]);
         $this->audit->record('complaint.submitted', 'patient_complaint', $complaint->getKey(), ['complaintCode' => $complaint->complaint_code], $request);
+
         return Envelope::success(data: $complaint, status: 201, request: $request);
     }
 
@@ -237,16 +277,22 @@ final class GovernanceController extends Controller
             'status' => 'sometimes|string|in:submitted,triaged,assigned,investigating,responded,closed',
             'assigned_to' => 'nullable|uuid', 'response' => 'nullable|array', 'responded_by' => 'nullable|uuid',
         ]);
-        if (isset($data['status']) && $data['status'] === 'closed') $data['closed_at'] = now();
-        if (isset($data['response'])) $data['responded_at'] = now();
+        if (isset($data['status']) && $data['status'] === 'closed') {
+            $data['closed_at'] = now();
+        }
+        if (isset($data['response'])) {
+            $data['responded_at'] = now();
+        }
         $complaint->update($data);
         $this->audit->record('complaint.updated', 'patient_complaint', $complaint->getKey(), ['changes' => array_keys($data)], $request);
+
         return Envelope::success(data: $complaint, request: $request);
     }
 
     public function listDisclosures(Request $request): JsonResponse
     {
         $ctx = TenantContext::current();
+
         return Envelope::success(data: DisclosureLog::where('tenant_id', $ctx->tenantId())->orderByDesc('created_at')->paginate(25), request: $request);
     }
 
@@ -267,6 +313,7 @@ final class GovernanceController extends Controller
             'documents' => $data['documents'] ?? null, 'status' => 'requested',
         ]);
         $this->audit->record('disclosure.requested', 'disclosure_log', $log->getKey(), ['requester' => $log->requester_name], $request);
+
         return Envelope::success(data: $log, status: 201, request: $request);
     }
 
@@ -281,6 +328,7 @@ final class GovernanceController extends Controller
             'activePolicies' => HospitalPolicy::where('tenant_id', $tid)->where('status', 'published')->count(),
             'expiringCredentials' => StaffCredential::where('tenant_id', $tid)->where('status', 'active')->where('expiry_date', '<=', now()->addDays(30))->count(),
         ];
+
         return Envelope::success(data: $data, request: $request);
     }
 }

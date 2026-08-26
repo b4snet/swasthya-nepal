@@ -55,7 +55,7 @@ final class EventDispatcher
             'aggregate_type' => $aggregateType,
             'aggregate_id' => $aggregateId,
             'payload' => $payload,
-            'causer_type' => $causerId ? static::class : null,
+            'causer_type' => $causerId ? self::class : null,
             'causer_id' => $causerId,
             'facility_id' => $facilityId,
             'tenant_id' => $tenantId,
@@ -70,6 +70,6 @@ final class EventDispatcher
      */
     public static function dispatchMany(array $events): array
     {
-        return array_map(fn (array $event) => static::dispatch(...$event), $events);
+        return array_map(fn (array $event) => self::dispatch(...$event), $events);
     }
 }

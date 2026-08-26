@@ -77,7 +77,7 @@ return new class extends Migration
         DB::statement('ALTER TABLE public.generated_documents ENABLE ROW LEVEL SECURITY');
         DB::statement('ALTER TABLE public.generated_documents FORCE ROW LEVEL SECURITY');
 
-        DB::statement("
+        DB::statement('
             CREATE POLICY p_rls_generated_documents ON public.generated_documents
             USING (
                 swasthya_rls_is_platform() = true
@@ -87,7 +87,7 @@ return new class extends Migration
                 swasthya_rls_is_platform() = true
                 OR tenant_id = swasthya_rls_tenant_id()
             )
-        ");
+        ');
     }
 
     public function down(): void

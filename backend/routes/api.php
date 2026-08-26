@@ -7,8 +7,8 @@ use App\Http\Controllers\Api\AppointmentController;
 use App\Http\Controllers\Api\AssetController;
 use App\Http\Controllers\Api\AuditController;
 use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\BenefitRuleController;
 use App\Http\Controllers\Api\BedController;
+use App\Http\Controllers\Api\BenefitRuleController;
 use App\Http\Controllers\Api\BillingController;
 use App\Http\Controllers\Api\BloodBankController;
 use App\Http\Controllers\Api\BranchController;
@@ -18,24 +18,23 @@ use App\Http\Controllers\Api\CommunicationController;
 use App\Http\Controllers\Api\ComplianceController;
 use App\Http\Controllers\Api\ConsentController;
 use App\Http\Controllers\Api\CriticalValueEventController;
-use App\Http\Controllers\Api\DrugInteractionController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DepartmentController;
 use App\Http\Controllers\Api\DoctorScheduleController;
 use App\Http\Controllers\Api\DocumentCenterController;
+use App\Http\Controllers\Api\DocumentPlatformController;
 use App\Http\Controllers\Api\DocumentPrefillController;
+use App\Http\Controllers\Api\DomainEventController;
 use App\Http\Controllers\Api\EncounterController;
 use App\Http\Controllers\Api\ErController;
 use App\Http\Controllers\Api\ExpenseController;
 use App\Http\Controllers\Api\FacilityController;
 use App\Http\Controllers\Api\FacilitySettingsController;
-use App\Http\Controllers\Api\GovernanceController;
-use App\Http\Controllers\Api\OrchestrationController;
-use App\Http\Controllers\Api\DocumentPlatformController;
 use App\Http\Controllers\Api\FinanceController;
 use App\Http\Controllers\Api\FinancialPeriodController;
 use App\Http\Controllers\Api\FollowUpController;
 use App\Http\Controllers\Api\FormController;
+use App\Http\Controllers\Api\GovernanceController;
 use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\HospitalBrandingController;
 use App\Http\Controllers\Api\HrController;
@@ -50,12 +49,14 @@ use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\MedicationController;
 use App\Http\Controllers\Api\MfaController;
 use App\Http\Controllers\Api\ModuleController;
+use App\Http\Controllers\Api\NepalFinanceController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\NumberingController;
 use App\Http\Controllers\Api\NursingController;
 use App\Http\Controllers\Api\OnboardingController;
 use App\Http\Controllers\Api\OnboardingProfileController;
 use App\Http\Controllers\Api\OncologyController;
+use App\Http\Controllers\Api\OrchestrationController;
 use App\Http\Controllers\Api\OrganizationController;
 use App\Http\Controllers\Api\OtController;
 use App\Http\Controllers\Api\PasswordResetController;
@@ -75,20 +76,19 @@ use App\Http\Controllers\Api\PortalActivationController;
 use App\Http\Controllers\Api\ProcurementController;
 use App\Http\Controllers\Api\RadiologyController;
 use App\Http\Controllers\Api\RealtimeController;
-use App\Http\Controllers\Api\NepalFinanceController;
-use App\Http\Controllers\Api\TaxRuleController;
 use App\Http\Controllers\Api\ReferralController;
 use App\Http\Controllers\Api\RefundController;
 use App\Http\Controllers\Api\RevenueController;
 use App\Http\Controllers\Api\RoleAssignmentController;
 use App\Http\Controllers\Api\RoleController;
-use App\Http\Controllers\Api\SpecialtyController;
 use App\Http\Controllers\Api\RoomController;
 use App\Http\Controllers\Api\RpmController;
 use App\Http\Controllers\Api\ScheduleController;
 use App\Http\Controllers\Api\ServiceController;
+use App\Http\Controllers\Api\SpecialtyController;
 use App\Http\Controllers\Api\StaffController;
 use App\Http\Controllers\Api\StandaloneDispensingController;
+use App\Http\Controllers\Api\TaxRuleController;
 use App\Http\Controllers\Api\TelehealthController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\WardController;
@@ -1398,13 +1398,13 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
 
     // ── Domain Events (Phase 33 outbox observation) ──
     // Requires authentication + tenant context + integration:view permission.
-    Route::get('/domain-events', [\App\Http\Controllers\Api\DomainEventController::class, 'index'])
+    Route::get('/domain-events', [DomainEventController::class, 'index'])
         ->middleware('authorize:integration:view');
-    Route::get('/domain-events/{event}', [\App\Http\Controllers\Api\DomainEventController::class, 'show'])
+    Route::get('/domain-events/{event}', [DomainEventController::class, 'show'])
         ->middleware('authorize:integration:view');
-    Route::post('/domain-events/{event}/retry', [\App\Http\Controllers\Api\DomainEventController::class, 'retry'])
+    Route::post('/domain-events/{event}/retry', [DomainEventController::class, 'retry'])
         ->middleware('authorize:integration:manage');
-    Route::delete('/domain-events/{event}', [\App\Http\Controllers\Api\DomainEventController::class, 'discard'])
+    Route::delete('/domain-events/{event}', [DomainEventController::class, 'discard'])
         ->middleware('authorize:integration:manage');
 });
 
@@ -1699,7 +1699,7 @@ Route::middleware(['throttle:api', ResolveTenantContext::class])->prefix('notifi
     Route::get('stats', [NotificationController::class, 'stats'])
         ->middleware('authorize:notification:view');
 
-// Governance � Policies, Incidents, CAPA, Credentials, Complaints, Disclosures
+    // Governance � Policies, Incidents, CAPA, Credentials, Complaints, Disclosures
     Route::get('governance/dashboard', [GovernanceController::class, 'dashboard'])
         ->middleware('authorize:quality:view');
     Route::get('governance/policies', [GovernanceController::class, 'listPolicies'])
@@ -1741,7 +1741,6 @@ Route::middleware(['throttle:api', ResolveTenantContext::class])->prefix('notifi
     Route::post('governance/disclosures', [GovernanceController::class, 'storeDisclosure'])
         ->middleware('authorize:quality:manage');
 
-
     // Orchestration � Queue, Resource Booking, Capacity, Patient Flow
     Route::post('orchestration/queue', [OrchestrationController::class, 'enqueue'])->middleware('authorize:clinical:manage');
     Route::get('orchestration/queue', [OrchestrationController::class, 'listQueue'])->middleware('authorize:clinical:view');
@@ -1772,5 +1771,3 @@ Route::middleware(['throttle:api', ResolveTenantContext::class])->prefix('notifi
 });
 
 // Document center routes have been moved inside the v1 authenticated group above.
-
-

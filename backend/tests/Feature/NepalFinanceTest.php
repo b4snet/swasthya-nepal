@@ -2,9 +2,10 @@
 
 namespace Tests\Feature;
 
-use App\Models\BenefitRule;
+use App\Models\Charge;
 use App\Models\Payer;
 use App\Models\TaxRule;
+use App\Services\TaxResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\Identity;
 use Tests\TestCase;
@@ -449,7 +450,7 @@ class NepalFinanceTest extends TestCase
             'status' => 'active',
         ]);
 
-        $resolver = app(\App\Services\TaxResolver::class);
+        $resolver = app(TaxResolver::class);
         $rule = $resolver->resolve($ctx['facility']->getKey());
 
         $this->assertNotNull($rule);
@@ -461,7 +462,7 @@ class NepalFinanceTest extends TestCase
     {
         $ctx = $this->ctx();
 
-        $resolver = app(\App\Services\TaxResolver::class);
+        $resolver = app(TaxResolver::class);
         $rule = $resolver->resolve($ctx['facility']->getKey());
 
         $this->assertNull($rule);
@@ -482,7 +483,7 @@ class NepalFinanceTest extends TestCase
             'status' => 'active',
         ]);
 
-        $fields = \App\Models\Charge::resolveTaxFields($ctx['facility']->getKey(), 'opd');
+        $fields = Charge::resolveTaxFields($ctx['facility']->getKey(), 'opd');
 
         $this->assertNotNull($fields['tax_rule_id']);
         $this->assertEquals(1300, $fields['tax_rate_bps']);
@@ -492,7 +493,7 @@ class NepalFinanceTest extends TestCase
     {
         $ctx = $this->ctx();
 
-        $fields = \App\Models\Charge::resolveTaxFields($ctx['facility']->getKey(), 'opd');
+        $fields = Charge::resolveTaxFields($ctx['facility']->getKey(), 'opd');
 
         $this->assertNull($fields['tax_rule_id']);
         $this->assertEquals(0, $fields['tax_rate_bps']);

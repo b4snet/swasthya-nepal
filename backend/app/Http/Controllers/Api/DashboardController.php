@@ -30,12 +30,12 @@ class DashboardController extends Controller
      */
     private function scope($query, ?string $tenantId, ?string $facilityId, string $table = ''): void
     {
-        $prefix = $table !== '' ? $table . '.' : '';
+        $prefix = $table !== '' ? $table.'.' : '';
         if ($tenantId !== null) {
-            $query->where($prefix . 'tenant_id', $tenantId);
+            $query->where($prefix.'tenant_id', $tenantId);
         }
         if ($facilityId !== null) {
-            $query->where($prefix . 'facility_id', $facilityId);
+            $query->where($prefix.'facility_id', $facilityId);
         }
     }
 

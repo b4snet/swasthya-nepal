@@ -70,6 +70,7 @@ class ProcessOutbox extends Command
                     $e->status,
                 ])->toArray()
             );
+
             return $events->count();
         }
 

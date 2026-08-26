@@ -19,14 +19,14 @@ final class PdfGenerator
     /**
      * Generate a PDF from HTML content and store it.
      *
-     * @param  string  $html       Full HTML document (with <html>, <head>, <body>)
+     * @param  string  $html  Full HTML document (with <html>, <head>, <body>)
      * @param  string  $documentId  The GeneratedDocument UUID (used for file naming)
-     * @param  string  $tenantId    Tenant UUID (used for storage path isolation)
+     * @param  string  $tenantId  Tenant UUID (used for storage path isolation)
      * @return array{path: string, sizeBytes: int, pageCount: int}
      */
     public function generate(string $html, string $documentId, string $tenantId): array
     {
-        $dompdf = new Dompdf();
+        $dompdf = new Dompdf;
 
         $options = $dompdf->getOptions();
         $options->set('isRemoteEnabled', false);
@@ -61,7 +61,7 @@ final class PdfGenerator
     /**
      * Retrieve PDF content from storage.
      *
-     * @return string|null  Raw PDF bytes, or null if not found
+     * @return string|null Raw PDF bytes, or null if not found
      */
     public function retrieve(string $path): ?string
     {

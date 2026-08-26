@@ -2,10 +2,6 @@
 
 namespace AppModels;
 
-use IlluminateDatabaseEloquentConcernsHasUuids;
-use IlluminateDatabaseEloquentModel;
-use IlluminateDatabaseEloquentRelationsBelongsTo;
-
 /**
  * Specialty-specific assessment linked to a SpecialtyProfile. Uses the
  * shared form/template engine — assessment_type references a FormTemplate
@@ -25,7 +21,9 @@ class SpecialtyAssessment extends Model
     ];
 
     const STATUS_DRAFT = 'draft';
+
     const STATUS_COMPLETED = 'completed';
+
     const STATUS_FINALIZED = 'finalized';
 
     public function specialtyProfile(): BelongsTo

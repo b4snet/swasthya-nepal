@@ -35,6 +35,7 @@ final class ErrorCodes
     public const BRANCH_DENIED = 'BRANCH_DENIED';
 
     public const TENANT_REQUIRED = 'TENANT_REQUIRED';
+
     public const TENANT_SUSPENDED = 'TENANT_SUSPENDED';
 
     public const NOT_FOUND = 'NOT_FOUND';

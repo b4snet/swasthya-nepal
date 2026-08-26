@@ -3,7 +3,6 @@
 namespace App\Services\Ai;
 
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Str;
 
 /**
  * OpenRouter inference provider (AI_RULES.md §13–14, ARCHITECTURE.md §28.5).

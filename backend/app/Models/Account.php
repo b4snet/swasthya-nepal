@@ -21,12 +21,17 @@ class Account extends Model
     use HasFactory, HasUuid;
 
     public const TYPE_ASSET = 'asset';
+
     public const TYPE_LIABILITY = 'liability';
+
     public const TYPE_EQUITY = 'equity';
+
     public const TYPE_REVENUE = 'revenue';
+
     public const TYPE_EXPENSE = 'expense';
 
     public const STATUS_ACTIVE = 'active';
+
     public const STATUS_INACTIVE = 'inactive';
 
     /**

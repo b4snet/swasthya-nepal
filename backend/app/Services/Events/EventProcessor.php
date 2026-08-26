@@ -28,7 +28,7 @@ final class EventProcessor
      */
     public static function process(DomainEvent $event): bool
     {
-        $handler = static::resolveHandler($event->event_type);
+        $handler = self::resolveHandler($event->event_type);
 
         if ($handler === null) {
             // No handler registered — mark as completed (no-op).
@@ -36,11 +36,13 @@ final class EventProcessor
                 'event_id' => $event->getKey(),
             ]);
             $event->markCompleted();
+
             return true;
         }
 
         $handler->handle($event);
         $event->markCompleted();
+
         return true;
     }
 
@@ -49,7 +51,7 @@ final class EventProcessor
      */
     public static function resolveHandler(string $eventType): ?EventHandlerInterface
     {
-        $handlers = static::handlerMap();
+        $handlers = self::handlerMap();
         $handlerClass = $handlers[$eventType] ?? null;
 
         if ($handlerClass === null) {

@@ -51,7 +51,6 @@ interface AccountingProvider
      *         accountCode: string|null,
      *     }>,
      * } $invoice
-     *
      * @return array{externalId: string, exportedAt: string}
      */
     public function exportInvoice(array $invoice): array;
@@ -68,7 +67,6 @@ interface AccountingProvider
      *     receivedAt: string,
      *     reference: string|null,
      * } $payment
-     *
      * @return array{externalId: string, exportedAt: string}
      */
     public function exportPayment(array $payment): array;
@@ -84,7 +82,6 @@ interface AccountingProvider
      *     reason: string,
      *     refundedAt: string,
      * } $refund
-     *
      * @return array{externalId: string, exportedAt: string}
      */
     public function exportRefund(array $refund): array;
@@ -103,7 +100,6 @@ interface AccountingProvider
      *     costCenter: string|null,
      *     accountCode: string|null,
      * } $expense
-     *
      * @return array{externalId: string, exportedAt: string}
      */
     public function exportExpense(array $expense): array;
@@ -132,7 +128,6 @@ interface AccountingProvider
     /**
      * Fetch outstanding invoices from the accounting system for reconciliation.
      *
-     * @param string $asOfDate
      *
      * @return array<array{externalId: string, invoiceNumber: string, totalMinor: int, outstandingMinor: int, dueDate: string|null}>
      */
@@ -140,9 +135,6 @@ interface AccountingProvider
 
     /**
      * Acknowledge a successful export sync.
-     *
-     * @param string $externalId
-     * @param string $exportedAt
      */
     public function acknowledgeExport(string $externalId, string $exportedAt): void;
 }

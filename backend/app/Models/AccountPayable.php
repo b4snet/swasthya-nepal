@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasUuid;
+use Database\Factories\AccountPayableFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -16,14 +17,19 @@ use Illuminate\Database\Eloquent\Model;
  */
 class AccountPayable extends Model
 {
-    /** @use HasFactory<\Database\Factories\AccountPayableFactory> */
+    /** @use HasFactory<AccountPayableFactory> */
     use HasFactory, HasUuid;
 
     public const STATUS_DRAFT = 'draft';
+
     public const STATUS_APPROVED = 'approved';
+
     public const STATUS_SCHEDULED = 'scheduled';
+
     public const STATUS_PARTIALLY_PAID = 'partially_paid';
+
     public const STATUS_PAID = 'paid';
+
     public const STATUS_VOIDED = 'voided';
 
     /**

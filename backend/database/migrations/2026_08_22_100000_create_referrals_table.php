@@ -62,8 +62,8 @@ return new class extends Migration
         DB::statement('ALTER TABLE referrals ENABLE ROW LEVEL SECURITY');
         DB::statement('ALTER TABLE referrals FORCE ROW LEVEL SECURITY');
 
-        $tenantUsing = "tenant_id = swasthya_rls_tenant_id()";
-        $facilityUsing = "(facility_id = swasthya_rls_facility_id() OR swasthya_rls_facility_id() IS NULL)";
+        $tenantUsing = 'tenant_id = swasthya_rls_tenant_id()';
+        $facilityUsing = '(facility_id = swasthya_rls_facility_id() OR swasthya_rls_facility_id() IS NULL)';
         $combined = "{$tenantUsing} AND {$facilityUsing}";
 
         DB::statement('DROP POLICY IF EXISTS p_rls_referrals_select ON referrals');

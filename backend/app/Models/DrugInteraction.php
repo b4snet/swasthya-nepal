@@ -27,7 +27,9 @@ class DrugInteraction extends Model
     use HasFactory, HasUuid;
 
     public const SEVERITY_CRITICAL = 'critical';
+
     public const SEVERITY_MAJOR = 'major';
+
     public const SEVERITY_MODERATE = 'moderate';
 
     protected $fillable = [

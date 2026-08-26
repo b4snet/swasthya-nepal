@@ -27,17 +27,29 @@ final class DocumentPlatformController extends Controller
         $ctx = TenantContext::current();
         $query = HospitalDocument::where('tenant_id', $ctx->tenantId());
 
-        if ($cat = $request->query('category')) $query->where('category', $cat);
-        if ($type = $request->query('document_type')) $query->where('document_type', $type);
-        if ($status = $request->query('status')) $query->where('status', $status);
-        if ($dept = $request->query('department')) $query->where('department', $dept);
-        if ($pid = $request->query('patient_id')) $query->where('patient_id', $pid);
-        if ($sid = $request->query('staff_id')) $query->where('staff_id', $sid);
+        if ($cat = $request->query('category')) {
+            $query->where('category', $cat);
+        }
+        if ($type = $request->query('document_type')) {
+            $query->where('document_type', $type);
+        }
+        if ($status = $request->query('status')) {
+            $query->where('status', $status);
+        }
+        if ($dept = $request->query('department')) {
+            $query->where('department', $dept);
+        }
+        if ($pid = $request->query('patient_id')) {
+            $query->where('patient_id', $pid);
+        }
+        if ($sid = $request->query('staff_id')) {
+            $query->where('staff_id', $sid);
+        }
         if ($search = $request->query('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('title', 'ilike', "%{$search}%")
-                  ->orWhere('document_code', 'ilike', "%{$search}%")
-                  ->orWhere('description', 'ilike', "%{$search}%");
+                    ->orWhere('document_code', 'ilike', "%{$search}%")
+                    ->orWhere('description', 'ilike', "%{$search}%");
             });
         }
 
@@ -50,6 +62,7 @@ final class DocumentPlatformController extends Controller
     {
         AccessCheck::scoped($document, write: false);
         $document->load('versions', 'acknowledgements');
+
         return Envelope::success(data: $document, request: $request);
     }
 
@@ -78,7 +91,7 @@ final class DocumentPlatformController extends Controller
         $doc = HospitalDocument::create([
             'tenant_id' => $ctx->tenantId(),
             'facility_id' => $ctx->facilityId(),
-            'document_code' => 'DOC-' . strtoupper(Str::random(8)),
+            'document_code' => 'DOC-'.strtoupper(Str::random(8)),
             'document_type' => $data['document_type'],
             'category' => $data['category'],
             'classification' => $data['classification'] ?? 'internal',
@@ -122,6 +135,7 @@ final class DocumentPlatformController extends Controller
         ]);
         $document->update($data);
         $this->audit->record('document.updated', 'hospital_document', $document->getKey(), ['changes' => array_keys($data)], $request);
+
         return Envelope::success(data: $document, request: $request);
     }
 
@@ -135,6 +149,7 @@ final class DocumentPlatformController extends Controller
             'finalized_at' => now(),
         ]);
         $this->audit->record('document.finalized', 'hospital_document', $document->getKey(), [], $request);
+
         return Envelope::success(data: $document, request: $request);
     }
 
@@ -143,6 +158,7 @@ final class DocumentPlatformController extends Controller
         AccessCheck::scoped($document, write: true);
         $document->update(['status' => 'archived']);
         $this->audit->record('document.archived', 'hospital_document', $document->getKey(), [], $request);
+
         return Envelope::success(data: $document, request: $request);
     }
 
@@ -153,6 +169,7 @@ final class DocumentPlatformController extends Controller
         AccessCheck::scoped($document, write: false);
         $versions = DocumentVersion::where('document_id', $document->getKey())
             ->orderByDesc('version_number')->get();
+
         return Envelope::success(data: $versions, request: $request);
     }
 
@@ -252,6 +269,7 @@ final class DocumentPlatformController extends Controller
     {
         AccessCheck::scoped($document, write: false);
         $acks = DocumentAcknowledgement::where('document_id', $document->getKey())->get();
+
         return Envelope::success(data: $acks, request: $request);
     }
 

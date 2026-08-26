@@ -12,10 +12,15 @@ class QueueEntry extends Model
     use HasFactory, HasUuid;
 
     public const STATUS_WAITING = 'waiting';
+
     public const STATUS_CALLED = 'called';
+
     public const STATUS_IN_PROGRESS = 'in_progress';
+
     public const STATUS_COMPLETED = 'completed';
+
     public const STATUS_CANCELLED = 'cancelled';
+
     public const STATUS_NO_SHOW = 'no_show';
 
     protected $fillable = [

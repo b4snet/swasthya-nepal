@@ -2,10 +2,6 @@
 
 namespace AppModels;
 
-use IlluminateDatabaseEloquentConcernsHasUuids;
-use IlluminateDatabaseEloquentModel;
-use IlluminateDatabaseEloquentRelationsBelongsTo;
-
 /**
  * Versioned care plan shared across specialties. Each plan belongs to a
  * SpecialtyProfile and tracks goals, interventions, responsible staff,
@@ -29,9 +25,13 @@ class CarePlan extends Model
     ];
 
     const STATUS_DRAFT = 'draft';
+
     const STATUS_ACTIVE = 'active';
+
     const STATUS_ON_HOLD = 'on_hold';
+
     const STATUS_COMPLETED = 'completed';
+
     const STATUS_DISCONTINUED = 'discontinued';
 
     public function specialtyProfile(): BelongsTo

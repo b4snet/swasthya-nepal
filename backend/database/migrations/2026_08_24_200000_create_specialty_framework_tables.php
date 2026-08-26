@@ -52,37 +52,37 @@ return new class extends Migration
 
         // ── enhance care_plans ──
         Schema::table('care_plans', function (Blueprint $table): void {
-            if (!Schema::hasColumn('care_plans', 'specialty_profile_id')) {
+            if (! Schema::hasColumn('care_plans', 'specialty_profile_id')) {
                 $table->uuid('specialty_profile_id')->nullable()->after('id');
             }
-            if (!Schema::hasColumn('care_plans', 'department_id')) {
+            if (! Schema::hasColumn('care_plans', 'department_id')) {
                 $table->uuid('department_id')->nullable()->after('specialty_profile_id');
             }
-            if (!Schema::hasColumn('care_plans', 'status')) {
+            if (! Schema::hasColumn('care_plans', 'status')) {
                 $table->string('status', 30)->default('draft')->after('department_id');
             }
-            if (!Schema::hasColumn('care_plans', 'plan_name')) {
+            if (! Schema::hasColumn('care_plans', 'plan_name')) {
                 $table->string('plan_name', 255)->nullable()->after('status');
             }
-            if (!Schema::hasColumn('care_plans', 'goals')) {
+            if (! Schema::hasColumn('care_plans', 'goals')) {
                 $table->json('goals')->nullable()->after('plan_name');
             }
-            if (!Schema::hasColumn('care_plans', 'interventions')) {
+            if (! Schema::hasColumn('care_plans', 'interventions')) {
                 $table->json('interventions')->nullable()->after('goals');
             }
-            if (!Schema::hasColumn('care_plans', 'milestones')) {
+            if (! Schema::hasColumn('care_plans', 'milestones')) {
                 $table->json('milestones')->nullable()->after('interventions');
             }
-            if (!Schema::hasColumn('care_plans', 'responsible_staff_id')) {
+            if (! Schema::hasColumn('care_plans', 'responsible_staff_id')) {
                 $table->uuid('responsible_staff_id')->nullable()->after('milestones');
             }
-            if (!Schema::hasColumn('care_plans', 'start_date')) {
+            if (! Schema::hasColumn('care_plans', 'start_date')) {
                 $table->date('start_date')->nullable()->after('responsible_staff_id');
             }
-            if (!Schema::hasColumn('care_plans', 'target_end_date')) {
+            if (! Schema::hasColumn('care_plans', 'target_end_date')) {
                 $table->date('target_end_date')->nullable()->after('start_date');
             }
-            if (!Schema::hasColumn('care_plans', 'review_date')) {
+            if (! Schema::hasColumn('care_plans', 'review_date')) {
                 $table->date('review_date')->nullable()->after('target_end_date');
             }
         });

@@ -12,8 +12,11 @@ class CorrectiveAction extends Model
     use HasFactory, HasUuid;
 
     public const STATUS_OPEN = 'open';
+
     public const STATUS_IN_PROGRESS = 'in_progress';
+
     public const STATUS_VERIFIED = 'verified';
+
     public const STATUS_CLOSED = 'closed';
 
     protected $fillable = [

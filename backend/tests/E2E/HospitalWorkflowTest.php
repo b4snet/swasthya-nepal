@@ -1,12 +1,16 @@
 <?php
+
 namespace Tests\E2E;
-use Tests\TestCase;
+
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
 
 class HospitalWorkflowTest extends TestCase
 {
     use RefreshDatabase;
+
     private string $token = '';
+
     private string $facilityId = '';
 
     private function loginAs(string $email = 'admin@swasthya.test', string $password = 'password'): void
@@ -20,18 +24,14 @@ class HospitalWorkflowTest extends TestCase
 
     private function authHeaders(): array
     {
-        return ['Authorization' => 'Bearer ' . $this->token, 'X-Swasthya-Facility' => $this->facilityId, 'Content-Type' => 'application/json'];
+        return ['Authorization' => 'Bearer '.$this->token, 'X-Swasthya-Facility' => $this->facilityId, 'Content-Type' => 'application/json'];
     }
 
     /** @test */
-    public function login_returns_token_and_assignments(): void
-    {
-    }
+    public function login_returns_token_and_assignments(): void {}
 
     /** @test */
-    public function invalid_credentials_return_401(): void
-    {
-    }
+    public function invalid_credentials_return_401(): void {}
 
     /** @test */
     public function dashboard_requires_auth(): void
@@ -105,20 +105,20 @@ class HospitalWorkflowTest extends TestCase
     public function drug_check_needs_two_meds(): void
     {
         $this->loginAs();
-        $this->withHeaders($this->authHeaders())->postJson('/api/v1/drug-interactions/check', ['medicationIds'=>['med-1']])->assertStatus(422);
+        $this->withHeaders($this->authHeaders())->postJson('/api/v1/drug-interactions/check', ['medicationIds' => ['med-1']])->assertStatus(422);
     }
 
     /** @test */
     public function drug_check_endpoint_exists(): void
     {
         $this->loginAs();
-        $this->withHeaders($this->authHeaders())->postJson('/api/v1/drug-interactions/check', ['medicationIds'=>['med-1','med-2']])->assertOk()|assertStatus(422);
+        $this->withHeaders($this->authHeaders())->postJson('/api/v1/drug-interactions/check', ['medicationIds' => ['med-1', 'med-2']])->assertOk() | assertStatus(422);
     }
 
     /** @test */
     public function unauthenticated_endpoints_rejected(): void
     {
-        foreach (['/api/v1/patients','/api/v1/appointments','/api/v1/encounters','/api/v1/prescriptions','/api/v1/dashboard/metrics'] as $path) {
+        foreach (['/api/v1/patients', '/api/v1/appointments', '/api/v1/encounters', '/api/v1/prescriptions', '/api/v1/dashboard/metrics'] as $path) {
             $s = $this->getJson($path)->status();
             $this->assertContains($s, [401, 403], "$path should require auth");
         }
@@ -127,6 +127,6 @@ class HospitalWorkflowTest extends TestCase
     /** @test */
     public function expired_token_rejected(): void
     {
-        $this->withHeaders(['Authorization'=>'Bearer fake-token'])->getJson('/api/v1/dashboard/metrics')->assertStatus(401);
+        $this->withHeaders(['Authorization' => 'Bearer fake-token'])->getJson('/api/v1/dashboard/metrics')->assertStatus(401);
     }
 }

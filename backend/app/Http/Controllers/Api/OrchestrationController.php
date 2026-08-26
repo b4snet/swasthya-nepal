@@ -8,7 +8,6 @@ use App\Models\Bed;
 use App\Models\QueueEntry;
 use App\Models\Referral;
 use App\Models\ResourceBooking;
-use App\Models\Room;
 use App\Models\ScheduleException;
 use App\Models\ScheduleTemplate;
 use App\Models\Theatre;
@@ -16,9 +15,9 @@ use App\Support\AccessCheck;
 use App\Support\AuditLogger;
 use App\Support\Envelope;
 use App\Support\TenantContext;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 final class OrchestrationController extends Controller
@@ -51,7 +50,7 @@ final class OrchestrationController extends Controller
             'tenant_id' => $ctx->tenantId(),
             'facility_id' => $ctx->facilityId(),
             'department' => $data['department'],
-            'queue_code' => 'Q-' . strtoupper(Str::random(8)),
+            'queue_code' => 'Q-'.strtoupper(Str::random(8)),
             'patient_id' => $data['patient_id'],
             'appointment_id' => $data['appointment_id'] ?? null,
             'provider_staff_id' => $data['provider_staff_id'] ?? null,
@@ -75,8 +74,12 @@ final class OrchestrationController extends Controller
         $ctx = TenantContext::current();
         $query = QueueEntry::where('tenant_id', $ctx->tenantId());
 
-        if ($dept = $request->query('department')) $query->where('department', $dept);
-        if ($status = $request->query('status')) $query->where('status', $status);
+        if ($dept = $request->query('department')) {
+            $query->where('department', $dept);
+        }
+        if ($status = $request->query('status')) {
+            $query->where('status', $status);
+        }
 
         $entries = $query->with('patient:id,first_name,last_name')
             ->orderBy('priority')->orderBy('token_number')
@@ -95,7 +98,7 @@ final class OrchestrationController extends Controller
             ->orderBy('token_number')
             ->first();
 
-        if (!$next) {
+        if (! $next) {
             return Envelope::success(data: ['message' => 'No patients waiting'], request: $request);
         }
 
@@ -168,7 +171,7 @@ final class OrchestrationController extends Controller
             'facility_id' => $ctx->facilityId(),
             'resource_type' => $data['resource_type'],
             'resource_id' => $data['resource_id'],
-            'booking_code' => 'RB-' . strtoupper(Str::random(8)),
+            'booking_code' => 'RB-'.strtoupper(Str::random(8)),
             'title' => $data['title'],
             'description' => $data['description'] ?? null,
             'patient_id' => $data['patient_id'] ?? null,
@@ -194,9 +197,15 @@ final class OrchestrationController extends Controller
         $ctx = TenantContext::current();
         $query = ResourceBooking::where('tenant_id', $ctx->tenantId());
 
-        if ($type = $request->query('resource_type')) $query->where('resource_type', $type);
-        if ($rid = $request->query('resource_id')) $query->where('resource_id', $rid);
-        if ($status = $request->query('status')) $query->where('status', $status);
+        if ($type = $request->query('resource_type')) {
+            $query->where('resource_type', $type);
+        }
+        if ($rid = $request->query('resource_id')) {
+            $query->where('resource_id', $rid);
+        }
+        if ($status = $request->query('status')) {
+            $query->where('status', $status);
+        }
         if ($date = $request->query('date')) {
             $query->whereDate('starts_at', $date);
         }
@@ -226,7 +235,7 @@ final class OrchestrationController extends Controller
             'date' => 'required|date',
         ]);
 
-        $date = \Carbon\Carbon::parse($data['date']);
+        $date = Carbon::parse($data['date']);
         $dayOfWeek = $date->dayOfWeekIso;
 
         $templates = ScheduleTemplate::where('tenant_id', $ctx->tenantId())

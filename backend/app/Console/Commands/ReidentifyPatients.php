@@ -4,11 +4,11 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class ReidentifyPatients extends Command
 {
     protected $signature = 'patients:reidentify {--dry-run}';
+
     protected $description = 'Re-identify all patient IDs to NBMH-XXXXXXXX format and update all FK references';
 
     public function handle(): int
@@ -24,21 +24,22 @@ class ReidentifyPatients extends Command
         $mapping = [];
         $seq = 1;
         foreach ($patients as $p) {
-            $newId = 'NBMH-' . str_pad((string) $seq, 8, '0', STR_PAD_LEFT);
+            $newId = 'NBMH-'.str_pad((string) $seq, 8, '0', STR_PAD_LEFT);
             $mapping[$p->id] = $newId;
             $seq++;
         }
-        $this->info("Generated mapping for " . count($mapping) . " patients.");
+        $this->info('Generated mapping for '.count($mapping).' patients.');
 
         // Show a few samples
         $samples = array_slice($mapping, 0, 5);
         foreach ($samples as $old => $new) {
             $this->line("  {$old} → {$new}");
         }
-        $this->line("  ...");
+        $this->line('  ...');
 
         if ($dryRun) {
             $this->info('DRY RUN — no changes made.');
+
             return 0;
         }
 
@@ -71,13 +72,13 @@ class ReidentifyPatients extends Command
             }
         }
 
-        $this->info("Tables to update:");
+        $this->info('Tables to update:');
         foreach ($allUpdates as $u) {
             $this->line("  - {$u}");
         }
 
         // 2b. Also include the patients table itself
-        $allUpdates[] = 'patients.id (' . $count . ' rows)';
+        $allUpdates[] = 'patients.id ('.$count.' rows)';
         $allUpdates[] = 'patients.merge_into_patient_id';
 
         // 2c. Find all FK constraints on patient_id columns and drop them
@@ -96,7 +97,7 @@ class ReidentifyPatients extends Command
             $droppedConstraints[] = $fk->constraint_name;
             $this->line("  Dropped: {$fk->constraint_name}");
         }
-        $this->info('Dropped ' . count($droppedConstraints) . ' FK constraints.');
+        $this->info('Dropped '.count($droppedConstraints).' FK constraints.');
 
         // 2d. Alter column types from uuid to varchar
         foreach ($fkColumns as $col) {
@@ -106,7 +107,7 @@ class ReidentifyPatients extends Command
                 DB::statement("ALTER TABLE \"{$table}\" ALTER COLUMN \"{$column}\" TYPE varchar(36)");
                 $this->line("  Altered {$table}.{$column} to varchar(36)");
             } catch (\Throwable $e) {
-                $this->line("  Skipped {$table}.{$column}: " . $e->getMessage());
+                $this->line("  Skipped {$table}.{$column}: ".$e->getMessage());
             }
         }
         // Also alter patients.id and patients.merge_into_patient_id
@@ -120,7 +121,7 @@ class ReidentifyPatients extends Command
             AND ccu.table_name = 'patients' AND ccu.column_name = 'id'
         ");
         foreach ($allPatientFks as $fk) {
-            if (!in_array($fk->constraint_name, $droppedConstraints)) {
+            if (! in_array($fk->constraint_name, $droppedConstraints)) {
                 DB::statement("ALTER TABLE \"{$fk->table_name}\" DROP CONSTRAINT \"{$fk->constraint_name}\"");
                 $droppedConstraints[] = $fk->constraint_name;
                 $this->line("  Dropped extra FK: {$fk->constraint_name}");
@@ -131,14 +132,14 @@ class ReidentifyPatients extends Command
             DB::statement('ALTER TABLE "patients" ALTER COLUMN "id" TYPE varchar(36)');
             $this->line('  Altered patients.id to varchar(36)');
         } catch (\Throwable $e) {
-            $this->line('  Skipped patients.id: ' . $e->getMessage());
+            $this->line('  Skipped patients.id: '.$e->getMessage());
         }
         if (DB::getSchemaBuilder()->hasColumn('patients', 'merge_into_patient_id')) {
             try {
                 DB::statement('ALTER TABLE "patients" ALTER COLUMN "merge_into_patient_id" TYPE varchar(36)');
                 $this->line('  Altered patients.merge_into_patient_id to varchar(36)');
             } catch (\Throwable $e) {
-                $this->line('  Skipped patients.merge_into_patient_id: ' . $e->getMessage());
+                $this->line('  Skipped patients.merge_into_patient_id: '.$e->getMessage());
             }
         }
 
@@ -200,7 +201,7 @@ class ReidentifyPatients extends Command
             foreach ($mapping as $oldId => $newId) {
                 DB::table('patients')->where('id', $oldId)->update(['id' => $newId]);
             }
-            $this->info("Updated " . count($mapping) . " patient primary keys.");
+            $this->info('Updated '.count($mapping).' patient primary keys.');
 
             // Re-enable FK checks
             DB::statement('SET session_replication_role = origin;');
@@ -216,7 +217,8 @@ class ReidentifyPatients extends Command
         } catch (\Throwable $e) {
             DB::rollBack();
             DB::statement('SET session_replication_role = origin;');
-            $this->error("Transaction rolled back: " . $e->getMessage());
+            $this->error('Transaction rolled back: '.$e->getMessage());
+
             return 1;
         }
     }

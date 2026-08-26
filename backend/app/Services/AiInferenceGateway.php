@@ -34,7 +34,7 @@ final class AiInferenceGateway
 
     public function __construct()
     {
-        $this->openRouter = new OpenRouterProvider();
+        $this->openRouter = new OpenRouterProvider;
     }
 
     /**

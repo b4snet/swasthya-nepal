@@ -81,7 +81,7 @@ final class PharmacyController extends Controller
 
         $prescriptions = $query->orderByDesc('created_at')
             ->paginate($perPage)
-            ->through(function (Prescription $p) use ($facilityId): array {
+            ->through(function (Prescription $p): array {
                 $patient = $p->patient;
                 $prescriber = $p->prescriber;
 
