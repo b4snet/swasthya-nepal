@@ -162,17 +162,18 @@ return new class extends Migration
         // and has fixed search_path
         // ══════════════════════════════════════════════════════════════
 
-        // Drop and recreate RLS functions with SECURITY DEFINER + search_path.
-        // DROP CASCADE is required when return types changed; it drops dependent
-        // policies, so the subsequent migration step that creates policies must run.
-        DB::unprepared('DROP FUNCTION IF EXISTS public.swasthya_rls_is_platform() CASCADE');
-        DB::unprepared("CREATE FUNCTION public.swasthya_rls_is_platform() RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS \$\$ BEGIN RETURN current_setting('app.is_platform', true) = 'true'; END; \$\$");
-
-        DB::unprepared('DROP FUNCTION IF EXISTS public.swasthya_rls_tenant_id() CASCADE');
-        DB::unprepared("CREATE FUNCTION public.swasthya_rls_tenant_id() RETURNS text LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS \$\$ BEGIN RETURN current_setting('app.current_tenant', true); END; \$\$");
-
-        DB::unprepared('DROP FUNCTION IF EXISTS public.swasthya_rls_facility_id() CASCADE');
-        DB::unprepared("CREATE FUNCTION public.swasthya_rls_facility_id() RETURNS text LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS \$\$ BEGIN RETURN current_setting('app.current_facility', true); END; \$\$");
+        // Harden the RLS claim-reader functions with SECURITY DEFINER and fixed
+        // search_path.  We use ALTER (not DROP+CREATE) to preserve the existing
+        // function body, return type, and language — the functions were already
+        // correctly re-keyed by migration 2026_08_13_100200 (rekey_rls_to_jwt_claims)
+        // to read from request.jwt.claims via public.swasthya_rls_claim().
+        // ALTER FUNCTION avoids cascading DROPs that would destroy every RLS
+        // policy depending on these functions.
+        DB::statement('ALTER FUNCTION public.swasthya_rls_is_platform() SECURITY DEFINER SET search_path = public');
+        DB::statement('ALTER FUNCTION public.swasthya_rls_user_id() SECURITY DEFINER SET search_path = public');
+        DB::statement('ALTER FUNCTION public.swasthya_rls_tenant_id() SECURITY DEFINER SET search_path = public');
+        DB::statement('ALTER FUNCTION public.swasthya_rls_facility_id() SECURITY DEFINER SET search_path = public');
+        DB::statement('ALTER FUNCTION public.swasthya_rls_branch_id() SECURITY DEFINER SET search_path = public');
     }
 
     public function down(): void

@@ -50,8 +50,8 @@ return new class extends Migration
 
         DB::statement('
             CREATE POLICY p_rls_receipts ON public.receipts
-            USING (swasthya_rls_is_platform() = true OR tenant_id::text = current_setting(\'app.current_tenant\', true))
-            WITH CHECK (swasthya_rls_is_platform() = true OR tenant_id::text = current_setting(\'app.current_tenant\', true))
+            USING (swasthya_rls_is_platform() = true OR tenant_id = swasthya_rls_tenant_id())
+            WITH CHECK (swasthya_rls_is_platform() = true OR tenant_id = swasthya_rls_tenant_id())
         ');
 
         // ── billing_adjustments ─────────────────────────────────────
@@ -94,8 +94,8 @@ return new class extends Migration
 
         DB::statement('
             CREATE POLICY p_rls_billing_adjustments ON public.billing_adjustments
-            USING (swasthya_rls_is_platform() = true OR tenant_id::text = current_setting(\'app.current_tenant\', true))
-            WITH CHECK (swasthya_rls_is_platform() = true OR tenant_id::text = current_setting(\'app.current_tenant\', true))
+            USING (swasthya_rls_is_platform() = true OR tenant_id = swasthya_rls_tenant_id())
+            WITH CHECK (swasthya_rls_is_platform() = true OR tenant_id = swasthya_rls_tenant_id())
         ');
 
         // ── procedure_billing_items ─────────────────────────────────
@@ -131,8 +131,8 @@ return new class extends Migration
 
         DB::statement('
             CREATE POLICY p_rls_procedure_billing_items ON public.procedure_billing_items
-            USING (swasthya_rls_is_platform() = true OR tenant_id::text = current_setting(\'app.current_tenant\', true))
-            WITH CHECK (swasthya_rls_is_platform() = true OR tenant_id::text = current_setting(\'app.current_tenant\', true))
+            USING (swasthya_rls_is_platform() = true OR tenant_id = swasthya_rls_tenant_id())
+            WITH CHECK (swasthya_rls_is_platform() = true OR tenant_id = swasthya_rls_tenant_id())
         ');
     }
 

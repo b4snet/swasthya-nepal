@@ -43,7 +43,7 @@ return new class extends Migration
         DB::statement('ALTER TABLE numbering_configs ENABLE ROW LEVEL SECURITY');
         DB::statement('ALTER TABLE numbering_configs FORCE ROW LEVEL SECURITY');
 
-        $tenantUsing = "tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid";
+        $tenantUsing = 'tenant_id = swasthya_rls_tenant_id()';
 
         DB::statement('DROP POLICY IF EXISTS p_rls_numbering_configs_select ON numbering_configs');
         DB::statement("CREATE POLICY p_rls_numbering_configs_select ON numbering_configs FOR SELECT USING ({$tenantUsing})");

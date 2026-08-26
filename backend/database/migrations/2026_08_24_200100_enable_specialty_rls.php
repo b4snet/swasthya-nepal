@@ -12,8 +12,8 @@ return new class extends Migration
             DB::statement("ALTER TABLE {$table} FORCE ROW LEVEL SECURITY");
             DB::statement("
                 CREATE POLICY tenant_isolation_{$table} ON {$table}
-                    USING (tenant_id = current_setting('app.tenant_id')::uuid)
-                    WITH CHECK (tenant_id = current_setting('app.tenant_id')::uuid)
+                    USING (tenant_id = swasthya_rls_tenant_id())
+                    WITH CHECK (tenant_id = swasthya_rls_tenant_id())
             ");
         }
     }

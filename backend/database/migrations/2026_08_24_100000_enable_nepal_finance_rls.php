@@ -22,8 +22,9 @@ return new class extends Migration
 
     public function up(): void
     {
-        $tenantOnly = "tenant_id = NULLIF(swasthya_rls_tenant_id(), '')::uuid";
-        $tenantFacility = $tenantOnly . " AND (facility_id = NULLIF(swasthya_rls_facility_id(), '')::uuid OR swasthya_rls_facility_id() IS NULL OR swasthya_rls_facility_id() = '')";
+        // Functions return uuid (or NULL when no JWT context). No NULLIF wrappers needed.
+        $tenantOnly = 'tenant_id = swasthya_rls_tenant_id()';
+        $tenantFacility = $tenantOnly . ' AND (facility_id = swasthya_rls_facility_id() OR swasthya_rls_facility_id() IS NULL)';
 
         foreach (self::ALL_TABLES as $table) {
             DB::statement("ALTER TABLE public.{$table} ENABLE ROW LEVEL SECURITY");

@@ -86,16 +86,16 @@ return new class extends Migration
         DB::statement('ALTER TABLE public.realtime_events FORCE ROW LEVEL SECURITY');
         DB::statement('
             CREATE POLICY p_rls_realtime_events ON public.realtime_events
-            USING (swasthya_rls_is_platform() = true OR tenant_id::text = current_setting(\'app.current_tenant\', true))
-            WITH CHECK (swasthya_rls_is_platform() = true OR tenant_id::text = current_setting(\'app.current_tenant\', true))
+            USING (swasthya_rls_is_platform() = true OR tenant_id = swasthya_rls_tenant_id())
+            WITH CHECK (swasthya_rls_is_platform() = true OR tenant_id = swasthya_rls_tenant_id())
         ');
 
         DB::statement('ALTER TABLE public.realtime_event_receipts ENABLE ROW LEVEL SECURITY');
         DB::statement('ALTER TABLE public.realtime_event_receipts FORCE ROW LEVEL SECURITY');
         DB::statement('
             CREATE POLICY p_rls_realtime_event_receipts ON public.realtime_event_receipts
-            USING (swasthya_rls_is_platform() = true OR tenant_id::text = current_setting(\'app.current_tenant\', true))
-            WITH CHECK (swasthya_rls_is_platform() = true OR tenant_id::text = current_setting(\'app.current_tenant\', true))
+            USING (swasthya_rls_is_platform() = true OR tenant_id = swasthya_rls_tenant_id())
+            WITH CHECK (swasthya_rls_is_platform() = true OR tenant_id = swasthya_rls_tenant_id())
         ');
     }
 

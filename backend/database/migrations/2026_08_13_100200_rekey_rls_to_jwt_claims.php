@@ -135,6 +135,9 @@ return new class extends Migration
      */
     private function createClaimHelpers(): void
     {
+        // PostgreSQL 14+ requires DROP before changing return types of existing functions
+        $this->dropClaimHelpers();
+
         DB::statement(
             <<<'SQL'
             create or replace function public.swasthya_rls_claim(p_name text)
@@ -153,16 +156,12 @@ return new class extends Migration
         foreach ([
             'user_id', 'tenant_id', 'facility_id', 'branch_id',
         ] as $claim) {
+            // Use string interpolation so $$ dollar-quoting is passed literally
             DB::statement(
-                <<<SQL
-                create or replace function public.swasthya_rls_{$claim}()
-                returns uuid
-                language sql
-                stable
-                as \$\$
-                    select nullif(public.swasthya_rls_claim('app_{$claim}'), '')::uuid
-                \$\$;
-                SQL
+                "CREATE OR REPLACE FUNCTION public.swasthya_rls_{$claim}() "
+                . 'RETURNS uuid LANGUAGE sql STABLE AS ' . '$$'
+                . " SELECT nullif(public.swasthya_rls_claim('app_{$claim}'), '')::uuid "
+                . '$$;'
             );
         }
 
@@ -186,12 +185,14 @@ return new class extends Migration
 
     private function dropClaimHelpers(): void
     {
-        DB::statement('drop function if exists public.swasthya_rls_claim(text)');
-        DB::statement('drop function if exists public.swasthya_rls_user_id()');
-        DB::statement('drop function if exists public.swasthya_rls_tenant_id()');
-        DB::statement('drop function if exists public.swasthya_rls_facility_id()');
-        DB::statement('drop function if exists public.swasthya_rls_branch_id()');
-        DB::statement('drop function if exists public.swasthya_rls_is_platform()');
+        // CASCADE required because PostgreSQL 17 blocks dropping functions
+        // that have dependent policies; recreatePolicies() rebuilds them after.
+        DB::statement('drop function if exists public.swasthya_rls_claim(text) cascade');
+        DB::statement('drop function if exists public.swasthya_rls_user_id() cascade');
+        DB::statement('drop function if exists public.swasthya_rls_tenant_id() cascade');
+        DB::statement('drop function if exists public.swasthya_rls_facility_id() cascade');
+        DB::statement('drop function if exists public.swasthya_rls_branch_id() cascade');
+        DB::statement('drop function if exists public.swasthya_rls_is_platform() cascade');
     }
 
     /* ------------------------------------------------------------------ */

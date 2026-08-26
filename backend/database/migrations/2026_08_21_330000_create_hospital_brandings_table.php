@@ -70,11 +70,11 @@ return new class extends Migration
             CREATE POLICY p_rls_hospital_brandings ON public.hospital_brandings
             USING (
                 swasthya_rls_is_platform() = true
-                OR tenant_id::text = current_setting('app.current_tenant', true)
+                OR tenant_id = swasthya_rls_tenant_id()
             )
             WITH CHECK (
                 swasthya_rls_is_platform() = true
-                OR tenant_id::text = current_setting('app.current_tenant', true)
+                OR tenant_id = swasthya_rls_tenant_id()
             )
         ");
     }

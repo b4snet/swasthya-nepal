@@ -206,8 +206,8 @@ return new class extends Migration
         }
 
         // ── RLS policies ──
-        $tenantUsing = "tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid";
-        $facilityUsing = "(facility_id = NULLIF(current_setting('app.facility_id', true), '')::uuid OR facility_id IS NULL)";
+        $tenantUsing = 'tenant_id = swasthya_rls_tenant_id()';
+        $facilityUsing = '(facility_id = swasthya_rls_facility_id() OR swasthya_rls_facility_id() IS NULL)';
         $combinedUsing = $tenantUsing.' AND '.$facilityUsing;
 
         // Tables WITH facility_id: use combined tenant+facility RLS
