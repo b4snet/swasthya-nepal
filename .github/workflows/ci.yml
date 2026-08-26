@@ -39,6 +39,7 @@ jobs:
   backend:
     name: backend (PHP ${{ matrix.php }})
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -67,6 +68,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        timeout-minutes: 5
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -75,6 +77,7 @@ jobs:
           extensions: pdo, pdo_pgsql, pgsql, bcmath, intl
           coverage: none
           tools: composer:v2
+        timeout-minutes: 10
 
       - name: Cache Composer packages
         uses: actions/cache@v4
@@ -83,31 +86,38 @@ jobs:
           key: composer-${{ runner.os }}-php${{ matrix.php }}-${{ hashFiles('backend/composer.lock') }}
           restore-keys: |
             composer-${{ runner.os }}-php${{ matrix.php }}-
+        timeout-minutes: 10
 
       - name: Install PostgreSQL client (psql for roles.sql / grants.sql / verification)
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends postgresql-client
+        timeout-minutes: 5
 
       - name: Source check (Laravel skeleton + app namespace)
         run: |
           test -f artisan && test -f composer.json
           test -d app && test -d database/migrations && test -d tests
+        timeout-minutes: 1
 
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
+        timeout-minutes: 10
 
       - name: Static analysis / lint (Pint)
         run: vendor/bin/pint --test
+        timeout-minutes: 5
 
       - name: Create least-privilege application role (NOBYPASSRLS)
         run: |
           PGPASSWORD=ci-owner-password-2026 psql -h 127.0.0.1 -p 54329 -U swasthya -d swasthya_ci \
             -v app_password="$APP_ROLE_PASSWORD" -f database/security/roles.sql
+        timeout-minutes: 2
 
       - name: Database migrations on disposable PostgreSQL
         run: |
           DB_HOST=127.0.0.1 DB_PORT=54329 DB_DATABASE=swasthya_ci \
           DB_USERNAME=swasthya DB_PASSWORD=ci-owner-password-2026 \
           php artisan migrate:fresh --force
+        timeout-minutes: 10
 
       - name: Verify RLS policies and role configuration
         # Fail-closed: assert the tenant-scoped policies on `patients` exist and
@@ -124,6 +134,7 @@ jobs:
             "select rolname, rolbypassrls, rolsuper from pg_roles where rolname='swasthya_app'")
           echo "$ROLE"
           echo "$ROLE" | grep -q '^swasthya_app|f|f$'
+        timeout-minutes: 2
 
       - name: Run full test suite (unit, integration, API, database, RLS, isolation, audit)
         run: |
@@ -132,6 +143,7 @@ jobs:
           RLS_DB_HOST=127.0.0.1 RLS_DB_PORT=54329 RLS_DB_DATABASE=swasthya_ci \
           RLS_DB_USERNAME=swasthya_app RLS_DB_PASSWORD="$APP_ROLE_PASSWORD" \
           vendor/bin/pest --ci
+        timeout-minutes: 30
 
       - name: Build artifact (laravel optimization for deployment)
         run: |
@@ -141,6 +153,7 @@ jobs:
           php artisan route:cache || true
           php artisan view:cache || true
           ls -la bootstrap/cache
+        timeout-minutes: 10
 
       - name: Upload test report on failure
         if: failure()
@@ -153,6 +166,7 @@ jobs:
   frontend:
     name: frontend (React SPA)
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     # The frontend job is fully self-contained (own disposable Postgres,
     # migrations, seed, backend boot for E2E) and uses no backend-job output.
     # Gating it behind `needs: backend` starves it whenever a backend matrix
@@ -179,6 +193,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        timeout-minutes: 5
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -187,6 +202,7 @@ jobs:
           extensions: pdo, pdo_pgsql, pgsql, bcmath, intl
           coverage: none
           tools: composer:v2
+        timeout-minutes: 10
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -194,22 +210,27 @@ jobs:
           node-version: '20'
           cache: npm
           cache-dependency-path: frontend/package-lock.json
+        timeout-minutes: 5
 
       - name: Install PostgreSQL client (psql for roles.sql / grants.sql / verification)
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends postgresql-client
+        timeout-minutes: 5
 
       - name: Install backend dependencies
         working-directory: backend
         run: composer install --no-interaction --prefer-dist --no-progress
+        timeout-minutes: 10
 
       - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci
+        timeout-minutes: 10
 
       - name: Create least-privilege application role (NOBYPASSRLS)
         run: |
           PGPASSWORD=ci-owner-password-2026 psql -h 127.0.0.1 -p 54329 -U swasthya -d swasthya_ci \
             -v app_password="$CI_APP_ROLE_PASSWORD" -f backend/database/security/roles.sql
+        timeout-minutes: 2
 
       - name: Migrate disposable PostgreSQL
         run: |
@@ -217,6 +238,7 @@ jobs:
           DB_HOST=127.0.0.1 DB_PORT=54329 DB_DATABASE=swasthya_ci \
           DB_USERNAME=swasthya DB_PASSWORD=ci-owner-password-2026 \
           php artisan migrate:fresh --force
+        timeout-minutes: 10
 
       - name: Grant application privileges + seed staging fixture
         run: |
@@ -226,20 +248,24 @@ jobs:
           APP_ENV=ci DB_HOST=127.0.0.1 DB_PORT=54329 DB_DATABASE=swasthya_ci \
           DB_USERNAME=swasthya DB_PASSWORD=ci-owner-password-2026 \
           php artisan db:seed --class=StagingFixtureSeeder --force
+        timeout-minutes: 10
 
       - name: Frontend static checks
         working-directory: frontend
         run: |
           npm run typecheck
           npm test
+        timeout-minutes: 15
 
       - name: Frontend production build
         working-directory: frontend
         run: npm run build
+        timeout-minutes: 10
 
       - name: Install Playwright browsers
         working-directory: frontend
         run: npx playwright install --with-deps chromium
+        timeout-minutes: 15
 
       - name: E2E (desktop + mobile OPD workflow + accessibility) on disposable PostgreSQL
         working-directory: frontend
@@ -248,6 +274,7 @@ jobs:
         run: |
           mkdir -p test-results
           npx playwright test --config=playwright.ci.config.ts 2>&1 | tee test-results/e2e-output.txt
+        timeout-minutes: 15
 
       - name: Surface E2E failure output as annotations
         if: failure()
@@ -263,6 +290,7 @@ jobs:
             test-results/e2e-output.txt 2>/dev/null | head -40 | while IFS= read -r line; do
             echo "::error::E2E: $line"
           done || true
+        timeout-minutes: 2
 
       - name: Upload E2E artifacts on failure
         if: failure()
@@ -273,6 +301,7 @@ jobs:
             frontend/test-results/
             frontend/playwright-report/
           retention-days: 7
+        timeout-minutes: 5
 
   # Staging smoke gate — VALIDATION ONLY. This job never contacts a host and
   # never runs the live smoke flow: it proves the smoke script itself is
@@ -286,6 +315,7 @@ jobs:
   smoke-validation:
     name: staging smoke gate (validation only — never contacts a host)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     defaults:
       run:
