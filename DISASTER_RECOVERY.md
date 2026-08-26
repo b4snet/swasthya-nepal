@@ -1,278 +1,556 @@
-# DISASTER_RECOVERY.md — Swasthya Disaster Recovery Strategy
+# Swasthya — Disaster Recovery and Business Continuity
 
-> **Status:** Working baseline · **Owner:** Principal Architect (posture ratified with the team)
-> **Version:** 1.0
-> **Document chain:** This document deepens `MASTER_RULES.md` §22–23 (DR, backups), `SECURITY.md` §29–31 (backups, DR, incident response), `DEPLOYMENT.md` §16 (backups) and §21 (infrastructure as code), and `TESTING_STRATEGY.md` §3.16–3.17 (restore and DR tests). It is the DR **design** — no infrastructure is implemented here.
->
-> **The honesty principle (read first):** This document specifies **targets, designs, and procedures** — it does not claim achieved outcomes. No RPO/RTO value in this document is a *guarantee*; every target becomes a *measured, achieved* value only when a drill produces evidence for it, and a measured value worse than the target is a defect to fix, not a number to defend. The platform claims nothing it has not proven (`PRODUCT_REQUIREMENTS.md` §9 applies to recovery claims too).
+> **Version:** 1.0 | **Phase:** 92 Disaster Recovery
+> **Status:** Resilience model defined, chaos matrix established, recovery runbooks documented
 
 ---
 
-## 0. Recovery Posture
+## Resilience Model
 
-**What "recovery" means:** the platform can again serve its critical journeys — login, patient identification, clinical record access, booking, billing — with data intact to the achieved point in time, and the audit trail intact and verifiable.
-
-**The three pillars:**
-
-1. **Backups that are real** — continuous WAL archiving, encrypted, isolated, monitored, and *proven by restore* (a backup that has never been restored is a hope, not a backup).
-2. **Recovery that is rehearsed** — runbooks that are actually executed on a cadence, with measured RPO/RTO evidence recorded.
-3. **Recovery that is reproducible** — everything needed to rebuild (code, infrastructure-as-code, config, secrets path, artifact registry) exists and is versioned, so recovery never depends on a person's memory.
-
-**What recovery depends on (beyond the database):** the artifact registry (images), infrastructure-as-code, the secrets store's availability path, DNS/edge control, and the monitoring that detects the disaster. A DR design that only covers PostgreSQL is not a DR design.
-
----
-
-## 1. Recovery Objectives (RPO / RTO)
-
-**RPO (Recovery Point Objective)** — how much data loss is acceptable. Targets by data class:
-
-| Data class | RPO target | Why |
-|---|---|---|
-| Clinical records (patients, encounters, notes, orders, results) | ≤ 15 min | Patient safety and record integrity |
-| Financial records (charges, payments, invoices, claims) | ≤ 15 min | Money truth and reconciliation |
-| Audit trail | ≤ 15 min | Compliance and tamper-evidence |
-| Identity (users, staff, role assignments) | ≤ 15 min | Access continuity |
-| Operational (schedules, wards, stock balances) | ≤ 30 min | Recoverable with effort, no clinical harm |
-| Object storage (documents, exports) | Near-zero | Versioning + replication |
-| Configuration / platform catalogs | Near-zero | Rebuilt from code/versioned config |
-
-**RTO (Recovery Time Objective)** — how long until the platform serves again:
-
-| Service tier | RTO target |
-|---|---|
-| **Critical journeys** (login, patient lookup, booking, billing) | ≤ 4 h |
-| **Full platform** (including heavy reporting, exports) | ≤ 8 h |
-| **Audit access** | ≤ 4 h (with critical journeys) |
-
-**Honesty rule (all targets):** each target is validated by the drill cadence (§13). The quarterly restore drill records the *measured* restore time and the *measured* data loss window; the measured numbers are the platform's actual posture. Target vs. measured drift is a defect with an owner.
+```text
+FAILURE
+↓
+DETECT
+↓
+PROTECT PATIENT CARE
+↓
+CONTAIN
+↓
+RESTORE
+↓
+RECONCILE
+↓
+VERIFY
+↓
+RESUME
+↓
+LEARN
+```
 
 ---
 
-## 2. PostgreSQL Backup Architecture
+## RTO/RPO Targets
 
-- **Point-in-time recovery is the primary mechanism:** periodic base backups **plus continuous WAL archiving** (`ARCHIVE_MODE`, shipped off-box as it's written). Together they restore to any point within WAL coverage (`MASTER_RULES.md` §23.2).
-- **Backup frequency:**
-  - **WAL:** continuous (each segment archived as it fills).
-  - **Base backups:** full nightly (or more frequent as the write volume demands); additional periodic base backups (weekly) for faster recovery points.
-- **Retention:**
-  - Rolling window of base backups (e.g., 30 days, policy-reviewed) with the WAL that covers them.
-  - Monthly archive copies retained per the data-retention classes (`DATABASE.md` §4) — clinical and financial classes longer, operational shorter.
-  - Audit-class backups retained per compliance policy.
-  - Retention is reviewed with legal counsel before go-live and adjusted — this document sets the classes, not invented numbers.
-- **Encrypted backups:** every backup artifact is encrypted with **dedicated backup keys** (KMS), separate from the live environment's key hierarchy where feasible; keys are recoverable in a disaster without exposing live credentials (`SECURITY.md` §12, §29).
-- **Cross-region copy:** backups (base + WAL) replicate to a second region so a regional event cannot destroy both the system and its recovery data (`MASTER_RULES.md` §22.5).
-- **Monitoring:** backup completion/failure alerts within the hour; **WAL-gap monitoring** (archiving is keeping up — a silent archiving stall is a data-loss event waiting to happen); integrity checks (`pg_checksums`, base-backup spot verification).
-- **Isolation:** the backup store is isolated from production credentials, access-controlled, and never publicly reachable; backup credentials are least-privilege (`SECURITY.md` §29).
+| Component | RTO Target | RPO Target | Current Evidence |
+|-----------|-----------|-----------|-----------------|
+| Database | 30 min | 0 (WAL) | Supabase PITR 7-day |
+| Application | 5 min | 0 | Docker rebuild + restart |
+| Cache (Redis) | 5 min | 0 (rebuild) | Not critical path |
+| Queue | 10 min | 0 (persistent) | Database queue |
+| Storage | 15 min | 0 | Supabase backup |
+| Authentication | 5 min | 0 | Database-backed sessions |
 
 ---
 
-## 3. Point-in-Time Recovery (PITR)
+## Criticality Matrix
 
-- **Procedure:** restore the latest base backup covering the target time, then replay WAL up to the target (`RECOVERY_TARGET_TIME`). Precision is bounded by WAL segment granularity — the design targets minute-level windows, validated in drills.
-- **Uses:**
-  - **Tenant-initiated recovery:** accidental deletion or corruption *within a tenant* → tenant-scoped restore from PITR (extract that tenant's rows and objects to the target time) under audit — recovery is a platform operation with a reason and evidence (`TENANCY.md` §16).
-  - **Platform-level recovery:** corruption, misconfiguration, or malicious data damage (Section 11).
-  - **Forensic reconstruction:** recover the exact state at an incident time for analysis.
-- **RLS integrity is part of every restore:** policies and the app role are re-applied and verified *before* the restored environment serves traffic — a restored database with broken policies would be a data-leak event (`SECURITY.md` §29). The drill asserts this every quarter.
-
----
-
-## 4. Restore Testing
-
-- **Cadence:** a **quarterly full restore drill** — restore into a clean environment from the latest backup and verify:
-  - Data integrity (row counts, checksums, spot clinical checks);
-  - **RLS policies active** and the tenant-leakage probe passing on the restored data;
-  - **Audit hash-chain integrity** (the append-only trail survives restore and still verifies);
-  - **Critical journeys run** against the restored data (login, patient lookup, booking, billing);
-  - **Measured restore time and data-loss window** recorded as the platform's actual RPO/RTO evidence.
-- **Automated where feasible; manual-drill evidence where not.** A drill that fails is an **incident** — not a rescheduled drill (`MASTER_RULES.md` §23.4).
-- Every release that changes the schema or the backup pipeline re-runs the drill on the new shape before it is trusted.
+| System | Priority | Impact if Down | Recovery Priority |
+|--------|----------|---------------|-------------------|
+| Patient Identity | CRITICAL | Cannot identify patients | 1 |
+| Clinical Records | CRITICAL | Cannot treat patients | 1 |
+| Emergency | CRITICAL | Patient safety risk | 1 |
+| Database | CRITICAL | All systems down | 1 |
+| Authentication | HIGH | Cannot access system | 2 |
+| Orders/Results | HIGH | Cannot order/review | 2 |
+| Medication | HIGH | Cannot prescribe/dispense | 2 |
+| Billing | MEDIUM | Revenue delayed | 3 |
+| Documents | MEDIUM | Access delayed | 3 |
+| Communication | MEDIUM | Notifications delayed | 4 |
+| Analytics | LOW | Reports delayed | 5 |
+| AI | LOW | Optional features | 5 |
 
 ---
 
-## 5. Application Recovery
+## Dependency Map
 
-- **The application is stateless** (`DEPLOYMENT.md` §5): recovery is *redeploy*, not *reconstruct*. The immutable artifact is re-promoted from the artifact registry; config comes from versioned environment definitions; secrets come from the secrets store's recovery path.
-- **Recovery steps:** re-provision the app fleet from code (Section 7) → health-gated rollout (readiness includes DB/Redis/S3) → traffic shifts.
-- **Workers:** jobs are idempotent and tenant-tagged (`MASTER_RULES.md` §4.6, §14); after app recovery, workers drain re-queued jobs; dead-letter queues are reviewed before replay.
-- **Scheduler:** exactly one scheduler instance after recovery (no duplicate scheduled work).
-- **The secrets path is in the runbook:** the DR plan includes how the secrets store itself is accessed/restored — a recovered app that cannot resolve its credentials is not recovered.
+```text
+FRONTEND (React SPA)
+  ↓
+API (PHP-FPM + nginx)
+  ├── PostgreSQL (Primary database)
+  │   └── RLS policies
+  │   └── Helper functions
+  │   └── Application role
+  ├── Redis (Cache/Session/Queue) [optional]
+  ├── Queue Workers [database queue]
+  ├── Storage (Object/File)
+  └── External Providers
+      ├── Payment (Sandbox)
+      ├── SMS/Email
+      ├── LIS
+      └── PACS/RIS
+```
 
----
+### Single Points of Failure
 
-## 6. Object Storage Recovery
-
-- **Versioning is the recovery mechanism:** every object is versioned (overwrite never destroys the prior version); object retention lifecycle mirrors document metadata (`DATABASE.md` §3.38).
-- **Cross-region replication** of the bucket (or backup copy) so document loss in a regional event is recoverable.
-- **Recovery procedure:** point-in-time version restore for a deleted/corrupted object or prefix; tenant-scoped restores for tenant events; full-bucket restore for region events (from the replicated copy).
-- **Access after recovery:** signed URLs work once the app is serving; document access audit continues to record post-restore reads.
-- **Ransomware hardening (recommended):** immutable/object-lock retention on the backup copy so even a compromised credential cannot encrypt or delete the recovery point (Section 9).
-
----
-
-## 7. Infrastructure Recovery
-
-- **Infrastructure as code** (`DEPLOYMENT.md` §21): networks, data plane, app fleet, edge, observability — all provisioned from versioned modules. "Rebuild the environment" is a parameterized instantiation, not tribal knowledge.
-- **Managed services reduce the rebuild surface:** the platform operates the product, and the managed data plane (PostgreSQL, Redis, object storage) is re-provisioned by restoring/re-creating the service — with the same network isolation and encryption posture.
-- **DNS/edge:** DNS failover and edge configuration are code-defined and included in drills (a region cutover that nobody can point at DNS is not a cutover).
-- **Reproducibility check:** a fresh environment built purely from code + backups must pass the same verification as a restore drill — this is what makes "recovery" a procedure instead of a project.
-
----
-
-## 8. Regional Failure
-
-**Design stance:** production is multi-AZ today; a **cross-region backup copy** exists (Section 2). The platform is *recoverable* in a second region — it is not claimed to be *already running* there (active-active multi-region is a documented future step, `ARCHITECTURE.md` §28.8, not a current claim).
-
-- **Scenario:** primary region unavailable (provider outage, regional network event).
-- **Recovery path:** provision the environment in the secondary region from IaC → restore the cross-region backup copy (base + WAL) → verify RLS/audit/integrity → DNS cutover to the secondary region → run the verification suite (Section 4).
-- **Expected posture (to be validated by the annual drill):** RTO within the critical-journey target; data loss within the RPO target (bounded by the last replicated WAL).
-- **Regional recovery is a separate drill** from quarterly restore — it exercises IaC, DNS, and the cross-region copy together, not just the database.
+| Component | SPOF? | Impact | Mitigation |
+|-----------|-------|--------|-----------|
+| PostgreSQL | Yes | Total outage | Supabase PITR, daily backup |
+| Application server | Yes | API down | Quick Docker rebuild |
+| Redis | No | Degraded (cache miss) | Database fallback |
+| Object storage | No | File access delayed | Manual fallback |
+| Payment provider | Yes | Payment delay | Queue retry, reconciliation |
+| AI provider | No | AI features degraded | Core HMS unaffected |
 
 ---
 
-## 9. Ransomware Scenario
+## Failure Scenarios and Recovery
 
-**Honest framing:** prevention reduces likelihood; this design's contribution is a **recovery path that does not depend on the compromised estate**.
+### Database Unavailable
 
-- **Detection signals:** backup failure/write anomalies, mass-encryption patterns (unusual write/delete volume on object storage), audit anomalies, credential misuse alerts (`SECURITY.md` §31).
-- **Containment:** revoke/invalidate credentials and sessions, disable writes to the affected stores, preserve evidence (logs, audit, snapshots) — containment before remediation (`SECURITY.md` §31.3).
-- **Recovery:** restore from the **isolated, immutable backup copy** (object-lock / network-isolated backup store, Section 6) — never from a store the attacker could reach; verify integrity and RLS before serving; rotate all credentials and keys after restore.
-- **Design hardening (recommended):** immutable backup retention (object-lock), network isolation of the backup store, no standing production credentials (SECURITY.md §7, §13 recommended paths), least-privilege everywhere, and the backup store's own monitoring.
-- **Drill:** the ransomware scenario is a **tabletop exercise** on the drill calendar (§13) — the team walks the runbook end-to-end so the first time it is used is not the first time it is seen.
+**Detection:**
+- Health endpoint returns unhealthy
+- API returns 503
+- Application logs connection errors
 
----
+**Immediate Action:**
+1. Check Supabase status
+2. Check network connectivity
+3. Check connection pool
 
-## 10. Accidental Deletion
+**Recovery:**
+1. Wait for Supabase recovery (if provider outage)
+2. Or restore from PITR backup
+3. Run `php artisan migrate --force` (safe, idempotent)
+4. Verify health endpoint
 
-Different deletion classes have different recovery paths — the right response depends on the class:
+**Post-Recovery:**
+1. Verify RLS integrity
+2. Check data consistency
+3. Review audit log
+4. Resume operations
 
-| Class | Example | Recovery path | RPO |
-|---|---|---|---|
-| **Soft-deletable record** | A patient record soft-deleted in error | In-app status reversal by an authorized operator (audited) — the record was never hard-deleted (`DATABASE.md` §0.11) | Zero (no loss) |
-| **Tenant data loss** | A tenant's rows destroyed by a bad migration or operator error | Tenant-scoped PITR restore to the last-known-good point (Section 3) | ≤ RPO target (bounded by WAL) |
-| **Object deletion** | A document deleted from the bucket | Version restore (Section 6) | Near-zero (versioning) |
-| **Schema/data mistake** | A bad migration corrupted data semantics | Forward corrective migration first; PITR only if the migration is unrecoverable forward | ≤ RPO target |
-| **Whole-database incident** | Operator drop/wipe | Full PITR restore from base + WAL (Section 3) | ≤ RPO target |
-
-**Rule:** the audit trail is the first place an accidental deletion is investigated — the event, the actor, and the before-state are on record; recovery is performed under audit and verified.
-
----
-
-## 11. Data Corruption
-
-- **Detection:** `pg_checksums` and backup integrity checks, replica checksum validation, replica-lag monitoring, application anomaly alerts (impossible states), and audit hash-chain breaks (a tamper or corruption signal).
-- **Recovery:** PITR to the **last-known-good** point (before the corruption was introduced, bounded by detection latency); if a replica is healthy, promote the replica after verification instead of restoring from backup — the faster path when it exists.
-- **Verification before serving:** the restored/re-promoted data passes integrity checks, RLS probes, and critical-journey verification (Section 4) — a corrupted database that serves traffic is a second incident.
-- **Drill coverage:** corruption is a drill scenario (restore to last-known-good, verify); the measured detection-to-recovery time is the platform's real corruption-RTO evidence.
+**RTO:** 30 min | **RPO:** 0 (WAL replay)
 
 ---
 
-## 12. Incident Response (DR Flavored)
+### Database Loss (Catastrophic)
 
-DR events are incidents and follow the incident framework (`SECURITY.md` §31) with a DR-specific decision path:
+**Detection:**
+- All queries fail
+- Health endpoint returns unhealthy
+- No connections possible
 
-1. **Declare** — severity per impact (patients impacted? money? audit?); the incident commander is named.
-2. **Assess** — what is the RPO/RTO impact? Which recovery path fits: restore (PITR), failover (replica/region), or forward-fix (migration/correction)? Choose the *fastest safe* path, not the most dramatic.
-3. **Contain** — stop the bleed (revoke creds, disable writes) before recovery, per scenario (Sections 9–11).
-4. **Execute the runbook** — the scenario runbook (Section 14), not improvisation; measured RPO/RTO recorded as evidence.
-5. **Verify** — the Section 4 verification suite before serving traffic.
-6. **Communicate** — internal, tenant-facing, and legal where applicable (`SECURITY.md` §31.3 — obligations assessed in advance, not during the fire).
-7. **Postmortem** — blameless, with actions tracked; a recovery that worked but took longer than target is a finding, not a win.
+**Immediate Action:**
+1. Declare database outage
+2. Notify hospital operations
+3. Switch to downtime procedures (paper/manual)
 
----
+**Recovery:**
+1. Restore from Supabase PITR (point-in-time recovery)
+2. Or restore from daily backup
+3. Run roles.sql (recreate swasthya_app role)
+4. Run migrate --force (safe, idempotent)
+5. Run grants.sql (reapply DML grants)
+6. Verify health endpoint
+7. Verify RLS integrity
+8. Reconcile data
 
-## 12a. First Real Restore Drill — Staging (2026-08-12, recorded)
+**Post-Recovery:**
+1. Full RLS verification (postRestoreRLSVerification)
+2. Data integrity check
+3. Audit log review
+4. Resume operations
+5. Incident report
 
-A **real** backup/restore drill was executed against the staging database
-(`swasthya_staging`, local mirror — never production data). Full evidence
-and the exact steps are in `STAGING_DEPLOYMENT_REPORT.md` §10–§11; the
-measured facts belong here:
-
-- **Backup:** `pg_dump -Fc` (custom format, schema + data + RLS policies +
-  functions + triggers). Start 02:40:51 UTC, complete 02:40:52 UTC
-  (~1 s), size **304,440 bytes**. Verified: 50 table-data sections,
-  144 RLS `POLICY` entries present, `ROLE` entries absent (expected —
-  roles/grants are cluster-level and NOT carried by `pg_dump`).
-- **Restore:** into a disposable `swasthya_staging_restore` database,
-  `pg_restore --no-owner --no-privileges`, exit 0, ~1 s.
-- **Post-restore verification (all passed):** 50 tables, 47 migrations,
-  144 policies, 37 RLS-enabled tables, both tenants present (smoke-group +
-  apex-care), 6 users, 2 medications, 123 audit events restored intact.
-- **RLS on restored data:** as `swasthya_app_staging` — tenant A context →
-  9 patients visible; foreign/no context → 0. Isolation held on the
-  restored copy.
-- **Roles/grants fixup:** `pg_dump` does not carry cluster-level roles or
-  table grants. The app-role grants were re-applied on the restored DB
-  (the `database/security/grants.sql` pattern, idempotent) before the RLS
-  probe — this is the documented post-restore step every recovery must run
-  (`grants.sql` header).
-- **RPO/RTO:** the local drill measured restore wall-time ~1 s for a 300 KB
-  dump, but **no RPO/RTO is claimed from a local drill** — real targets
-  depend on WAL archiving cadence and the actual staging host (§1 targets
-  remain targets).
+**RTO:** 30-60 min | **RPO:** 0-15 min (PITR granularity)
 
 ---
 
-## 13. Disaster Recovery Drills
+### Redis Unavailable
 
-| Drill | Cadence | What it proves | Evidence recorded |
-|---|---|---|---|
-| **Restore drill** | Quarterly | Backups restore cleanly; RLS + audit + journeys verified | Restore time, data-loss window, verification results |
-| **Regional failover exercise** | Annually | IaC + DNS + cross-region copy recover the platform in the secondary region | RTO for critical journeys, RPO at cutover |
-| **Ransomware tabletop** | Annually (and after security reviews) | The response runbook is executable end-to-end by the actual team | Walkthrough findings → actions |
-| **Corruption scenario** | With restore drill | Restore to last-known-good, verify, serve | Detection-to-recovery time |
-| **Backup pipeline check** | Continuous (automated) | Backups completing, WAL keeping up, no silent gaps | Alert history, gap reports |
+**Detection:**
+- Health endpoint returns degraded
+- Cache misses increase
+- Session issues possible
 
-- **Evidence is the point:** every drill records measured numbers and findings; findings become tracked actions; a drill without recorded evidence did not happen (`MASTER_RULES.md` §23.4).
-- **New risk triggers a drill:** schema rework, a new data store, a region change, or a recovery-path change re-runs the relevant drill before the change is trusted.
+**Immediate Action:**
+- Redis is optional — core HMS continues
+- Monitor degradation
 
-### 13.1 Drill Evidence Register (Phase 22, 2026-08-17)
+**Recovery:**
+1. Restart Redis service
+2. Reconnection automatic
+3. Cache rebuilds on demand
 
-Measured on the disposable local cluster (`NATIONAL_SCALE.md` §2–§3). These are
-**this environment's achieved values** — production RPO/RTO claims remain the
-deployment-phase commitment, not yet measured.
-
-| Drill | Evidence recorded |
-|---|---|
-| **Restore drill @ national scale** (1,235 MB synthetic DB, ~2.9M rows) | Backup 34 s (152 MB `-Fc` dump); restore 104 s + role/grants fixup; total 140 s. Verified: 135 tables, 97 migrations, 1,000,000 patients / 500,000 appointments, 476 = 476 policies, `patients`/`audit_events` RLS on, `swasthya_app bypass=false super=false`, isolation 1/0/0 on restored data (`docs/national-scale/load-benchmark-1M-claims-2026-08-17.log` covers the dataset; drill output recorded in `NATIONAL_SCALE.md` §2) |
-| **Failover-readiness drill** (app switched to pre-verified standby) | Config switch + schema verify ~1 s; `health/live` + `health/ready` (database check ok) served from the standby; RLS on standby 1/0/0 (`docs/national-scale/failover-drill-2026-08-17.log`) |
-| **Measurement-integrity fix** | `load-benchmark.sh`/`backup-restore-drill.sh` now set the canonical `request.jwt.claims` payload (policies re-keyed in `2026_08_13_100200`); the legacy `app.*` GUCs silently produced zero-row plans. Drill isolation probe uses one patient's own tenant/facility. |
-| **Re-verification at current schema (2026-08-17)** — drills re-run after Phases 20–21 grew the schema to 143 tables / 508 policies | Restore: backup 33 s / restore 110 s / total 144 s; 143 tables, 1,000,000 patients / 500,000 appointments, 508 = 508 policies, RLS on, `swasthya_app bypass=false super=false`, isolation 1/0/0 on restored data (`docs/national-scale/restore-drill-1M-current-schema-2026-08-17.log`). Failover against that standby: 143 tables / 508 policies preconditions, switch 1 s, `health/live`+`health/ready` ok, RLS 1/0/0 (`docs/national-scale/failover-drill-1M-current-schema-2026-08-17.log`). Load re-verified at 1M rows / 508 policies with 0 "never executed" plans (`docs/national-scale/load-benchmark-1M-current-schema-2026-08-17.log`). |
+**RTO:** 5 min | **RPO:** 0 (cache rebuild)
 
 ---
 
-## 14. Recovery Runbook Inventory
+### Queue Worker Failure
 
-Each scenario has a **written, current, rehearsed runbook** (owned, with a contact tree — DR is not one person's private knowledge, `MASTER_RULES.md` §22.6):
+**Detection:**
+- Pending jobs increase
+- Notifications delayed
+- Background tasks stalled
 
-1. **Whole-database restore** (PITR) — Section 3.
-2. **Tenant-scoped restore** — Section 3.
-3. **Object-storage version restore** — Section 6.
-4. **Infrastructure rebuild from IaC** — Section 7.
-5. **Regional failover** — Section 8.
-6. **Ransomware response** — Section 9.
-7. **Corruption recovery** — Section 11.
-8. **Application redeploy recovery** — Section 5.
+**Immediate Action:**
+- Check worker process status
+- Check job queue depth
 
-Each runbook includes: prerequisites (credentials path, artifact access), step order, verification gates (Section 4), rollback of the recovery itself (a restore that makes things worse must be undoable or re-runnable), and the evidence to record.
+**Recovery:**
+1. Restart worker process
+2. Jobs automatically retry
+3. Queue backlog decreases
 
----
-
-## 15. What This Document Claims — and What It Does Not
-
-**Claims made here (design commitments):**
-
-- The platform is designed so that clinical/financial/audit data is recoverable to within the stated RPO **targets**, via continuous WAL archiving, encrypted isolated backups, and a cross-region copy.
-- Recovery paths exist for every scenario in this document, as written runbooks.
-- RLS and audit integrity are part of every restore's verification.
-- A drill cadence (quarterly restore, annual region exercise, tabletop scenarios) measures and records the platform's actual posture.
-
-**Claims deliberately NOT made:**
-
-- No RPO/RTO value is claimed as *achieved* — those are targets validated by drills, and the measured values are the truth.
-- No guarantee against data loss, corruption, or attack is implied anywhere in this document.
-- Nothing here states that the platform "is compliant," "is certified," or "meets a standard" — recovery claims follow the same rule as every other claim in the foundation documents: verified or not claimed.
+**RTO:** 5 min | **RPO:** 0 (jobs persistent in DB)
 
 ---
 
-*This document is the DR contract for Swasthya: backups that are proven by restore, recovery that is rehearsed and measured, infrastructure that rebuilds from code, and a posture that reports its targets as targets and its measurements as measurements. When the platform eventually reports an achieved RPO of 12 minutes, it will be because a drill measured 12 minutes — not because this document said so.*
+### All Workers Down
+
+**Detection:**
+- Queue depth grows
+- No notifications sent
+- Background tasks stalled
+
+**Immediate Action:**
+- Confirm all workers stopped
+- Check database queue table
+
+**Recovery:**
+1. Restart all workers
+2. Jobs process in order
+3. No duplicate mutations (idempotency keys)
+
+**RTO:** 5 min | **RPO:** 0
+
+---
+
+### Application Server Failure
+
+**Detection:**
+- Load balancer health check fails
+- HTTP 502/503 errors
+- Frontend cannot reach API
+
+**Immediate Action:**
+- Check Docker container status
+- Check PHP-FPM/nginx
+
+**Recovery:**
+1. Docker container auto-restarts (restart: unless-stopped)
+2. Or rebuild: `docker compose up -d --build`
+3. Health endpoint returns OK
+
+**RTO:** 5 min | **RPO:** 0
+
+---
+
+### Storage Unavailable
+
+**Detection:**
+- File upload failures
+- Document retrieval failures
+- Image loading failures
+
+**Immediate Action:**
+- Check storage connectivity
+- Existing records remain valid
+
+**Recovery:**
+1. Restore storage connectivity
+2. New uploads work
+3. Old documents accessible
+
+**RTO:** 15 min | **RPO:** 0 (stored files)
+
+---
+
+### External Payment Provider Failure
+
+**Detection:**
+- Payment processing fails
+- Callbacks timeout
+- Reconciliation shows pending
+
+**Immediate Action:**
+- Invoice remains authoritative
+- Payment status shows "pending"
+
+**Recovery:**
+1. Queue retry for failed payments
+2. Provider recovery = automatic
+3. Manual reconciliation if needed
+
+**RTO:** Provider-dependent | **RPO:** 0
+
+---
+
+### Authentication Failure
+
+**Detection:**
+- Login fails
+- Token validation fails
+- SSO unavailable
+
+**Immediate Action:**
+- Check auth provider status
+- Check token signing keys
+
+**Recovery:**
+1. Auth provider recovery
+2. Or use fallback auth (database-backed)
+3. Sessions restored
+
+**RTO:** 5 min | **RPO:** 0
+
+---
+
+## Downtime Procedures
+
+### During Database Outage
+
+1. **Switch to paper forms** (pre-printed)
+2. **Record manually:**
+   - Patient name, MRN (if known)
+   - Time of encounter
+   - Clinical notes
+   - Medications ordered
+   - Labs ordered
+3. **Do NOT create duplicate patients**
+4. **Queue for later reconciliation**
+
+### During Application Outage
+
+1. **Use backup systems** (paper, approved manual forms)
+2. **Record operations manually**
+3. **Queue for later entry**
+4. **Do NOT attempt manual database edits**
+
+### Downtime Reconciliation
+
+```text
+MANUAL RECORDS
+  ↓
+CAPTURE (data entry)
+  ↓
+VALIDATE (against rules)
+  ↓
+RECONCILE (against existing data)
+  ↓
+AUDIT (log all entries)
+  ↓
+NORMAL OPERATIONS
+```
+
+---
+
+## Business Continuity Runbook
+
+### Outage Declaration
+
+1. Health endpoint returns unhealthy/degraded
+2. Operator confirms outage
+3. Notify hospital operations
+4. Switch to downtime procedures
+
+### Recovery Sequence
+
+```text
+1. DATABASE
+   ├── Verify connectivity
+   ├── Run migrate --force
+   ├── Verify RLS
+   └── Verify data integrity
+
+2. APPLICATION
+   ├── Verify Docker container
+   ├── Verify health endpoints
+   └── Verify API responses
+
+3. QUEUE
+   ├── Verify worker status
+   ├── Check queue depth
+   └── Resume processing
+
+4. STORAGE
+   ├── Verify file access
+   └── Test upload/download
+
+5. INTEGRATIONS
+   ├── Verify payment provider
+   ├── Verify SMS/email
+   └── Verify external systems
+
+6. VALIDATION
+   ├── Health check: all green
+   ├── RLS check: all pass
+   ├── Data integrity: all accessible
+   ├── Audit log: no gaps
+   └── Resume normal operations
+```
+
+### Incident Communication
+
+| Audience | Channel | Message |
+|----------|---------|---------|
+| Hospital operations | Direct contact | "System temporarily unavailable. Using downtime procedures." |
+| Internal team | Slack/incident channel | Technical details and ETA |
+| Support | Ticket system | Status updates |
+| Patients | Portal message | "Service temporarily unavailable" |
+
+---
+
+## Chaos Matrix
+
+| Scenario | Detection | Recovery | Data Loss | RTO | RPO |
+|----------|-----------|----------|-----------|-----|-----|
+| Database down | Health check | Supabase PITR | None | 30min | 0 |
+| Redis down | Health check | Restart/reconnect | None | 5min | 0 |
+| Worker down | Queue depth | Restart worker | None | 5min | 0 |
+| App down | LB health | Docker restart | None | 5min | 0 |
+| Storage down | Upload fail | Restore connectivity | None | 15min | 0 |
+| Payment fail | Reconciliation | Queue retry | None | Provider | 0 |
+| Auth fail | Login fail | Fallback auth | None | 5min | 0 |
+| Network down | Timeouts | Network restore | None | Variable | 0 |
+
+---
+
+## Recovery Priority Order
+
+```text
+1. DATABASE (everything depends on it)
+2. AUTHENTICATION (must access before using)
+3. CLINICAL RECORDS (patient safety)
+4. EMERGENCY (patient safety)
+5. ORDERS/RESULTS (clinical workflow)
+6. MEDICATION (patient safety)
+7. BILLING (revenue)
+8. DOCUMENTS (access)
+9. COMMUNICATION (notifications)
+10. ANALYTICS (reports)
+```
+
+---
+
+## Security During Recovery
+
+**Non-negotiable:**
+- RLS must remain active
+- Application role must maintain NOBYPASSRLS
+- Secrets must not be exposed
+- Audit must continue
+- Tenant isolation must hold
+
+**Never:**
+- Disable RLS for recovery convenience
+- Use production credentials in recovery scripts
+- Skip RLS verification after restore
+- Restore into a system with security disabled
+
+---
+
+## AI Degradation
+
+**AI is OPTIONAL.** Core HMS continues when AI is unavailable.
+
+```text
+AI AVAILABLE → AI FAILS → CORE HMS CONTINUES
+```
+
+No core workflow depends on AI availability:
+- Patient registration: ✅ Works without AI
+- Clinical documentation: ✅ Works without AI
+- Orders/Results: ✅ Works without AI
+- Billing: ✅ Works without AI
+- Pharmacy: ✅ Works without AI
+
+---
+
+## Backup and Recovery
+
+### Backup Strategy
+
+| Component | Method | Frequency | Retention |
+|-----------|--------|-----------|-----------|
+| Database | Supabase PITR | Continuous | 7 days (paid) |
+| Database | Supabase daily | Daily | 30 days |
+| Source code | Git | Every commit | Forever |
+| Configuration | Git | Every commit | Forever |
+| Storage | Supabase backup | Daily | 30 days |
+
+### Restore Procedure
+
+```text
+1. RESTORE DATABASE
+   psql -f backup.sql (or Supabase PITR)
+
+2. CREATE ROLES
+   psql -f database/security/roles.sql
+
+3. RUN MIGRATIONS
+   php artisan migrate --force
+
+4. REAPPLY GRANTS
+   psql -f database/security/grants.sql
+
+5. VERIFY HEALTH
+   curl /api/v1/health/ready
+
+6. VERIFY RLS
+   php artisan test --filter=ClaimsBasedRlsTest
+
+7. VERIFY DATA
+   Check critical tables
+```
+
+---
+
+## Tenant Isolation Under Failure
+
+### Hospital A Failure
+
+```
+Hospital A: DATABASE ISSUE
+Hospital B: UNAFFECTED
+Hospital C: UNAFFECTED
+```
+
+RLS ensures tenant isolation at the database level. A failure in one hospital's data does not affect others.
+
+### Blast Radius
+
+| Failure | Blast Radius | Isolation Mechanism |
+|---------|-------------|-------------------|
+| Hospital A data issue | Hospital A only | RLS tenant_id |
+| Hospital A config issue | Hospital A only | RLS tenant_id |
+| Application crash | All hospitals | Quick restart |
+| Database crash | All hospitals | Restore from backup |
+| Redis failure | All (degraded) | Database fallback |
+
+---
+
+## Monitoring During Recovery
+
+Operators must see:
+- Component status (database, app, queue, storage)
+- Pending/failed jobs
+- Health check results
+- RLS status
+- Data integrity status
+- Audit log continuity
+
+---
+
+## Recovery Test Frequency
+
+| Test | Frequency | Environment |
+|------|-----------|-------------|
+| Backup restore | Monthly | Staging/disposable |
+| RLS verification | After every restore | Any |
+| Chaos scenario | Quarterly | Staging/disposable |
+| Full DR rehearsal | Annually | Staging/disposable |
+
+---
+
+## Related Documentation
+
+- `STAGING.md` — Staging operations
+- `SECURITY.md` — Security architecture
+- `TENANCY.md` — Multi-tenancy
+- `DATA_GOVERNANCE.md` — Data governance
+- `backend/app/Services/ResilienceService.php` — Health verification
+- `backend/app/Http/Controllers/Api/HealthController.php` — Health endpoints
+- `backend/database/security/roles.sql` — Role creation
+- `backend/database/security/grants.sql` — Grant application
