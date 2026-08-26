@@ -2,6 +2,7 @@ import type { LucideIcon } from 'lucide-react';
 import type { MessageKey } from '../i18n/locales/en';
 import {
   LayoutDashboard,
+  Briefcase,
   Stethoscope,
   Siren,
   Bed,
@@ -99,6 +100,17 @@ export const MODULES: NavModule[] = [
     defaultTo: '/dashboard',
     routePrefix: '/dashboard',
     persistent: true,
+    children: [],
+  },
+
+  // ── MY WORK (staff-centered operational workspace) ──
+  {
+    key: 'mywork',
+    labelKey: 'nav.myWork',
+    Icon: Briefcase,
+    roles: ['superadmin', 'hospital_admin', 'org_admin', 'doctor', 'nurse', 'pharmacist', 'lab_technician', 'lab_supervisor', 'radiologist', 'radiographer', 'billing_clerk', 'receptionist', 'org_finance', 'branch_manager'],
+    defaultTo: '/my-work',
+    routePrefix: '/my-work',
     children: [],
   },
 

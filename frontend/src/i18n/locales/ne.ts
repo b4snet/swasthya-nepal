@@ -10,6 +10,7 @@ import type { MessageKey } from './en';
 export const messages: Record<MessageKey, string> = {
   'app.name': 'स्वास्थ्य',
   'nav.dashboard': 'ड्यासबोर्ड',
+  'nav.myWork': 'मेरो काम',
   'nav.patients': 'बिरामीहरू',
   'nav.patientImport': 'आयात',
   'nav.appointments': 'अपोइन्टमेन्टहरू',

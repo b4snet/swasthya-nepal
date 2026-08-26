@@ -74,6 +74,7 @@ const LabOrdersPage = lazy(() => import('./pages/LabOrdersPage').then(m => ({ de
 const QualityPage = lazy(() => import('./pages/QualityPage').then(m => ({ default: m.QualityPage })));
 const OrchestrationPage = lazy(() => import('./pages/OrchestrationPage').then(m => ({ default: m.OrchestrationPage })));
 const HrPage = lazy(() => import('./pages/HrPage').then(m => ({ default: m.HrPage })));
+const StaffWorkspace = lazy(() => import('./pages/StaffWorkspace').then(m => ({ default: m.StaffWorkspace })));
 const AssetPage = lazy(() => import('./pages/AssetPage').then(m => ({ default: m.AssetPage })));
 const ResearchPage = lazy(() => import('./pages/ResearchPage').then(m => ({ default: m.ResearchPage })));
 const InteropPage = lazy(() => import('./pages/InteropPage').then(m => ({ default: m.InteropPage })));
@@ -250,7 +251,8 @@ export function App() {
               <Route path="/quality" element={<LazySuspense><QualityPage /></LazySuspense>} />
               <Route path="/orchestration" element={<LazySuspense><OrchestrationPage /></LazySuspense>} />
               <Route path="/quality/audit" element={<LazySuspense><AuditPage /></LazySuspense>} />
-              {/* ═══ STAFF & HR ═══ */}
+              {/* ═══ STAFF WORKSPACE ═══ */}
+              <Route path="/my-work" element={<LazySuspense><StaffWorkspace /></LazySuspense>} />
               <Route path="/hr" element={<LazySuspense><HrPage /></LazySuspense>} />
               <Route path="/assets" element={<LazySuspense><AssetPage /></LazySuspense>} />
 
