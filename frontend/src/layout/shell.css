@@ -1,6 +1,6 @@
 /* ==========================================================================
-   SWASTHYA Application Shell — Premium Clinical Enterprise Layout
-   White header, white sidebar, light content surface.
+   SWASTHYA Application Shell — Contextual Workspace Layout
+   White header, minimal sidebar, contextual workspace launcher, light content.
    ========================================================================== */
 
 /* ── Shell Layout ──────────────────────────────────────────────── */
@@ -67,7 +67,7 @@
   min-height: 0;
 }
 
-/* ── Single Sidebar ───────────────────────────────────────────── */
+/* ── Single Sidebar (primary domains only — no expanding children) ── */
 .sidebar {
   width: 240px;
   min-height: 0;
@@ -90,11 +90,6 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-0-5);
-}
-
-.sidebar__group {
-  display: flex;
-  flex-direction: column;
 }
 
 .sidebar__item {
@@ -126,6 +121,12 @@
   font-weight: var(--weight-semibold);
 }
 
+.sidebar__item--domain-active {
+  background: var(--blue-50);
+  border-left: 3px solid var(--blue-500);
+  padding-left: calc(var(--space-3) - 3px);
+}
+
 .sidebar__icon {
   display: flex;
   align-items: center;
@@ -148,38 +149,8 @@
   transition: transform var(--duration-fast) var(--ease);
 }
 
-.sidebar__chevron--open {
-  transform: rotate(180deg);
-}
-
-.sidebar__children {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  padding: 0 0 var(--space-1) 0;
-}
-
-.sidebar__child {
-  display: flex;
-  align-items: center;
-  padding: var(--space-1-5) var(--space-3) var(--space-1-5) 44px;
-  border-radius: var(--radius-md);
-  font-size: var(--text-small);
-  font-weight: var(--weight-medium);
-  color: var(--text-secondary);
-  text-decoration: none;
-  transition: all var(--duration-fast) var(--ease);
-}
-
-.sidebar__child:hover {
-  background: var(--interactive-quiet-hover);
-  color: var(--text-primary);
-}
-
-.sidebar__child--active {
-  background: var(--blue-50);
-  color: var(--blue-600);
-  font-weight: var(--weight-semibold);
+.sidebar__chevron--active {
+  color: var(--blue-500);
 }
 
 .sidebar__collapse-btn {
@@ -574,22 +545,6 @@
 
   .mobile-sheet__item:hover {
     background: var(--interactive-quiet-hover);
-  }
-
-  .mobile-sheet__chevron {
-    margin-left: auto;
-    color: var(--text-tertiary);
-  }
-
-  .mobile-sheet__header {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-3) var(--space-4);
-    font-size: var(--text-label);
-    font-weight: var(--weight-semibold);
-    color: var(--text-primary);
-    border-bottom: 1px solid var(--border-subtle);
   }
 
   .facility-badge {

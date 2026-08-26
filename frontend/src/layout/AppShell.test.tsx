@@ -21,12 +21,12 @@ function sessionPayload(roles: string[]) {
 }
 
 /** Real session-restore path: seeded tokens make AuthProvider call /auth/refresh. */
-async function renderShell(roles: string[]) {
+async function renderShell(roles: string[], initialPath = '/dashboard') {
   localStorage.setItem('swasthya.refreshToken', 'rt-test');
   sessionStorage.setItem('swasthya.accessToken', 'at-test');
   stubFetch(sessionPayload(roles));
   render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[initialPath]}>
       <AuthProvider>
         <TenantProvider>
           <AppShell />
@@ -34,23 +34,21 @@ async function renderShell(roles: string[]) {
       </AuthProvider>
     </MemoryRouter>,
   );
-  // Wait for the app shell to render
   await waitFor(() => {
     expect(screen.queryByTestId('user-menu-trigger')).not.toBeNull();
   });
 }
 
 const countSidebar = (key: string) => screen.queryAllByTestId(`sidebar-${key}`).length;
+const countWorkspaces = (key: string) => screen.queryAllByTestId(new RegExp(`workspace-${key}-`)).length;
 
 describe('AppShell sidebar navigation', () => {
   it('shows sidebar with top-level modules', async () => {
     await renderShell(['superadmin']);
-    // Core modules should always be visible
     expect(countSidebar('clinical')).toBeGreaterThan(0);
     expect(countSidebar('pharmacy')).toBeGreaterThan(0);
     expect(countSidebar('finance')).toBeGreaterThan(0);
     expect(countSidebar('admin')).toBeGreaterThan(0);
-    // Dashboard always present
     expect(countSidebar('dashboard')).toBeGreaterThan(0);
   });
 
@@ -74,14 +72,18 @@ describe('AppShell sidebar navigation', () => {
     expect(countSidebar('admin')).toBeGreaterThan(0);
   });
 
-  it('shows children below clinical module for clinical roles', async () => {
-    await renderShell(['receptionist']);
-    // Click on clinical module to expand its children
-    const clinicalBtn = screen.getByTestId('sidebar-clinical');
-    clinicalBtn.click();
-    // Wait for children to appear with Queue
+  it('shows workspace launchers for clinical domain', async () => {
+    await renderShell(['receptionist'], '/clinical/patients');
+    // Contextual workspace should show clinical workspaces
     await waitFor(() => {
-      expect(screen.queryByTestId('sidebar-clin-queue')).not.toBeNull();
+      expect(countWorkspaces('clinical')).toBeGreaterThan(0);
+    });
+  });
+
+  it('shows workspace launchers for finance domain', async () => {
+    await renderShell(['billing_clerk'], '/finance/billing');
+    await waitFor(() => {
+      expect(countWorkspaces('finance')).toBeGreaterThan(0);
     });
   });
 
@@ -90,20 +92,17 @@ describe('AppShell sidebar navigation', () => {
     expect(countSidebar('finance')).toBeGreaterThan(0);
   });
 
-  it('shows billing child under finance for billing clerk', async () => {
-    await renderShell(['billing_clerk']);
-    const financeBtn = screen.getByTestId('sidebar-finance');
-    financeBtn.click();
-    await waitFor(() => {
-      expect(screen.queryByTestId('sidebar-fin-billing')).not.toBeNull();
-    });
-  });
-
   it('dashboard is always the first sidebar item', async () => {
     await renderShell(['doctor']);
     const dashboardBtn = screen.getByTestId('sidebar-dashboard');
-    // Dashboard should be before all other sidebar items
     const allSidebarItems = screen.getAllByTestId(/^sidebar-/);
     expect(allSidebarItems[0]).toBe(dashboardBtn);
+  });
+
+  it('shows contextual workspace for emergency domain', async () => {
+    await renderShell(['doctor'], '/emergency');
+    await waitFor(() => {
+      expect(countWorkspaces('emergency')).toBeGreaterThan(0);
+    });
   });
 });

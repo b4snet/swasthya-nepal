@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { CommandPalette } from '../components/CommandPalette';
 import { useAuth } from '../auth/AuthProvider';
 import { useTenant } from '../context/TenantContext';
@@ -11,7 +11,7 @@ import {
   LogOut,
   Globe,
   Building2,
-  ChevronDown,
+  ChevronRight,
   MoreHorizontal,
   Bell,
   Search,
@@ -24,6 +24,7 @@ import {
   filterModulesByRole,
   type NavModule,
 } from '../navigation/modules';
+import { ContextualWorkspace } from '../navigation/ContextualWorkspace';
 import './shell.css';
 
 /** Time-of-day greeting */
@@ -210,7 +211,7 @@ function SidebarUser() {
   );
 }
 
-// ── Single expandable sidebar ──
+// ── Sidebar: primary domain navigation only (no expanding children) ──
 function Sidebar({
   modules,
   pathname,
@@ -224,104 +225,51 @@ function Sidebar({
 }) {
   const { t } = useI18n();
   const navigate = useNavigate();
-  const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
-
-  // Auto-expand the module whose route is active
-  useEffect(() => {
-    const active = getActiveModule(pathname);
-    if (active && active.children.length > 0) {
-      setExpandedKeys((prev) => {
-        if (prev.has(active.key)) return prev;
-        return new Set(prev).add(active.key);
-      });
-    }
-  }, [pathname]);
-
-  const toggleExpand = (key: string) => {
-    setExpandedKeys((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  };
 
   const handleModuleClick = (m: NavModule) => {
     if (m.children.length === 0) {
+      // Dashboard — navigate directly
       navigate(m.defaultTo);
     } else {
-      toggleExpand(m.key);
-      // Also navigate to the module's default if not already there
-      if (pathname === '/' || (!pathname.startsWith(m.routePrefix))) {
+      // Operational domain — navigate to default AND let ContextualWorkspace show
+      if (pathname === '/' || !pathname.startsWith(m.routePrefix)) {
         navigate(m.defaultTo);
       }
+      // If already in this domain, clicking it again stays — no toggle needed
     }
   };
 
   const isActive = (m: NavModule) =>
     pathname === m.routePrefix || pathname.startsWith(m.routePrefix + '/');
 
-  const isChildActive = (m: NavModule) =>
-    m.children.some((c) => pathname === c.to || pathname.startsWith(c.to + '/'));
-
   return (
     <aside className={`sidebar ${collapsed ? 'sidebar--collapsed' : ''}`} role="navigation" aria-label="Main navigation">
       <div className="sidebar__items">
         {modules.map((m) => {
           const active = isActive(m);
-          const childActive = isChildActive(m);
-          const expanded = expandedKeys.has(m.key);
-          const hasChildren = m.children.length > 0;
+          const isActiveDomain = active && !m.persistent && m.children.length > 0;
 
           return (
-            <div key={m.key} className={`sidebar__group ${active ? 'sidebar__group--active' : ''} ${childActive ? 'sidebar__group--child-active' : ''}`}>
-              <button
-                type="button"
-                className={`sidebar__item ${active ? 'sidebar__item--active' : ''}`}
-                onClick={() => handleModuleClick(m)}
-                title={t(m.labelKey)}
-                aria-label={t(m.labelKey)}
-                aria-expanded={hasChildren ? expanded : undefined}
-                aria-current={active && !hasChildren ? 'page' : undefined}
-                data-testid={`sidebar-${m.key}`}
-              >
-                <span className="sidebar__icon">
-                  <m.Icon size={18} strokeWidth={1.75} />
-                </span>
-                {!collapsed && (
-                  <>
-                    <span className="sidebar__label">{t(m.labelKey)}</span>
-                    {hasChildren && (
-                      <ChevronDown
-                        size={14}
-                        className={`sidebar__chevron ${expanded ? 'sidebar__chevron--open' : ''}`}
-                      />
-                    )}
-                  </>
-                )}
-              </button>
-
-              {/* Children expand below the parent */}
-              {!collapsed && hasChildren && expanded && (
-                <div className="sidebar__children">
-                  {m.children.map((child) => {
-                    const childIsCurrent =
-                      pathname === child.to ||
-                      (child.to !== m.defaultTo && pathname.startsWith(child.to + '/'));
-                    return (
-                      <NavLink
-                        key={child.key}
-                        to={child.to}
-                        className={`sidebar__child ${childIsCurrent ? 'sidebar__child--active' : ''}`}
-                        data-testid={`sidebar-${child.key}`}
-                      >
-                        {t(child.labelKey)}
-                      </NavLink>
-                    );
-                  })}
-                </div>
+            <button
+              key={m.key}
+              type="button"
+              className={`sidebar__item ${active ? 'sidebar__item--active' : ''} ${isActiveDomain ? 'sidebar__item--domain-active' : ''}`}
+              onClick={() => handleModuleClick(m)}
+              title={t(m.labelKey)}
+              aria-label={t(m.labelKey)}
+              aria-current={active && m.persistent ? 'page' : undefined}
+              data-testid={`sidebar-${m.key}`}
+            >
+              <span className="sidebar__icon">
+                <m.Icon size={18} strokeWidth={1.75} />
+              </span>
+              {!collapsed && (
+                <span className="sidebar__label">{t(m.labelKey)}</span>
               )}
-            </div>
+              {!collapsed && !m.persistent && m.children.length > 0 && active && (
+                <ChevronRight size={14} className="sidebar__chevron sidebar__chevron--active" />
+              )}
+            </button>
           );
         })}
       </div>
@@ -369,11 +317,11 @@ function Breadcrumbs({
   return (
     <nav className="breadcrumbs" aria-label="Breadcrumb">
       <span className="breadcrumbs__item breadcrumbs__item--muted">Swasthya</span>
-      <span className="breadcrumbs__sep">/</span>
+      <ChevronRight size={12} className="breadcrumbs__sep" />
       <span className="breadcrumbs__item">{t(activeModule.labelKey)}</span>
       {activeChild && activeChild.to !== activeModule.defaultTo && (
         <>
-          <span className="breadcrumbs__sep">/</span>
+          <ChevronRight size={12} className="breadcrumbs__sep" />
           <span className="breadcrumbs__item breadcrumbs__item--current">{t(activeChild.labelKey)}</span>
         </>
       )}
@@ -459,13 +407,17 @@ export function AppShell() {
         </div>
       </header>
 
+      {/* ── Contextual workspace launcher (between header and content) ── */}
+      <ContextualWorkspace activeModule={activeModule} pathname={location.pathname} />
+
       <div className="app-body">
-        {/* ── Single sidebar ── */}
+        {/* ── Primary domain sidebar (no expanding children) ── */}
         <Sidebar
           modules={sidebarModules}
           pathname={location.pathname}
           collapsed={sidebarCollapsed}
           onToggleCollapse={() => setSidebarCollapsed((v) => !v)}
+
         />
 
         {/* ── Content ── */}
