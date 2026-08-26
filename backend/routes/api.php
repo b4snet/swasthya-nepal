@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\ComplianceController;
 use App\Http\Controllers\Api\ConsentController;
 use App\Http\Controllers\Api\CriticalValueEventController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\DataGovernanceController;
 use App\Http\Controllers\Api\DepartmentController;
 use App\Http\Controllers\Api\DoctorScheduleController;
 use App\Http\Controllers\Api\DocumentCenterController;
@@ -235,6 +236,23 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
     // Audit (audit:view only — no edit/delete path exists).
     Route::get('audit-events', [AuditController::class, 'index'])
         ->middleware('authorize:audit:view');
+
+    // Data Governance (PHASE 91) — classification, retention, export authorization,
+    // correction workflows, tenant offboarding readiness.
+    Route::middleware(['authorize:admin:manage'])->prefix('governance')->group(function (): void {
+        Route::get('classification', [
+            DataGovernanceController::class, 'classification',
+        ]);
+        Route::get('retention', [
+            DataGovernanceController::class, 'retention',
+        ]);
+        Route::get('offboarding-readiness', [
+            DataGovernanceController::class, 'offboardingReadiness',
+        ]);
+        Route::get('export-manifest', [
+            DataGovernanceController::class, 'exportManifest',
+        ]);
+    });
 
     // Phase 4 — Hospital Administration catalogs. Reads scope to the
     // caller's facility; writes resolve the facility from the context or a
