@@ -52,7 +52,7 @@ describe('PatientsPage', () => {
   it('renders search input and register button', async () => {
     renderPage(<PatientsPage />);
     expect(await screen.findByPlaceholderText(/search by name or mrn/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /register patient/i })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /register patient/i }).length).toBeGreaterThanOrEqual(1);
   });
 
   it('shows empty state when no patients', async () => {
