@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { CommandPalette } from '../components/CommandPalette';
 import { useAuth } from '../auth/AuthProvider';
@@ -7,6 +7,7 @@ import { useNetworkStatus } from '../hooks/useNetworkStatus';
 import { useI18n } from '../i18n/I18nProvider';
 import { Button, Dialog } from '../components/ui';
 import { useAccess } from '../auth/useAccess';
+import { DomainCommandSurface } from '../components/DomainCommandSurface';
 import {
   LogOut,
   Globe,
@@ -217,11 +218,13 @@ function Sidebar({
   pathname,
   collapsed,
   onToggleCollapse,
+  onDomainClick,
 }: {
   modules: NavModule[];
   pathname: string;
   collapsed: boolean;
   onToggleCollapse: () => void;
+  onDomainClick: (m: NavModule) => void;
 }) {
   const { t } = useI18n();
   const navigate = useNavigate();
@@ -231,11 +234,8 @@ function Sidebar({
       // Dashboard — navigate directly
       navigate(m.defaultTo);
     } else {
-      // Operational domain — navigate to default AND let ContextualWorkspace show
-      if (pathname === '/' || !pathname.startsWith(m.routePrefix)) {
-        navigate(m.defaultTo);
-      }
-      // If already in this domain, clicking it again stays — no toggle needed
+      // Domain with children — open contextual command surface
+      onDomainClick(m);
     }
   };
 
@@ -368,6 +368,18 @@ export function AppShell() {
   // Sidebar collapsed state
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
+  // Domain command surface state
+  const [activeDomain, setActiveDomain] = useState<NavModule | null>(null);
+  const handleDomainClick = useCallback((m: NavModule) => {
+    setActiveDomain((prev) => (prev?.key === m.key ? null : m));
+  }, []);
+  const closeDomainSurface = useCallback(() => setActiveDomain(null), []);
+
+  // Close domain surface on route change
+  useEffect(() => {
+    setActiveDomain(null);
+  }, [location.pathname]);
+
   // Mobile bottom nav
   const mobileModules = visibleModules.slice(0, 4);
   const moreModules = visibleModules.slice(4);
@@ -439,11 +451,19 @@ export function AppShell() {
           pathname={location.pathname}
           collapsed={sidebarCollapsed}
           onToggleCollapse={() => setSidebarCollapsed((v) => !v)}
-
+          onDomainClick={handleDomainClick}
         />
 
         {/* ── Content ── */}
         <main className="app-content" id="content" tabIndex={-1}>
+          {/* Domain command surface — contextual launcher */}
+          {activeDomain && (
+            <DomainCommandSurface
+              module={activeDomain}
+              open={!!activeDomain}
+              onClose={closeDomainSurface}
+            />
+          )}
           <div key={location.pathname} className="page-transition">
             <Outlet />
           </div>

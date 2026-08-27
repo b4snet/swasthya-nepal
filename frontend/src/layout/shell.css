@@ -179,6 +179,14 @@
   min-width: 0;
   padding: var(--space-6);
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+/* Domain command surface sits above page content */
+.app-content .domain-surface {
+  flex-shrink: 0;
 }
 
 /* ── Breadcrumbs ───────────────────────────────────────────────── */
