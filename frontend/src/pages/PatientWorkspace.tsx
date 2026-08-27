@@ -13,7 +13,7 @@
  * Context-aware: adapts when patient is in specific care settings.
  */
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState, useEffect } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTenant } from '../context/TenantContext';
 import { patientsApi, encountersApi } from '../api/endpoints';
@@ -50,6 +50,7 @@ import {
   Users,
 } from 'lucide-react';
 import './patient-workspace.css';
+import '../components/contextual/context-surface.css';
 import { ClinicalThread } from '../components/ClinicalThread';
 import { PatientJourney } from '../components/PatientJourney';
 import { CareTeam } from '../components/CareTeam';
@@ -230,6 +231,86 @@ function PatientHeader({
             </span>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * CompactIdentitySpine — a pinned, minimal patient identity bar
+ * that appears when the user scrolls past the full patient header.
+ * Ensures patient identity is never lost during clinical work.
+ */
+function CompactIdentitySpine({
+  patient,
+  encounters,
+  admissions,
+  onBack,
+}: {
+  patient: any;
+  encounters: any[];
+  admissions: any[];
+  onBack: () => void;
+}) {
+  const statusInfo = patientStatusInfo(patient.status);
+  const activeEncounters = (encounters || []).filter((e: any) => e.status === 'open');
+  const activeAdmission = (admissions || []).find((a: any) => !a.dischargedAt);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const header = document.querySelector('.pw-header');
+    if (!header) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setVisible(!entry.isIntersecting);
+      },
+      { threshold: 0, rootMargin: '-1px 0px 0px 0px' },
+    );
+
+    observer.observe(header);
+    return () => observer.disconnect();
+  }, []);
+
+  if (!visible) return null;
+
+  return (
+    <div className="pw-spine" role="banner" aria-label={`Patient context: ${patient.fullName}`}>
+      <button
+        type="button"
+        className="pw-spine__back"
+        onClick={onBack}
+        aria-label="Back to patients list"
+      >
+        <ArrowLeft size={14} />
+      </button>
+
+      <div className="pw-spine__identity">
+        <span className="pw-spine__name">{patient.fullName}</span>
+        <span className="pw-spine__mrn mono">{patient.mrn}</span>
+      </div>
+
+      <div className="pw-spine__context">
+        <StatusChip tone={statusInfo.tone} label={statusInfo.label} />
+        {activeAdmission && (
+          <span className="pw-spine__location">
+            <Bed size={11} />
+            {activeAdmission.wardName || 'Admitted'}
+          </span>
+        )}
+        {activeEncounters.length > 0 && (
+          <span className="pw-spine__encounter">
+            <Stethoscope size={11} />
+            {activeEncounters.length} active
+          </span>
+        )}
+      </div>
+
+      <div className="pw-spine__lock" title="Patient context locked">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
       </div>
     </div>
   );
@@ -879,7 +960,6 @@ export function PatientWorkspace() {
         activeWorkspace={activeWorkspace}
         onSelect={setActiveWorkspace}
         hasRole={hasRole as any}
-
         counts={counts}
       />
 
@@ -887,6 +967,14 @@ export function PatientWorkspace() {
       <div className="pw-content">
         {renderWorkspaceContent()}
       </div>
+
+      {/* ── Compact Identity Spine (pinned, visible after scroll) ── */}
+      <CompactIdentitySpine
+        patient={patient}
+        encounters={(encounters.data as any[]) || []}
+        admissions={(admissions.data as any[]) || []}
+        onBack={() => navigate('/clinical/patients')}
+      />
     </div>
   );
 }

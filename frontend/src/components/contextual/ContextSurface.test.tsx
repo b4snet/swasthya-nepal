@@ -6,7 +6,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { ContextSurface, UrgencyIndicator } from './ContextSurface';
-import type { ContextAction, UrgencyLevel } from './ContextSurface';
+import type { ContextAction } from './ContextSurface';
 import type { NavModule } from '../../navigation/modules';
 import { TenantProvider } from '../../context/TenantContext';
 import { I18nProvider } from '../../i18n/I18nProvider';

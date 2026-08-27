@@ -618,6 +618,121 @@
   }
 }
 
+/* ── Compact Identity Spine (Phase 117) ─────────────────────── */
+.pw-spine {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 44px;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0 var(--space-5);
+  background: var(--white);
+  border-bottom: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-sm);
+  animation: spineIn 0.15s ease both;
+}
+
+@keyframes spineIn {
+  from { opacity: 0; transform: translateY(-100%); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.pw-spine__back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease);
+  flex-shrink: 0;
+}
+
+.pw-spine__back:hover {
+  background: var(--gray-100);
+  color: var(--text-primary);
+}
+
+.pw-spine__back:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.pw-spine__identity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.pw-spine__name {
+  font-size: var(--text-label);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pw-spine__mrn {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  padding: 1px 6px;
+  background: var(--gray-50);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+.pw-spine__context {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1;
+  min-width: 0;
+}
+
+.pw-spine__location {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  padding: 1px 6px;
+  background: var(--blue-50);
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+
+.pw-spine__encounter {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  color: var(--blue-600);
+  padding: 1px 6px;
+  background: var(--blue-50);
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.pw-spine__lock {
+  display: flex;
+  align-items: center;
+  color: var(--teal-600);
+  flex-shrink: 0;
+  opacity: 0.6;
+}
+
 /* ── Focus visible global for workspace ─────────────────────── */
 .pw-page :focus-visible {
   outline: 2px solid var(--interactive-focus, #4f46e5);
