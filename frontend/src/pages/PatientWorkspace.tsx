@@ -53,6 +53,7 @@ import './patient-workspace.css';
 import { ClinicalThread } from '../components/ClinicalThread';
 import { PatientJourney } from '../components/PatientJourney';
 import { CareTeam } from '../components/CareTeam';
+import { ClosedLoopTracker } from '../components/ClosedLoopTracker';
 
 // ─── Timeline helper (reused from PatientProfilePage) ───
 function timelineSummary(summary: any): string {
@@ -120,6 +121,7 @@ export const PATIENT_WORKSPACES: WorkspaceDef[] = [
   { id: 'overview', label: 'Overview', Icon: Activity, roles: [], description: 'Current status and recent activity' },
   { id: 'journey', label: 'Journey', Icon: MapPin, roles: [], description: 'Patient journey through the hospital' },
   { id: 'careteam', label: 'Care Team', Icon: Users, roles: [], description: 'Current care team and responsibilities' },
+  { id: 'loops', label: 'Open Loops', Icon: AlertTriangle, roles: ['doctor', 'nurse', 'pharmacist', 'lab_technician', 'lab_supervisor', 'hospital_admin', 'org_admin', 'superadmin'], description: 'Clinical workflow follow-through' },
   { id: 'encounters', label: 'Encounters', Icon: Stethoscope, roles: ['doctor', 'nurse', 'hospital_admin', 'org_admin', 'superadmin'], description: 'Clinical visit records' },
   { id: 'timeline', label: 'Timeline', Icon: Clock, roles: [], description: 'Longitudinal clinical history' },
   { id: 'diagnoses', label: 'Diagnoses', Icon: ClipboardList, roles: ['doctor', 'nurse', 'hospital_admin', 'org_admin', 'superadmin'], description: 'Problems and diagnoses' },
@@ -845,6 +847,9 @@ export function PatientWorkspace() {
 
       case 'communication':
         return <ClinicalThread patientId={id!} />;
+
+      case 'loops':
+        return <ClosedLoopTracker patientId={id!} />;
 
       default:
         return <EmptyState title="Workspace not found" body="Select a workspace from above." />;

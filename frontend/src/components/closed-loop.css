@@ -1,0 +1,289 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   CLOSED-LOOP TRACKER — Clinical Workflow Completion (Phase 107)
+   
+   Light-only. Clinical. Safety-focused.
+   This coordinates follow-through — it does not make clinical decisions.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── Container ── */
+
+.closed-loop {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.loop-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-10) 0;
+  color: var(--gray-500);
+  font-size: var(--text-sm);
+}
+
+/* ── Summary Stats ── */
+
+.loop-summary {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.loop-summary__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-5);
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  min-width: 80px;
+}
+
+.loop-summary__stat--alert {
+  border-color: var(--amber-200);
+  background: var(--amber-50);
+}
+
+.loop-summary__count {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
+  color: var(--gray-900);
+}
+
+.loop-summary__stat--alert .loop-summary__count {
+  color: var(--amber-700);
+}
+
+.loop-summary__label {
+  font-size: 10px;
+  font-weight: var(--weight-medium);
+  color: var(--gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* ── Critical Alert ── */
+
+.loop-alert {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--red-50);
+  border: 1px solid var(--red-200);
+  border-radius: var(--radius-lg);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--red-700);
+}
+
+.loop-alert svg {
+  flex-shrink: 0;
+}
+
+/* ── Loop List ── */
+
+.loop-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* ── Loop Card ── */
+
+.loop-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: border-color var(--duration-fast), box-shadow var(--duration-fast);
+  min-height: var(--touch-target);
+}
+
+.loop-card:hover {
+  border-color: var(--teal-300);
+  box-shadow: var(--shadow-sm);
+}
+
+.loop-card:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.loop-card--elevated {
+  border-left: 3px solid var(--amber-400);
+}
+
+.loop-card--awaiting_review {
+  border-left: 3px solid var(--amber-400);
+}
+
+.loop-card--blocked {
+  border-left: 3px solid var(--red-400);
+}
+
+.loop-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.loop-card__domain {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.loop-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.loop-card__label {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--gray-900);
+}
+
+.loop-card__desc {
+  font-size: var(--text-xs);
+  color: var(--gray-500);
+}
+
+/* ── Workflow Steps ── */
+
+.loop-card__workflow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--gray-100);
+}
+
+.loop-card__step {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+}
+
+.loop-card__step-label {
+  font-size: 9px;
+  font-weight: var(--weight-medium);
+  color: var(--gray-400);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.loop-card__step-value {
+  font-size: var(--text-xs);
+  color: var(--gray-600);
+}
+
+.loop-card__step-value--action {
+  color: var(--interactive-primary);
+  font-weight: var(--weight-medium);
+}
+
+.loop-card__arrow {
+  color: var(--gray-300);
+  flex-shrink: 0;
+}
+
+/* ── Footer ── */
+
+.loop-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: 10px;
+  color: var(--gray-400);
+}
+
+.loop-card__owner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.loop-card__owner-label {
+  font-weight: var(--weight-medium);
+  color: var(--gray-500);
+}
+
+.loop-card__time {
+  margin-left: auto;
+}
+
+/* ── Boundary Notice ── */
+
+.loop-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--blue-50);
+  border: 1px solid var(--blue-100);
+  border-radius: var(--radius-lg);
+  font-size: var(--text-xs);
+  color: var(--blue-700);
+  line-height: 1.5;
+}
+
+.loop-notice svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 640px) {
+  .loop-summary {
+    flex-wrap: wrap;
+  }
+
+  .loop-summary__stat {
+    min-width: 70px;
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .loop-card {
+    padding: var(--space-3);
+  }
+
+  .loop-card__workflow {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .loop-card__arrow {
+    transform: rotate(90deg);
+  }
+}
+
+/* ── Reduced Motion ── */
+
+@media (prefers-reduced-motion: reduce) {
+  .loop-card {
+    transition: none;
+  }
+}
