@@ -1,0 +1,376 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   CLINICAL QUICK VIEW — Longitudinal Context Intelligence (Phase 108)
+   
+   Light-only. Clinical. Evidence-driven.
+   Answers "WHAT MATTERS RIGHT NOW?" in 10 seconds.
+   Every item links to its canonical source.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── Container ── */
+
+.clinical-quickview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.qv-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-10) 0;
+  color: var(--gray-500);
+  font-size: var(--text-sm);
+}
+
+/* ── Summary Bar ── */
+
+.qv-summary {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.qv-summary__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-5);
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  min-width: 80px;
+  cursor: pointer;
+  transition: border-color var(--duration-fast);
+  width: auto;
+  border-style: solid;
+}
+
+.qv-summary__stat:hover {
+  border-color: var(--teal-300);
+}
+
+.qv-summary__stat:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.qv-summary__stat--alert {
+  border-color: var(--amber-200);
+  background: var(--amber-50);
+}
+
+.qv-summary__stat--alert:hover {
+  border-color: var(--amber-300);
+}
+
+.qv-summary__stat--warning {
+  border-color: var(--red-200);
+  background: var(--red-50);
+}
+
+.qv-summary__count {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
+  color: var(--gray-900);
+}
+
+.qv-summary__stat--alert .qv-summary__count {
+  color: var(--amber-700);
+}
+
+.qv-summary__stat--warning .qv-summary__count {
+  color: var(--red-700);
+}
+
+.qv-summary__label {
+  font-size: 10px;
+  font-weight: var(--weight-medium);
+  color: var(--gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* ── Grid Layout ── */
+
+.qv-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+.qv-column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* ── Section ── */
+
+.qv-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+}
+
+.qv-section--alert {
+  border-color: var(--red-200);
+  background: var(--red-50);
+}
+
+.qv-section--safe {
+  border-color: var(--green-200);
+  background: var(--green-50);
+}
+
+.qv-section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.qv-section__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--gray-900);
+  margin: 0;
+}
+
+.qv-section--alert .qv-section__title {
+  color: var(--red-800);
+}
+
+.qv-section--safe .qv-section__title {
+  color: var(--green-800);
+}
+
+.qv-section__count {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--gray-500);
+  background: var(--gray-100);
+  padding: 2px var(--space-2);
+  border-radius: 9999px;
+  font-variant-numeric: tabular-nums;
+}
+
+.qv-section__count--alert {
+  background: var(--red-100);
+  color: var(--red-700);
+}
+
+/* ── Items ── */
+
+.qv-items {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.qv-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  color: var(--gray-800);
+  transition: background var(--duration-fast);
+  min-height: 36px;
+  text-align: left;
+  width: 100%;
+}
+
+button.qv-item {
+  cursor: pointer;
+  background: transparent;
+  border: none;
+}
+
+button.qv-item:hover {
+  background: var(--gray-50);
+}
+
+button.qv-item:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.qv-item__label {
+  font-weight: var(--weight-medium);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.qv-item__meta {
+  flex-shrink: 0;
+}
+
+.qv-item__detail {
+  display: flex;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--gray-500);
+  flex-shrink: 0;
+}
+
+.qv-item__value {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
+
+.qv-item__time {
+  font-size: 10px;
+  color: var(--gray-400);
+  flex-shrink: 0;
+}
+
+.qv-item__link {
+  color: var(--gray-300);
+  flex-shrink: 0;
+  transition: color var(--duration-fast);
+}
+
+button.qv-item:hover .qv-item__link {
+  color: var(--interactive-primary);
+}
+
+/* ── Clinical Values ── */
+
+.qv-value {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--gray-900);
+}
+
+.qv-value--abnormal {
+  color: var(--red-600);
+}
+
+.qv-unit {
+  font-size: var(--text-xs);
+  color: var(--gray-500);
+}
+
+.qv-ref {
+  font-size: 10px;
+  color: var(--gray-400);
+}
+
+/* ── Allergy Item ── */
+
+.qv-item--allergy {
+  background: var(--white);
+  border: 1px solid var(--red-100);
+  border-radius: var(--radius-md);
+}
+
+.qv-section--alert .qv-item--allergy {
+  background: rgba(255, 255, 255, 0.6);
+}
+
+/* ── Result Abnormal ── */
+
+.qv-item--abnormal {
+  border-left: 3px solid var(--red-400);
+  background: var(--red-50);
+}
+
+/* ── Change Items ── */
+
+.qv-item--change {
+  gap: var(--space-2);
+}
+
+.qv-item--new {
+  border-left: 3px solid var(--blue-400);
+}
+
+.qv-item--resolved {
+  border-left: 3px solid var(--green-400);
+}
+
+/* ── Empty Inline ── */
+
+.qv-empty-inline {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--green-600);
+  padding: var(--space-2) 0;
+}
+
+/* ── Notice ── */
+
+.qv-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--blue-50);
+  border: 1px solid var(--blue-100);
+  border-radius: var(--radius-lg);
+  font-size: var(--text-xs);
+  color: var(--blue-700);
+  line-height: 1.5;
+}
+
+.qv-notice svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  .qv-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .qv-summary {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 640px) {
+  .qv-section {
+    padding: var(--space-3);
+  }
+
+  .qv-item {
+    padding: var(--space-2);
+    flex-wrap: wrap;
+  }
+
+  .qv-item__value {
+    flex-wrap: wrap;
+  }
+}
+
+/* ── Reduced Motion ── */
+
+@media (prefers-reduced-motion: reduce) {
+  .qv-item,
+  .qv-summary__stat {
+    transition: none;
+  }
+}

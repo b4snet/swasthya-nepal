@@ -54,6 +54,7 @@ import { ClinicalThread } from '../components/ClinicalThread';
 import { PatientJourney } from '../components/PatientJourney';
 import { CareTeam } from '../components/CareTeam';
 import { ClosedLoopTracker } from '../components/ClosedLoopTracker';
+import { ClinicalQuickView } from '../components/ClinicalQuickView';
 
 // ─── Timeline helper (reused from PatientProfilePage) ───
 function timelineSummary(summary: any): string {
@@ -118,6 +119,7 @@ interface WorkspaceDef {
 }
 
 export const PATIENT_WORKSPACES: WorkspaceDef[] = [
+  { id: 'quickview', label: 'Quick View', Icon: Activity, roles: ['doctor', 'nurse', 'hospital_admin', 'org_admin', 'superadmin'], description: '10-second clinical orientation' },
   { id: 'overview', label: 'Overview', Icon: Activity, roles: [], description: 'Current status and recent activity' },
   { id: 'journey', label: 'Journey', Icon: MapPin, roles: [], description: 'Patient journey through the hospital' },
   { id: 'careteam', label: 'Care Team', Icon: Users, roles: [], description: 'Current care team and responsibilities' },
@@ -630,6 +632,9 @@ export function PatientWorkspace() {
             onEncounterClick={(e) => navigate(`/clinical/encounters/${e.id}`)}
           />
         );
+
+      case 'quickview':
+        return <ClinicalQuickView patientId={id!} />;
 
       case 'journey':
         return <PatientJourney patientId={id!} />;
