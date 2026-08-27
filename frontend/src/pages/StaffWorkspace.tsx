@@ -19,7 +19,7 @@ import type {
 } from '../api/types';
 import { Alert, Button, Card, EmptyState } from '../components/ui';
 import { Workbench } from '../components/Workbench';
-import { IntelligentWorkQueue } from '../components/IntelligentWorkQueue';
+import { ClinicalWorkQueue } from '../components/ClinicalWorkQueue';
 import './staff-workspace.css';
 
 /* ─── Status helpers ─── */
@@ -756,7 +756,7 @@ export function StaffWorkspace() {
         )}
 
         {activeSection === 'workqueue' && (
-          <IntelligentWorkQueue />
+          <ClinicalWorkQueue />
         )}
 
         {activeSection === 'today' && (
