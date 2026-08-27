@@ -28,7 +28,6 @@ import type { Appointment } from '../api/types';
 import {
   AlertTriangle,
   CheckCircle2,
-  Clock,
   MapPin,
   CalendarDays,
   User,
@@ -36,6 +35,7 @@ import {
   Shield,
 } from 'lucide-react';
 import './patient-checkin.css';
+import { PatientFlowTracker } from './PatientFlowTracker';
 
 /* ────────────────────────────────────────────────────────────────────
    TYPES
@@ -312,74 +312,6 @@ function CheckInConfirm({
   );
 }
 
-/* ────────────────────────────────────────────────────────────────────
-   STEP 4: CHECKED IN + QUEUE
-   ──────────────────────────────────────────────────────────────────── */
-
-function CheckedInView({
-  appointment,
-  queuePosition,
-  estimatedWait,
-  serviceLocation,
-}: {
-  appointment: Appointment;
-  queuePosition?: number;
-  estimatedWait?: string;
-  serviceLocation?: string;
-}) {
-  const patientName = appointment.patient?.fullName ?? 'Patient';
-
-  return (
-    <div className="ci-success">
-      <div className="ci-success__icon">
-        <CheckCircle2 size={48} />
-      </div>
-      <h2 className="ci-success__title">You're Checked In!</h2>
-      <p className="ci-success__subtitle">
-        Welcome, {patientName}. Here's what happens next.
-      </p>
-
-      <div className="ci-success__info">
-        {queuePosition !== undefined && (
-          <div className="ci-success__card ci-success__card--highlight">
-            <span className="ci-success__card-label">Queue Position</span>
-            <span className="ci-success__card-value">{queuePosition}</span>
-          </div>
-        )}
-
-        {estimatedWait && (
-          <div className="ci-success__card">
-            <Clock size={16} />
-            <div>
-              <span className="ci-success__card-label">Estimated Wait</span>
-              <span className="ci-success__card-value">{estimatedWait}</span>
-              <span className="ci-success__card-note">Estimate only — not guaranteed</span>
-            </div>
-          </div>
-        )}
-
-        {serviceLocation && (
-          <div className="ci-success__card">
-            <MapPin size={16} />
-            <div>
-              <span className="ci-success__card-label">Where to Go</span>
-              <span className="ci-success__card-value">{serviceLocation}</span>
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div className="ci-success__next">
-        <h3>What Happens Next</h3>
-        <ol className="ci-success__steps">
-          <li>Wait for your number to be called</li>
-          <li>Proceed to the service area</li>
-          <li>Consult with your provider</li>
-        </ol>
-      </div>
-    </div>
-  );
-}
 
 /* ────────────────────────────────────────────────────────────────────
    MAIN PATIENT CHECK-IN
@@ -480,12 +412,7 @@ export function PatientCheckIn() {
         )}
 
         {state.step === 'checked_in' && state.appointment && (
-          <CheckedInView
-            appointment={state.appointment}
-            queuePosition={state.queuePosition}
-            estimatedWait={state.estimatedWait}
-            serviceLocation={state.serviceLocation}
-          />
+          <PatientFlowTracker appointmentId={state.appointment.id} />
         )}
 
         {state.step === 'error' && (
