@@ -1,0 +1,248 @@
+/* ==========================================================================
+   Emergency Command Surface — Phase 123
+   Clinical command surface for emergency department.
+   Compact action cards grouped by urgency. Light-first.
+   ========================================================================== */
+
+/* ── Container ────────────────────────────────────────────────── */
+.emergency-command-surface {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  max-width: 900px;
+}
+
+/* ── Header ───────────────────────────────────────────────────── */
+.ecs-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  background: var(--red-50);
+  border: 1px solid var(--red-200);
+  border-radius: var(--radius-xl);
+}
+
+.ecs-header__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-lg);
+  background: var(--red-100);
+  color: var(--red-600);
+  flex-shrink: 0;
+}
+
+.ecs-header__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.ecs-header__title {
+  font-size: var(--fs-h3, 1.125rem);
+  font-weight: 700;
+  color: var(--red-800);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.ecs-header__subtitle {
+  font-size: var(--fs-caption, 0.75rem);
+  color: var(--red-600);
+  margin: 2px 0 0;
+}
+
+.ecs-header__status {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fs-caption, 0.7rem);
+  color: var(--red-500);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+/* ── Section ──────────────────────────────────────────────────── */
+.ecs-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.ecs-section__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-label, 0.75rem);
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 0;
+}
+
+.ecs-section__title--critical {
+  color: var(--red-700);
+}
+
+.ecs-section__title--urgent {
+  color: var(--amber-700);
+}
+
+/* ── Action Grid ──────────────────────────────────────────────── */
+.ecs-section__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-3);
+}
+
+/* ── Action Card ──────────────────────────────────────────────── */
+.ecs-card {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--white);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease);
+  text-align: left;
+  width: 100%;
+  position: relative;
+}
+
+.ecs-card:hover {
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-1px);
+}
+
+.ecs-card:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.ecs-card--critical {
+  border-left: 3px solid var(--red-400);
+}
+
+.ecs-card--urgent {
+  border-left: 3px solid var(--amber-400);
+}
+
+.ecs-card--attention {
+  border-left: 3px solid var(--blue-400);
+}
+
+/* ── Card Icon ────────────────────────────────────────────────── */
+.ecs-card__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: var(--gray-50);
+  flex-shrink: 0;
+}
+
+.ecs-card--critical .ecs-card__icon {
+  background: var(--red-100);
+}
+
+.ecs-card--urgent .ecs-card__icon {
+  background: var(--amber-100);
+}
+
+.ecs-card--attention .ecs-card__icon {
+  background: var(--blue-100);
+}
+
+/* ── Card Body ────────────────────────────────────────────────── */
+.ecs-card__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ecs-card__label {
+  font-size: var(--fs-body, 0.875rem);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.ecs-card__desc {
+  font-size: var(--fs-caption, 0.7rem);
+  color: var(--text-tertiary);
+  line-height: 1.3;
+}
+
+/* ── Critical Badge ───────────────────────────────────────────── */
+.ecs-card__badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.ecs-card__badge--critical {
+  background: var(--red-500);
+  color: var(--white);
+}
+
+/* ── Safety Notice ────────────────────────────────────────────── */
+.ecs-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: var(--space-3) var(--space-4);
+  background: var(--gray-50);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  font-size: var(--fs-caption, 0.7rem);
+  color: var(--text-tertiary);
+  line-height: 1.4;
+}
+
+.ecs-notice svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--amber-500);
+}
+
+/* ── Responsive ───────────────────────────────────────────────── */
+@media (max-width: 767px) {
+  .ecs-header {
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .ecs-section__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ecs-card {
+    padding: var(--space-2-5) var(--space-3);
+  }
+}
+
+/* ── Reduced Motion ───────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .ecs-card {
+    transition: none;
+  }
+
+  .ecs-card:hover {
+    transform: none;
+  }
+}

@@ -299,6 +299,12 @@
   min-height: 300px;
 }
 
+.pw-overview-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
 /* ── Overview: Status Cards ─────────────────────────────────── */
 .pw-overview {
   display: flex;

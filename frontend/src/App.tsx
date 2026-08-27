@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth } from './auth/AuthProvider';
 import { TenantProvider, useTenant } from './context/TenantContext';
 import { ToastProvider } from './context/ToastContext';
+import { ClinicalContextProvider } from './context/ClinicalContext';
 import { useI18n } from './i18n/I18nProvider';
 import { AppShell } from './layout/AppShell';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -153,7 +154,11 @@ function TenantGate() {
     if (facilities.length > 1) return <FacilityChooser />;
     return <FullScreenSpinner label={t('shell.resolvingFacility')} />;
   }
-  return <AppShell />;
+  return (
+    <ClinicalContextProvider>
+      <AppShell />
+    </ClinicalContextProvider>
+  );
 }
 
 function LoginRoute() {

@@ -58,6 +58,7 @@ import { ClosedLoopTracker } from '../components/ClosedLoopTracker';
 import { ClinicalQuickView } from '../components/ClinicalQuickView';
 import { ContextualActionRail, resolveWorkspacePriorities, resolveContextualActions } from '../components/clinical-context';
 import { WorkflowTrail } from '../components/WorkflowTrail';
+import { PendingWorkPanel } from '../components/PendingWorkPanel';
 
 // ─── Timeline helper (reused from PatientProfilePage) ───
 function timelineSummary(summary: any): string {
@@ -737,15 +738,24 @@ export function PatientWorkspace() {
     switch (activeWorkspace) {
       case 'overview':
         return (
-          <OverviewView
-            encounters={(encounters.data as any[]) || []}
-            diagnoses={(diagnoses.data as any[]) || []}
-            prescriptions={(prescriptions.data as any[]) || []}
-            labOrders={(labOrders.data as any[]) || []}
-            admissions={(admissions.data as any[]) || []}
-            appointments={(appointments.data as any[]) || []}
-            onEncounterClick={(e) => navigate(`/clinical/encounters/${e.id}`)}
-          />
+          <div className="pw-overview-container">
+            <PendingWorkPanel
+              encounters={(encounters.data as any[]) || []}
+              diagnoses={(diagnoses.data as any[]) || []}
+              prescriptions={(prescriptions.data as any[]) || []}
+              labOrders={(labOrders.data as any[]) || []}
+              patientId={id!}
+            />
+            <OverviewView
+              encounters={(encounters.data as any[]) || []}
+              diagnoses={(diagnoses.data as any[]) || []}
+              prescriptions={(prescriptions.data as any[]) || []}
+              labOrders={(labOrders.data as any[]) || []}
+              admissions={(admissions.data as any[]) || []}
+              appointments={(appointments.data as any[]) || []}
+              onEncounterClick={(e) => navigate(`/clinical/encounters/${e.id}`)}
+            />
+          </div>
         );
 
       case 'quickview':

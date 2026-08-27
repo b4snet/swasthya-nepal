@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTenant } from '../context/TenantContext';
 import { erApi } from '../api/endpoints';
+import { EmergencyCommandSurface } from '../components/EmergencyCommandSurface';
 import { ApiError } from '../api/client';
 import { Alert, Button, Card, Dialog, EmptyState, Input, Select, SkeletonTable } from '../components/ui';
 import { useFetch } from '../hooks/useFetch';
@@ -161,6 +162,9 @@ export function EmergencyPage() {
           </Button>
         </div>
       </header>
+
+      {/* ── Emergency Command Surface (Phase 123) ── */}
+      <EmergencyCommandSurface />
 
       {error && <Alert tone="danger">{error}</Alert>}
 
