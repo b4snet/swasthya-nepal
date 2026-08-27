@@ -1,11 +1,17 @@
 /* ============================================================================
-   SWASTHYA Design System — Premium Clinical Tokens
-   Inspired by: Linear, Apple HIG, clinical enterprise software.
-   One accent color. Calm. Trustworthy. Precise.
+   SWASTHYA Design System — Clinical-Grade Design Tokens
+   
+   A calm, high-contrast, low-visual-noise clinical interface.
+   One accent: deep teal. One paper: cool white. Semantics for status only.
+   
+   Source of truth: DESIGN_SYSTEM.md Sections 8–11
+   Document chain: PRODUCT_REQUIREMENTS → MASTER_RULES → ARCHITECTURE → this file
    ========================================================================== */
 
 :root {
-  /* ── Neutrals ── */
+  /* ══════════════════════════════════════════════════════════════════════════
+     NEUTRALS — cool, not cream. Paper-based clinical surface.
+     ══════════════════════════════════════════════════════════════════════════ */
   --white: #ffffff;
   --gray-25: #fcfcfd;
   --gray-50: #f9fafb;
@@ -20,101 +26,155 @@
   --gray-900: #101828;
   --gray-950: #0c111d;
 
-  /* ── Primary — single blue accent ── */
-  --blue-50: #eff8ff;
-  --blue-100: #d1e9ff;
-  --blue-200: #b2ddff;
-  --blue-300: #84caff;
-  --blue-400: #53b1fd;
-  --blue-500: #4fa9ff;
-  --blue-600: #2e90fa;
-  --blue-700: #1570ef;
-  --blue-800: #175cd3;
-  --blue-900: #1849a9;
+  /* ══════════════════════════════════════════════════════════════════════════
+     BRAND — deep teal, not generic medical blue
+     The one accent. Calm in bright OPD light, legible on low-cost screens.
+     ══════════════════════════════════════════════════════════════════════════ */
+  --teal-50: #f0fdfa;
+  --teal-100: #ccfbf1;
+  --teal-200: #99f6e4;
+  --teal-300: #5eead4;
+  --teal-400: #2dd4bf;
+  --teal-500: #14b8a6;
+  --teal-600: #0d9488;
+  --teal-700: #0f766e;
+  --teal-800: #115e59;
+  --teal-900: #134e4a;
 
-  /* ── Semantic — clinical, used sparingly ── */
+  /* ══════════════════════════════════════════════════════════════════════════
+     SEMANTICS — clinical meaning, used sparingly
+     Never decorative. Always paired with text/icon/shape (Section 11).
+     ══════════════════════════════════════════════════════════════════════════ */
   --red-50: #fef3f2;
   --red-100: #fee4e2;
+  --red-200: #feca90;
   --red-500: #f04438;
   --red-600: #d92d20;
   --red-700: #b42318;
 
   --amber-50: #fefbe8;
   --amber-100: #fef0c7;
+  --amber-200: #fedf89;
   --amber-500: #f79009;
   --amber-600: #dc6803;
   --amber-700: #b54708;
 
   --green-50: #ecfdf3;
   --green-100: #d1fadf;
+  --green-200: #a6f4c5;
   --green-500: #12b76a;
   --green-600: #039855;
   --green-700: #027a48;
 
-  /* ── Surface ── */
+  --blue-50: #eff8ff;
+  --blue-100: #d1e9ff;
+  --blue-200: #b2ddff;
+  --blue-500: #2e90fa;
+  --blue-600: #2e90fa;
+  --blue-700: #1570ef;
+  --blue-800: #175cd3;
+
+  /* ══════════════════════════════════════════════════════════════════════════
+     SURFACE — paper and elevation layers
+     ══════════════════════════════════════════════════════════════════════════ */
   --surface-bg: var(--gray-50);
   --surface-card: var(--white);
   --surface-raised: var(--white);
   --surface-overlay: rgba(16, 24, 40, 0.56);
 
-  /* ── Border ── */
+  /* ══════════════════════════════════════════════════════════════════════════
+     BORDER — subtle, not decorative
+     ══════════════════════════════════════════════════════════════════════════ */
   --border-subtle: var(--gray-200);
   --border-default: var(--gray-300);
   --border-strong: var(--gray-400);
 
-  /* ── Text ── */
+  /* ══════════════════════════════════════════════════════════════════════════
+     TEXT — clinical data outranks interface furniture
+     ══════════════════════════════════════════════════════════════════════════ */
   --text-primary: var(--gray-900);
   --text-secondary: var(--gray-600);
   --text-tertiary: var(--gray-500);
   --text-disabled: var(--gray-400);
   --text-inverse: var(--white);
-  --text-link: var(--blue-600);
-  --text-link-hover: var(--blue-700);
+  --text-link: var(--teal-700);
+  --text-link-hover: var(--teal-800);
 
-  /* ── Interactive ── */
-  --interactive-primary: var(--blue-600);
-  --interactive-primary-hover: var(--blue-700);
-  --interactive-primary-active: var(--blue-800);
-  --interactive-primary-disabled: var(--blue-200);
+  /* ══════════════════════════════════════════════════════════════════════════
+     INTERACTIVE — one primary action per viewport
+     ══════════════════════════════════════════════════════════════════════════ */
+  --interactive-primary: var(--teal-700);
+  --interactive-primary-hover: var(--teal-600);
+  --interactive-primary-active: var(--teal-800);
+  --interactive-primary-disabled: var(--teal-200);
   --interactive-secondary-bg: var(--white);
   --interactive-secondary-border: var(--gray-300);
   --interactive-secondary-hover: var(--gray-50);
   --interactive-quiet-hover: var(--gray-100);
 
-  /* ── Focus ── */
-  --focus-ring: 0 0 0 2px var(--white), 0 0 0 4px var(--blue-500);
+  /* ══════════════════════════════════════════════════════════════════════════
+     FOCUS — 2px ring + 1px white halo, always visible
+     ══════════════════════════════════════════════════════════════════════════ */
+  --focus-ring: 0 0 0 2px var(--white), 0 0 0 4px var(--teal-500);
 
-  /* ── Typography ── */
-  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", Inter, system-ui, sans-serif;
-  --font-mono: "SF Mono", "JetBrains Mono", "Cascadia Code", "Consolas", monospace;
+  /* ══════════════════════════════════════════════════════════════════════════
+     TYPOGRAPHY — one body face, one display face, one mono for identifiers
+     Tabular numerals are mandatory for vitals/labs/billing (Section 8)
+     ══════════════════════════════════════════════════════════════════════════ */
+  --font-body: 'Public Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+  --font-display: 'Manrope', 'Public Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'SF Mono', 'JetBrains Mono', 'Cascadia Code', 'Consolas', monospace;
+  /* Devanagari fallback — mandatory for Nepali rendering */
+  --font-devanagari: 'Noto Sans Devanagari', 'Mangal', 'Kokila', sans-serif;
 
-  /* ── Type Scale ── */
-  --text-display: 30px;
-  --text-title: 24px;
-  --text-h2: 20px;
-  --text-h3: 16px;
-  --text-body: 14px;
-  --text-label: 13px;
-  --text-small: 12px;
-  --text-xs: 11px;
+  /* ── Type Scale (Section 8) ── */
+  --text-display: 2.125rem;   /* 34px — page titles, sparing */
+  --text-title: 1.625rem;     /* 26px — screen titles */
+  --text-h2: 1.375rem;        /* 22px — section headers */
+  --text-h3: 1.1875rem;       /* 19px — card headers */
+  --text-body: 1rem;          /* 16px — default mobile */
+  --text-body-desktop: 0.9375rem; /* 15px — default desktop ≥ xl */
+  --text-label: 0.875rem;     /* 14px — input labels, table headers */
+  --text-caption: 0.75rem;    /* 12px — non-essential metadata */
+  --text-data: 1rem;          /* 16px — clinical values, mono */
 
+  /* ── Legacy aliases (back-compat) ── */
+  --text-small: var(--text-caption);
+  --text-xs: 0.6875rem;       /* 11px */
+  --fs-caption: var(--text-caption);
+  --fs-small: var(--text-caption);
+  --fs-label: var(--text-label);
+  --fs-body: var(--text-body);
+  --fs-h3: var(--text-h3);
+  --fs-h2: var(--text-h2);
+  --fs-title: var(--text-title);
+  --fs-display: var(--text-display);
+
+  /* ── Line Heights ── */
   --lh-tight: 1.2;
   --lh-normal: 1.5;
   --lh-relaxed: 1.625;
 
+  /* ── Font Weights ── */
   --weight-regular: 400;
   --weight-medium: 500;
   --weight-semibold: 600;
   --weight-bold: 700;
 
+  /* ── Letter Spacing ── */
   --tracking-tight: -0.025em;
   --tracking-normal: 0;
   --tracking-wide: 0.025em;
 
-  /* ── Spacing (4px base) ── */
+  /* ══════════════════════════════════════════════════════════════════════════
+     SPACING — 4px grid, encodes grouping (Section 9)
+     ══════════════════════════════════════════════════════════════════════════ */
   --space-0: 0;
+  --space-0-5: 2px;
   --space-1: 4px;
+  --space-1-5: 6px;
   --space-2: 8px;
+  --space-2-5: 10px;
   --space-3: 12px;
   --space-4: 16px;
   --space-5: 20px;
@@ -125,93 +185,7 @@
   --space-16: 64px;
   --space-20: 80px;
 
-  /* ── Radius ── */
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
-  --radius-full: 9999px;
-
-  /* ── Shadows — extremely subtle ── */
-  --shadow-xs: 0 1px 2px rgba(16, 24, 40, 0.05);
-  --shadow-sm: 0 1px 3px rgba(16, 24, 40, 0.08), 0 1px 2px rgba(16, 24, 40, 0.06);
-  --shadow-md: 0 4px 8px -2px rgba(16, 24, 40, 0.08), 0 2px 4px -2px rgba(16, 24, 40, 0.06);
-  --shadow-lg: 0 12px 16px -4px rgba(16, 24, 40, 0.08), 0 4px 6px -2px rgba(16, 24, 40, 0.03);
-
-  /* ── Motion ── */
-  --ease: cubic-bezier(0.25, 0.1, 0.25, 1);
-  --ease-out: cubic-bezier(0, 0, 0.2, 1);
-  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
-  --duration-fast: 120ms;
-  --duration-normal: 180ms;
-  --duration-slow: 250ms;
-
-  /* ── Layout ── */
-  --sidebar-w: 240px;
-  --sidebar-w-collapsed: 64px;
-  --header-h: 56px;
-  --bottomnav-h: 60px;
-  --content-max: 1200px;
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
-}
-
-/* ── Legacy design-system aliases (used by page-specific CSS) ── */
-:root {
-  /* Blue aliases — derived from primary token */
-  --teal-50: var(--blue-50);
-  --teal-100: var(--blue-100);
-  --teal-200: var(--blue-200);
-  --teal-400: var(--blue-400);
-  --teal-500: var(--blue-500);
-  --teal-600: var(--blue-600);
-  --teal-700: var(--blue-700);
-  --teal-800: var(--blue-800);
-
-  /* Slate aliases — mapped to neutral grays */
-  --slate-400: var(--gray-400);
-  --slate-500: var(--gray-500);
-
-  /* Surface aliases */
-  --paper: #ffffff;
-  --paper-warm: #f9fafb;
-  --mist: #f1f5f9;
-
-  /* Ink aliases */
-  --ink: #101828;
-  --ink-soft: #475467;
-  --ink-muted: #667085;
-
-  /* Lines */
-  --line: #eaecf0;
-  --line-soft: #f2f4f7;
-
-  /* Semantic */
-  --semantic-info: #2e90fa;
-  --semantic-success: #12b76a;
-  --semantic-warning: #f79009;
-  --semantic-danger: #f04438;
-
-  /* Tints */
-  --tint-teal: var(--blue-50);
-  --tint-info: #eff8ff;
-  --tint-success: #ecfdf3;
-  --tint-warning: #fefbe8;
-  --tint-danger: #fef3f2;
-  --tint-neutral: #f9fafb;
-
-  /* On-color */
-  --on-teal: #ffffff;
-
-  /* Gradients */
-  --gradient-brand: linear-gradient(135deg, #2e90fa 0%, #1570ef 100%);
-  --gradient-brand-light: linear-gradient(135deg, #eff8ff 0%, #d1e9ff 50%, #f0f7ff 100%);
-
-  /* Radius extra */
-  --radius-pill: 9999px;
-}
-
-/* ── Legacy aliases — spacing (sp) ── */
-:root {
+  /* ── Legacy spacing aliases ── */
   --sp-1: var(--space-1);
   --sp-1-5: 6px;
   --sp-2: var(--space-2);
@@ -225,38 +199,345 @@
   --sp-12: var(--space-12);
   --sp-16: var(--space-16);
   --sp-20: var(--space-20);
-}
 
-/* ── Legacy aliases — type scale (fs) ── */
-:root {
-  --fs-caption: var(--text-xs);
-  --fs-small: var(--text-small);
-  --fs-label: var(--text-label);
-  --fs-body: var(--text-body);
-  --fs-h3: var(--text-h3);
-  --fs-h2: var(--text-h2);
-  --fs-title: var(--text-title);
-  --fs-display: var(--text-display);
-}
+  /* ══════════════════════════════════════════════════════════════════════════
+     RADIUS — this is an instrument, not a toy (Section 9)
+     ══════════════════════════════════════════════════════════════════════════ */
+  --radius-sm: 4px;   /* inputs, chips */
+  --radius-md: 6px;   /* buttons, cards */
+  --radius-lg: 10px;  /* sheets, dialogs */
+  --radius-xl: 12px;  /* large containers */
+  --radius-full: 9999px; /* pills, badges */
+  --radius-pill: 9999px;
 
-/* ── Legacy aliases — line-height ── */
-:root {
-  --lh-label: 1.4;
-}
+  /* ══════════════════════════════════════════════════════════════════════════
+     ELEVATION — signal of layering, used sparingly (Section 9)
+     ══════════════════════════════════════════════════════════════════════════ */
+  --shadow-xs: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --shadow-sm: 0 1px 3px rgba(16, 24, 40, 0.06), 0 1px 2px rgba(16, 24, 40, 0.04);
+  --shadow-md: 0 4px 8px -2px rgba(16, 24, 40, 0.06), 0 2px 4px -2px rgba(16, 24, 40, 0.04);
+  --shadow-lg: 0 12px 16px -4px rgba(16, 24, 40, 0.06), 0 4px 6px -2px rgba(16, 24, 40, 0.02);
 
-/* ── Legacy aliases — duration ── */
-:root {
+  /* ══════════════════════════════════════════════════════════════════════════
+     MOTION — subtle, purposeful. Respect reduced-motion (Section 30)
+     ══════════════════════════════════════════════════════════════════════════ */
+  --ease: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --duration-fast: 120ms;
+  --duration-normal: 180ms;
+  --duration-slow: 250ms;
+
+  /* ── Legacy motion aliases ── */
   --dur-fast: var(--duration-fast);
   --dur-med: var(--duration-normal);
   --dur-slow: var(--duration-slow);
+
+  /* ══════════════════════════════════════════════════════════════════════════
+     LAYOUT — structural constants (Section 3)
+     ══════════════════════════════════════════════════════════════════════════ */
+  --sidebar-w: 240px;
+  --sidebar-w-collapsed: 60px;
+  --header-h: 56px;
+  --bottomnav-h: 60px;
+  --content-max: 1200px;
+  --content-narrow: 720px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --touch-target: 44px;   /* minimum for touch (Section 32) */
+  --touch-row: 48px;      /* clinical row height on touch (Section 32) */
+
+  /* ══════════════════════════════════════════════════════════════════════════
+     SEMANTIC ALIASES — used by components
+     ══════════════════════════════════════════════════════════════════════════ */
+  --semantic-info: var(--blue-500);
+  --semantic-success: var(--green-500);
+  --semantic-warning: var(--amber-500);
+  --semantic-danger: var(--red-500);
+
+  /* Tint surfaces for chips/banners (10-15% opacity) */
+  --tint-teal: var(--teal-50);
+  --tint-info: var(--blue-50);
+  --tint-success: var(--green-50);
+  --tint-warning: var(--amber-50);
+  --tint-danger: var(--red-50);
+  --tint-neutral: var(--gray-50);
+
+  /* On-color for text on semantic backgrounds */
+  --on-teal: #ffffff;
+  --on-danger: #ffffff;
+
+  /* Gradients — minimal, clinical */
+  --gradient-brand: linear-gradient(135deg, var(--teal-600) 0%, var(--teal-800) 100%);
+  --gradient-brand-light: linear-gradient(135deg, var(--teal-50) 0%, var(--teal-100) 100%);
+
+  /* Paper aliases */
+  --paper: var(--white);
+  --paper-warm: var(--gray-50);
+  --mist: var(--gray-100);
+
+  /* Ink aliases */
+  --ink: var(--gray-900);
+  --ink-soft: var(--gray-600);
+  --ink-muted: var(--gray-500);
+
+  /* Line aliases */
+  --line: var(--gray-200);
+  --line-soft: var(--gray-100);
 }
 
+
 /* ════════════════════════════════════════════════════════════════════════════
-   DARK MODE
-   Override every semantic token so the entire UI transforms —
-   shell, sidebar, tables, cards, dialogs, inputs, toasts —
-   with a single media-query gate.
+   DARK MODE — first-class citizen, not inverted afterthought
+   Designed for night-shift clinical staff. Low contrast floor, 
+   high signal-to-noise. No pure blacks.
+   
+   Triggered by:
+   1. html[data-theme="dark"]
+   2. @media (prefers-color-scheme: dark) when no explicit theme set
    ══════════════════════════════════════════════════════════════════════════ */
 
-/* Dark mode removed — SWASTHYA is light-only */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --white: #1a1f2e;
+    --gray-25: #1e2333;
+    --gray-50: #222736;
+    --gray-100: #2a3040;
+    --gray-200: #343b4d;
+    --gray-300: #444d62;
+    --gray-400: #6b7590;
+    --gray-500: #8892a8;
+    --gray-600: #a8b0c2;
+    --gray-700: #c5ccd8;
+    --gray-800: #dfe3eb;
+    --gray-900: #f0f2f5;
+    --gray-950: #f8f9fb;
 
+    /* Brand teal — slightly brighter for dark bg contrast */
+    --teal-50: #0f2e2a;
+    --teal-100: #133b36;
+    --teal-200: #1a504a;
+    --teal-300: #259e92;
+    --teal-400: #2dd4bf;
+    --teal-500: #14b8a6;
+    --teal-600: #0d9488;
+    --teal-700: #14b8a6;  /* primary on dark: brighter for AA */
+    --teal-800: #2dd4bf;
+    --teal-900: #5eead4;
+
+    /* Semantics — brighter for dark bg contrast */
+    --red-50: #3b1a18;
+    --red-100: #52201c;
+    --red-200: #7a332c;
+    --red-500: #f87171;
+    --red-600: #ef4444;
+    --red-700: #fca5a5;
+
+    --amber-50: #332a14;
+    --amber-100: #4a3d1c;
+    --amber-200: #6b5a28;
+    --amber-500: #fbbf24;
+    --amber-600: #f59e0b;
+    --amber-700: #fcd34d;
+
+    --green-50: #132e1f;
+    --green-100: #1a3f2a;
+    --green-200: #22663a;
+    --green-500: #34d399;
+    --green-600: #22c55e;
+    --green-700: #6ee7b7;
+
+    --blue-50: #141e33;
+    --blue-100: #1a2a44;
+    --blue-200: #243a5e;
+    --blue-500: #60a5fa;
+    --blue-600: #3b82f6;
+    --blue-700: #93c5fd;
+    --blue-800: #a5b4fc;
+
+    /* Surface — dark paper */
+    --surface-bg: #121620;
+    --surface-card: #1a1f2e;
+    --surface-raised: #1e2333;
+    --surface-overlay: rgba(0, 0, 0, 0.72);
+
+    /* Border — low-contrast dividers */
+    --border-subtle: #2a3040;
+    --border-default: #343b4d;
+    --border-strong: #444d62;
+
+    /* Text — high contrast on dark bg */
+    --text-primary: #f0f2f5;
+    --text-secondary: #a8b0c2;
+    --text-tertiary: #6b7590;
+    --text-disabled: #444d62;
+    --text-inverse: #1a1f2e;
+    --text-link: var(--teal-400);
+    --text-link-hover: var(--teal-300);
+
+    /* Interactive */
+    --interactive-primary: var(--teal-500);
+    --interactive-primary-hover: var(--teal-400);
+    --interactive-primary-active: var(--teal-600);
+    --interactive-primary-disabled: var(--teal-200);
+    --interactive-secondary-bg: #1e2333;
+    --interactive-secondary-border: #343b4d;
+    --interactive-secondary-hover: #2a3040;
+    --interactive-quiet-hover: #2a3040;
+
+    /* Focus ring — visible on dark */
+    --focus-ring: 0 0 0 2px #1a1f2e, 0 0 0 4px var(--teal-500);
+
+    /* Shadows — deeper on dark */
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.2);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.24), 0 1px 2px rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.28), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
+    --shadow-lg: 0 12px 16px -4px rgba(0, 0, 0, 0.32), 0 4px 6px -2px rgba(0, 0, 0, 0.18);
+
+    /* Semantic aliases for dark */
+    --semantic-info: var(--blue-500);
+    --semantic-success: var(--green-500);
+    --semantic-warning: var(--amber-500);
+    --semantic-danger: var(--red-500);
+
+    /* Tints — deeper on dark */
+    --tint-teal: rgba(20, 184, 166, 0.12);
+    --tint-info: rgba(96, 165, 250, 0.12);
+    --tint-success: rgba(52, 211, 153, 0.12);
+    --tint-warning: rgba(251, 191, 36, 0.12);
+    --tint-danger: rgba(248, 113, 113, 0.12);
+    --tint-neutral: rgba(42, 48, 64, 0.6);
+
+    /* Paper / Ink / Line aliases */
+    --paper: #1a1f2e;
+    --paper-warm: #222736;
+    --mist: #2a3040;
+    --ink: #f0f2f5;
+    --ink-soft: #a8b0c2;
+    --ink-muted: #6b7590;
+    --line: #2a3040;
+    --line-soft: #222736;
+
+    /* Gradient for dark */
+    --gradient-brand: linear-gradient(135deg, #0d9488 0%, #115e59 100%);
+    --gradient-brand-light: linear-gradient(135deg, rgba(13, 148, 136, 0.15) 0%, rgba(17, 94, 89, 0.1) 100%);
+  }
+}
+
+/* Explicit data-theme override */
+html[data-theme="dark"] {
+  --white: #1a1f2e;
+  --gray-25: #1e2333;
+  --gray-50: #222736;
+  --gray-100: #2a3040;
+  --gray-200: #343b4d;
+  --gray-300: #444d62;
+  --gray-400: #6b7590;
+  --gray-500: #8892a8;
+  --gray-600: #a8b0c2;
+  --gray-700: #c5ccd8;
+  --gray-800: #dfe3eb;
+  --gray-900: #f0f2f5;
+  --gray-950: #f8f9fb;
+
+  --teal-50: #0f2e2a;
+  --teal-100: #133b36;
+  --teal-200: #1a504a;
+  --teal-300: #259e92;
+  --teal-400: #2dd4bf;
+  --teal-500: #14b8a6;
+  --teal-600: #0d9488;
+  --teal-700: #14b8a6;
+  --teal-800: #2dd4bf;
+  --teal-900: #5eead4;
+
+  --red-50: #3b1a18;
+  --red-100: #52201c;
+  --red-200: #7a332c;
+  --red-500: #f87171;
+  --red-600: #ef4444;
+  --red-700: #fca5a5;
+
+  --amber-50: #332a14;
+  --amber-100: #4a3d1c;
+  --amber-200: #6b5a28;
+  --amber-500: #fbbf24;
+  --amber-600: #f59e0b;
+  --amber-700: #fcd34d;
+
+  --green-50: #132e1f;
+  --green-100: #1a3f2a;
+  --green-200: #22663a;
+  --green-500: #34d399;
+  --green-600: #22c55e;
+  --green-700: #6ee7b7;
+
+  --blue-50: #141e33;
+  --blue-100: #1a2a44;
+  --blue-200: #243a5e;
+  --blue-500: #60a5fa;
+  --blue-600: #3b82f6;
+  --blue-700: #93c5fd;
+  --blue-800: #a5b4fc;
+
+  --surface-bg: #121620;
+  --surface-card: #1a1f2e;
+  --surface-raised: #1e2333;
+  --surface-overlay: rgba(0, 0, 0, 0.72);
+
+  --border-subtle: #2a3040;
+  --border-default: #343b4d;
+  --border-strong: #444d62;
+
+  --text-primary: #f0f2f5;
+  --text-secondary: #a8b0c2;
+  --text-tertiary: #6b7590;
+  --text-disabled: #444d62;
+  --text-inverse: #1a1f2e;
+  --text-link: var(--teal-400);
+  --text-link-hover: var(--teal-300);
+
+  --interactive-primary: var(--teal-500);
+  --interactive-primary-hover: var(--teal-400);
+  --interactive-primary-active: var(--teal-600);
+  --interactive-primary-disabled: var(--teal-200);
+  --interactive-secondary-bg: #1e2333;
+  --interactive-secondary-border: #343b4d;
+  --interactive-secondary-hover: #2a3040;
+  --interactive-quiet-hover: #2a3040;
+
+  --focus-ring: 0 0 0 2px #1a1f2e, 0 0 0 4px var(--teal-500);
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.24), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.28), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 12px 16px -4px rgba(0, 0, 0, 0.32), 0 4px 6px -2px rgba(0, 0, 0, 0.18);
+
+  --semantic-info: var(--blue-500);
+  --semantic-success: var(--green-500);
+  --semantic-warning: var(--amber-500);
+  --semantic-danger: var(--red-500);
+
+  --tint-teal: rgba(20, 184, 166, 0.12);
+  --tint-info: rgba(96, 165, 250, 0.12);
+  --tint-success: rgba(52, 211, 153, 0.12);
+  --tint-warning: rgba(251, 191, 36, 0.12);
+  --tint-danger: rgba(248, 113, 113, 0.12);
+  --tint-neutral: rgba(42, 48, 64, 0.6);
+
+  --paper: #1a1f2e;
+  --paper-warm: #222736;
+  --mist: #2a3040;
+  --ink: #f0f2f5;
+  --ink-soft: #a8b0c2;
+  --ink-muted: #6b7590;
+  --line: #2a3040;
+  --line-soft: #222736;
+
+  --gradient-brand: linear-gradient(135deg, #0d9488 0%, #115e59 100%);
+  --gradient-brand-light: linear-gradient(135deg, rgba(13, 148, 136, 0.15) 0%, rgba(17, 94, 89, 0.1) 100%);
+}
+
+/* Explicit light mode */
+html[data-theme="light"] {
+  /* Light tokens are the :root defaults — no overrides needed */
+}

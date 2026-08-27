@@ -344,5 +344,419 @@
   }
 }
 
-/* ── Dark mode ── */
+/* ══════════════════════════════════════════════════════════════════════════
+   PATIENT BANNER (Identity Spine)
+   Always visible in clinical context. Pinned. Never scrolls away.
+   See DESIGN_SYSTEM.md Section 0, 33
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.patient-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-5);
+  background: var(--surface-card);
+  border-bottom: 1px solid var(--border-subtle);
+  position: sticky;
+  top: var(--header-h);
+  z-index: 40;
+  min-height: 56px;
+}
+
+.patient-banner__back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--gray-50);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease);
+  flex-shrink: 0;
+  font-size: 16px;
+}
+
+.patient-banner__back:hover {
+  background: var(--gray-100);
+  color: var(--text-primary);
+}
+
+.patient-banner__back:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.patient-banner__avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--gradient-brand);
+  color: var(--on-teal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-weight: var(--weight-bold);
+  font-size: var(--text-label);
+}
+
+.patient-banner__info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.patient-banner__identity {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.patient-banner__name {
+  font-size: var(--text-h3);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+  letter-spacing: var(--tracking-tight);
+}
+
+.patient-banner__mrn {
+  font-size: var(--text-caption);
+  color: var(--text-tertiary);
+  padding: 1px 6px;
+  background: var(--gray-50);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.patient-banner__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+}
+
+.patient-banner__sep {
+  color: var(--text-disabled);
+}
+
+.patient-banner__location {
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+}
+
+.patient-banner__status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.patient-banner__encounter {
+  font-size: var(--text-caption);
+  color: var(--blue-700);
+  padding: 2px 8px;
+  background: var(--blue-50);
+  border-radius: var(--radius-sm);
+  font-weight: var(--weight-medium);
+}
+
+.patient-banner__allergy {
+  font-size: var(--text-caption);
+  font-weight: var(--weight-semibold);
+  padding: 3px 10px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+
+.patient-banner__allergy--none {
+  color: var(--green-700);
+  background: var(--green-50);
+}
+
+.patient-banner__allergy--warning {
+  color: var(--amber-700);
+  background: var(--amber-50);
+}
+
+.patient-banner__allergy--critical {
+  color: var(--red-700);
+  background: var(--red-50);
+  animation: none; /* No flashing — seizure risk (Section 30) */
+}
+
+@media (max-width: 767px) {
+  .patient-banner {
+    padding: var(--space-3) var(--space-4);
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+  .patient-banner__status {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+  .patient-banner__allergy {
+    font-size: 11px;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   COMMAND CENTER CARD
+   Role-aware dashboard tile. Answers: "What needs attention?"
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.cmd-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-5);
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  transition: border-color var(--duration-fast) var(--ease), box-shadow var(--duration-fast) var(--ease);
+  text-align: left;
+  width: 100%;
+  font: inherit;
+  color: inherit;
+}
+
+.cmd-card--clickable {
+  cursor: pointer;
+}
+
+.cmd-card--clickable:hover {
+  border-color: var(--border-default);
+  box-shadow: var(--shadow-sm);
+}
+
+.cmd-card--clickable:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.cmd-card--danger {
+  border-left: 3px solid var(--red-500);
+}
+
+.cmd-card--warning {
+  border-left: 3px solid var(--amber-500);
+}
+
+.cmd-card--info {
+  border-left: 3px solid var(--blue-500);
+}
+
+.cmd-card--success {
+  border-left: 3px solid var(--green-500);
+}
+
+.cmd-card--neutral {
+  border-left: 3px solid var(--gray-300);
+}
+
+.cmd-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.cmd-card__title {
+  font-size: var(--text-label);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+
+.cmd-card__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  background: var(--gray-50);
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.cmd-card--danger .cmd-card__icon {
+  background: var(--red-50);
+  color: var(--red-600);
+}
+
+.cmd-card--warning .cmd-card__icon {
+  background: var(--amber-50);
+  color: var(--amber-600);
+}
+
+.cmd-card--info .cmd-card__icon {
+  background: var(--blue-50);
+  color: var(--blue-600);
+}
+
+.cmd-card--success .cmd-card__icon {
+  background: var(--green-50);
+  color: var(--green-600);
+}
+
+.cmd-card__count {
+  font-size: var(--text-title);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+}
+
+.cmd-card__sub {
+  font-size: var(--text-caption);
+  color: var(--text-tertiary);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   CLINICAL VALUE
+   Displays lab/vital values with units, reference ranges, and status.
+   Tabular numerals mandatory. See DESIGN_SYSTEM.md Section 33
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.clinical-value {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.clinical-value__label {
+  font-size: var(--text-caption);
+  font-weight: var(--weight-medium);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.clinical-value__data {
+  font-size: var(--text-body);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+.clinical-value__unit {
+  font-weight: var(--weight-regular);
+  color: var(--text-secondary);
+}
+
+.clinical-value__arrow {
+  margin-left: var(--space-1);
+  font-weight: var(--weight-bold);
+}
+
+.clinical-value--high .clinical-value__data,
+.clinical-value--high .clinical-value__arrow {
+  color: var(--amber-600);
+}
+
+.clinical-value--low .clinical-value__data,
+.clinical-value--low .clinical-value__arrow {
+  color: var(--blue-600);
+}
+
+.clinical-value--critical {
+  border-color: var(--red-200);
+  background: var(--red-50);
+}
+
+.clinical-value--critical .clinical-value__data {
+  color: var(--red-700);
+  font-size: var(--text-h3);
+}
+
+.clinical-value__critical {
+  font-size: 10px;
+  font-weight: var(--weight-bold);
+  color: var(--red-700);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-left: var(--space-2);
+}
+
+.clinical-value__range {
+  font-size: var(--text-caption);
+  color: var(--text-tertiary);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   TOAST / NOTIFICATION
+   Bottom-center mobile, top-right desktop.
+   See DESIGN_SYSTEM.md Section 29
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  font-size: var(--text-label);
+  font-weight: var(--weight-medium);
+  max-width: 400px;
+  animation: toastIn var(--duration-normal) var(--ease) both;
+}
+
+@keyframes toastIn {
+  from { transform: translateY(8px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.toast--info { border-left: 3px solid var(--blue-500); }
+.toast--success { border-left: 3px solid var(--green-500); }
+.toast--warning { border-left: 3px solid var(--amber-500); }
+.toast--danger { border-left: 3px solid var(--red-500); }
+.toast--neutral { border-left: 3px solid var(--gray-400); }
+
+.toast__message {
+  flex: 1;
+  min-width: 0;
+}
+
+.toast__action {
+  border: none;
+  background: none;
+  color: var(--text-link);
+  font-size: var(--text-label);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.toast__action:hover {
+  text-decoration: underline;
+}
+
+.toast__dismiss {
+  border: none;
+  background: none;
+  color: var(--text-tertiary);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.toast__dismiss:hover {
+  color: var(--text-primary);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   DARK MODE — component overrides
+   ══════════════════════════════════════════════════════════════════════════ */
 

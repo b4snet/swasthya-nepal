@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import type { CSSProperties, ReactNode, ButtonHTMLAttributes, InputHTMLAttributes, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react';
 import { ApiError } from '../api/client';
 import './ui.css';
@@ -397,4 +397,260 @@ export function formatDateTime(iso: string | null | undefined): string {
 export function formatDate(iso: string | null | undefined): string {
   if (!iso) return '—';
   return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+/* ------------------------------------------------------------------
+   PATIENT BANNER (Identity Spine)
+   The single most important safety element in the clinical UI.
+   Always visible in clinical context — never scrolls away.
+   Carries: name, MRN, age/sex, allergy alert.
+   See DESIGN_SYSTEM.md Section 0, 33
+   ------------------------------------------------------------------ */
+
+interface AllergyInfo {
+  allergen: string;
+  severity?: 'mild' | 'moderate' | 'severe' | 'critical';
+}
+
+interface PatientBannerProps {
+  name: string;
+  mrn: string;
+  age?: string;
+  sex?: string;
+  allergies?: AllergyInfo[];
+  location?: string;
+  encounterBadge?: string;
+  onBack?: () => void;
+  className?: string;
+}
+
+export function PatientBanner({
+  name,
+  mrn,
+  age,
+  sex,
+  allergies = [],
+  location,
+  encounterBadge,
+  onBack,
+  className = '',
+}: PatientBannerProps) {
+  const hasAllergies = allergies.length > 0;
+  const hasCritical = allergies.some((a) => a.severity === 'critical' || a.severity === 'severe');
+  const metaParts = [age, sex].filter(Boolean);
+
+  return (
+    <div
+      className={`patient-banner ${className}`}
+      role="banner"
+      aria-label={`Patient: ${name}, MRN: ${mrn}`}
+    >
+      {onBack && (
+        <button
+          type="button"
+          className="patient-banner__back"
+          onClick={onBack}
+          aria-label="Go back"
+        >
+          ←
+        </button>
+      )}
+
+      <div className="patient-banner__avatar" aria-hidden="true">
+        {name.charAt(0).toUpperCase()}
+      </div>
+
+      <div className="patient-banner__info">
+        <div className="patient-banner__identity">
+          <span className="patient-banner__name">{name}</span>
+          <span className="patient-banner__mrn mono">MRN {mrn}</span>
+        </div>
+        <div className="patient-banner__meta">
+          {metaParts.length > 0 && (
+            <span>{metaParts.join(' · ')}</span>
+          )}
+          {location && (
+            <>
+              <span className="patient-banner__sep" aria-hidden="true">·</span>
+              <span className="patient-banner__location">📍 {location}</span>
+            </>
+          )}
+        </div>
+      </div>
+
+      <div className="patient-banner__status">
+        {encounterBadge && (
+          <span className="patient-banner__encounter">{encounterBadge}</span>
+        )}
+        <span
+          className={`patient-banner__allergy ${hasCritical ? 'patient-banner__allergy--critical' : hasAllergies ? 'patient-banner__allergy--warning' : 'patient-banner__allergy--none'}`}
+          role={hasCritical ? 'alert' : 'status'}
+          aria-label={hasAllergies ? `Allergies: ${allergies.map((a) => a.allergen).join(', ')}` : 'No known allergies'}
+        >
+          {hasAllergies ? (
+            <>⚠ ALLERGIES: {allergies.map((a) => a.allergen).join(', ')}</>
+          ) : (
+            <>✓ No known allergies</>
+          )}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------
+   COMMAND CENTER CARD
+   Used on the Today/Command Center view per role.
+   Answers: "What needs my attention right now?"
+   See DESIGN_SYSTEM.md Section 34
+   ------------------------------------------------------------------ */
+
+interface CommandCenterCardProps {
+  title: string;
+  count: number | string;
+  icon: ReactNode;
+  tone?: StatusTone;
+  onClick?: () => void;
+  subtitle?: string;
+  className?: string;
+}
+
+export function CommandCenterCard({
+  title,
+  count,
+  icon,
+  tone = 'neutral',
+  onClick,
+  subtitle,
+  className = '',
+}: CommandCenterCardProps) {
+  const Tag = onClick ? 'button' : 'div';
+  return (
+    <Tag
+      className={`cmd-card cmd-card--${tone} ${onClick ? 'cmd-card--clickable' : ''} ${className}`}
+      onClick={onClick}
+      {...(onClick ? { type: 'button' as const } : {})}
+    >
+      <div className="cmd-card__top">
+        <span className="cmd-card__title">{title}</span>
+        <span className="cmd-card__icon" aria-hidden="true">{icon}</span>
+      </div>
+      <span className="cmd-card__count num">{count}</span>
+      {subtitle && <span className="cmd-card__sub">{subtitle}</span>}
+    </Tag>
+  );
+}
+
+/* ------------------------------------------------------------------
+   CLINICAL DATA VALUE
+   Displays a lab/vital/financial value with unit, reference range,
+   and out-of-range indication.
+   See DESIGN_SYSTEM.md Section 33
+   ------------------------------------------------------------------ */
+
+interface ClinicalValueProps {
+  label: string;
+  value: string | number;
+  unit?: string;
+  referenceRange?: string;
+  status?: 'normal' | 'high' | 'low' | 'critical' | 'unknown';
+  className?: string;
+}
+
+export function ClinicalValue({
+  label,
+  value,
+  unit,
+  referenceRange,
+  status = 'normal',
+  className = '',
+}: ClinicalValueProps) {
+  return (
+    <div className={`clinical-value clinical-value--${status} ${className}`}>
+      <span className="clinical-value__label">{label}</span>
+      <span className="clinical-value__data mono">
+        {value}
+        {unit && <span className="clinical-value__unit"> {unit}</span>}
+        {status === 'high' && <span className="clinical-value__arrow" aria-label="above range">↑</span>}
+        {status === 'low' && <span className="clinical-value__arrow" aria-label="below range">↓</span>}
+        {status === 'critical' && <span className="clinical-value__critical">CRITICAL</span>}
+      </span>
+      {referenceRange && (
+        <span className="clinical-value__range">{referenceRange}</span>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------
+   TOAST / NOTIFICATION
+   Bottom-center on mobile, top-right on desktop.
+   See DESIGN_SYSTEM.md Section 29
+   ------------------------------------------------------------------ */
+
+interface ToastProps {
+  tone?: StatusTone;
+  message: string;
+  action?: { label: string; onClick: () => void };
+  onDismiss?: () => void;
+  className?: string;
+}
+
+export function Toast({ tone = 'info', message, action, onDismiss, className = '' }: ToastProps) {
+  return (
+    <div className={`toast toast--${tone} ${className}`} role="status" aria-live="polite">
+      <span className="toast__message">{message}</span>
+      {action && (
+        <button type="button" className="toast__action" onClick={action.onClick}>
+          {action.label}
+        </button>
+      )}
+      {onDismiss && (
+        <button type="button" className="toast__dismiss" onClick={onDismiss} aria-label="Dismiss">
+          ×
+        </button>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------
+   THEME TOGGLE
+   Allows switching between light/dark/auto.
+   Persisted in localStorage.
+   ------------------------------------------------------------------ */
+
+export function ThemeToggle() {
+  const [theme, setTheme] = useState<'light' | 'dark' | 'auto'>(() => {
+    try { return (localStorage.getItem('swasthya-theme') as 'light' | 'dark' | 'auto') ?? 'auto'; }
+    catch { return 'auto'; }
+  });
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (theme === 'auto') {
+      root.removeAttribute('data-theme');
+    } else {
+      root.setAttribute('data-theme', theme);
+    }
+    try { localStorage.setItem('swasthya-theme', theme); } catch { /* noop */ }
+  }, [theme]);
+
+  const cycle = () => {
+    setTheme((t) => t === 'light' ? 'dark' : t === 'dark' ? 'auto' : 'light');
+  };
+
+  const label = theme === 'light' ? '☀️ Light' : theme === 'dark' ? '🌙 Dark' : '🔄 Auto';
+
+  return (
+    <button
+      type="button"
+      className="lang-btn"
+      onClick={cycle}
+      title={`Theme: ${label}`}
+      aria-label={`Switch theme (currently ${label})`}
+    >
+      {label}
+    </button>
+  );
 }

@@ -65,6 +65,8 @@ a {
 
 a:hover {
   color: var(--text-link-hover);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 button {
@@ -402,6 +404,35 @@ button {
 }
 
 /* ── Skeleton loading ── */
+/* ── Tabular numerals for clinical data ── */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after {
+    animation: none;
+  }
+}
+
+/* ── Dark mode skeletons ── */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .skeleton {
+    background: var(--gray-100);
+  }
+  :root:not([data-theme="light"]) .skeleton::after {
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.04) 50%, transparent 100%);
+  }
+}
+
+html[data-theme="dark"] .skeleton {
+  background: var(--gray-100);
+}
+html[data-theme="dark"] .skeleton::after {
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.04) 50%, transparent 100%);
+}
+
 .skeleton {
   background: var(--gray-100);
   border-radius: var(--radius-md);
@@ -482,6 +513,19 @@ button {
 }
 
 /* ── Dark mode ── */
+html[data-theme="dark"] body,
+html[data-theme="dark"] #root {
+  background: var(--surface-bg);
+  color: var(--text-primary);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) body,
+  :root:not([data-theme="light"]) #root {
+    background: var(--surface-bg);
+    color: var(--text-primary);
+  }
+}
 
 
 @media (prefers-reduced-motion: reduce) {
