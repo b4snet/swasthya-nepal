@@ -20,6 +20,8 @@ import {
   Search,
   PanelLeftClose,
   PanelLeft,
+  UserRound,
+  Lock,
 } from 'lucide-react';
 import {
   MODULES,
@@ -353,6 +355,26 @@ function Breadcrumbs({
   );
 }
 
+// ── Patient Context Strip ──
+// Compact persistent patient identity bar between workspace and content.
+// Only renders when a patient ID is in the URL.
+// Does NOT fetch patient data — this is a lightweight shell-level indicator.
+// The actual patient workspace (PatientWorkspace.tsx) renders the full header.
+function PatientContextStrip({ patientId }: { patientId: string }) {
+  return (
+    <div className="patient-strip" role="status" aria-label="Active patient context">
+      <span className="patient-strip__icon">
+        <UserRound size={13} />
+      </span>
+      <span className="patient-strip__label">Patient</span>
+      <span className="patient-strip__id mono">{patientId.slice(0, 8)}</span>
+      <span className="patient-strip__lock" title="Patient context locked">
+        <Lock size={11} />
+      </span>
+    </div>
+  );
+}
+
 // ── Main shell ──
 export function AppShell() {
   const tenant = useTenant();
@@ -369,6 +391,7 @@ export function AppShell() {
 
   // Extract patient context from URL
   const patientMatch = location.pathname.match(/^\/clinical\/patients\/([^/]+)/);
+  const activePatientId = patientMatch?.[1] ?? null;
 
   // Sidebar collapsed state
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -457,6 +480,11 @@ export function AppShell() {
 
       {/* ── Contextual workspace launcher (between header and content) ── */}
       <ContextualWorkspace activeModule={activeModule} pathname={location.pathname} />
+
+      {/* ── Patient context strip — persistent patient identity ── */}
+      {activePatientId && (
+        <PatientContextStrip patientId={activePatientId} />
+      )}
 
       <div className="app-body">
         {/* ── Primary domain sidebar (no expanding children) ── */}

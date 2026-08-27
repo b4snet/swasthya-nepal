@@ -184,6 +184,56 @@
   gap: var(--space-5);
 }
 
+/* ── Patient Context Strip ───────────────────────────────────── */
+.patient-strip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1-5) var(--space-5);
+  background: var(--blue-50);
+  border-bottom: 1px solid var(--blue-100);
+  font-size: var(--fs-caption, 0.7rem);
+  min-height: 32px;
+}
+
+.patient-strip__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--blue-100);
+  color: var(--blue-600);
+  flex-shrink: 0;
+}
+
+.patient-strip__label {
+  font-weight: 500;
+  color: var(--blue-600);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.patient-strip__id {
+  font-size: 11px;
+  color: var(--blue-500);
+  font-family: var(--font-mono);
+}
+
+.patient-strip__lock {
+  display: flex;
+  align-items: center;
+  color: var(--blue-400);
+  margin-left: auto;
+}
+
+@media (max-width: 767px) {
+  .patient-strip {
+    padding: var(--space-1-5) var(--space-3);
+  }
+}
+
 /* Domain command surface sits above page content */
 .app-content .domain-surface {
   flex-shrink: 0;

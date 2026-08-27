@@ -1,159 +1,174 @@
 /* ==========================================================================
-   Contextual Workspace Launcher
-   Replaces the old expand/collapse sidebar child navigation.
-   Domain → Workspace Cards → Action
+   Contextual Action Rail — Phase 123
+   Compact horizontal action surface with circular icon chips.
+   Replaces the old large workspace cards.
    ========================================================================== */
 
-/* ── Container ─────────────────────────────────────────────────── */
-.contextual-workspace {
+/* ── Action Rail Container ────────────────────────────────────── */
+.action-rail {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-2) var(--space-5);
+  background: var(--white);
   border-bottom: 1px solid var(--border-subtle);
-  background: var(--gray-50);
-  padding: var(--space-3) var(--space-5);
-  animation: workspaceIn 0.18s ease both;
+  min-height: 48px;
 }
 
-@keyframes workspaceIn {
-  from {
-    opacity: 0;
-    transform: translateY(-4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* ── Header ────────────────────────────────────────────────────── */
-.contextual-workspace__header {
+/* ── Domain Header ────────────────────────────────────────────── */
+.action-rail__header {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  margin-bottom: var(--space-3);
+  flex-shrink: 0;
+  min-width: 0;
 }
 
-.contextual-workspace__domain-icon {
+.action-rail__domain-icon {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 28px;
   height: 28px;
   border-radius: var(--radius-md);
-  background: var(--blue-100);
+  background: var(--blue-50);
   color: var(--blue-600);
   flex-shrink: 0;
 }
 
-.contextual-workspace__title {
-  font-size: var(--text-body);
-  font-weight: var(--weight-semibold);
+.action-rail__title {
+  font-size: var(--fs-label, 0.75rem);
+  font-weight: 600;
   color: var(--text-primary);
   margin: 0;
+  white-space: nowrap;
 }
 
-/* ── Grid of workspace cards ───────────────────────────────────── */
-.contextual-workspace__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: var(--space-2);
+.action-rail__count {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  background: var(--gray-100);
+  padding: 1px 6px;
+  border-radius: 9px;
+  font-variant-numeric: tabular-nums;
 }
 
-/* ── Single workspace card ─────────────────────────────────────── */
-.workspace-card {
+/* ── Chip Rail (horizontally scrollable) ──────────────────────── */
+.action-rail__chips {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
   gap: var(--space-2);
-  padding: var(--space-3);
-  border-radius: var(--radius-lg);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  flex: 1;
+  min-width: 0;
+  padding: 2px 0;
+}
+
+.action-rail__chips::-webkit-scrollbar {
+  display: none;
+}
+
+/* ── Single Action Chip ───────────────────────────────────────── */
+.action-chip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px 12px 6px 8px;
   border: 1px solid var(--border-subtle);
+  border-radius: 999px;
   background: var(--white);
   cursor: pointer;
   transition: all var(--duration-fast) var(--ease);
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-height: 36px;
   text-align: left;
-  width: 100%;
-  min-height: 72px;
+  font-family: var(--font-sans);
 }
 
-.workspace-card:hover {
-  border-color: var(--blue-200);
+.action-chip:hover {
   background: var(--blue-50);
+  border-color: var(--blue-200);
   box-shadow: var(--shadow-sm);
 }
 
-.workspace-card:focus-visible {
+.action-chip:focus-visible {
   outline: none;
-  border-color: var(--interactive-primary);
   box-shadow: var(--focus-ring);
+  border-color: var(--interactive-primary);
 }
 
-.workspace-card--active {
-  border-color: var(--blue-400);
+.action-chip--active {
   background: var(--blue-50);
+  border-color: var(--blue-400);
   box-shadow: 0 0 0 1px var(--blue-400);
 }
 
-.workspace-card--active .workspace-card__icon {
+.action-chip--active .action-chip__icon {
   color: var(--blue-600);
   background: var(--blue-100);
 }
 
-.workspace-card--active .workspace-card__name {
+.action-chip--active .action-chip__label {
   color: var(--blue-700);
-  font-weight: var(--weight-semibold);
+  font-weight: 600;
 }
 
-/* ── Icon circle ───────────────────────────────────────────────── */
-.workspace-card__icon {
+/* ── Chip Icon ────────────────────────────────────────────────── */
+.action-chip__icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-md);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
   background: var(--gray-100);
   color: var(--text-secondary);
   flex-shrink: 0;
+  transition: all var(--duration-fast) var(--ease);
 }
 
-/* ── Text body ─────────────────────────────────────────────────── */
-.workspace-card__body {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
+/* ── Chip Label ───────────────────────────────────────────────── */
+.action-chip__label {
+  font-size: var(--fs-caption, 0.7rem);
+  font-weight: 500;
+  color: var(--text-secondary);
+  line-height: 1;
 }
 
-.workspace-card__name {
-  font-size: var(--text-label);
-  font-weight: var(--weight-medium);
-  color: var(--text-primary);
-  line-height: 1.3;
+/* ── Responsive ───────────────────────────────────────────────── */
+
+/* Desktop: full display */
+@media (min-width: 1024px) {
+  .action-rail {
+    padding: var(--space-2) var(--space-5);
+  }
 }
 
-.workspace-card__desc {
-  font-size: 11px;
-  color: var(--text-tertiary);
-  line-height: 1.3;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+/* Tablet: slightly tighter */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .action-rail {
+    padding: var(--space-2) var(--space-4);
+  }
+
+  .action-chip {
+    padding: 5px 10px 5px 6px;
+    min-height: 34px;
+  }
 }
 
-/* ── Mobile: single column, full width ─────────────────────────── */
+/* Mobile: hide action rail (bottom nav handles navigation) */
 @media (max-width: 767px) {
-  .contextual-workspace {
+  .action-rail {
     display: none;
   }
 }
 
-/* ── Tablet: 2 columns ─────────────────────────────────────────── */
-@media (min-width: 768px) and (max-width: 1023px) {
-  .contextual-workspace__grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .workspace-card {
-    min-height: 64px;
+/* ── Reduced Motion ───────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .action-chip {
+    transition: none;
   }
 }
