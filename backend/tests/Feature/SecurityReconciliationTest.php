@@ -169,12 +169,26 @@ it('unprotected auth tables have no RLS (documented justification)', function ()
     expect($names)->toContain('password_reset_tokens');
     expect($names)->toContain('personal_access_tokens');
 
-    // 11 original intentionally-unprotected tables (auth infrastructure + framework).
-    // As of Phase 100.6, 17 additional application tables have been added by later
-    // migrations without RLS. These tables DO contain tenant_id/facility_id columns
-    // and represent a defense-in-depth gap — they rely on application-layer scoping
-    // but lack database-level RLS. They must be remediated before production.
-    expect(count($unprotected))->toBeGreaterThanOrEqual(11);
+    // STRICT: exactly 11 intentionally-unprotected tables (auth infrastructure + framework).
+    // If a NEW unprotected table appears, this test MUST fail — forcing the developer
+    // to either add RLS or explicitly document the exception here.
+    // Do NOT silently increase this number.
+    $intentionallyUnprotected = [
+        'cache', 'cache_locks', 'failed_jobs', 'job_batches', 'jobs', 'migrations',
+        'users', 'refresh_tokens', 'mfa_challenges', 'password_reset_tokens', 'personal_access_tokens',
+    ];
+    sort($intentionallyUnprotected);
+    sort($names);
+
+    // Every unprotected table must be in the documented exception list
+    $unexpected = array_diff($names, $intentionallyUnprotected);
+    expect($unexpected)->toBeEmpty(
+        'Unexpected unprotected tables found: '.implode(', ', $unexpected)
+        .'. Add RLS policies or document the exception in this test.'
+    );
+
+    // The documented list must cover all unprotected tables
+    expect(count($names))->toBe(count($intentionallyUnprotected));
 });
 
 it('no unprotected table contains tenant-scoped PII beyond auth metadata', function () {
