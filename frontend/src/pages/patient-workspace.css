@@ -278,6 +278,22 @@
   color: var(--blue-700);
 }
 
+/* ── Urgent workspace card (Phase 119 context engine) ──────── */
+.pw-nav__card--urgent {
+  border-color: var(--amber-200);
+  background: var(--amber-50);
+}
+
+.pw-nav__card--urgent:hover {
+  border-color: var(--amber-300);
+  background: var(--amber-100);
+}
+
+.pw-nav__card--urgent .pw-nav__icon {
+  color: var(--amber-600);
+  background: var(--amber-100);
+}
+
 /* ── Workspace Content ──────────────────────────────────────── */
 .pw-content {
   min-height: 300px;

@@ -56,6 +56,7 @@ import { PatientJourney } from '../components/PatientJourney';
 import { CareTeam } from '../components/CareTeam';
 import { ClosedLoopTracker } from '../components/ClosedLoopTracker';
 import { ClinicalQuickView } from '../components/ClinicalQuickView';
+import { ContextualActionRail, resolveWorkspacePriorities, resolveContextualActions } from '../components/clinical-context';
 
 // ─── Timeline helper (reused from PatientProfilePage) ───
 function timelineSummary(summary: any): string {
@@ -324,11 +325,13 @@ function PatientWorkspaceNav({
   onSelect,
   hasRole,
   counts,
+  priorities,
 }: {
   activeWorkspace: string;
   onSelect: (id: string) => void;
   hasRole: (role: string) => boolean;
   counts: Record<string, number | undefined>;
+  priorities?: Record<string, { urgency: string; reason: string }>;
 }) {
   const visible = PATIENT_WORKSPACES.filter(
     (ws) => ws.roles.length === 0 || ws.roles.some((r) => hasRole(r as any)),
@@ -340,14 +343,17 @@ function PatientWorkspaceNav({
         {visible.map((ws) => {
           const isActive = ws.id === activeWorkspace;
           const count = counts[ws.id];
+          const priority = priorities?.[ws.id];
+          const isUrgent = priority && (priority.urgency === 'critical' || priority.urgency === 'urgent');
           return (
             <button
               key={ws.id}
               type="button"
-              className={`pw-nav__card ${isActive ? 'pw-nav__card--active' : ''}`}
+              className={`pw-nav__card ${isActive ? 'pw-nav__card--active' : ''} ${isUrgent ? 'pw-nav__card--urgent' : ''}`}
               onClick={() => onSelect(ws.id)}
-              aria-label={ws.label}
+              aria-label={`${ws.label}${priority?.reason ? ` — ${priority.reason}` : ''}`}
               aria-current={isActive ? 'page' : undefined}
+              title={priority?.reason}
               data-testid={`pw-nav-${ws.id}`}
               role="listitem"
             >
@@ -698,6 +704,31 @@ export function PatientWorkspace() {
 
   const patient = profile.data;
 
+  // ── Resolve workspace priorities from clinical context ──
+  const workspacePriorityMap = useMemo(() => {
+    const encountersArr = (encounters.data as any[]) || [];
+    const diagnosesArr = (diagnoses.data as any[]) || [];
+    const prescriptionsArr = (prescriptions.data as any[]) || [];
+    const labOrdersArr = (labOrders.data as any[]) || [];
+    const admissionsArr = (admissions.data as any[]) || [];
+    const priorities = resolveWorkspacePriorities({
+      hasPatient: true,
+      encounterContext: 'none',
+      activeEncounters: encountersArr.filter((e: any) => e.status === 'open').length,
+      isAdmitted: admissionsArr.some((a: any) => !a.dischargedAt),
+      activeDiagnoses: diagnosesArr.filter((d: any) => d.status === 'active').length,
+      activePrescriptions: prescriptionsArr.filter((p: any) => p.status === 'active').length,
+      pendingLabs: labOrdersArr.filter((o: any) => !['reported', 'verified'].includes(o.status)).length,
+      criticalItems: labOrdersArr.filter((o: any) => o.priority === 'stat' || o.status === 'critical').length,
+      pendingTasks: encountersArr.filter((e: any) => e.status === 'open').length,
+      userRole: '',
+      urgency: 'routine',
+    });
+    const map: Record<string, { urgency: string; reason: string }> = {};
+    for (const p of priorities) map[p.id] = { urgency: p.urgency, reason: p.reason };
+    return map;
+  }, [encounters.data, diagnoses.data, prescriptions.data, labOrders.data, admissions.data]);
+
   // ── Active workspace content ──
   const renderWorkspaceContent = () => {
     switch (activeWorkspace) {
@@ -955,12 +986,39 @@ export function PatientWorkspace() {
       {/* ── Contextual Action Bar ── */}
       <PatientActionBar patientId={patient.id} hasRole={hasRole as any} />
 
+      {/* ── Contextual Action Rail (Phase 119) ── */}
+      <ContextualActionRail
+        actions={(() => {
+          const encountersArr = (encounters.data as any[]) || [];
+          const diagnosesArr = (diagnoses.data as any[]) || [];
+          const prescriptionsArr = (prescriptions.data as any[]) || [];
+          const labOrdersArr = (labOrders.data as any[]) || [];
+          const admissionsArr = (admissions.data as any[]) || [];
+          const ctx = {
+            hasPatient: true,
+            encounterContext: 'none' as const,
+            activeEncounters: encountersArr.filter((e: any) => e.status === 'open').length,
+            isAdmitted: admissionsArr.some((a: any) => !a.dischargedAt),
+            activeDiagnoses: diagnosesArr.filter((d: any) => d.status === 'active').length,
+            activePrescriptions: prescriptionsArr.filter((p: any) => p.status === 'active').length,
+            pendingLabs: labOrdersArr.filter((o: any) => !['reported', 'verified'].includes(o.status)).length,
+            criticalItems: labOrdersArr.filter((o: any) => o.priority === 'stat' || o.status === 'critical').length,
+            pendingTasks: encountersArr.filter((e: any) => e.status === 'open').length,
+            userRole: '',
+            urgency: 'routine' as const,
+          };
+          return resolveContextualActions(ctx, patient.id);
+        })()}
+        patientId={patient.id}
+      />
+
       {/* ── Patient Workspace Navigation ── */}
       <PatientWorkspaceNav
         activeWorkspace={activeWorkspace}
         onSelect={setActiveWorkspace}
         hasRole={hasRole as any}
         counts={counts}
+        priorities={workspacePriorityMap}
       />
 
       {/* ── Workspace Content ── */}

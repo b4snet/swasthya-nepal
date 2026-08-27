@@ -1,0 +1,123 @@
+/* ==========================================================================
+   Contextual Action Rail — Adaptive Action Bar (Phase 119)
+   
+   Compact, priority-driven actions that adapt to clinical context.
+   Light-only. Clinical. Calm.
+   ========================================================================== */
+
+/* ── Container ───────────────────────────────────────────────── */
+.car {
+  display: flex;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+}
+
+.car::-webkit-scrollbar {
+  display: none;
+}
+
+/* ── Items Row ────────────────────────────────────────────────── */
+.car__items {
+  display: flex;
+  gap: var(--space-2);
+  min-width: min-content;
+}
+
+/* ── Single Action ────────────────────────────────────────────── */
+.car__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  padding: var(--space-1-5) var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  background: var(--white);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease);
+  white-space: nowrap;
+  font: inherit;
+  color: inherit;
+  flex-shrink: 0;
+  min-height: 32px;
+}
+
+.car__item:hover {
+  box-shadow: var(--shadow-xs);
+  transform: translateY(-1px);
+}
+
+.car__item:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* ── Urgency variants ──────────────────────────────────────────── */
+.car__item--attention {
+  border-color: var(--blue-200);
+  background: var(--blue-50);
+}
+
+.car__item--urgent {
+  border-color: var(--amber-200);
+  background: var(--amber-50);
+}
+
+.car__item--critical {
+  border-color: var(--red-200);
+  background: var(--red-50);
+}
+
+/* ── Icon ──────────────────────────────────────────────────────── */
+.car__icon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* ── Label ─────────────────────────────────────────────────────── */
+.car__label {
+  font-size: var(--text-caption);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+}
+
+/* ── Alert indicator ───────────────────────────────────────────── */
+.car__alert {
+  flex-shrink: 0;
+}
+
+/* ── Arrow ─────────────────────────────────────────────────────── */
+.car__arrow {
+  flex-shrink: 0;
+  opacity: 0.4;
+  transition: opacity var(--duration-fast) var(--ease);
+}
+
+.car__item:hover .car__arrow {
+  opacity: 0.8;
+}
+
+/* ── Responsive ────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .car {
+    gap: var(--space-1-5);
+  }
+
+  .car__item {
+    padding: var(--space-1) var(--space-2-5);
+  }
+}
+
+/* ── Reduced Motion ────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .car__item {
+    transition: none;
+  }
+
+  .car__item:hover {
+    transform: none;
+  }
+}
