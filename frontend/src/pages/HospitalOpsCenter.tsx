@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTenant } from '../context/TenantContext';
 import { useAccess } from '../auth/useAccess';
@@ -6,6 +6,7 @@ import { useFetch } from '../hooks/useFetch';
 import { bedWardApi, erApi } from '../api/endpoints';
 import { api } from '../api/client';
 import { Button, Card, EmptyState } from '../components/ui';
+import { HospitalCommandCenter } from '../components/HospitalCommandCenter';
 import {
   Bed,
   Users,
@@ -546,6 +547,8 @@ export function HospitalOpsCenter() {
     erQueue.refresh();
   }, [dash, cap, flow, occupancy, erQueue]);
 
+  const [showCommandCenter, setShowCommandCenter] = useState(true);
+
   return (
     <div className="page ops-page">
       <header className="ops-header">
@@ -560,6 +563,21 @@ export function HospitalOpsCenter() {
           <RefreshCw size={16} /> Refresh
         </Button>
       </header>
+
+      {/* Command Center toggle */}
+      <div className="ops-command-toggle">
+        <Button
+          variant={showCommandCenter ? 'primary' : 'ghost'}
+          size="sm"
+          onClick={() => setShowCommandCenter(!showCommandCenter)}
+        >
+          <Activity size={14} />
+          {showCommandCenter ? 'Hide Command Center' : 'Show Command Center'}
+        </Button>
+      </div>
+
+      {/* Hospital Command Center */}
+      {showCommandCenter && <HospitalCommandCenter />}
 
       {/* Capacity Overview */}
       <CapacityOverview
