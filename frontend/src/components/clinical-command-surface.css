@@ -1,0 +1,168 @@
+/* ==========================================================================
+   Clinical Command Surface — Phase 125
+   Unified contextual action surface for patient workspace.
+   Compact. Role-aware. Light-first.
+   ========================================================================== */
+
+/* ── Container ────────────────────────────────────────────────── */
+.ccs {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+/* ── Primary Actions ──────────────────────────────────────────── */
+.ccs__primary {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+/* ── Review Actions ───────────────────────────────────────────── */
+.ccs__review {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+/* ── Single Action Button ─────────────────────────────────────── */
+.ccs__action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--white);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease);
+  white-space: nowrap;
+  font-family: var(--font-sans);
+  min-height: 34px;
+}
+
+.ccs__action:hover {
+  box-shadow: var(--shadow-xs);
+  transform: translateY(-1px);
+}
+
+.ccs__action:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* ── Action Icon ──────────────────────────────────────────────── */
+.ccs__action-icon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* ── Action Label ─────────────────────────────────────────────── */
+.ccs__action-label {
+  font-size: var(--fs-caption, 0.7rem);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ── Urgency variants ─────────────────────────────────────────── */
+.ccs__action--attention {
+  border-color: var(--blue-200);
+  background: var(--blue-50);
+}
+
+.ccs__action--urgent {
+  border-color: var(--amber-200);
+  background: var(--amber-50);
+}
+
+.ccs__action--critical {
+  border-color: var(--red-200);
+  background: var(--red-50);
+}
+
+/* ── Critical Badge ───────────────────────────────────────────── */
+.ccs__action-badge {
+  font-size: 10px;
+  font-weight: 700;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ccs__action-badge--critical {
+  background: var(--red-500);
+  color: var(--white);
+}
+
+/* ── More Button ──────────────────────────────────────────────── */
+.ccs__more {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--white);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease);
+  font-size: var(--fs-caption, 0.7rem);
+  font-weight: 500;
+  font-family: var(--font-sans);
+  min-height: 34px;
+}
+
+.ccs__more:hover {
+  background: var(--gray-50);
+  border-color: var(--border-default);
+  color: var(--text-secondary);
+}
+
+.ccs__more:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* ── Expanded Actions ─────────────────────────────────────────── */
+.ccs__expanded {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  width: 100%;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border-subtle);
+  margin-top: var(--space-1);
+}
+
+/* ── Responsive ───────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .ccs {
+    gap: var(--space-1-5);
+  }
+
+  .ccs__action {
+    padding: 5px 10px;
+    min-height: 32px;
+  }
+
+  .ccs__action-label {
+    font-size: 11px;
+  }
+}
+
+/* ── Reduced Motion ───────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .ccs__action {
+    transition: none;
+  }
+
+  .ccs__action:hover {
+    transform: none;
+  }
+}

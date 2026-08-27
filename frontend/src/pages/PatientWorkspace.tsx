@@ -38,7 +38,6 @@ import {
   CalendarDays,
   ClipboardList,
   Activity,
-  WalletCards,
   MessageSquare,
   ArrowLeft,
   Stethoscope,
@@ -60,6 +59,7 @@ import { ContextualActionRail, resolveWorkspacePriorities, resolveContextualActi
 import { WorkflowTrail } from '../components/WorkflowTrail';
 import { PendingWorkPanel } from '../components/PendingWorkPanel';
 import { ClinicalInspector, type InspectorField, type InspectorAction } from '../components/ClinicalInspector';
+import { ClinicalCommandSurface } from '../components/ClinicalCommandSurface';
 
 // ─── Timeline helper (reused from PatientProfilePage) ───
 function timelineSummary(summary: any): string {
@@ -142,25 +142,7 @@ export const PATIENT_WORKSPACES: WorkspaceDef[] = [
   { id: 'communication', label: 'Communication', Icon: MessageSquare, roles: [], description: 'Messages, reminders, care coordination' },
 ];
 
-// ─── Quick Action definitions ───
-interface QuickAction {
-  id: string;
-  label: string;
-  Icon: any;
-  roles: string[];
-  getLink: (patientId: string) => string;
-}
 
-const QUICK_ACTIONS: QuickAction[] = [
-  { id: 'new-encounter', label: 'New Encounter', Icon: Stethoscope, roles: ['doctor', 'nurse', 'hospital_admin'], getLink: (id) => `/clinical/encounters?patientId=${id}` },
-  { id: 'order-lab', label: 'Order Lab', Icon: FlaskConical, roles: ['doctor', 'nurse', 'hospital_admin'], getLink: (id) => `/clinical/forms?patientId=${id}&type=lab` },
-  { id: 'prescribe', label: 'Prescribe', Icon: Pill, roles: ['doctor', 'hospital_admin'], getLink: (id) => `/clinical/forms?patientId=${id}&type=prescription` },
-  { id: 'refer', label: 'Refer', Icon: GitPullRequestArrow, roles: ['doctor', 'nurse'], getLink: (id) => `/clinical/referrals?patientId=${id}` },
-  { id: 'book', label: 'Book Appt', Icon: CalendarDays, roles: ['doctor', 'nurse', 'receptionist', 'hospital_admin'], getLink: (id) => `/clinical/appointments?patientId=${id}` },
-  { id: 'add-task', label: 'Add Task', Icon: ClipboardList, roles: ['nurse', 'hospital_admin'], getLink: (id) => `/nursing?patientId=${id}` },
-  { id: 'billing', label: 'Billing', Icon: WalletCards, roles: ['billing_clerk', 'hospital_admin', 'org_admin', 'org_finance'], getLink: (id) => `/finance/billing?patientId=${id}` },
-  { id: 'message', label: 'Message', Icon: MessageSquare, roles: ['doctor', 'nurse', 'hospital_admin'], getLink: () => '/communications/messages' },
-];
 
 // ════════════════════════════════════════════════════════════════════════════
 // PATIENT HEADER — persistent, high-information, wrong-patient defense
@@ -377,40 +359,7 @@ function PatientWorkspaceNav({
   );
 }
 
-// ════════════════════════════════════════════════════════════════════════════
-// ACTION BAR — contextual actions for the patient
-// ════════════════════════════════════════════════════════════════════════════
-function PatientActionBar({
-  patientId,
-  hasRole,
-}: {
-  patientId: string;
-  hasRole: (role: string) => boolean;
-}) {
-  const navigate = useNavigate();
-  const actions = QUICK_ACTIONS.filter(
-    (a) => a.roles.length === 0 || a.roles.some((r) => hasRole(r as any)),
-  );
 
-  return (
-    <div className="pw-actions" role="toolbar" aria-label="Patient actions">
-      {actions.map((action) => (
-        <button
-          key={action.id}
-          type="button"
-          className="pw-actions__btn"
-          onClick={() => navigate(action.getLink(patientId))}
-          title={action.label}
-          aria-label={action.label}
-          data-testid={`pw-action-${action.id}`}
-        >
-          <action.Icon size={15} strokeWidth={1.75} />
-          <span className="pw-actions__label">{action.label}</span>
-        </button>
-      ))}
-    </div>
-  );
-}
 
 // ════════════════════════════════════════════════════════════════════════════
 // WORKSPACE VIEWS
@@ -1157,10 +1106,15 @@ export function PatientWorkspace() {
         currentActivity={workspacePriorityMap[activeWorkspace]?.reason}
       />
 
-      {/* ── Contextual Action Bar ── */}
-      <PatientActionBar patientId={patient.id} hasRole={hasRole as any} />
+      {/* ── Clinical Command Surface (Phase 125 — unified contextual actions) ── */}
+      <ClinicalCommandSurface
+        patientId={patient.id}
+        pendingLabs={(labOrders.data as any[])?.filter((o: any) => !['reported', 'verified'].includes(o.status)).length || 0}
+        criticalItems={(labOrders.data as any[])?.filter((o: any) => o.priority === 'stat' || o.status === 'critical').length || 0}
+        activeEncounters={(encounters.data as any[])?.filter((e: any) => e.status === 'open').length || 0}
+      />
 
-      {/* ── Contextual Action Rail (Phase 119) ── */}
+      {/* ── Contextual Action Rail (Phase 119 — priority actions) ── */}
       <ContextualActionRail
         actions={(() => {
           const encountersArr = (encounters.data as any[]) || [];
