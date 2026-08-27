@@ -13,7 +13,7 @@
  * Context-aware: adapts when patient is in specific care settings.
  */
 
-import { useCallback, useMemo, useState, useEffect } from 'react';
+import { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTenant } from '../context/TenantContext';
 import { patientsApi, encountersApi } from '../api/endpoints';
@@ -59,6 +59,7 @@ import { ClinicalQuickView } from '../components/ClinicalQuickView';
 import { ContextualActionRail, resolveWorkspacePriorities, resolveContextualActions } from '../components/clinical-context';
 import { WorkflowTrail } from '../components/WorkflowTrail';
 import { PendingWorkPanel } from '../components/PendingWorkPanel';
+import { ClinicalInspector, type InspectorField, type InspectorAction } from '../components/ClinicalInspector';
 
 // ─── Timeline helper (reused from PatientProfilePage) ───
 function timelineSummary(summary: any): string {
@@ -616,6 +617,7 @@ function DataTableView({
   columns,
   refresh,
   onRowClick,
+  onInspect,
 }: {
   title: string;
   data: any[];
@@ -626,6 +628,7 @@ function DataTableView({
   columns: { key: string; label: string; render?: (item: any) => React.ReactNode; className?: string }[];
   refresh?: () => void;
   onRowClick?: (item: any) => void;
+  onInspect?: (item: any) => void;
 }) {
   if (loading) return <Spinner label={`Loading ${title.toLowerCase()}…`} />;
   if (error) return <ErrorState error={error} onRetry={refresh ? () => refresh() : undefined} />;
@@ -642,7 +645,7 @@ function DataTableView({
           </tr>
         </thead>
         <tbody>              {data.map((item: any) => (
-                <tr key={item.id} onClick={onRowClick ? () => onRowClick(item) : undefined} className={onRowClick ? 'pw-clickable-row' : undefined} role={onRowClick ? 'button' : undefined} tabIndex={onRowClick ? 0 : undefined} onKeyDown={onRowClick ? (e) => { if (e.key === 'Enter') onRowClick(item); } : undefined}>
+                <tr key={item.id} onClick={onInspect ? () => onInspect(item) : onRowClick ? () => onRowClick(item) : undefined} className={onInspect || onRowClick ? 'pw-clickable-row' : undefined} role={onInspect || onRowClick ? 'button' : undefined} tabIndex={onInspect || onRowClick ? 0 : undefined} onKeyDown={onInspect ? (e) => { if (e.key === 'Enter') onInspect(item); } : onRowClick ? (e) => { if (e.key === 'Enter') onRowClick(item); } : undefined}>
               {columns.map((col) => (
                 <td key={col.key} data-label={col.label} className={col.className}>
                   {col.render ? col.render(item) : (item[col.key] ?? '—')}
@@ -686,6 +689,139 @@ export function PatientWorkspace() {
   const documents = useFetch(() => patientsApi.documents(id!, fac), [id, fac]);
   const appointments = useFetch(() => patientsApi.followUps(id!, fac), [id, fac]);
   const timeline = useFetch(() => patientsApi.timeline(id!, fac), [id, fac]);
+
+  // ── Clinical Inspector state ──
+  const [inspectorOpen, setInspectorOpen] = useState(false);
+  const [inspectorItem, setInspectorItem] = useState<any>(null);
+  const [inspectorType, setInspectorType] = useState<string>('');
+  const inspectorTriggerRef = useRef<HTMLTableRowElement>(null);
+
+  const openInspector = useCallback((item: any, type: string) => {
+    setInspectorItem(item);
+    setInspectorType(type);
+    setInspectorOpen(true);
+  }, []);
+
+  const closeInspector = useCallback(() => {
+    setInspectorOpen(false);
+    // Delay clearing item to allow close animation
+    setTimeout(() => {
+      setInspectorItem(null);
+      setInspectorType('');
+    }, 200);
+  }, []);
+
+  // Build inspector fields based on item type
+  const inspectorFields: InspectorField[] = useMemo(() => {
+    if (!inspectorItem) return [];
+    const item = inspectorItem;
+    switch (inspectorType) {
+      case 'encounter':
+        return [
+          { label: 'Type', value: item.type },
+          { label: 'Provider', value: item.providerName },
+          { label: 'Service', value: item.serviceName },
+          { label: 'Status', value: item.status },
+          { label: 'Started', value: formatDateTime(item.startedAt), mono: true },
+          { label: 'Ended', value: item.endedAt ? formatDateTime(item.endedAt) : '—', mono: true },
+        ];
+      case 'diagnosis':
+        return [
+          { label: 'Diagnosis', value: item.description ?? item.code ?? '—' },
+          { label: 'Type', value: item.type },
+          { label: 'Status', value: item.status },
+          { label: 'Provider', value: item.providerName },
+          { label: 'Date', value: formatDateTime(item.createdAt), mono: true },
+        ];
+      case 'medication':
+        return [
+          { label: 'Medication', value: item.medicationName ?? item.medication?.name ?? '—' },
+          { label: 'Dosage', value: item.dosage },
+          { label: 'Frequency', value: item.frequency },
+          { label: 'Route', value: item.route },
+          { label: 'Status', value: item.status },
+          { label: 'Prescriber', value: item.prescriberName },
+          { label: 'Date', value: formatDateTime(item.createdAt), mono: true },
+        ];
+      case 'lab':
+        return [
+          { label: 'Test', value: item.testName ?? item.name ?? '—' },
+          { label: 'Priority', value: item.priority, urgency: item.priority === 'stat' ? 'critical' : undefined },
+          { label: 'Status', value: item.status },
+          { label: 'Ordered By', value: item.orderedByName },
+          { label: 'Date', value: formatDateTime(item.createdAt), mono: true },
+        ];
+      case 'radiology':
+        return [
+          { label: 'Study', value: item.studyName ?? item.name ?? '—' },
+          { label: 'Modality', value: item.modality },
+          { label: 'Status', value: item.status },
+          { label: 'Ordered By', value: item.orderedByName },
+          { label: 'Date', value: formatDateTime(item.createdAt), mono: true },
+        ];
+      case 'admission':
+        return [
+          { label: 'Ward', value: item.wardName },
+          { label: 'Room', value: item.roomNumber ?? '—' },
+          { label: 'Bed', value: item.bedNumber ?? '—' },
+          { label: 'Attending', value: item.attendingName },
+          { label: 'Admitted', value: formatDateTime(item.admittedAt), mono: true },
+          { label: 'Discharged', value: item.dischargedAt ? formatDateTime(item.dischargedAt) : '—', mono: true },
+        ];
+      case 'referral':
+        return [
+          { label: 'From', value: item.fromDepartment ?? item.referringProvider ?? '—' },
+          { label: 'To', value: item.toDepartment ?? item.receivingProvider ?? '—' },
+          { label: 'Reason', value: item.reason },
+          { label: 'Status', value: item.status },
+          { label: 'Date', value: formatDateTime(item.createdAt), mono: true },
+        ];
+      case 'appointment':
+        return [
+          { label: 'Type', value: item.type ?? 'consultation' },
+          { label: 'Provider', value: item.providerName },
+          { label: 'Status', value: item.status },
+          { label: 'Scheduled', value: formatDateTime(item.scheduledAt ?? item.date), mono: true },
+        ];
+      case 'document':
+        return [
+          { label: 'Document', value: item.name ?? item.title ?? '—' },
+          { label: 'Type', value: item.type },
+          { label: 'Author', value: item.authorName },
+          { label: 'Date', value: formatDateTime(item.createdAt), mono: true },
+        ];
+      default:
+        return [
+          { label: 'ID', value: item.id?.slice(0, 8) ?? '—', mono: true },
+          { label: 'Status', value: item.status ?? '—' },
+        ];
+    }
+  }, [inspectorItem, inspectorType]);
+
+  // Build inspector actions
+  const inspectorActions: InspectorAction[] = useMemo(() => {
+    if (!inspectorItem) return [];
+    const actions: InspectorAction[] = [];
+    switch (inspectorType) {
+      case 'encounter':
+        actions.push({ id: 'open', label: 'Open Encounter', route: `/clinical/encounters/${inspectorItem.id}`, variant: 'primary' });
+        break;
+      case 'lab':
+        if (inspectorItem.patientId) {
+          actions.push({ id: 'view-lab', label: 'View in Lab', route: `/clinical/patients/${inspectorItem.patientId}?ws=lab`, variant: 'primary' });
+        }
+        break;
+      case 'medication':
+        if (inspectorItem.patientId) {
+          actions.push({ id: 'view-meds', label: 'View Medications', route: `/clinical/patients/${inspectorItem.patientId}?ws=medications`, variant: 'primary' });
+        }
+        break;
+      default:
+        break;
+    }
+    actions.push({ id: 'close', label: 'Close', onClick: closeInspector, variant: 'ghost' });
+    return actions;
+  }, [inspectorItem, inspectorType, closeInspector]);
 
   // ── Tab counts for workspace nav badges ──
   const counts = useMemo(() => ({
@@ -777,7 +913,7 @@ export function PatientWorkspace() {
             emptyTitle="No encounters yet"
             emptyBody="Consultations and visits will appear here."
             refresh={() => void encounters.refresh()}
-            onRowClick={(e) => navigate(`/clinical/encounters/${e.id}`)}
+            onInspect={(e) => openInspector(e, 'encounter')}
             columns={[
               { key: 'startedAt', label: 'Date', className: 'mono', render: (e) => formatDateTime(e.startedAt) },
               { key: 'type', label: 'Type', className: 'capitalize' },
@@ -804,6 +940,7 @@ export function PatientWorkspace() {
             emptyTitle="No diagnoses recorded"
             emptyBody="Diagnoses from encounters will appear here."
             refresh={() => void diagnoses.refresh()}
+            onInspect={(d) => openInspector(d, 'diagnosis')}
             columns={[
               { key: 'createdAt', label: 'Date', className: 'mono', render: (d) => formatDateTime(d.createdAt) },
               { key: 'description', label: 'Diagnosis', render: (d) => d.description ?? d.code ?? '—' },
@@ -827,6 +964,7 @@ export function PatientWorkspace() {
             emptyTitle="No prescriptions"
             emptyBody="Prescriptions from encounters will appear here."
             refresh={() => void prescriptions.refresh()}
+            onInspect={(p) => openInspector(p, 'medication')}
             columns={[
               { key: 'createdAt', label: 'Date', className: 'mono', render: (p) => formatDateTime(p.createdAt) },
               { key: 'medicationName', label: 'Medication', render: (p) => p.medicationName ?? p.medication?.name ?? '—' },
@@ -851,6 +989,7 @@ export function PatientWorkspace() {
             emptyTitle="No lab orders"
             emptyBody="Laboratory orders for this patient will appear here."
             refresh={() => void labOrders.refresh()}
+            onInspect={(o) => openInspector(o, 'lab')}
             columns={[
               { key: 'createdAt', label: 'Date', className: 'mono', render: (o) => formatDateTime(o.createdAt) },
               { key: 'testName', label: 'Test', render: (o) => o.testName ?? o.name ?? '—' },
@@ -874,6 +1013,7 @@ export function PatientWorkspace() {
             emptyTitle="No radiology orders"
             emptyBody="Imaging orders for this patient will appear here."
             refresh={() => void radiologyOrders.refresh()}
+            onInspect={(o) => openInspector(o, 'radiology')}
             columns={[
               { key: 'createdAt', label: 'Date', className: 'mono', render: (o) => formatDateTime(o.createdAt) },
               { key: 'studyName', label: 'Study', render: (o) => o.studyName ?? o.name ?? '—' },
@@ -897,6 +1037,7 @@ export function PatientWorkspace() {
             emptyTitle="No admissions"
             emptyBody="Inpatient admissions will appear here."
             refresh={() => void admissions.refresh()}
+            onInspect={(a) => openInspector(a, 'admission')}
             columns={[
               { key: 'admittedAt', label: 'Admitted', className: 'mono', render: (a) => formatDateTime(a.admittedAt) },
               { key: 'wardName', label: 'Ward' },
@@ -921,6 +1062,7 @@ export function PatientWorkspace() {
             emptyTitle="No referrals"
             emptyBody="Internal and external referrals will appear here."
             refresh={() => void referrals.refresh()}
+            onInspect={(r) => openInspector(r, 'referral')}
             columns={[
               { key: 'createdAt', label: 'Date', className: 'mono', render: (r) => formatDateTime(r.createdAt) },
               { key: 'fromDepartment', label: 'From', render: (r) => r.fromDepartment ?? r.referringProvider ?? '—' },
@@ -944,6 +1086,7 @@ export function PatientWorkspace() {
             emptyTitle="No appointments"
             emptyBody="Scheduled appointments and follow-ups will appear here."
             refresh={() => void appointments.refresh()}
+            onInspect={(a) => openInspector(a, 'appointment')}
             columns={[
               { key: 'scheduledAt', label: 'Date', className: 'mono', render: (a) => formatDateTime(a.scheduledAt ?? a.date) },
               { key: 'type', label: 'Type', className: 'capitalize', render: (a) => a.type ?? 'consultation' },
@@ -966,6 +1109,7 @@ export function PatientWorkspace() {
             emptyTitle="No documents"
             emptyBody="Patient documents, consents, and forms will appear here."
             refresh={() => void documents.refresh()}
+            onInspect={(d) => openInspector(d, 'document')}
             columns={[
               { key: 'createdAt', label: 'Date', className: 'mono', render: (d) => formatDateTime(d.createdAt) },
               { key: 'name', label: 'Document', render: (d) => d.name ?? d.title ?? '—' },
@@ -1055,6 +1199,17 @@ export function PatientWorkspace() {
       <div className="pw-content">
         {renderWorkspaceContent()}
       </div>
+
+      {/* ── Clinical Inspector (Phase 124 — slide-in detail panel) ── */}
+      <ClinicalInspector
+        open={inspectorOpen}
+        onClose={closeInspector}
+        title={inspectorItem?.type ?? inspectorItem?.testName ?? inspectorItem?.medicationName ?? inspectorItem?.name ?? inspectorItem?.wardName ?? 'Details'}
+        subtitle={inspectorType}
+        fields={inspectorFields}
+        actions={inspectorActions}
+        triggerRef={inspectorTriggerRef}
+      />
 
       {/* ── Compact Identity Spine (pinned, visible after scroll) ── */}
       <CompactIdentitySpine

@@ -1,0 +1,294 @@
+/* ==========================================================================
+   Clinical Inspector — Phase 124
+   Slide-in detail panel for viewing clinical item details.
+   Light-first. Clinical. Accessible.
+   ========================================================================== */
+
+/* ── Backdrop ────────────────────────────────────────────────── */
+.inspector-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.15);
+  z-index: 200;
+  animation: inspectorBackdropIn 0.15s ease both;
+}
+
+@keyframes inspectorBackdropIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ── Panel ───────────────────────────────────────────────────── */
+.inspector {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 420px;
+  max-width: 100vw;
+  background: var(--white);
+  border-left: 1px solid var(--border-subtle);
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.08);
+  z-index: 201;
+  display: flex;
+  flex-direction: column;
+  animation: inspectorSlideIn 0.18s ease both;
+}
+
+@keyframes inspectorSlideIn {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+/* ── Header ──────────────────────────────────────────────────── */
+.inspector__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.inspector__header-info {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.inspector__header-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  background: var(--gray-50);
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.inspector__title {
+  font-size: var(--fs-h4, 1rem);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+  line-height: 1.3;
+}
+
+.inspector__subtitle {
+  font-size: var(--fs-caption, 0.7rem);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.inspector__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--gray-50);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease);
+  flex-shrink: 0;
+}
+
+.inspector__close:hover {
+  background: var(--gray-100);
+  color: var(--text-primary);
+}
+
+.inspector__close:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* ── Body ────────────────────────────────────────────────────── */
+.inspector__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-4) var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+/* ── Field ───────────────────────────────────────────────────── */
+.inspector__field {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.inspector__field:last-child {
+  border-bottom: none;
+}
+
+.inspector__field-label {
+  font-size: var(--fs-caption, 0.7rem);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+.inspector__field-value {
+  font-size: var(--fs-body, 0.875rem);
+  color: var(--text-primary);
+  text-align: right;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.inspector__field-value--critical {
+  color: var(--red-700);
+  font-weight: 600;
+}
+
+.inspector__field-value--urgent {
+  color: var(--amber-700);
+  font-weight: 600;
+}
+
+.inspector__field-value--attention {
+  color: var(--blue-700);
+  font-weight: 500;
+}
+
+/* ── Related Items ───────────────────────────────────────────── */
+.inspector__related {
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.inspector__related-title {
+  font-size: var(--fs-label, 0.75rem);
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 0 0 var(--space-2);
+}
+
+.inspector__related-items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.inspector__related-link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--white);
+  color: var(--text-secondary);
+  font-size: var(--fs-label, 0.75rem);
+  text-decoration: none;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease);
+}
+
+.inspector__related-link:hover {
+  background: var(--blue-50);
+  border-color: var(--blue-200);
+  color: var(--blue-700);
+}
+
+.inspector__related-link:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.inspector__related-external {
+  margin-left: auto;
+  opacity: 0.4;
+}
+
+/* ── Footer / Actions ────────────────────────────────────────── */
+.inspector__footer {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.inspector__action {
+  flex: 1;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--fs-label, 0.75rem);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease);
+  text-align: center;
+}
+
+.inspector__action:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.inspector__action--primary {
+  background: var(--blue-600);
+  color: var(--white);
+  border: 1px solid var(--blue-600);
+}
+
+.inspector__action--primary:hover {
+  background: var(--blue-700);
+}
+
+.inspector__action--ghost {
+  background: var(--white);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-default);
+}
+
+.inspector__action--ghost:hover {
+  background: var(--gray-50);
+  border-color: var(--border-emphasis);
+}
+
+.inspector__action--danger {
+  background: var(--white);
+  color: var(--red-600);
+  border: 1px solid var(--red-200);
+}
+
+.inspector__action--danger:hover {
+  background: var(--red-50);
+  border-color: var(--red-300);
+}
+
+/* ── Responsive ──────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .inspector {
+    width: 100vw;
+  }
+}
+
+/* ── Reduced Motion ──────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .inspector-backdrop {
+    animation: none;
+  }
+
+  .inspector {
+    animation: none;
+  }
+}
