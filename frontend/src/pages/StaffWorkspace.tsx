@@ -18,6 +18,7 @@ import type {
   AttendanceRecord,
 } from '../api/types';
 import { Alert, Button, Card, EmptyState } from '../components/ui';
+import { Workbench } from '../components/Workbench';
 import './staff-workspace.css';
 
 /* ─── Status helpers ─── */
@@ -122,6 +123,7 @@ function buildSections(
   const DOCTOR = ['doctor', 'hospital_admin', 'org_admin', 'superadmin'];
 
   const sections: WorkspaceSection[] = [
+    { id: 'workbench', label: 'Workbench', count: 0, roles: ALL },
     { id: 'today', label: "Today's Overview", count: counts.today ?? 0, roles: ALL },
     { id: 'appointments', label: 'Appointments', count: counts.appointments ?? 0, roles: ALL },
     { id: 'encounters', label: 'Active Encounters', count: counts.encounters ?? 0, roles: DOCTOR },
@@ -747,6 +749,10 @@ export function StaffWorkspace() {
 
       {/* Section content */}
       <div className="sw-section-content">
+        {activeSection === 'workbench' && (
+          <Workbench />
+        )}
+
         {activeSection === 'today' && (
           <TodayOverview
             appointments={(appointmentsAll.data as Appointment[]) ?? []}

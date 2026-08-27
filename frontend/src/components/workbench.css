@@ -1,0 +1,386 @@
+/* ============================================================================
+   Workbench — Unified Workflow Orchestration
+   
+   Light-only. Clinical. Action-first.
+   This is a coordination layer, not a new system of record.
+   ========================================================================== */
+
+/* ── Container ──────────────────────────────────────────────── */
+.wb-workbench {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.wb-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.wb-title {
+  font-family: var(--font-display);
+  font-size: var(--text-h2);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+  letter-spacing: var(--tracking-tight);
+  margin: 0;
+}
+
+/* ── Summary Stats ──────────────────────────────────────────── */
+.wb-summary {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.wb-summary__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: var(--space-2) var(--space-4);
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  min-width: 64px;
+}
+
+.wb-summary__value {
+  font-size: var(--text-title);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+}
+
+.wb-summary__label {
+  font-size: var(--text-caption);
+  color: var(--text-tertiary);
+  font-weight: var(--weight-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.wb-summary__stat--ready {
+  border-left: 3px solid var(--teal-500);
+}
+
+.wb-summary__stat--waiting {
+  border-left: 3px solid var(--amber-500);
+}
+
+.wb-summary__stat--blocked {
+  border-left: 3px solid var(--red-500);
+  background: var(--red-50);
+}
+
+.wb-summary__stat--critical {
+  border-left: 3px solid var(--red-600);
+  background: var(--red-50);
+}
+
+.wb-summary__stat--completed {
+  border-left: 3px solid var(--green-500);
+}
+
+/* ── Filters ────────────────────────────────────────────────── */
+.wb-filters {
+  display: flex;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+}
+
+.wb-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1-5) var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--white);
+  color: var(--text-secondary);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease);
+  font-family: var(--font-body);
+}
+
+.wb-filter:hover {
+  background: var(--gray-50);
+  border-color: var(--border-default);
+}
+
+.wb-filter--active {
+  background: var(--teal-50);
+  border-color: var(--teal-500);
+  color: var(--teal-700);
+}
+
+.wb-filter__count {
+  font-size: 11px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: var(--gray-100);
+  color: var(--text-secondary);
+  font-weight: var(--weight-semibold);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wb-filter--active .wb-filter__count {
+  background: var(--teal-100);
+  color: var(--teal-700);
+}
+
+/* ── Work Item List ─────────────────────────────────────────── */
+.wb-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* ── Work Item Card ─────────────────────────────────────────── */
+.wb-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  transition: all var(--duration-fast) var(--ease);
+}
+
+.wb-item:hover {
+  border-color: var(--border-default);
+  box-shadow: var(--shadow-xs);
+}
+
+.wb-item--ready {
+  border-left: 3px solid var(--teal-500);
+}
+
+.wb-item--waiting {
+  border-left: 3px solid var(--amber-500);
+}
+
+.wb-item--blocked {
+  border-left: 3px solid var(--red-500);
+  background: var(--red-50);
+}
+
+.wb-item--completed {
+  border-left: 3px solid var(--green-500);
+  opacity: 0.7;
+}
+
+.wb-item--critical {
+  border-left-width: 4px;
+  border-left-color: var(--red-600);
+}
+
+/* ── Item Header ────────────────────────────────────────────── */
+.wb-item__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.wb-item__type {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-semibold);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.wb-item__status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.wb-priority-icon {
+  flex-shrink: 0;
+}
+
+.wb-priority-icon--critical {
+  color: var(--red-600);
+}
+
+.wb-priority-icon--high {
+  color: var(--amber-600);
+}
+
+.wb-status-icon {
+  flex-shrink: 0;
+}
+
+.wb-status-icon--completed {
+  color: var(--green-600);
+}
+
+.wb-status-icon--blocked {
+  color: var(--red-600);
+}
+
+.wb-status-icon--default {
+  color: var(--text-tertiary);
+}
+
+.wb-item__status-label {
+  font-size: var(--text-caption);
+  font-weight: var(--weight-medium);
+  text-transform: capitalize;
+}
+
+.wb-item__status-label--ready {
+  color: var(--teal-700);
+}
+
+.wb-item__status-label--waiting {
+  color: var(--amber-700);
+}
+
+.wb-item__status-label--blocked {
+  color: var(--red-700);
+}
+
+.wb-item__status-label--completed {
+  color: var(--green-700);
+}
+
+/* ── Patient Context ────────────────────────────────────────── */
+.wb-item__patient {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+}
+
+.wb-item__patient-name {
+  font-weight: var(--weight-medium);
+  color: var(--text-primary);
+}
+
+.wb-item__patient-mrn {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  padding: 0 4px;
+  background: var(--gray-50);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+/* ── Item Label ─────────────────────────────────────────────── */
+.wb-item__label {
+  font-size: var(--text-label);
+  font-weight: var(--weight-medium);
+  color: var(--text-primary);
+}
+
+/* ── Blocked State ──────────────────────────────────────────── */
+.wb-item__blocked {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-caption);
+  color: var(--red-700);
+  font-weight: var(--weight-medium);
+}
+
+/* ── Item Footer ────────────────────────────────────────────── */
+.wb-item__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding-top: var(--space-1);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.wb-item__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-caption);
+  color: var(--text-tertiary);
+}
+
+.wb-item__due {
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.wb-item__due--overdue {
+  color: var(--red-600);
+  font-weight: var(--weight-bold);
+}
+
+.wb-item__source {
+  text-transform: capitalize;
+}
+
+.wb-item__action {
+  flex-shrink: 0;
+}
+
+/* ── Loading ────────────────────────────────────────────────── */
+.wb-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-10);
+  color: var(--text-tertiary);
+  font-size: var(--text-label);
+}
+
+/* ── Responsive: Mobile ─────────────────────────────────────── */
+@media (max-width: 640px) {
+  .wb-summary {
+    gap: var(--space-2);
+  }
+
+  .wb-summary__stat {
+    padding: var(--space-2) var(--space-3);
+    min-width: 56px;
+  }
+
+  .wb-summary__value {
+    font-size: var(--text-h3);
+  }
+
+  .wb-item__footer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .wb-item__action {
+    width: 100%;
+  }
+}
+
+/* ── Responsive: Tablet ─────────────────────────────────────── */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .wb-list {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-2);
+  }
+}
+
+/* ── Reduced Motion ─────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .wb-item {
+    transition: none;
+  }
+}
