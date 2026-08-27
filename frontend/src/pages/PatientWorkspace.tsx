@@ -57,6 +57,7 @@ import { CareTeam } from '../components/CareTeam';
 import { ClosedLoopTracker } from '../components/ClosedLoopTracker';
 import { ClinicalQuickView } from '../components/ClinicalQuickView';
 import { ContextualActionRail, resolveWorkspacePriorities, resolveContextualActions } from '../components/clinical-context';
+import { WorkflowTrail } from '../components/WorkflowTrail';
 
 // ─── Timeline helper (reused from PatientProfilePage) ───
 function timelineSummary(summary: any): string {
@@ -666,9 +667,11 @@ export function PatientWorkspace() {
 
   // Active workspace from URL query param (or default to 'overview')
   const activeWorkspace = searchParams.get('ws') || 'overview';
+  const [previousWorkspace, setPreviousWorkspace] = useState<string | null>(null);
   const setActiveWorkspace = useCallback((ws: string) => {
+    setPreviousWorkspace(activeWorkspace);
     setSearchParams({ ws }, { replace: true });
-  }, [setSearchParams]);
+  }, [setSearchParams, activeWorkspace]);
 
   // ── Data fetching ──
   const profile = useFetch(() => patientsApi.show(id!, fac), [id, fac]);
@@ -981,6 +984,23 @@ export function PatientWorkspace() {
         encounters={(encounters.data as any[]) || []}
         admissions={(admissions.data as any[]) || []}
         onBack={() => navigate('/clinical/patients')}
+      />
+
+      {/* ── Workflow Trail (Phase 120 — clinical continuity breadcrumb) ── */}
+      <WorkflowTrail
+        patientName={patient.fullName}
+        patientMrn={patient.mrn}
+        encounterType={(() => {
+          const activeEnc = ((encounters.data as any[]) || []).find((e: any) => e.status === 'open');
+          return activeEnc?.type;
+        })()}
+        currentWorkspace={PATIENT_WORKSPACES.find((w) => w.id === activeWorkspace)?.label || activeWorkspace}
+        currentRoute={undefined}
+        previousWorkspace={previousWorkspace || undefined}
+        previousRoute={previousWorkspace ? undefined : undefined}
+        patientId={patient.id}
+        urgency={workspacePriorityMap[activeWorkspace]?.urgency as any || 'routine'}
+        currentActivity={workspacePriorityMap[activeWorkspace]?.reason}
       />
 
       {/* ── Contextual Action Bar ── */}

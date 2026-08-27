@@ -1,0 +1,186 @@
+/* ==========================================================================
+   Workflow Trail — Clinical Workflow Continuity (Phase 120)
+   
+   Compact breadcrumb showing patient → encounter → workspace path.
+   Light-only. Clinical. Calm.
+   ========================================================================== */
+
+/* ── Container ───────────────────────────────────────────────── */
+.wt {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--gray-25);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  font-size: 11px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.wt::-webkit-scrollbar {
+  display: none;
+}
+
+/* ── Back Button ──────────────────────────────────────────────── */
+.wt__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--white);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.wt__back:hover {
+  background: var(--gray-50);
+  border-color: var(--border-default);
+  color: var(--text-primary);
+}
+
+.wt__back:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.wt__back-label {
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Segments ─────────────────────────────────────────────────── */
+.wt__segments {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex-shrink: 0;
+}
+
+.wt__segment-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+}
+
+.wt__sep {
+  color: var(--text-disabled);
+  margin: 0 2px;
+  flex-shrink: 0;
+}
+
+.wt__segment {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 4px;
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+.wt__segment--link {
+  background: none;
+  border: none;
+  font: inherit;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease);
+}
+
+.wt__segment--link:hover {
+  background: var(--gray-100);
+  color: var(--text-primary);
+}
+
+.wt__segment--link:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.wt__segment--current {
+  color: var(--text-primary);
+  font-weight: var(--weight-semibold);
+}
+
+.wt__segment-icon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.wt__segment-label {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Current Activity ─────────────────────────────────────────── */
+.wt__activity {
+  margin-left: auto;
+  font-style: italic;
+  white-space: nowrap;
+  flex-shrink: 0;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Urgency Indicator ────────────────────────────────────────── */
+.wt__urgency {
+  padding: 1px 5px;
+  border-radius: var(--radius-full);
+  font-size: 10px;
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+
+/* ── MRN ──────────────────────────────────────────────────────── */
+.wt__mrn {
+  font-size: 10px;
+  color: var(--text-disabled);
+  padding: 1px 4px;
+  background: var(--gray-100);
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+/* ── Responsive ────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .wt {
+    padding: var(--space-1-5) var(--space-2);
+  }
+
+  .wt__back-label {
+    display: none;
+  }
+
+  .wt__activity {
+    display: none;
+  }
+
+  .wt__segment-label {
+    max-width: 80px;
+  }
+}
+
+/* ── Reduced Motion ────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .wt__back,
+  .wt__segment--link {
+    transition: none;
+  }
+}
