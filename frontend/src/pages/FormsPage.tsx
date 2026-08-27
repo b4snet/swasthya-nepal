@@ -54,7 +54,7 @@ interface FormSubmission {
 
 /* ── Category config ── */
 const CATEGORIES: Record<string, { label: string; color: string; bg: string }> = {
-  registration: { label: 'Registration', color: '#2e90fa', bg: '#eff8ff' },
+  registration: { label: 'Registration', color: 'var(--teal-600)', bg: 'var(--teal-50)' },
   clinical: { label: 'Clinical', color: 'var(--blue-700)', bg: 'var(--blue-50)' },
   consent: { label: 'Consent', color: '#7c3aed', bg: '#f5f3ff' },
   specialty: { label: 'Specialty', color: '#d946ef', bg: '#fdf4ff' },
@@ -76,7 +76,7 @@ const CATEGORIES: Record<string, { label: string; color: string; bg: string }> =
 
 const STATUS_STYLES: Record<string, { label: string; color: string; bg: string }> = {
   draft: { label: 'Draft', color: '#667085', bg: '#f9fafb' },
-  submitted: { label: 'Submitted', color: '#2e90fa', bg: '#eff8ff' },
+  submitted: { label: 'Submitted', color: 'var(--teal-600)', bg: 'var(--teal-50)' },
   verified: { label: 'Verified', color: 'var(--blue-700)', bg: 'var(--blue-50)' },
   approved: { label: 'Approved', color: '#12b76a', bg: '#ecfdf3' },
   rejected: { label: 'Rejected', color: '#f04438', bg: '#fef3f2' },
@@ -287,7 +287,7 @@ export function FormsPage() {
                       {tpl.specialty && <Chip color="#667085" bg="#f9fafb">{tpl.specialty}</Chip>}
                       {tpl.generates_document_number && <Chip color="var(--blue-700)" bg="var(--blue-50)">#{tpl.document_number_prefix}</Chip>}
                       {tpl.printable && <Chip color="#667085" bg="#f9fafb">Print</Chip>}
-                      {tpl.linked_to_encounter && <Chip color="#2e90fa" bg="#eff8ff">Encounter</Chip>}
+                      {tpl.linked_to_encounter && <Chip color="var(--teal-600)" bg="var(--teal-50)">Encounter</Chip>}
                     </div>
                   </Card>
                 );

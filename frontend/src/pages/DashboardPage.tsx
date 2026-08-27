@@ -17,12 +17,12 @@ import { dashboardApi, type DashboardMetrics, type ChartData } from '../api/dash
 import './dashboard-premium.css';
 
 /* ── Constants ── */
-const BLUE = '#2e90fa';
+const BLUE = '#0d9488'; // teal-600 — clinical accent
 const GREEN = '#12b76a';
 const RED = '#f04438';
 const AMBER = '#f79009';
 const GRAY = '#98a2b3';
-const CHART_PALETTE = [BLUE, GREEN, AMBER, RED, GRAY, '#8b5cf6', '#06b6d4'];
+const CHART_PALETTE = [BLUE, GREEN, AMBER, RED, GRAY, '#8b5cf6', '#0d9488'];
 
 /* ── Helpers ── */
 function dateRange(days: number) {

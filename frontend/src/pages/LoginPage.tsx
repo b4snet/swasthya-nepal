@@ -71,7 +71,7 @@ export function LoginPage() {
         <div className="login__brand">
           <div className="login__mark-wrap" aria-hidden="true">
             <svg width="32" height="32" viewBox="0 0 28 28" fill="none">
-              <rect width="28" height="28" rx="6" fill="#1570ef"/>
+              <rect width="28" height="28" rx="6" fill="#0f766e"/>
               <path d="M8 14h12M14 8v12" stroke="#fff" strokeWidth="2.2" strokeLinecap="round"/>
             </svg>
           </div>
