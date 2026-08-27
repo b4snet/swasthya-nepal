@@ -158,10 +158,6 @@
   line-height: 1.6;
 }
 
-/* ── Dark mode (manual toggle only — tokens.css handles core dark tokens) ── */
-
-/* Dark mode handled by tokens.css data-theme/prefers-color-scheme */
-
 /* Responsive adjustments */
 @media (max-width: 480px) {
   .login {

@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef } from 'react';
 import type { CSSProperties, ReactNode, ButtonHTMLAttributes, InputHTMLAttributes, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react';
 import { ApiError } from '../api/client';
 import './ui.css';
@@ -614,43 +614,4 @@ export function Toast({ tone = 'info', message, action, onDismiss, className = '
   );
 }
 
-/* ------------------------------------------------------------------
-   THEME TOGGLE
-   Allows switching between light/dark/auto.
-   Persisted in localStorage.
-   ------------------------------------------------------------------ */
 
-export function ThemeToggle() {
-  const [theme, setTheme] = useState<'light' | 'dark' | 'auto'>(() => {
-    try { return (localStorage.getItem('swasthya-theme') as 'light' | 'dark' | 'auto') ?? 'auto'; }
-    catch { return 'auto'; }
-  });
-
-  useEffect(() => {
-    const root = document.documentElement;
-    if (theme === 'auto') {
-      root.removeAttribute('data-theme');
-    } else {
-      root.setAttribute('data-theme', theme);
-    }
-    try { localStorage.setItem('swasthya-theme', theme); } catch { /* noop */ }
-  }, [theme]);
-
-  const cycle = () => {
-    setTheme((t) => t === 'light' ? 'dark' : t === 'dark' ? 'auto' : 'light');
-  };
-
-  const label = theme === 'light' ? '☀️ Light' : theme === 'dark' ? '🌙 Dark' : '🔄 Auto';
-
-  return (
-    <button
-      type="button"
-      className="lang-btn"
-      onClick={cycle}
-      title={`Theme: ${label}`}
-      aria-label={`Switch theme (currently ${label})`}
-    >
-      {label}
-    </button>
-  );
-}
