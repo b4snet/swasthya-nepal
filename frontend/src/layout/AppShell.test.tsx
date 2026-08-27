@@ -40,7 +40,7 @@ async function renderShell(roles: string[], initialPath = '/dashboard') {
 }
 
 const countSidebar = (key: string) => screen.queryAllByTestId(`sidebar-${key}`).length;
-const countWorkspaces = (key: string) => screen.queryAllByTestId(new RegExp(`(workspace|action-chip)-${key}-`)).length;
+const countWorkspaces = (key: string) => screen.queryAllByTestId(new RegExp(`(workspace|action-chip|module-action)-${key}-`)).length;
 
 describe('AppShell sidebar navigation', () => {
   it('shows sidebar with top-level modules', async () => {

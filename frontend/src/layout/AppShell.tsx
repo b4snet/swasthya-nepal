@@ -29,7 +29,7 @@ import {
   filterModulesByRole,
   type NavModule,
 } from '../navigation/modules';
-import { ContextualWorkspace } from '../navigation/ContextualWorkspace';
+import { ModuleWorkspaceRail } from '../navigation/ModuleWorkspaceRail';
 import './shell.css';
 
 /** Time-of-day greeting */
@@ -478,9 +478,6 @@ export function AppShell() {
         <Suspense fallback={null}><ContextBar /></Suspense>
       )}
 
-      {/* ── Contextual workspace launcher (between header and content) ── */}
-      <ContextualWorkspace activeModule={activeModule} pathname={location.pathname} />
-
       {/* ── Patient context strip — persistent patient identity ── */}
       {activePatientId && (
         <PatientContextStrip patientId={activePatientId} />
@@ -495,6 +492,11 @@ export function AppShell() {
           onToggleCollapse={() => setSidebarCollapsed((v) => !v)}
           onDomainClick={handleDomainClick}
         />
+
+        {/* ── Module workspace rail — vertical contextual navigation ── */}
+        {!sidebarCollapsed && (
+          <ModuleWorkspaceRail activeModule={activeModule} pathname={location.pathname} />
+        )}
 
         {/* ── Content ── */}
         <main className="app-content" id="content" tabIndex={-1}>

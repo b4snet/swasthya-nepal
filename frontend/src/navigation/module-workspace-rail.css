@@ -1,0 +1,169 @@
+/* ==========================================================================
+   Module Workspace Rail — Phase 127
+   Compact vertical contextual navigation for clinical modules.
+   Replaces horizontal chips with a dedicated workspace surface.
+   ========================================================================== */
+
+/* ── Rail Container ────────────────────────────────────────────── */
+.workspace-rail {
+  display: flex;
+  flex-direction: column;
+  width: 180px;
+  min-height: 0;
+  background: var(--white);
+  border-right: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+  overflow-y: auto;
+}
+
+/* ── Domain Header ─────────────────────────────────────────────── */
+.workspace-rail__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.workspace-rail__domain-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-md);
+  background: var(--blue-50);
+  color: var(--blue-600);
+  flex-shrink: 0;
+}
+
+.workspace-rail__title {
+  font-size: var(--fs-caption, 0.7rem);
+  font-weight: 600;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Actions List (vertically stacked) ─────────────────────────── */
+.workspace-rail__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2);
+  overflow-y: auto;
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Single Action Card ────────────────────────────────────────── */
+.module-action {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-2-5);
+  border: none;
+  border-radius: var(--radius-md);
+  background: none;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease);
+  white-space: nowrap;
+  min-height: 36px;
+  text-align: left;
+  font-family: var(--font-sans);
+  width: 100%;
+}
+
+.module-action:hover {
+  background: var(--blue-50);
+}
+
+.module-action:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.module-action--active {
+  background: var(--blue-50);
+  border-left: 2px solid var(--blue-500);
+  padding-left: calc(var(--space-2-5) - 2px);
+}
+
+.module-action--active .module-action__icon {
+  color: var(--blue-600);
+  background: var(--blue-100);
+}
+
+.module-action--active .module-action__label {
+  color: var(--blue-700);
+  font-weight: 600;
+}
+
+/* ── Card Icon ─────────────────────────────────────────────────── */
+.module-action__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-md);
+  background: var(--gray-50);
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  transition: all var(--duration-fast) var(--ease);
+}
+
+.module-action:hover .module-action__icon {
+  background: var(--blue-50);
+  color: var(--blue-600);
+}
+
+/* ── Card Label ────────────────────────────────────────────────── */
+.module-action__label {
+  font-size: var(--fs-caption, 0.7rem);
+  font-weight: 500;
+  color: var(--text-secondary);
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Responsive ────────────────────────────────────────────────── */
+
+/* Desktop: full display */
+@media (min-width: 1024px) {
+  .workspace-rail {
+    width: 180px;
+  }
+}
+
+/* Tablet: slightly narrower */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .workspace-rail {
+    width: 160px;
+  }
+
+  .module-action {
+    padding: var(--space-1-5) var(--space-2);
+    min-height: 34px;
+  }
+}
+
+/* Mobile: hide workspace rail (bottom nav handles navigation) */
+@media (max-width: 767px) {
+  .workspace-rail {
+    display: none;
+  }
+}
+
+/* ── Reduced Motion ────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .module-action {
+    transition: none;
+  }
+}
