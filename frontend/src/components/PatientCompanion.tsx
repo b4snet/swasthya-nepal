@@ -37,6 +37,7 @@ import {
   RefreshCw,
   Shield,
   CreditCard,
+  BookOpen,
 } from 'lucide-react';
 import './patient-companion.css';
 
@@ -158,6 +159,14 @@ export function PatientCompanion() {
       actionTo: '/portal/messages',
       isEmpty: unreadMessages.length === 0,
       emptyMessage: 'No new messages',
+    },
+    {
+      id: 'education',
+      label: 'Health Guidance',
+      Icon: <BookOpen size={20} />,
+      color: 'var(--teal-700)',
+      description: 'Preparation, discharge, and recovery instructions',
+      actionTo: '/portal/education',
     },
   ], [todayAppointments, unreadMessages]);
 
