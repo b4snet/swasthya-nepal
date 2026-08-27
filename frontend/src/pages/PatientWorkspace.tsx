@@ -46,9 +46,11 @@ import {
   AlertTriangle,
   CheckCircle2,
   Circle,
+  MapPin,
 } from 'lucide-react';
 import './patient-workspace.css';
 import { PatientCommunicationHub } from './PatientCommunicationHub';
+import { PatientJourney } from '../components/PatientJourney';
 
 // ─── Timeline helper (reused from PatientProfilePage) ───
 function timelineSummary(summary: any): string {
@@ -114,6 +116,7 @@ interface WorkspaceDef {
 
 export const PATIENT_WORKSPACES: WorkspaceDef[] = [
   { id: 'overview', label: 'Overview', Icon: Activity, roles: [], description: 'Current status and recent activity' },
+  { id: 'journey', label: 'Journey', Icon: MapPin, roles: [], description: 'Patient journey through the hospital' },
   { id: 'encounters', label: 'Encounters', Icon: Stethoscope, roles: ['doctor', 'nurse', 'hospital_admin', 'org_admin', 'superadmin'], description: 'Clinical visit records' },
   { id: 'timeline', label: 'Timeline', Icon: Clock, roles: [], description: 'Longitudinal clinical history' },
   { id: 'diagnoses', label: 'Diagnoses', Icon: ClipboardList, roles: ['doctor', 'nurse', 'hospital_admin', 'org_admin', 'superadmin'], description: 'Problems and diagnoses' },
@@ -622,6 +625,9 @@ export function PatientWorkspace() {
             onEncounterClick={(e) => navigate(`/clinical/encounters/${e.id}`)}
           />
         );
+
+      case 'journey':
+        return <PatientJourney patientId={id!} />;
 
       case 'encounters':
         return (
