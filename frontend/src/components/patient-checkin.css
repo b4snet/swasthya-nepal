@@ -1,0 +1,633 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   PATIENT CHECK-IN — Patient Access & Arrival (Phase 112)
+   
+   Light-only. Mobile-first. Patient-friendly.
+   The front door of the hospital should feel radically simpler.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── Container ── */
+
+.patient-checkin {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 480px;
+  margin: 0 auto;
+  padding: var(--space-4);
+}
+
+/* ── Step Indicator ── */
+
+.ci-steps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3) 0;
+}
+
+.ci-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  opacity: 0.4;
+}
+
+.ci-step--done {
+  opacity: 0.7;
+}
+
+.ci-step--active {
+  opacity: 1;
+}
+
+.ci-step__number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--gray-100);
+  border: 2px solid var(--gray-300);
+  font-size: 12px;
+  font-weight: var(--weight-semibold);
+  color: var(--gray-500);
+}
+
+.ci-step--done .ci-step__number {
+  background: var(--green-500);
+  border-color: var(--green-500);
+  color: var(--white);
+}
+
+.ci-step--active .ci-step__number {
+  background: var(--interactive-primary);
+  border-color: var(--interactive-primary);
+  color: var(--white);
+}
+
+.ci-step__label {
+  font-size: 10px;
+  font-weight: var(--weight-medium);
+  color: var(--gray-500);
+  white-space: nowrap;
+}
+
+.ci-step--active .ci-step__label {
+  color: var(--interactive-primary);
+}
+
+/* ── Content ── */
+
+.ci-content {
+  min-height: 300px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   STEP 1: LOOKUP
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.ci-lookup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  text-align: center;
+}
+
+.ci-lookup__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-xl);
+  background: var(--teal-50);
+  color: var(--teal-600);
+}
+
+.ci-lookup__title {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+  color: var(--gray-900);
+  margin: 0;
+}
+
+.ci-lookup__subtitle {
+  font-size: var(--text-sm);
+  color: var(--gray-500);
+  margin: 0;
+}
+
+.ci-lookup__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 100%;
+}
+
+.ci-lookup__input {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: 2px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  color: var(--gray-900);
+  background: var(--white);
+  min-height: var(--touch-target);
+  transition: border-color var(--duration-fast);
+}
+
+.ci-lookup__input:focus {
+  outline: none;
+  border-color: var(--interactive-primary);
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
+}
+
+.ci-lookup__input::placeholder {
+  color: var(--gray-400);
+}
+
+.ci-lookup__btn {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: none;
+  border-radius: var(--radius-lg);
+  background: var(--interactive-primary);
+  color: var(--white);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+  min-height: var(--touch-target);
+  transition: background var(--duration-fast);
+}
+
+.ci-lookup__btn:hover:not(:disabled) {
+  background: var(--teal-800);
+}
+
+.ci-lookup__btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ci-lookup__btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.ci-lookup__help {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--gray-400);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   STEP 2: VERIFY
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.ci-verify {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  text-align: center;
+}
+
+.ci-verify__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-xl);
+  background: var(--blue-50);
+  color: var(--blue-600);
+}
+
+.ci-verify__title {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+  color: var(--gray-900);
+  margin: 0;
+}
+
+.ci-verify__subtitle {
+  font-size: var(--text-sm);
+  color: var(--gray-500);
+  margin: 0;
+}
+
+.ci-verify__card {
+  width: 100%;
+  padding: var(--space-4);
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.ci-verify__field {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.ci-verify__label {
+  font-size: var(--text-sm);
+  color: var(--gray-500);
+}
+
+.ci-verify__value {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--gray-900);
+}
+
+.ci-verify__value--status {
+  color: var(--teal-600);
+}
+
+.ci-verify__check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--gray-700);
+  cursor: pointer;
+}
+
+.ci-verify__check input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--interactive-primary);
+}
+
+.ci-verify__actions {
+  display: flex;
+  gap: var(--space-3);
+  width: 100%;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   STEP 3: CONFIRM
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.ci-confirm {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  text-align: center;
+}
+
+.ci-confirm__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-xl);
+  background: var(--green-50);
+  color: var(--green-600);
+}
+
+.ci-confirm__title {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+  color: var(--gray-900);
+  margin: 0;
+}
+
+.ci-confirm__subtitle {
+  font-size: var(--text-sm);
+  color: var(--gray-500);
+  margin: 0;
+}
+
+.ci-confirm__summary {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+}
+
+.ci-confirm__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--gray-700);
+}
+
+.ci-confirm__row svg {
+  color: var(--gray-400);
+  flex-shrink: 0;
+}
+
+.ci-confirm__error {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--red-50);
+  border: 1px solid var(--red-200);
+  border-radius: var(--radius-lg);
+  font-size: var(--text-sm);
+  color: var(--red-700);
+  width: 100%;
+}
+
+.ci-confirm__actions {
+  display: flex;
+  gap: var(--space-3);
+  width: 100%;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   STEP 4: CHECKED IN
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.ci-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  text-align: center;
+}
+
+.ci-success__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--green-50);
+  color: var(--green-500);
+  animation: ci-success-pulse 2s ease-in-out 1;
+}
+
+@keyframes ci-success-pulse {
+  0% { transform: scale(0.8); opacity: 0; }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ci-success__icon {
+    animation: none;
+  }
+}
+
+.ci-success__title {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+  color: var(--gray-900);
+  margin: 0;
+}
+
+.ci-success__subtitle {
+  font-size: var(--text-sm);
+  color: var(--gray-500);
+  margin: 0;
+}
+
+.ci-success__info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 100%;
+}
+
+.ci-success__card {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  text-align: left;
+}
+
+.ci-success__card--highlight {
+  background: var(--teal-50);
+  border-color: var(--teal-200);
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.ci-success__card svg {
+  color: var(--gray-400);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.ci-success__card-label {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.ci-success__card-value {
+  display: block;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  color: var(--gray-900);
+  font-variant-numeric: tabular-nums;
+}
+
+.ci-success__card--highlight .ci-success__card-value {
+  font-size: var(--text-2xl);
+  color: var(--teal-700);
+}
+
+.ci-success__card-note {
+  display: block;
+  font-size: 10px;
+  color: var(--gray-400);
+  font-style: italic;
+}
+
+.ci-success__next {
+  width: 100%;
+  padding: var(--space-4);
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  text-align: left;
+}
+
+.ci-success__next h3 {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--gray-900);
+  margin: 0 0 var(--space-3);
+}
+
+.ci-success__steps {
+  margin: 0;
+  padding-left: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.ci-success__steps li {
+  font-size: var(--text-sm);
+  color: var(--gray-600);
+  line-height: 1.5;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   ERROR
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.ci-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-10) 0;
+  text-align: center;
+  color: var(--red-500);
+}
+
+.ci-error h2 {
+  font-size: var(--text-lg);
+  color: var(--gray-900);
+  margin: 0;
+}
+
+.ci-error p {
+  font-size: var(--text-sm);
+  color: var(--gray-500);
+  margin: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SHARED BUTTONS
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.ci-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+  min-height: var(--touch-target);
+  flex: 1;
+  transition: all var(--duration-fast);
+}
+
+.ci-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.ci-btn--primary {
+  background: var(--interactive-primary);
+  color: var(--white);
+  border: none;
+}
+
+.ci-btn--primary:hover:not(:disabled) {
+  background: var(--teal-800);
+}
+
+.ci-btn--primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ci-btn--ghost {
+  background: transparent;
+  color: var(--gray-600);
+  border: 1px solid var(--gray-200);
+}
+
+.ci-btn--ghost:hover {
+  background: var(--gray-50);
+}
+
+.ci-btn--large {
+  padding: var(--space-4) var(--space-6);
+  font-size: var(--text-base);
+  min-height: 52px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   NOTICE
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.ci-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--blue-50);
+  border: 1px solid var(--blue-100);
+  border-radius: var(--radius-lg);
+  font-size: var(--text-xs);
+  color: var(--blue-700);
+  line-height: 1.5;
+}
+
+.ci-notice svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 480px) {
+  .patient-checkin {
+    padding: var(--space-3);
+  }
+
+  .ci-steps {
+    gap: var(--space-1);
+  }
+
+  .ci-step__label {
+    font-size: 9px;
+  }
+
+  .ci-lookup__input,
+  .ci-btn {
+    font-size: 16px; /* Prevent iOS zoom */
+  }
+}
+
+/* ── Reduced Motion ── */
+
+@media (prefers-reduced-motion: reduce) {
+  .ci-btn,
+  .ci-lookup__input {
+    transition: none;
+  }
+}

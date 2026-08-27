@@ -72,6 +72,7 @@ const ClinicalWorkspace = lazy(() => import('./pages/ClinicalWorkspace').then(m 
 const HospitalOnboarding = lazy(() => import('./pages/HospitalOnboarding').then(m => ({ default: m.HospitalOnboarding })));
 const LabOrdersPage = lazy(() => import('./pages/LabOrdersPage').then(m => ({ default: m.LabOrdersPage })));
 const QualityPage = lazy(() => import('./pages/QualityPage').then(m => ({ default: m.QualityPage })));
+const PatientCheckIn = lazy(() => import('./components/PatientCheckIn').then(m => ({ default: m.PatientCheckIn })));
 const OrchestrationPage = lazy(() => import('./pages/OrchestrationPage').then(m => ({ default: m.OrchestrationPage })));
 const HospitalOpsCenter = lazy(() => import('./pages/HospitalOpsCenter').then(m => ({ default: m.HospitalOpsCenter })));
 const HrPage = lazy(() => import('./pages/HrPage').then(m => ({ default: m.HrPage })));
@@ -244,6 +245,9 @@ export function App() {
               <Route path="/procurement" element={<LazySuspense><ProcurementDashboard /></LazySuspense>} />
               <Route path="/procurement/inventory" element={<LazySuspense><InventoryPage /></LazySuspense>} />
               <Route path="/procurement/orders" element={<LazySuspense><ProcurementPage /></LazySuspense>} />
+
+              {/* ═══ PATIENT ACCESS ═══ */}
+              <Route path="/checkin" element={<LazySuspense><PatientCheckIn /></LazySuspense>} />
 
               {/* ═══ REPORTS MODULE ═══ */}
               <Route path="/reports" element={<LazySuspense><ReportsDashboard /></LazySuspense>} />
