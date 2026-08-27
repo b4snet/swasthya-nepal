@@ -367,6 +367,9 @@ export function AppShell() {
   const visibleModules = allModules.filter((m) => !m.persistent);
   const activeModule = getActiveModule(location.pathname);
 
+  // Extract patient context from URL
+  const patientMatch = location.pathname.match(/^\/clinical\/patients\/([^/]+)/);
+
   // Sidebar collapsed state
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
@@ -394,7 +397,11 @@ export function AppShell() {
 
   return (
     <div className={`app-shell ${sidebarCollapsed ? 'app-shell--collapsed' : ''}`}>
-      <CommandPalette />
+      <CommandPalette
+        activePatientId={patientMatch?.[1] ?? null}
+        activePatientName={undefined}
+        activePatientMrn={undefined}
+      />
       <a className="skip-link" href="#content">{t('shell.skipToContent')}</a>
 
       {!network.online && (
