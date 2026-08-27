@@ -1,0 +1,360 @@
+/* ==========================================================================
+   Context Surface — Contextual Action Launcher (Phase 116)
+   
+   The interaction layer between global navigation and workspace.
+   Answers: "What do I want to do in this clinical context?"
+   
+   Light-only. Clinical. Calm. Fast.
+   ========================================================================== */
+
+/* ── Surface Container ──────────────────────────────────────── */
+.ctx-surface {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  animation: ctxSurfaceIn var(--duration-normal) var(--ease) both;
+  max-height: 70vh;
+}
+
+@keyframes ctxSurfaceIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Header ─────────────────────────────────────────────────── */
+.ctx-surface__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--gray-25);
+}
+
+.ctx-surface__header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.ctx-surface__domain-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  background: var(--teal-100);
+  color: var(--teal-700);
+  flex-shrink: 0;
+}
+
+.ctx-surface__header-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.ctx-surface__title {
+  font-family: var(--font-display);
+  font-size: var(--text-h3);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+  letter-spacing: var(--tracking-tight);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.ctx-surface__subtitle {
+  font-size: var(--text-caption);
+  color: var(--text-tertiary);
+}
+
+.ctx-surface__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease);
+  flex-shrink: 0;
+}
+
+.ctx-surface__close:hover {
+  background: var(--interactive-quiet-hover);
+  color: var(--text-primary);
+}
+
+.ctx-surface__close:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* ── Body ───────────────────────────────────────────────────── */
+.ctx-surface__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* ── Category Group ─────────────────────────────────────────── */
+.ctx-category {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.ctx-category__label {
+  font-size: var(--text-caption);
+  font-weight: var(--weight-semibold);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  padding: 0 var(--space-2);
+}
+
+.ctx-category__items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+/* ── Action Card ────────────────────────────────────────────── */
+.ctx-action {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-3);
+  border-left: 3px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--white);
+  border-top: 1px solid transparent;
+  border-right: 1px solid transparent;
+  border-bottom: 1px solid transparent;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease);
+  text-align: left;
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  min-height: 48px;
+}
+
+.ctx-action:hover {
+  background: var(--gray-25);
+  border-color: var(--border-subtle);
+}
+
+.ctx-action:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-color: var(--interactive-primary);
+}
+
+.ctx-action:active {
+  transform: scale(0.995);
+}
+
+/* ── High urgency ───────────────────────────────────────────── */
+.ctx-action--high {
+  background: var(--gray-25);
+}
+
+.ctx-action--high:hover {
+  background: var(--white);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ── Recommended ────────────────────────────────────────────── */
+.ctx-action--recommended {
+  background: var(--teal-50);
+  border-left-color: var(--teal-600);
+}
+
+.ctx-action--recommended:hover {
+  background: var(--teal-100);
+}
+
+/* ── Disabled ───────────────────────────────────────────────── */
+.ctx-action--disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ctx-action--disabled:hover {
+  background: var(--white);
+  transform: none;
+}
+
+/* ── Icon ───────────────────────────────────────────────────── */
+.ctx-action__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+  transition: all var(--duration-fast) var(--ease);
+}
+
+.ctx-action:hover .ctx-action__icon {
+  transform: scale(1.05);
+}
+
+/* ── Content ────────────────────────────────────────────────── */
+.ctx-action__content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.ctx-action__top-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.ctx-action__label {
+  font-size: var(--text-label);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ctx-action__description {
+  font-size: var(--text-caption);
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ctx-action__status {
+  font-size: var(--text-caption);
+  font-weight: var(--weight-medium);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Right side ─────────────────────────────────────────────── */
+.ctx-action__right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.ctx-action__count {
+  font-size: var(--text-caption);
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  min-width: 24px;
+  text-align: center;
+}
+
+.ctx-action__arrow {
+  color: var(--text-disabled);
+  transition: transform var(--duration-fast) var(--ease);
+  flex-shrink: 0;
+}
+
+.ctx-action:hover .ctx-action__arrow {
+  color: var(--text-secondary);
+  transform: translateX(2px);
+}
+
+/* ── Urgency Indicator ──────────────────────────────────────── */
+.urgency-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  font-size: 10px;
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  line-height: 1;
+  border: 1px solid;
+  flex-shrink: 0;
+}
+
+/* ── Footer ─────────────────────────────────────────────────── */
+.ctx-surface__footer {
+  padding: var(--space-2) var(--space-5);
+  border-top: 1px solid var(--border-subtle);
+  background: var(--gray-25);
+}
+
+.ctx-surface__footer-hint {
+  font-size: 11px;
+  color: var(--text-disabled);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Reduced Motion ─────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .ctx-surface {
+    animation: none;
+  }
+}
+
+/* ── Responsive: Mobile ─────────────────────────────────────── */
+@media (max-width: 640px) {
+  .ctx-surface {
+    max-height: 80vh;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    margin: 0;
+  }
+
+  .ctx-surface__header {
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .ctx-surface__body {
+    padding: var(--space-2);
+  }
+
+  .ctx-action {
+    padding: var(--space-3);
+    min-height: var(--touch-target);
+  }
+
+  .ctx-surface__footer {
+    display: none;
+  }
+}
+
+/* ── Responsive: Tablet ─────────────────────────────────────── */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .ctx-surface {
+    max-height: 65vh;
+  }
+}
+
+/* ── Responsive: Desktop ────────────────────────────────────── */
+@media (min-width: 1025px) {
+  .ctx-surface {
+    max-height: 60vh;
+  }
+}

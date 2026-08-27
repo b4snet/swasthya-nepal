@@ -7,7 +7,9 @@ import { useNetworkStatus } from '../hooks/useNetworkStatus';
 import { useI18n } from '../i18n/I18nProvider';
 import { Button, Dialog } from '../components/ui';
 import { useAccess } from '../auth/useAccess';
-import { DomainCommandSurface } from '../components/DomainCommandSurface';
+import { ContextSurface } from '../components/contextual/ContextSurface';
+import { lazy, Suspense } from 'react';
+const ContextBar = lazy(() => import('../components/contextual/ContextBar').then(m => ({ default: m.ContextBar })));
 import {
   LogOut,
   Globe,
@@ -441,6 +443,11 @@ export function AppShell() {
         </div>
       </header>
 
+      {/* ── Global context bar — critical items always visible ── */}
+      {tenant.selectedFacilityId && (
+        <Suspense fallback={null}><ContextBar /></Suspense>
+      )}
+
       {/* ── Contextual workspace launcher (between header and content) ── */}
       <ContextualWorkspace activeModule={activeModule} pathname={location.pathname} />
 
@@ -456,9 +463,9 @@ export function AppShell() {
 
         {/* ── Content ── */}
         <main className="app-content" id="content" tabIndex={-1}>
-          {/* Domain command surface — contextual launcher */}
+          {/* Context surface — contextual action launcher */}
           {activeDomain && (
-            <DomainCommandSurface
+            <ContextSurface
               module={activeDomain}
               open={!!activeDomain}
               onClose={closeDomainSurface}
