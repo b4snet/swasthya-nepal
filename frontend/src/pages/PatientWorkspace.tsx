@@ -50,7 +50,7 @@ import {
   Users,
 } from 'lucide-react';
 import './patient-workspace.css';
-import { PatientCommunicationHub } from './PatientCommunicationHub';
+import { ClinicalThread } from '../components/ClinicalThread';
 import { PatientJourney } from '../components/PatientJourney';
 import { CareTeam } from '../components/CareTeam';
 
@@ -844,7 +844,7 @@ export function PatientWorkspace() {
         );
 
       case 'communication':
-        return <PatientCommunicationHub />;
+        return <ClinicalThread patientId={id!} />;
 
       default:
         return <EmptyState title="Workspace not found" body="Select a workspace from above." />;
