@@ -1,0 +1,249 @@
+/* ============================================================================
+   Care Team — Make Clinical Responsibility Visible
+   
+   NOT a chat app. NOT a task manager.
+   Answers: WHO OWNS THIS PATIENT'S WORK RIGHT NOW?
+   Light-only. Clinical. Calm.
+   ========================================================================== */
+
+/* ── Container ──────────────────────────────────────────────── */
+.care-team {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* ── Section ────────────────────────────────────────────────── */
+.care-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.care-section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.care-section__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-label);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.care-section__title svg {
+  color: var(--teal-600);
+}
+
+.care-section__count {
+  font-size: var(--text-caption);
+  color: var(--text-tertiary);
+}
+
+/* ── Team Members ───────────────────────────────────────────── */
+.care-members {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* ── Member Card ────────────────────────────────────────────── */
+.care-member {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  transition: all var(--duration-fast) var(--ease);
+}
+
+.care-member:hover {
+  border-color: var(--border-default);
+}
+
+.care-member--primary {
+  border-left: 3px solid var(--teal-500);
+  background: var(--teal-50);
+}
+
+.care-member--on-leave {
+  opacity: 0.7;
+}
+
+.care-member--unavailable {
+  opacity: 0.5;
+}
+
+/* ── Member Avatar ──────────────────────────────────────────── */
+.care-member__avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--gradient-brand);
+  color: var(--on-teal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: var(--weight-bold);
+  font-size: var(--text-caption);
+  flex-shrink: 0;
+}
+
+.care-member--primary .care-member__avatar {
+  box-shadow: 0 0 0 2px var(--teal-200);
+}
+
+/* ── Member Info ────────────────────────────────────────────── */
+.care-member__info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+
+.care-member__name {
+  font-size: var(--text-label);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+
+.care-member__role {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+  text-transform: capitalize;
+}
+
+.care-member__responsibility {
+  font-size: var(--text-caption);
+  color: var(--text-tertiary);
+}
+
+/* ── Member Badge ───────────────────────────────────────────── */
+.care-member__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: var(--teal-100);
+  color: var(--teal-700);
+  font-size: 11px;
+  font-weight: var(--weight-bold);
+  flex-shrink: 0;
+}
+
+/* ── Pending Work ───────────────────────────────────────────── */
+.care-work-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.care-work {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.care-work--blocked {
+  border-left: 3px solid var(--red-500);
+  background: var(--red-50);
+}
+
+.care-work--ready {
+  border-left: 3px solid var(--teal-500);
+}
+
+.care-work--waiting {
+  border-left: 3px solid var(--amber-500);
+}
+
+.care-work__status {
+  flex-shrink: 0;
+}
+
+.care-work__info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+
+.care-work__label {
+  font-size: var(--text-label);
+  font-weight: var(--weight-medium);
+  color: var(--text-primary);
+}
+
+.care-work__assignee {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+}
+
+/* ── Blocked Alert ──────────────────────────────────────────── */
+.care-alert {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-semibold);
+}
+
+.care-alert--blocked {
+  background: var(--red-50);
+  color: var(--red-700);
+  border: 1px solid var(--red-100);
+}
+
+/* ── Loading ────────────────────────────────────────────────── */
+.care-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-8);
+  color: var(--text-tertiary);
+  font-size: var(--text-label);
+}
+
+/* ── Responsive: Mobile ─────────────────────────────────────── */
+@media (max-width: 640px) {
+  .care-member {
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .care-member__avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 11px;
+  }
+}
+
+/* ── Reduced Motion ─────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .care-member {
+    transition: none;
+  }
+}
