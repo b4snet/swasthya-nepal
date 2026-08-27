@@ -1,0 +1,122 @@
+/* ==========================================================================
+   Workflow Next Action — Phase 126
+   Compact forward-navigation guidance for clinical workflows.
+   ========================================================================== */
+
+/* ── Container ────────────────────────────────────────────────── */
+.wna {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: var(--gray-50);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.wna__label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+
+/* ── Actions Row ──────────────────────────────────────────────── */
+.wna__actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Single Action ────────────────────────────────────────────── */
+.wna__action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--white);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease);
+  white-space: nowrap;
+  font-family: var(--font-sans);
+  min-height: 30px;
+}
+
+.wna__action:hover {
+  box-shadow: var(--shadow-xs);
+  transform: translateY(-1px);
+}
+
+.wna__action:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* ── Action Icon ──────────────────────────────────────────────── */
+.wna__action-icon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* ── Action Label ─────────────────────────────────────────────── */
+.wna__action-label {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* ── Arrow ────────────────────────────────────────────────────── */
+.wna__action-arrow {
+  flex-shrink: 0;
+  opacity: 0.4;
+  transition: opacity var(--duration-fast) var(--ease);
+}
+
+.wna__action:hover .wna__action-arrow {
+  opacity: 0.8;
+}
+
+/* ── Urgency variants ─────────────────────────────────────────── */
+.wna__action--attention {
+  border-color: var(--blue-200);
+  background: var(--blue-50);
+}
+
+.wna__action--urgent {
+  border-color: var(--amber-200);
+  background: var(--amber-50);
+}
+
+.wna__action--critical {
+  border-color: var(--red-200);
+  background: var(--red-50);
+}
+
+/* ── Responsive ───────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .wna {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .wna__actions {
+    width: 100%;
+  }
+}
+
+/* ── Reduced Motion ───────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .wna__action {
+    transition: none;
+  }
+
+  .wna__action:hover {
+    transform: none;
+  }
+}

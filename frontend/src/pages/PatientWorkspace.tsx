@@ -60,6 +60,7 @@ import { WorkflowTrail } from '../components/WorkflowTrail';
 import { PendingWorkPanel } from '../components/PendingWorkPanel';
 import { ClinicalInspector, type InspectorField, type InspectorAction } from '../components/ClinicalInspector';
 import { ClinicalCommandSurface } from '../components/ClinicalCommandSurface';
+import { WorkflowNextAction } from '../components/WorkflowNextAction';
 
 // ─── Timeline helper (reused from PatientProfilePage) ───
 function timelineSummary(summary: any): string {
@@ -1153,6 +1154,18 @@ export function PatientWorkspace() {
       <div className="pw-content">
         {renderWorkspaceContent()}
       </div>
+
+      {/* ── Workflow Next Action (Phase 126 — forward navigation guidance) ── */}
+      <WorkflowNextAction
+        currentWorkspace={activeWorkspace}
+        patientId={id!}
+        pendingLabs={(labOrders.data as any[])?.filter((o: any) => !['reported', 'verified'].includes(o.status)).length || 0}
+        criticalItems={(labOrders.data as any[])?.filter((o: any) => o.priority === 'stat' || o.status === 'critical').length || 0}
+        activePrescriptions={(prescriptions.data as any[])?.filter((p: any) => p.status === 'active').length || 0}
+        activeEncounters={(encounters.data as any[])?.filter((e: any) => e.status === 'open').length || 0}
+        isAdmitted={(admissions.data as any[])?.some((a: any) => !a.dischargedAt) || false}
+        activeDiagnoses={(diagnoses.data as any[])?.filter((d: any) => d.status === 'active').length || 0}
+      />
 
       {/* ── Clinical Inspector (Phase 124 — slide-in detail panel) ── */}
       <ClinicalInspector
