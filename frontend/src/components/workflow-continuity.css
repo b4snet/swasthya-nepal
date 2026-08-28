@@ -1,0 +1,138 @@
+/* ==========================================================================
+   Workflow Continuity — Phase 130
+   Compact clinical notification for "Continue where you left off"
+   ========================================================================== */
+
+/* ── Continue Prompt ──────────────────────────────────────────── */
+.continue-prompt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2-5) var(--space-4);
+  background: var(--teal-50);
+  border: 1px solid var(--teal-200);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-3);
+  animation: continue-prompt-in 0.2s ease-out;
+}
+
+@keyframes continue-prompt-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.continue-prompt__content {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2-5);
+  min-width: 0;
+}
+
+.continue-prompt__icon {
+  font-size: 16px;
+  color: var(--teal-700);
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.continue-prompt__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.continue-prompt__label {
+  font-size: var(--fs-body, 0.875rem);
+  font-weight: 600;
+  color: var(--teal-800);
+  line-height: 1.3;
+}
+
+.continue-prompt__detail {
+  font-size: var(--fs-caption, 0.75rem);
+  color: var(--teal-700);
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.continue-prompt__time {
+  color: var(--text-tertiary);
+}
+
+.continue-prompt__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.continue-prompt__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-1-5) var(--space-3);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--fs-caption, 0.75rem);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease);
+  white-space: nowrap;
+  min-height: 32px;
+}
+
+.continue-prompt__btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.continue-prompt__btn--primary {
+  background: var(--teal-700);
+  color: white;
+}
+
+.continue-prompt__btn--primary:hover {
+  background: var(--teal-800);
+}
+
+.continue-prompt__btn--dismiss {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+}
+
+.continue-prompt__btn--dismiss:hover {
+  background: var(--white);
+  border-color: var(--teal-300);
+}
+
+/* ── Reduced Motion ───────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .continue-prompt {
+    animation: none;
+  }
+}
+
+/* ── Responsive ───────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .continue-prompt {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-2);
+    padding: var(--space-3);
+  }
+
+  .continue-prompt__actions {
+    justify-content: flex-end;
+  }
+}

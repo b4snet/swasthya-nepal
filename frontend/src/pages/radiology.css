@@ -32,7 +32,7 @@
 
 .rad-census-card--total { border-top: 3px solid var(--primary, #4FA9FF); }
 .rad-census-card--ordered { border-top: 3px solid #f59e0b; }
-.rad-census-card--scheduled { border-top: 3px solid #3b82f6; }
+.rad-census-card--scheduled { border-top: 3px solid var(--blue-600); }
 .rad-census-card--progress { border-top: 3px solid #ea580c; }
 .rad-census-card--reported { border-top: 3px solid #10b981; }
 .rad-census-card--critical { border-top: 3px solid #dc2626; }

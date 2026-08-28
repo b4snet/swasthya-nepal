@@ -22,4 +22,4 @@
 .spec-list-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; }
 .spec-list-type { font-weight: 500; font-size: 0.875rem; }
 .spec-list-time { font-size: 0.75rem; color: #6b7280; margin-left: auto; }
-.spec-list-goals { font-size: 0.75rem; color: #3b82f6; }
+.spec-list-goals { font-size: 0.75rem; color: var(--blue-600); }

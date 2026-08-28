@@ -24,6 +24,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTenant } from '../context/TenantContext';
 import { useFetch } from '../hooks/useFetch';
 import { appointmentsApi } from '../api/endpoints';
+import { dashboardApi, type DashboardMetrics } from '../api/dashboard';
 import type { Appointment } from '../api/types';
 import {
   AlertTriangle,
@@ -40,6 +41,11 @@ import {
   Shield,
   BarChart3,
   RefreshCw,
+  ScanLine,
+  Pill,
+  Receipt,
+  Siren,
+  ChevronRight,
 } from 'lucide-react';
 import './hospital-command-center.css';
 
@@ -101,6 +107,7 @@ interface SystemHealthItem {
 function deriveHospitalState(
   appointments: Appointment[],
   encounters: any[],
+  metrics?: DashboardMetrics | null,
 ): {
   alerts: OperationalAlert[];
   flow: FlowMetric[];
@@ -110,6 +117,9 @@ function deriveHospitalState(
 } {
   const now = new Date();
   const today = now.toISOString().split('T')[0];
+
+  // Use authoritative metrics where available
+  const m = metrics;
 
   // ── Alerts ──
   const alerts: OperationalAlert[] = [];
@@ -169,48 +179,137 @@ function deriveHospitalState(
     });
   }
 
+  // ── Additional alerts from DashboardMetrics ──
+  if (m) {
+    if (m.criticalValues > 0) {
+      alerts.push({
+        id: 'critical-values',
+        category: 'clinical',
+        priority: 'critical',
+        title: `${m.criticalValues} unacknowledged critical value${m.criticalValues !== 1 ? 's' : ''}`,
+        description: 'Critical laboratory results require immediate review',
+        area: 'Laboratory',
+        owner: 'Laboratory / Clinical',
+        actionLabel: 'View critical values',
+        actionTo: '/laboratory/critical-values',
+        createdAt: now.toISOString(),
+      });
+    }
+    if (m.pendingLabOrders > 20) {
+      alerts.push({
+        id: 'high-lab-pending',
+        category: 'operational',
+        priority: 'high',
+        title: `${m.pendingLabOrders} pending lab orders`,
+        description: 'Laboratory backlog may affect turnaround times',
+        area: 'Laboratory',
+        owner: 'Lab Supervisor',
+        actionLabel: 'View lab orders',
+        actionTo: '/laboratory/orders',
+        createdAt: now.toISOString(),
+      });
+    }
+    if (m.pendingReports > 10) {
+      alerts.push({
+        id: 'high-rad-pending',
+        category: 'operational',
+        priority: 'high',
+        title: `${m.pendingReports} pending radiology reports`,
+        description: 'Radiology reports awaiting completion',
+        area: 'Radiology',
+        owner: 'Radiology',
+        actionLabel: 'View radiology',
+        actionTo: '/radiology',
+        createdAt: now.toISOString(),
+      });
+    }
+    if (m.lowStockItems > 0) {
+      alerts.push({
+        id: 'low-stock',
+        category: 'operational',
+        priority: 'normal',
+        title: `${m.lowStockItems} medication${m.lowStockItems !== 1 ? 's' : ''} low on stock`,
+        description: 'Medications below reorder level',
+        area: 'Pharmacy',
+        owner: 'Pharmacist',
+        actionLabel: 'View pharmacy',
+        actionTo: '/pharmacy',
+        createdAt: now.toISOString(),
+      });
+    }
+    if (m.outstandingAmount > 0) {
+      alerts.push({
+        id: 'outstanding-billing',
+        category: 'operational',
+        priority: 'normal',
+        title: `NPR ${m.outstandingAmount.toLocaleString()} outstanding`,
+        description: 'Outstanding billing amount across today\'s invoices',
+        area: 'Finance',
+        owner: 'Billing',
+        actionLabel: 'View billing',
+        actionTo: '/billing',
+        createdAt: now.toISOString(),
+      });
+    }
+    if (m.erWaiting > 5) {
+      alerts.push({
+        id: 'er-high-waiting',
+        category: 'capacity',
+        priority: m.erWaiting > 10 ? 'critical' : 'high',
+        title: `${m.erWaiting} patients in emergency waiting`,
+        description: 'Emergency department queue elevated',
+        area: 'Emergency',
+        owner: 'Emergency',
+        actionLabel: 'View ER',
+        actionTo: '/emergency',
+        createdAt: now.toISOString(),
+      });
+    }
+  }
+
   // ── Patient Flow ──
   const flow: FlowMetric[] = [
     {
       stage: 'arrival',
       label: 'Arrivals',
-      count: appointments.filter((a) => {
+      count: m?.appointmentsToday ?? appointments.filter((a) => {
         const d = (a.startsAt ?? '').split('T')[0];
         return d === today;
       }).length,
-      active: appointments.filter((a) => a.status === 'booked').length,
+      active: m?.checkInsToday ?? appointments.filter((a) => a.status === 'booked').length,
     },
     {
       stage: 'queue',
       label: 'In Queue',
-      count: appointments.filter((a) => a.status === 'checked_in').length,
-      waiting: appointments.filter((a) => a.status === 'checked_in').length,
+      count: m?.inQueue ?? appointments.filter((a) => a.status === 'checked_in').length,
+      waiting: m?.inQueue ?? appointments.filter((a) => a.status === 'checked_in').length,
     },
     {
       stage: 'service',
       label: 'In Service',
-      count: openEncounters.length,
-      active: openEncounters.length,
+      count: m?.inConsultation ?? openEncounters.length,
+      active: m?.inConsultation ?? openEncounters.length,
     },
     {
       stage: 'diagnostics',
       label: 'Diagnostics',
-      count: 0, // Would come from lab/radiology APIs
+      count: (m?.pendingLabOrders ?? 0) + (m?.pendingStudies ?? 0),
+      waiting: m?.pendingLabOrders,
     },
     {
       stage: 'treatment',
-      label: 'Treatment',
-      count: 0, // Would come from admission APIs
+      label: 'Inpatient',
+      count: m?.occupiedBeds ?? 0,
     },
     {
       stage: 'disposition',
-      label: 'Disposition',
-      count: appointments.filter((a) => a.status === 'completed').length,
+      label: 'Discharges',
+      count: m?.dischargesToday ?? 0,
     },
   ];
 
-  // ── Capacity (derived from available data) ──
-  const totalSlots = 50; // Would come from configuration
+  // ── Capacity — use authoritative metrics when available ──
+  const totalSlots = 50;
   const bookedSlots = appointments.filter((a) => !['cancelled', 'no_show'].includes(a.status)).length;
   const capacity: CapacityMetric[] = [
     {
@@ -223,7 +322,7 @@ function deriveHospitalState(
     },
     {
       label: 'Active Encounters',
-      total: 20, // Would come from configuration
+      total: 20,
       used: openEncounters.length,
       available: Math.max(0, 20 - openEncounters.length),
       unit: 'encounters',
@@ -231,19 +330,44 @@ function deriveHospitalState(
     },
   ];
 
+  // Add bed capacity from metrics
+  if (m && m.totalBeds > 0) {
+    capacity.push({
+      label: 'Hospital Beds',
+      total: m.totalBeds,
+      used: m.occupiedBeds,
+      available: m.availableBeds,
+      unit: 'beds',
+      status: m.occupiedBeds / m.totalBeds > 0.9 ? 'critical' : m.occupiedBeds / m.totalBeds > 0.75 ? 'constrained' : 'normal',
+    });
+    if (m.cleaningBeds > 0) {
+      capacity.push({
+        label: 'Beds Being Cleaned',
+        total: m.cleaningBeds,
+        used: m.cleaningBeds,
+        available: 0,
+        unit: 'beds',
+        status: 'normal',
+      });
+    }
+  }
+
   // ── System Health ──
   const systemHealth: SystemHealthItem[] = [
     { name: 'Application', status: 'healthy', lastChecked: now.toISOString() },
     { name: 'Database', status: 'healthy', lastChecked: now.toISOString() },
-    { name: 'Cache', status: 'healthy', lastChecked: now.toISOString() },
-    { name: 'Storage', status: 'healthy', lastChecked: now.toISOString() },
   ];
 
   // ── Summary ──
-  const uniquePatients = new Set([
+  const uniquePatients = m ? (
+    m.totalPatients || new Set([
+      ...appointments.map((a) => a.patientId).filter(Boolean),
+      ...encounters.map((e: any) => e.patientId).filter(Boolean),
+    ]).size
+  ) : new Set([
     ...appointments.map((a) => a.patientId).filter(Boolean),
     ...encounters.map((e: any) => e.patientId).filter(Boolean),
-  ]);
+  ]).size;
 
   return {
     alerts: alerts.sort((a, b) => {
@@ -254,9 +378,9 @@ function deriveHospitalState(
     capacity,
     systemHealth,
     summary: {
-      totalPatients: uniquePatients.size,
-      activeEncounters: openEncounters.length,
-      waiting: waitingCount,
+      totalPatients: typeof uniquePatients === 'number' ? uniquePatients : 0,
+      activeEncounters: m?.encountersToday ?? openEncounters.length,
+      waiting: m?.inQueue ?? waitingCount,
       critical: alerts.filter((a) => a.priority === 'critical').length,
     },
   };
@@ -423,21 +547,28 @@ export function HospitalCommandCenter() {
     [selectedFacilityId],
   );
 
-  const encounters = useFetch(
-    () => Promise.resolve([]),
-    [],
+  // NOTE: No facility-wide encounters endpoint exists.
+  // Encounter counts come from dashboardMetrics (encountersToday).
+  const encounters = { data: [], loading: false, error: null, refresh: () => {} };
+
+  // Fetch authoritative dashboard metrics
+  const metrics = useFetch(
+    () => dashboardApi.metrics(selectedFacilityId).catch(() => null),
+    [selectedFacilityId],
   );
 
   const state = useMemo(
     () => deriveHospitalState(
       (appointments.data as any[]) ?? [],
       (encounters.data as any[]) ?? [],
+      metrics.data as DashboardMetrics | null | undefined,
     ),
-    [appointments.data, encounters.data],
+    [appointments.data, encounters.data, metrics.data],
   );
 
   const handleRefresh = () => {
     appointments.refresh();
+    metrics.refresh();
     setLastRefresh(new Date());
   };
 
@@ -562,6 +693,69 @@ export function HospitalCommandCenter() {
               ))}
             </div>
           </section>
+
+          {/* Operational Summary — from DashboardMetrics */}
+          {metrics.data && (
+            <section className="cc-section" aria-label="Operational status">
+              <div className="cc-section__header">
+                <h3 className="cc-section__title">
+                  <Activity size={15} />
+                  Department Status
+                </h3>
+              </div>
+              <div className="cc-dept-list">
+                <div className="cc-dept-row">
+                  <span className="cc-dept-icon"><FlaskConical size={13} /></span>
+                  <span className="cc-dept-name">Laboratory</span>
+                  <span className="cc-dept-count">{(metrics.data as DashboardMetrics).pendingLabOrders} pending</span>
+                  {(metrics.data as DashboardMetrics).criticalValues > 0 && (
+                    <span className="cc-dept-badge cc-dept-badge--critical">{(metrics.data as DashboardMetrics).criticalValues} critical</span>
+                  )}
+                  <button type="button" className="cc-dept-action" onClick={() => navigate('/laboratory')} aria-label="View laboratory">
+                    <ChevronRight size={12} />
+                  </button>
+                </div>
+                <div className="cc-dept-row">
+                  <span className="cc-dept-icon"><ScanLine size={13} /></span>
+                  <span className="cc-dept-name">Radiology</span>
+                  <span className="cc-dept-count">{(metrics.data as DashboardMetrics).pendingReports} reports pending</span>
+                  <button type="button" className="cc-dept-action" onClick={() => navigate('/radiology')} aria-label="View radiology">
+                    <ChevronRight size={12} />
+                  </button>
+                </div>
+                <div className="cc-dept-row">
+                  <span className="cc-dept-icon"><Pill size={13} /></span>
+                  <span className="cc-dept-name">Pharmacy</span>
+                  <span className="cc-dept-count">{(metrics.data as DashboardMetrics).prescriptionsToday} prescriptions today</span>
+                  {(metrics.data as DashboardMetrics).lowStockItems > 0 && (
+                    <span className="cc-dept-badge cc-dept-badge--warning">{(metrics.data as DashboardMetrics).lowStockItems} low stock</span>
+                  )}
+                  <button type="button" className="cc-dept-action" onClick={() => navigate('/pharmacy')} aria-label="View pharmacy">
+                    <ChevronRight size={12} />
+                  </button>
+                </div>
+                <div className="cc-dept-row">
+                  <span className="cc-dept-icon"><Siren size={13} /></span>
+                  <span className="cc-dept-name">Emergency</span>
+                  <span className="cc-dept-count">{(metrics.data as DashboardMetrics).erRegistrationsToday} registrations today</span>
+                  {(metrics.data as DashboardMetrics).erWaiting > 0 && (
+                    <span className="cc-dept-badge cc-dept-badge--warning">{(metrics.data as DashboardMetrics).erWaiting} waiting</span>
+                  )}
+                  <button type="button" className="cc-dept-action" onClick={() => navigate('/emergency')} aria-label="View emergency">
+                    <ChevronRight size={12} />
+                  </button>
+                </div>
+                <div className="cc-dept-row">
+                  <span className="cc-dept-icon"><Receipt size={13} /></span>
+                  <span className="cc-dept-name">Finance</span>
+                  <span className="cc-dept-count">NPR {(metrics.data as DashboardMetrics).revenueToday?.toLocaleString() ?? 0} today</span>
+                  <button type="button" className="cc-dept-action" onClick={() => navigate('/billing')} aria-label="View billing">
+                    <ChevronRight size={12} />
+                  </button>
+                </div>
+              </div>
+            </section>
+          )}
 
           {/* System Health */}
           <section className="cc-section" aria-label="System health">

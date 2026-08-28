@@ -4,8 +4,69 @@ import { auditApi } from '../api/endpoints';
 import { useFetch } from '../hooks/useFetch';
 import { Card, EmptyState, ErrorState, Input, Select, Spinner } from '../components/ui';
 import { AUDIT_ROLES } from '../auth/roles';
+import { ChevronRight, ChevronDown, Clock, User, Activity } from 'lucide-react';
 
 const PAGE_SIZE = 25;
+
+/** Expandable audit row with metadata display — Phase 153 */
+function AuditRow({ event }: { event: { id: string; action: string; entityType: string; entityId: string | null; actor: { id: string; email: string } | null; facilityId: string | null; occurredAt: string; metadata: Record<string, unknown> | null } }) {
+  const [expanded, setExpanded] = useState(false);
+  const hasMetadata = event.metadata && Object.keys(event.metadata).length > 0;
+
+  return (
+    <>
+      <tr className={expanded ? 'audit-row--expanded' : undefined}>
+        <td data-label="When" className="mono">
+          <span className="audit-when">
+            <Clock size={12} />
+            {new Date(event.occurredAt).toLocaleString()}
+          </span>
+        </td>
+        <td data-label="Actor">
+          <span className="audit-actor">
+            <User size={12} />
+            {event.actor?.email ?? 'system'}
+          </span>
+        </td>
+        <td data-label="Action" className="mono">
+          <span className="audit-action">
+            <Activity size={12} />
+            {event.action}
+          </span>
+        </td>
+        <td data-label="Entity">{event.entityType}</td>
+        <td data-label="Entity ID" className="mono muted small">
+          {event.entityId ? String(event.entityId).slice(0, 8) : '—'}
+        </td>
+        {hasMetadata && (
+          <td className="audit-expand">
+            <button
+              type="button"
+              className="audit-expand-btn"
+              onClick={() => setExpanded(!expanded)}
+              aria-label={expanded ? 'Collapse details' : 'Expand details'}
+              aria-expanded={expanded}
+            >
+              {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+            </button>
+          </td>
+        )}
+      </tr>
+      {expanded && hasMetadata && (
+        <tr className="audit-metadata-row">
+          <td colSpan={6}>
+            <div className="audit-metadata">
+              <span className="audit-metadata__label">Metadata</span>
+              <pre className="audit-metadata__json">
+                {JSON.stringify(event.metadata, null, 2)}
+              </pre>
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
 
 export function AuditPage() {
   const { selectedFacilityId, hasRole } = useTenant();
@@ -97,13 +158,7 @@ export function AuditPage() {
               </thead>
               <tbody>
                 {paged.map((e) => (
-                  <tr key={e.id}>
-                    <td data-label="When" className="num">{new Date(e.occurredAt).toLocaleString()}</td>
-                    <td data-label="Actor">{e.actor?.email ?? 'system'}</td>
-                    <td data-label="Action" className="mono">{e.action}</td>
-                    <td data-label="Entity">{e.entityType}</td>
-                    <td data-label="Entity ID" className="mono muted small">{e.entityId ? String(e.entityId).slice(0, 8) : '—'}</td>
-                  </tr>
+                  <AuditRow key={e.id} event={e} />
                 ))}
               </tbody>
             </table>

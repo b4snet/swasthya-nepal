@@ -167,3 +167,99 @@
     transition: none;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   Phase 129 — Urgency badges, patient context, action grouping
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Action Badge ────────────────────────────────────────────── */
+.module-action__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  margin-left: auto;
+  flex-shrink: 0;
+  background: var(--gray-100);
+  color: var(--text-secondary);
+}
+
+.module-action__badge--attention {
+  background: var(--blue-50);
+  color: var(--blue-700);
+}
+
+.module-action__badge--urgent {
+  background: var(--amber-50);
+  color: var(--amber-700);
+}
+
+.module-action__badge--critical {
+  background: var(--red-50);
+  color: var(--red-700);
+}
+
+/* ── Patient Context Indicator ───────────────────────────────── */
+.workspace-rail__patient {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: var(--space-1-5) var(--space-3);
+  background: var(--teal-50);
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.workspace-rail__patient-icon {
+  display: flex;
+  align-items: center;
+  color: var(--teal-700);
+  flex-shrink: 0;
+}
+
+.workspace-rail__patient-id {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--teal-800);
+  letter-spacing: 0.02em;
+}
+
+.workspace-rail__patient-lock {
+  display: flex;
+  align-items: center;
+  color: var(--teal-500);
+  margin-left: auto;
+}
+
+/* ── Rail Section (Grouped Actions) ─────────────────────────── */
+.rail-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.rail-section__label {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-tertiary);
+  padding: var(--space-2) var(--space-2) var(--space-1);
+}
+
+.rail-section__items {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rail-section + .rail-section {
+  margin-top: var(--space-1);
+  padding-top: var(--space-1);
+  border-top: 1px solid var(--border-subtle);
+}

@@ -19,25 +19,37 @@
  *   - No clinical priority inference — only authoritative status
  */
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTenant } from '../context/TenantContext';
-import { useFetch } from '../hooks/useFetch';
-import { appointmentsApi, referralsApi } from '../api/clinical';
-import { criticalValueApi, radiologyApi } from '../api/laboratory';
+import { useClinicalWorkSources } from '../hooks/useClinicalWorkSources';
+import { referralsApi } from '../api/clinical';
+import { criticalValueApi } from '../api/laboratory';
+import {
+  ALL_ROLES,
+  CLINICAL_ROLES,
+  DOCTOR_ROLES,
+  LAB_ROLES,
+  RADIOLOGY_ROLES,
+  SOURCE_CONFIG,
+  SECTION_CONFIG,
+  PRIORITY_ORDER,
+  SECTION_ORDER,
+  type WorkSource,
+  type WorkPriority,
+  type WorkSection,
+} from './clinical-work-types';
 import {
   AlertTriangle,
-  CalendarDays,
   CheckCircle2,
-  Clock,
-  Pill,
-  ScanLine,
-  Stethoscope,
-  ArrowRight,
   ChevronRight,
   UserRound,
-  Bell,
   SortAsc,
+  LayoutList,
+  Table,
+  Search,
+  CheckCircle,
+  Reply,
 } from 'lucide-react';
 import './clinical-work-queue.css';
 
@@ -45,10 +57,7 @@ import './clinical-work-queue.css';
    TYPES
    ──────────────────────────────────────────────────────────────────── */
 
-type WorkSource = 'appointment' | 'referral' | 'critical_value' | 'radiology' | 'prescription' | 'encounter';
 type WorkStatus = 'ready' | 'in_progress' | 'waiting' | 'overdue' | 'completed';
-type WorkPriority = 'critical' | 'high' | 'normal' | 'low';
-type WorkSection = 'now' | 'next' | 'waiting' | 'overdue';
 
 interface WorkItem {
   id: string;
@@ -72,72 +81,19 @@ interface WorkItem {
   actionLabel: string;
   /** Roles that should see this item */
   visibleTo: string[];
+  /** Direct mutation action — if present, user can act inline */
+  mutationAction?: {
+    type: 'acknowledge' | 'complete' | 'sign';
+    entityId: string;
+    endpoint: string;
+  };
+  /** Once acted upon, the item is removed from queue */
+  completed?: boolean;
 }
 
-/* ────────────────────────────────────────────────────────────────────
-   ROLE CATEGORIES
-   ──────────────────────────────────────────────────────────────────── */
 
-const ALL_ROLES = [] as string[];
-const CLINICAL_ROLES = ['doctor', 'nurse', 'hospital_admin', 'org_admin', 'superadmin'];
-const DOCTOR_ROLES = ['doctor', 'hospital_admin', 'org_admin', 'superadmin'];
-const LAB_ROLES = ['lab_technician', 'lab_supervisor', 'hospital_admin', 'org_admin', 'superadmin'];
-const RADIOLOGY_ROLES = ['radiologist', 'radiographer', 'hospital_admin', 'org_admin', 'superadmin'];
 
-/* ────────────────────────────────────────────────────────────────────
-   SOURCE CONFIG
-   ──────────────────────────────────────────────────────────────────── */
 
-const SOURCE_CONFIG: Record<WorkSource, {
-  icon: React.ReactNode;
-  label: string;
-  color: string;
-  bgColor: string;
-}> = {
-  appointment: {
-    icon: <CalendarDays size={13} />,
-    label: 'Appointment',
-    color: 'var(--blue-600)',
-    bgColor: 'var(--blue-50)',
-  },
-  referral: {
-    icon: <ArrowRight size={13} />,
-    label: 'Referral',
-    color: 'var(--violet-600)',
-    bgColor: 'var(--violet-50)',
-  },
-  critical_value: {
-    icon: <AlertTriangle size={13} />,
-    label: 'Critical Value',
-    color: 'var(--red-600)',
-    bgColor: 'var(--red-50)',
-  },
-  radiology: {
-    icon: <ScanLine size={13} />,
-    label: 'Radiology',
-    color: 'var(--teal-700)',
-    bgColor: 'var(--teal-50)',
-  },
-  prescription: {
-    icon: <Pill size={13} />,
-    label: 'Prescription',
-    color: 'var(--amber-600)',
-    bgColor: 'var(--amber-50)',
-  },
-  encounter: {
-    icon: <Stethoscope size={13} />,
-    label: 'Encounter',
-    color: 'var(--teal-700)',
-    bgColor: 'var(--teal-50)',
-  },
-};
-
-const SECTION_CONFIG: Record<WorkSection, { label: string; icon: React.ReactNode }> = {
-  now: { label: 'Needs Attention', icon: <Bell size={14} /> },
-  next: { label: 'Next', icon: <ArrowRight size={14} /> },
-  waiting: { label: 'Waiting', icon: <Clock size={14} /> },
-  overdue: { label: 'Overdue', icon: <AlertTriangle size={14} /> },
-};
 
 /* ────────────────────────────────────────────────────────────────────
    DERIVE WORK ITEMS FROM AUTHORITATIVE DATA
@@ -284,6 +240,9 @@ function deriveWorkItems(
       destination: ref.patientId ? `/clinical/patients/${ref.patientId}?ws=overview` : '/clinical/referrals',
       actionLabel: 'Review Referral',
       visibleTo: CLINICAL_ROLES,
+      mutationAction: (status === 'pending' || status === 'requested')
+        ? { type: 'complete', entityId: ref.id, endpoint: 'referral' }
+        : undefined,
     });
   }
 
@@ -313,6 +272,7 @@ function deriveWorkItems(
       destination: patientId ? `/clinical/patients/${patientId}?ws=lab` : '/laboratory/reports',
       actionLabel: 'Acknowledge',
       visibleTo: [...DOCTOR_ROLES, ...LAB_ROLES],
+      mutationAction: { type: 'acknowledge', entityId: cv.id ?? cv.eventId ?? '', endpoint: 'critical_value' },
     });
   }
 
@@ -378,9 +338,13 @@ function deriveWorkItems(
 function WorkItemCard({
   item,
   onNavigate,
+  onAct,
+  acted,
 }: {
   item: WorkItem;
   onNavigate: (destination: string) => void;
+  onAct: (item: WorkItem) => void;
+  acted: boolean;
 }) {
   const src = SOURCE_CONFIG[item.source];
   const isElevated = item.priority === 'critical' || item.priority === 'high';
@@ -395,6 +359,20 @@ function WorkItemCard({
     return `${Math.floor(hours / 24)}d ago`;
   }, [item.createdAt]);
 
+  if (acted) {
+    return (
+      <div className={`wq-item wq-item--completed wq-item--${item.source}`} data-testid={`wq-item-${item.id}`}>
+        <div className="wq-item__source wq-item__source--completed">
+          <CheckCircle size={13} />
+        </div>
+        <div className="wq-item__content">
+          <span className="wq-item__label">{item.label}</span>
+          <span className="wq-item__completed-text">Action completed</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <button
       type="button"
@@ -405,7 +383,7 @@ function WorkItemCard({
     >
       {/* Source indicator */}
       <div className="wq-item__source" style={{ color: src.color, background: src.bgColor }}>
-        {src.icon}
+        <src.Icon size={13} />
       </div>
 
       {/* Content */}
@@ -441,9 +419,23 @@ function WorkItemCard({
       </div>
 
       {/* Action */}
-      <div className="wq-item__action">
-        <span className="wq-item__action-label">{item.actionLabel}</span>
-        <ChevronRight size={14} />
+      <div className="wq-item__actions">
+        {item.mutationAction && (
+          <button
+            type="button"
+            className="wq-item__act-btn"
+            onClick={(e) => { e.stopPropagation(); onAct(item); }}
+            aria-label={`Mark ${item.actionLabel.toLowerCase()} for ${item.patientName}`}
+            data-testid={`wq-act-${item.id}`}
+          >
+            <CheckCircle size={13} />
+            <span>{item.actionLabel}</span>
+          </button>
+        )}
+        <span className="wq-item__nav-label">
+          {item.mutationAction ? <Reply size={12} /> : <ChevronRight size={14} />}
+          <span>{item.mutationAction ? 'View' : item.actionLabel}</span>
+        </span>
       </div>
     </button>
   );
@@ -480,7 +472,7 @@ function FilterBar({
             className={`wq-filter-btn ${activeSource === s ? 'wq-filter-btn--active' : ''}`}
             onClick={() => onSourceChange(s)}
           >
-            <span style={{ color: cfg.color }}>{cfg.icon}</span>
+            <span style={{ color: cfg.color }}><cfg.Icon size={13} /></span>
             {cfg.label}
           </button>
         );
@@ -497,10 +489,14 @@ function WorkSectionGroup({
   section,
   items,
   onNavigate,
+  onAct,
+  actedIds,
 }: {
   section: WorkSection;
   items: WorkItem[];
   onNavigate: (dest: string) => void;
+  onAct: (item: WorkItem) => void;
+  actedIds: Set<string>;
 }) {
   if (items.length === 0) return null;
   const cfg = SECTION_CONFIG[section];
@@ -509,14 +505,14 @@ function WorkSectionGroup({
     <div className="wq-section" role="region" aria-label={`${cfg.label} — ${items.length} items`}>
       <div className="wq-section__header">
         <span className="wq-section__title">
-          {cfg.icon}
+          <cfg.Icon size={14} />
           {cfg.label}
         </span>
         <span className="wq-section__count">{items.length}</span>
       </div>
       <div className="wq-section__items" role="list">
         {items.map((item) => (
-          <WorkItemCard key={item.id} item={item} onNavigate={onNavigate} />
+          <WorkItemCard key={item.id} item={item} onNavigate={onNavigate} onAct={onAct} acted={actedIds.has(item.id)} />
         ))}
       </div>
     </div>
@@ -527,6 +523,97 @@ function WorkSectionGroup({
    MAIN CLINICAL WORK QUEUE
    ──────────────────────────────────────────────────────────────────── */
 
+/* ────────────────────────────────────────────────────────────────────
+   TABLE VIEW — compact dense scanning for desktop
+   ──────────────────────────────────────────────────────────────────── */
+
+function WorkTable({
+  items,
+  onNavigate,
+  onAct,
+  actedIds,
+}: {
+  items: WorkItem[];
+  onNavigate: (dest: string) => void;
+  onAct: (item: WorkItem) => void;
+  actedIds: Set<string>;
+}) {
+  return (
+    <div className="wq-table-wrap" role="region" aria-label="Work items table">
+      <table className="wq-table" role="grid">
+        <thead>
+          <tr>
+            <th scope="col" className="wq-table__th">Patient</th>
+            <th scope="col" className="wq-table__th">Work</th>
+            <th scope="col" className="wq-table__th">Status</th>
+            <th scope="col" className="wq-table__th wq-table__th--action">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((item) => {
+            const src = SOURCE_CONFIG[item.source];
+            return (
+              <tr
+                key={item.id}
+                className={`wq-table__row ${item.priority === 'critical' ? 'wq-table__row--critical' : item.priority === 'high' ? 'wq-table__row--high' : ''}`}
+                onClick={() => onNavigate(item.destination)}
+                role="row"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter') onNavigate(item.destination); }}
+                data-testid={`wq-table-${item.id}`}
+              >
+                <td className="wq-table__td wq-table__td--patient">
+                  <span className="wq-table__patient-name">{item.patientName}</span>
+                  {item.patientMrn && <span className="wq-table__mrn mono">{item.patientMrn}</span>}
+                </td>
+                <td className="wq-table__td">
+                  <span className="wq-table__work-type" style={{ color: src.color }}><src.Icon size={13} /></span>
+                  <span className="wq-table__label">{item.label}</span>
+                  {item.priority === 'critical' && <span className="wq-badge wq-badge--critical">CRIT</span>}
+                  {item.priority === 'high' && <span className="wq-badge wq-badge--high">HIGH</span>}
+                </td>
+                <td className="wq-table__td wq-table__td--status">
+                  <span className="wq-table__reason">{item.priorityReason}</span>
+                </td>
+                <td className="wq-table__td wq-table__td--action">
+                  {item.mutationAction && !actedIds.has(item.id) && (
+                    <button
+                      type="button"
+                      className="wq-table__act-btn"
+                      onClick={(e) => { e.stopPropagation(); onAct(item); }}
+                      aria-label={`${item.actionLabel} — ${item.patientName}`}
+                      data-testid={`wq-act-${item.id}`}
+                    >
+                      <CheckCircle size={12} />
+                      {item.actionLabel}
+                    </button>
+                  )}
+                  {actedIds.has(item.id) ? (
+                    <span className="wq-table__acted-label">
+                      <CheckCircle size={12} />
+                      Done
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      className="wq-table__action-btn"
+                      onClick={(e) => { e.stopPropagation(); onNavigate(item.destination); }}
+                      aria-label={`View ${item.patientName}`}
+                    >
+                      View
+                      <ChevronRight size={12} />
+                    </button>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export function ClinicalWorkQueue() {
   const navigate = useNavigate();
   const { selectedFacilityId, hasRole } = useTenant();
@@ -534,44 +621,40 @@ export function ClinicalWorkQueue() {
 
   const [activeSource, setActiveSource] = useState<WorkSource | 'all'>('all');
   const [sortBy, setSortBy] = useState<'priority' | 'time'>('priority');
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+  const [patientFilter, setPatientFilter] = useState('');
+  const [actedIds, setActedIds] = useState<Set<string>>(new Set());
 
-  // ── Fetch from authoritative facility-wide sources ──
-  const appointments = useFetch(
-    () => appointmentsApi.list({ facilityId: fac }),
-    [fac],
-  );
+  // ── Direct mutation handler ──
+  const handleAct = useCallback(async (item: WorkItem) => {
+    if (!item.mutationAction || actedIds.has(item.id)) return;
+    try {
+      if (item.mutationAction.endpoint === 'critical_value') {
+        await criticalValueApi.acknowledge(item.mutationAction.entityId, fac);
+      } else if (item.mutationAction.endpoint === 'referral') {
+        await referralsApi.complete(item.mutationAction.entityId, undefined, fac);
+      }
+      setActedIds((prev) => new Set(prev).add(item.id));
+    } catch {
+      // Mutation failed — item remains actionable, user can retry
+    }
+  }, [actedIds, fac]);
 
-  const queue = useFetch(
-    () => appointmentsApi.queue({ facilityId: fac }),
-    [fac],
-  );
-
-  const referrals = useFetch(
-    () => referralsApi.list({ facilityId: fac }),
-    [fac],
-  );
-
-  const criticalValues = useFetch(
-    () => criticalValueApi.list(fac),
-    [fac],
-  );
-
-  const radiologyQueue = useFetch(
-    () => radiologyApi.queue(fac),
-    [fac],
-  );
+  // ── Fetch from authoritative facility-wide sources (shared hook) ──
+  const workSources = useClinicalWorkSources();
 
   // ── Derive work items ──
   const allItems = useMemo(() => {
     const now = new Date();
-    const apptsData = Array.isArray(appointments.data) ? appointments.data : [];
-    const queueData = Array.isArray(queue.data) ? queue.data : [];
-    const refData = Array.isArray(referrals.data) ? referrals.data : ((referrals.data as any)?.data ?? []);
-    const cvData = Array.isArray(criticalValues.data) ? criticalValues.data : [];
-    const radData = Array.isArray(radiologyQueue.data) ? radiologyQueue.data : [];
-
-    return deriveWorkItems(apptsData, queueData, refData, cvData, radData, now);
-  }, [appointments.data, queue.data, referrals.data, criticalValues.data, radiologyQueue.data]);
+    return deriveWorkItems(
+      workSources.appointments,
+      workSources.queueEntries,
+      workSources.referrals,
+      workSources.criticalValues,
+      workSources.radiologyQueue,
+      now,
+    );
+  }, [workSources.appointments, workSources.queueEntries, workSources.referrals, workSources.criticalValues, workSources.radiologyQueue]);
 
   // ── Filter by role ──
   const roleFiltered = useMemo(() => {
@@ -583,20 +666,25 @@ export function ClinicalWorkQueue() {
 
   // ── Filter by source ──
   const sourceFiltered = useMemo(() => {
-    if (activeSource === 'all') return roleFiltered;
-    return roleFiltered.filter((i) => i.source === activeSource);
-  }, [roleFiltered, activeSource]);
+    let items = activeSource === 'all' ? roleFiltered : roleFiltered.filter((i) => i.source === activeSource);
+    // Patient filter
+    if (patientFilter.trim()) {
+      const q = patientFilter.toLowerCase();
+      items = items.filter((i) =>
+        i.patientName.toLowerCase().includes(q) ||
+        (i.patientMrn && i.patientMrn.toLowerCase().includes(q))
+      );
+    }
+    return items;
+  }, [roleFiltered, activeSource, patientFilter]);
 
   // ── Sort ──
   const sorted = useMemo(() => {
-    const priorityOrder: Record<WorkPriority, number> = { critical: 0, high: 1, normal: 2, low: 3 };
-    const sectionOrder: Record<WorkSection, number> = { now: 0, overdue: 1, next: 2, waiting: 3 };
-
     return [...sourceFiltered].sort((a, b) => {
       if (sortBy === 'priority') {
-        const pd = priorityOrder[a.priority] - priorityOrder[b.priority];
+        const pd = PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
         if (pd !== 0) return pd;
-        return sectionOrder[a.section] - sectionOrder[b.section];
+        return SECTION_ORDER[a.section] - SECTION_ORDER[b.section];
       }
       // time
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
@@ -622,9 +710,7 @@ export function ClinicalWorkQueue() {
   }, [roleFiltered]);
 
   // ── Loading state ──
-  const isLoading = appointments.loading && queue.loading && referrals.loading && criticalValues.loading && radiologyQueue.loading;
-
-  if (isLoading) {
+  if (workSources.isLoading) {
     return (
       <div className="wq-loading" role="status">
         <div className="spinner" />
@@ -634,8 +720,7 @@ export function ClinicalWorkQueue() {
   }
 
   // ── Error state ──
-  const hasError = appointments.error || referrals.error || criticalValues.error || radiologyQueue.error;
-  if (hasError && roleFiltered.length === 0) {
+  if (workSources.hasError && roleFiltered.length === 0) {
     return (
       <div className="wq-error" role="alert">
         <AlertTriangle size={20} />
@@ -644,12 +729,7 @@ export function ClinicalWorkQueue() {
         <button
           type="button"
           className="wq-retry-btn"
-          onClick={() => {
-            void appointments.refresh();
-            void referrals.refresh();
-            void criticalValues.refresh();
-            void radiologyQueue.refresh();
-          }}
+          onClick={() => workSources.refreshAll()}
         >
           Retry
         </button>
@@ -688,28 +768,63 @@ export function ClinicalWorkQueue() {
         )}
       </div>
 
-      {/* ── Filters & Sort ── */}
+      {/* ── Filters, Search & View Toggle ── */}
       <div className="wq-controls">
-        <FilterBar
-          sources={availableSources}
-          activeSource={activeSource}
-          onSourceChange={setActiveSource}
-        />
-        <div className="wq-sort">
-          <SortAsc size={13} />
-          <select
-            className="wq-sort-select"
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as 'priority' | 'time')}
-            aria-label="Sort work items"
-          >
-            <option value="priority">Priority</option>
-            <option value="time">Recent</option>
-          </select>
+        <div className="wq-controls__left">
+          <FilterBar
+            sources={availableSources}
+            activeSource={activeSource}
+            onSourceChange={setActiveSource}
+          />
+          <div className="wq-search">
+            <Search size={13} />
+            <input
+              type="text"
+              className="wq-search-input"
+              placeholder="Filter by patient name or MRN…"
+              value={patientFilter}
+              onChange={(e) => setPatientFilter(e.target.value)}
+              aria-label="Filter by patient"
+            />
+          </div>
+        </div>
+        <div className="wq-controls__right">
+          <div className="wq-sort">
+            <SortAsc size={13} />
+            <select
+              className="wq-sort-select"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as 'priority' | 'time')}
+              aria-label="Sort work items"
+            >
+              <option value="priority">Priority</option>
+              <option value="time">Recent</option>
+            </select>
+          </div>
+          <div className="wq-view-toggle" role="radiogroup" aria-label="View mode">
+            <button
+              type="button"
+              className={`wq-view-btn ${viewMode === 'cards' ? 'wq-view-btn--active' : ''}`}
+              onClick={() => setViewMode('cards')}
+              aria-label="Card view"
+              aria-pressed={viewMode === 'cards'}
+            >
+              <LayoutList size={14} />
+            </button>
+            <button
+              type="button"
+              className={`wq-view-btn ${viewMode === 'table' ? 'wq-view-btn--active' : ''}`}
+              onClick={() => setViewMode('table')}
+              aria-label="Table view"
+              aria-pressed={viewMode === 'table'}
+            >
+              <Table size={14} />
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* ── Work Sections ── */}
+      {/* ── Work Items ── */}
       {totalActive === 0 ? (
         <div className="wq-empty">
           <CheckCircle2 size={28} className="wq-empty__icon" />
@@ -720,12 +835,14 @@ export function ClinicalWorkQueue() {
             Your clinical work will appear here when authorized work requires your attention.
           </p>
         </div>
+      ) : viewMode === 'table' ? (
+        <WorkTable items={sorted} onNavigate={(d) => navigate(d)} onAct={handleAct} actedIds={actedIds} />
       ) : (
         <div className="wq-sections">
-          <WorkSectionGroup section="overdue" items={sections.overdue} onNavigate={(d) => navigate(d)} />
-          <WorkSectionGroup section="now" items={sections.now} onNavigate={(d) => navigate(d)} />
-          <WorkSectionGroup section="next" items={sections.next} onNavigate={(d) => navigate(d)} />
-          <WorkSectionGroup section="waiting" items={sections.waiting} onNavigate={(d) => navigate(d)} />
+          <WorkSectionGroup section="overdue" items={sections.overdue} onNavigate={(d) => navigate(d)} onAct={handleAct} actedIds={actedIds} />
+          <WorkSectionGroup section="now" items={sections.now} onNavigate={(d) => navigate(d)} onAct={handleAct} actedIds={actedIds} />
+          <WorkSectionGroup section="next" items={sections.next} onNavigate={(d) => navigate(d)} onAct={handleAct} actedIds={actedIds} />
+          <WorkSectionGroup section="waiting" items={sections.waiting} onNavigate={(d) => navigate(d)} onAct={handleAct} actedIds={actedIds} />
         </div>
       )}
 

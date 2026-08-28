@@ -32,7 +32,7 @@
 
 .lab-census-card--total { border-top: 3px solid var(--primary, #4FA9FF); }
 .lab-census-card--ordered { border-top: 3px solid #f59e0b; }
-.lab-census-card--collected { border-top: 3px solid #3b82f6; }
+.lab-census-card--collected { border-top: 3px solid var(--blue-600); }
 .lab-census-card--processing { border-top: 3px solid #8b5cf6; }
 .lab-census-card--results { border-top: 3px solid #ea580c; }
 .lab-census-card--critical { border-top: 3px solid #dc2626; }

@@ -7,7 +7,7 @@
   display: flex; flex-direction: column; gap: 4px; min-width: 0;
 }
 .onc-census-card--profiles { border-left: 3px solid #10b981; }
-.onc-census-card--remission { border-left: 3px solid #3b82f6; }
+.onc-census-card--remission { border-left: 3px solid var(--blue-600); }
 .onc-census-card--plans { border-left: 3px solid #f59e0b; }
 .onc-census-card--rt { border-left: 3px solid #8b5cf6; }
 .onc-census-card--machines { border-left: 3px solid #6b7280; }
@@ -53,7 +53,7 @@
   cursor: pointer; transition: all 0.15s ease;
 }
 .onc-profile-card:hover { border-color: #d1d5db; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
-.onc-profile-card--selected { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.15); }
+.onc-profile-card--selected { border-color: var(--blue-600); box-shadow: 0 0 0 2px rgba(13,148,136,0.15); }
 .onc-profile-card__header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
 .onc-profile-card__diagnosis { font-size: 0.875rem; font-weight: 600; color: #111827; }
 .onc-profile-card__meta { display: flex; gap: 12px; font-size: 0.75rem; color: #6b7280; margin-bottom: 8px; }
@@ -68,7 +68,7 @@
 /* Cycle Progress */
 .onc-cycle-progress { margin-bottom: 16px; }
 .onc-cycle-bar { width: 100%; height: 8px; background: #f3f4f6; border-radius: 4px; overflow: hidden; }
-.onc-cycle-fill { height: 100%; background: #3b82f6; border-radius: 4px; transition: width 0.3s ease; }
+.onc-cycle-fill { height: 100%; background: var(--blue-600); border-radius: 4px; transition: width 0.3s ease; }
 .onc-cycle-text { font-size: 0.75rem; color: #6b7280; margin-top: 4px; display: block; }
 
 /* Medications */
@@ -86,7 +86,7 @@
 
 /* RT Detail */
 .onc-rt-detail { padding: 20px; }
-.onc-back-link { background: none; border: none; color: #3b82f6; font-size: 0.8125rem; cursor: pointer; margin-bottom: 12px; padding: 0; }
+.onc-back-link { background: none; border: none; color: var(--blue-600); font-size: 0.8125rem; cursor: pointer; margin-bottom: 12px; padding: 0; }
 .onc-back-link:hover { text-decoration: underline; }
 .onc-rt-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
 .onc-rt-name { font-size: 1.125rem; font-weight: 600; color: #111827; display: block; }
@@ -130,13 +130,13 @@
   border-radius: 6px; background: #fff; color: #111827; width: 100%;
   box-sizing: border-box;
 }
-.onc-input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.1); }
+.onc-input:focus { outline: none; border-color: var(--blue-600); box-shadow: 0 0 0 2px rgba(13,148,136,0.1); }
 .onc-textarea {
   padding: 8px 12px; font-size: 0.8125rem; border: 1px solid #d1d5db;
   border-radius: 6px; background: #fff; color: #111827; resize: vertical; width: 100%;
   box-sizing: border-box; font-family: inherit;
 }
-.onc-textarea:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.1); }
+.onc-textarea:focus { outline: none; border-color: var(--blue-600); box-shadow: 0 0 0 2px rgba(13,148,136,0.1); }
 .onc-actions { display: flex; gap: 8px; }
 
 /* Responsive */

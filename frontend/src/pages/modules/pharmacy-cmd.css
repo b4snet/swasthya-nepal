@@ -32,7 +32,7 @@
 
 .pharma-census-card--inventory { border-top: 3px solid var(--primary, #4FA9FF); }
 .pharma-census-card--low { border-top: 3px solid #f59e0b; }
-.pharma-census-card--prescriptions { border-top: 3px solid #3b82f6; }
+.pharma-census-card--prescriptions { border-top: 3px solid var(--blue-600); }
 .pharma-census-card--verified { border-top: 3px solid #8b5cf6; }
 .pharma-census-card--dispensed { border-top: 3px solid #10b981; }
 

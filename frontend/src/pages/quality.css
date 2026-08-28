@@ -6,9 +6,9 @@
   background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px;
   display: flex; flex-direction: column; gap: 4px; min-width: 0;
 }
-.q-census-card--total { border-left: 3px solid #3b82f6; }
+.q-census-card--total { border-left: 3px solid var(--blue-600); }
 .q-census-card--draft { border-left: 3px solid #6b7280; }
-.q-census-card--published { border-left: 3px solid #3b82f6; }
+.q-census-card--published { border-left: 3px solid var(--blue-600); }
 .q-census-card--acknowledged { border-left: 3px solid #10b981; }
 .q-census-card--safety { border-left: 3px solid #ef4444; }
 .q-census-card--capa { border-left: 3px solid #f59e0b; }
@@ -106,7 +106,7 @@
   border-radius: 6px; background: #fff; color: #111827; width: 100%;
   box-sizing: border-box;
 }
-.q-input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.1); }
+.q-input:focus { outline: none; border-color: var(--blue-600); box-shadow: 0 0 0 2px rgba(13,148,136,0.1); }
 .q-actions { display: flex; gap: 8px; }
 
 /* Responsive */

@@ -6,7 +6,7 @@
   background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px;
   display: flex; flex-direction: column; gap: 4px; min-width: 0;
 }
-.nc-census-card--total { border-left: 3px solid #3b82f6; }
+.nc-census-card--total { border-left: 3px solid var(--blue-600); }
 .nc-census-card--unread { border-left: 3px solid #ef4444; }
 .nc-census-card--templates { border-left: 3px solid #8b5cf6; }
 .nc-census-card--channels { border-left: 3px solid #10b981; }
@@ -68,7 +68,7 @@
 .nc-notif-body { font-size: 0.8125rem; color: #6b7280; margin: 0 0 4px; line-height: 1.4; }
 .nc-notif-time { font-size: 0.6875rem; color: #9ca3af; }
 .nc-unread-dot {
-  width: 8px; height: 8px; border-radius: 50%; background: #3b82f6;
+  width: 8px; height: 8px; border-radius: 50%; background: var(--blue-600);
   flex-shrink: 0; margin-top: 6px;
 }
 
@@ -110,13 +110,13 @@
   border-radius: 6px; background: #fff; color: #111827; width: 100%;
   box-sizing: border-box;
 }
-.nc-input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.1); }
+.nc-input:focus { outline: none; border-color: var(--blue-600); box-shadow: 0 0 0 2px rgba(13,148,136,0.1); }
 .nc-textarea {
   padding: 8px 12px; font-size: 0.8125rem; border: 1px solid #d1d5db;
   border-radius: 6px; background: #fff; color: #111827; resize: vertical; width: 100%;
   box-sizing: border-box; font-family: inherit;
 }
-.nc-textarea:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.1); }
+.nc-textarea:focus { outline: none; border-color: var(--blue-600); box-shadow: 0 0 0 2px rgba(13,148,136,0.1); }
 .nc-actions { display: flex; gap: 8px; }
 
 /* Responsive */

@@ -1,168 +1,486 @@
 /* ==========================================================================
-   Clinical Command Surface — Phase 125
-   Unified contextual action surface for patient workspace.
-   Compact. Role-aware. Light-first.
+   Clinical Command Surface — Phase 128
+   Compact clinical command panel showing actionable work items.
    ========================================================================== */
 
-/* ── Container ────────────────────────────────────────────────── */
-.ccs {
+/* ── Panel Container ────────────────────────────────────────────── */
+.cs-panel {
+  background: var(--white);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+/* ── Header ─────────────────────────────────────────────────────── */
+.cs-panel__header {
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.cs-panel__title-row {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-3);
 }
 
-/* ── Primary Actions ──────────────────────────────────────────── */
-.ccs__primary {
+.cs-panel__title {
+  font-size: var(--text-h4);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.cs-panel__count {
+  font-size: var(--text-label);
+  font-weight: var(--weight-semibold);
+  color: var(--text-tertiary);
+  background: var(--gray-100);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Section Tabs ───────────────────────────────────────────────── */
+.cs-panel__tabs {
   display: flex;
-  gap: var(--space-2);
-  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-top: var(--space-3);
 }
 
-/* ── Review Actions ───────────────────────────────────────────── */
-.ccs__review {
-  display: flex;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-}
-
-/* ── Single Action Button ─────────────────────────────────────── */
-.ccs__action {
+.cs-tab {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
+  gap: var(--space-1-5);
+  padding: var(--space-1) var(--space-3);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  background: var(--white);
+  border-radius: var(--radius-full);
+  background: none;
+  color: var(--text-secondary);
+  font-size: var(--fs-caption, 0.7rem);
+  font-weight: var(--weight-medium);
+  font-family: var(--font-sans);
   cursor: pointer;
   transition: all var(--duration-fast) var(--ease);
   white-space: nowrap;
-  font-family: var(--font-sans);
-  min-height: 34px;
 }
 
-.ccs__action:hover {
-  box-shadow: var(--shadow-xs);
-  transform: translateY(-1px);
+.cs-tab:hover {
+  background: var(--interactive-quiet-hover);
+  color: var(--text-primary);
 }
 
-.ccs__action:focus-visible {
+.cs-tab:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
 }
 
-/* ── Action Icon ──────────────────────────────────────────────── */
-.ccs__action-icon {
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-}
-
-/* ── Action Label ─────────────────────────────────────────────── */
-.ccs__action-label {
-  font-size: var(--fs-caption, 0.7rem);
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-/* ── Urgency variants ─────────────────────────────────────────── */
-.ccs__action--attention {
-  border-color: var(--blue-200);
+.cs-tab--active {
   background: var(--blue-50);
+  border-color: var(--blue-300);
+  color: var(--blue-700);
+  font-weight: var(--weight-semibold);
 }
 
-.ccs__action--urgent {
-  border-color: var(--amber-200);
-  background: var(--amber-50);
-}
-
-.ccs__action--critical {
-  border-color: var(--red-200);
+.cs-tab--critical .cs-tab--active {
   background: var(--red-50);
+  border-color: var(--red-300);
+  color: var(--red-700);
 }
 
-/* ── Critical Badge ───────────────────────────────────────────── */
-.ccs__action-badge {
+.cs-tab--urgent .cs-tab--active {
+  background: var(--amber-50);
+  border-color: var(--amber-300);
+  color: var(--amber-700);
+}
+
+.cs-tab__badge {
   font-size: 10px;
   font-weight: 700;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
+  padding: 1px 5px;
+  border-radius: var(--radius-full);
+  line-height: 1;
+}
+
+.cs-tab__badge--critical {
+  background: var(--red-100);
+  color: var(--red-700);
+}
+
+.cs-tab__badge--urgent {
+  background: var(--amber-100);
+  color: var(--amber-700);
+}
+
+/* ── Content ────────────────────────────────────────────────────── */
+.cs-panel__content {
+  max-height: 480px;
+  overflow-y: auto;
+}
+
+.cs-panel__list {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Command Surface Item ───────────────────────────────────────── */
+.cs-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-3) var(--space-5);
+  border: none;
+  border-bottom: 1px solid var(--border-subtle);
+  background: none;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease);
+  text-align: left;
+  font-family: var(--font-sans);
+}
+
+.cs-item:last-child {
+  border-bottom: none;
+}
+
+.cs-item:hover {
+  background: var(--interactive-quiet-hover);
+}
+
+.cs-item:focus-visible {
+  outline: none;
+  box-shadow: inset var(--focus-ring);
+}
+
+/* ── Item Left ──────────────────────────────────────────────────── */
+.cs-item__left {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  min-width: 0;
+  flex: 1;
+}
+
+.cs-item__source {
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.cs-item__content {
+  min-width: 0;
+  flex: 1;
+}
+
+.cs-item__top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.cs-item__label {
+  font-size: var(--text-label);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+.cs-item__priority {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  border: 1px solid;
+  letter-spacing: 0.03em;
   flex-shrink: 0;
 }
 
-.ccs__action-badge--critical {
-  background: var(--red-500);
-  color: var(--white);
+.cs-item__patient {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: 2px;
+  color: var(--text-secondary);
+  font-size: var(--fs-caption, 0.7rem);
 }
 
-/* ── More Button ──────────────────────────────────────────────── */
-.ccs__more {
+.cs-item__patient-name {
+  font-weight: var(--weight-medium);
+  color: var(--text-primary);
+}
+
+.cs-item__patient-mrn {
+  font-size: 10px;
+  color: var(--text-tertiary);
+}
+
+.cs-item__description {
+  font-size: var(--fs-caption, 0.7rem);
+  color: var(--text-tertiary);
+  margin-top: 1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Item Right (action) ────────────────────────────────────────── */
+.cs-item__right {
+  flex-shrink: 0;
+}
+
+.cs-item__action {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 6px 10px;
+  gap: var(--space-1);
+  font-size: var(--fs-caption, 0.7rem);
+  font-weight: var(--weight-semibold);
+  color: var(--blue-600);
+  white-space: nowrap;
+}
+
+.cs-item:hover .cs-item__action {
+  color: var(--blue-700);
+}
+
+/* ── Urgency-specific item styles ───────────────────────────────── */
+.cs-item--critical {
+  background: var(--red-50);
+  border-bottom-color: var(--red-100);
+}
+
+.cs-item--critical:hover {
+  background: var(--red-100);
+}
+
+.cs-item--urgent {
+  background: var(--amber-50);
+  border-bottom-color: var(--amber-100);
+}
+
+.cs-item--urgent:hover {
+  background: var(--amber-100);
+}
+
+/* ── Empty State ────────────────────────────────────────────────── */
+.cs-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8) var(--space-5);
+  text-align: center;
+}
+
+.cs-empty__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-full);
+  background: var(--green-50);
+  color: var(--green-600);
+  margin-bottom: var(--space-3);
+}
+
+.cs-empty__title {
+  font-size: var(--text-h4);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+  margin: 0 0 var(--space-1);
+}
+
+.cs-empty__body {
+  font-size: var(--text-label);
+  color: var(--text-tertiary);
+  margin: 0;
+  max-width: 280px;
+}
+
+/* ── Error State ────────────────────────────────────────────────── */
+.cs-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6) var(--space-5);
+  text-align: center;
+}
+
+.cs-error__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-full);
+  background: var(--red-50);
+  color: var(--red-600);
+  margin-bottom: var(--space-3);
+}
+
+.cs-error__title {
+  font-size: var(--text-label);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+  margin: 0 0 var(--space-1);
+}
+
+.cs-error__body {
+  font-size: var(--fs-caption, 0.7rem);
+  color: var(--text-tertiary);
+  margin: 0 0 var(--space-3);
+  max-width: 280px;
+}
+
+.cs-error__retry {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1-5) var(--space-3);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   background: var(--white);
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
+  font-size: var(--fs-caption, 0.7rem);
+  font-weight: var(--weight-medium);
+  font-family: var(--font-sans);
   cursor: pointer;
   transition: all var(--duration-fast) var(--ease);
-  font-size: var(--fs-caption, 0.7rem);
-  font-weight: 500;
-  font-family: var(--font-sans);
-  min-height: 34px;
 }
 
-.ccs__more:hover {
-  background: var(--gray-50);
-  border-color: var(--border-default);
-  color: var(--text-secondary);
+.cs-error__retry:hover {
+  background: var(--interactive-quiet-hover);
+  color: var(--text-primary);
 }
 
-.ccs__more:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
-}
-
-/* ── Expanded Actions ─────────────────────────────────────────── */
-.ccs__expanded {
+/* ── Loading State ──────────────────────────────────────────────── */
+.cs-loading {
   display: flex;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-  width: 100%;
-  padding-top: var(--space-2);
+  flex-direction: column;
+  padding: var(--space-4) var(--space-5);
+  gap: var(--space-3);
+}
+
+.cs-loading__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+}
+
+.cs-loading__icon {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-md);
+  background: var(--gray-100);
+  animation: cs-pulse 1.5s ease-in-out infinite;
+}
+
+.cs-loading__text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.cs-loading__line {
+  height: 10px;
+  border-radius: var(--radius-sm);
+  background: var(--gray-100);
+  animation: cs-pulse 1.5s ease-in-out infinite;
+}
+
+.cs-loading__line--short {
+  width: 60%;
+}
+
+.cs-loading__line--long {
+  width: 80%;
+}
+
+@keyframes cs-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ── Footer ─────────────────────────────────────────────────────── */
+.cs-panel__footer {
+  padding: var(--space-3) var(--space-5);
   border-top: 1px solid var(--border-subtle);
-  margin-top: var(--space-1);
+  display: flex;
+  justify-content: center;
 }
 
-/* ── Responsive ───────────────────────────────────────────────── */
-@media (max-width: 640px) {
-  .ccs {
-    gap: var(--space-1-5);
+.cs-panel__view-all {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  padding: var(--space-1-5) var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--text-secondary);
+  font-size: var(--fs-caption, 0.7rem);
+  font-weight: var(--weight-medium);
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease);
+}
+
+.cs-panel__view-all:hover {
+  background: var(--blue-50);
+  border-color: var(--blue-200);
+  color: var(--blue-700);
+}
+
+/* ── Responsive ─────────────────────────────────────────────────── */
+
+/* Tablet */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .cs-panel__header {
+    padding: var(--space-3) var(--space-4);
   }
 
-  .ccs__action {
-    padding: 5px 10px;
-    min-height: 32px;
-  }
-
-  .ccs__action-label {
-    font-size: 11px;
+  .cs-item {
+    padding: var(--space-2-5) var(--space-4);
   }
 }
 
-/* ── Reduced Motion ───────────────────────────────────────────── */
+/* Mobile */
+@media (max-width: 767px) {
+  .cs-panel__header {
+    padding: var(--space-3);
+  }
+
+  .cs-item {
+    padding: var(--space-2-5) var(--space-3);
+  }
+
+  .cs-item__description {
+    display: none;
+  }
+
+  .cs-panel__content {
+    max-height: 360px;
+  }
+}
+
+/* ── Reduced Motion ─────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
-  .ccs__action {
+  .cs-item {
     transition: none;
   }
 
-  .ccs__action:hover {
-    transform: none;
+  .cs-loading__icon,
+  .cs-loading__line {
+    animation: none;
   }
 }

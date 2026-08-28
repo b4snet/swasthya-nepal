@@ -197,7 +197,7 @@
 
 .er-acuity--non,
 .er-acuity-badge.er-acuity--non {
-  background: #3b82f6;
+  background: var(--blue-600);
 }
 
 /* ── Acuity Labels ──────────────────────────────────────────────── */
@@ -391,7 +391,7 @@
 .er-triage-option.er-acuity--emerg .er-triage-option-level { background: #ea580c; }
 .er-triage-option.er-acuity--urgent .er-triage-option-level { background: #f59e0b; color: #111827; }
 .er-triage-option.er-acuity--semi .er-triage-option-level { background: #22c55e; }
-.er-triage-option.er-acuity--non .er-triage-option-level { background: #3b82f6; }
+.er-triage-option.er-acuity--non .er-triage-option-level { background: var(--blue-600); }
 
 .er-triage-option-name {
   font-size: 11px;

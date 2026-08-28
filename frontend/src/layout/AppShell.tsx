@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useWorkflowContinuity, ContinuePrompt } from '../components/WorkflowContinuityManager';
+import '../components/workflow-continuity.css';
 import { CommandPalette } from '../components/CommandPalette';
 import { useAuth } from '../auth/AuthProvider';
 import { useTenant } from '../context/TenantContext';
@@ -7,7 +9,7 @@ import { useNetworkStatus } from '../hooks/useNetworkStatus';
 import { useI18n } from '../i18n/I18nProvider';
 import { Button, Dialog } from '../components/ui';
 import { useAccess } from '../auth/useAccess';
-import { ContextSurface } from '../components/contextual/ContextSurface';
+// ContextSurface removed — Phase 129: workspace rail replaces overlay pattern
 import { lazy, Suspense } from 'react';
 const ContextBar = lazy(() => import('../components/contextual/ContextBar').then(m => ({ default: m.ContextBar })));
 import {
@@ -222,25 +224,17 @@ function Sidebar({
   pathname,
   collapsed,
   onToggleCollapse,
-  onDomainClick,
 }: {
   modules: NavModule[];
   pathname: string;
   collapsed: boolean;
   onToggleCollapse: () => void;
-  onDomainClick: (m: NavModule) => void;
 }) {
   const { t } = useI18n();
   const navigate = useNavigate();
 
   const handleModuleClick = (m: NavModule) => {
-    if (m.children.length === 0) {
-      // Dashboard — navigate directly
-      navigate(m.defaultTo);
-    } else {
-      // Domain with children — open contextual command surface
-      onDomainClick(m);
-    }
+    navigate(m.defaultTo);
   };
 
   const isActive = (m: NavModule) =>
@@ -375,6 +369,28 @@ function PatientContextStrip({ patientId }: { patientId: string }) {
   );
 }
 
+// ── Workflow Continuity Surface ──
+// Shows "Continue where you left off" prompt on dashboard entry.
+// Only renders on the dashboard route.
+function WorkflowContinuitySurface() {
+  const location = useLocation();
+  const { savedWorkflow, showPrompt, restoreWorkflow, dismissWorkflow } = useWorkflowContinuity();
+
+  // Only show on dashboard
+  if (location.pathname !== '/dashboard') return null;
+  if (!showPrompt || !savedWorkflow) return null;
+
+  return (
+    <div style={{ padding: '0 var(--space-4)' }}>
+      <ContinuePrompt
+        savedWorkflow={savedWorkflow}
+        onRestore={restoreWorkflow}
+        onDismiss={dismissWorkflow}
+      />
+    </div>
+  );
+}
+
 // ── Main shell ──
 export function AppShell() {
   const tenant = useTenant();
@@ -396,17 +412,7 @@ export function AppShell() {
   // Sidebar collapsed state
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-  // Domain command surface state
-  const [activeDomain, setActiveDomain] = useState<NavModule | null>(null);
-  const handleDomainClick = useCallback((m: NavModule) => {
-    setActiveDomain((prev) => (prev?.key === m.key ? null : m));
-  }, []);
-  const closeDomainSurface = useCallback(() => setActiveDomain(null), []);
 
-  // Close domain surface on route change
-  useEffect(() => {
-    setActiveDomain(null);
-  }, [location.pathname]);
 
   // Mobile bottom nav
   const mobileModules = visibleModules.slice(0, 4);
@@ -484,30 +490,22 @@ export function AppShell() {
       )}
 
       <div className="app-body">
-        {/* ── Primary domain sidebar (no expanding children) ── */}
+        {/* ── Primary domain sidebar ── */}
         <Sidebar
           modules={sidebarModules}
           pathname={location.pathname}
           collapsed={sidebarCollapsed}
           onToggleCollapse={() => setSidebarCollapsed((v) => !v)}
-          onDomainClick={handleDomainClick}
         />
 
         {/* ── Module workspace rail — vertical contextual navigation ── */}
         {!sidebarCollapsed && (
-          <ModuleWorkspaceRail activeModule={activeModule} pathname={location.pathname} />
+          <ModuleWorkspaceRail activeModule={activeModule} pathname={location.pathname} patientId={activePatientId} />
         )}
 
         {/* ── Content ── */}
         <main className="app-content" id="content" tabIndex={-1}>
-          {/* Context surface — contextual action launcher */}
-          {activeDomain && (
-            <ContextSurface
-              module={activeDomain}
-              open={!!activeDomain}
-              onClose={closeDomainSurface}
-            />
-          )}
+          <WorkflowContinuitySurface />
           <div key={location.pathname} className="page-transition">
             <Outlet />
           </div>

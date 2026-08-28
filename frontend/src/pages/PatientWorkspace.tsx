@@ -47,6 +47,7 @@ import {
   Circle,
   MapPin,
   Users,
+  ChevronRight,
 } from 'lucide-react';
 import './patient-workspace.css';
 import '../components/contextual/context-surface.css';
@@ -59,8 +60,8 @@ import { ContextualActionRail, resolveWorkspacePriorities, resolveContextualActi
 import { WorkflowTrail } from '../components/WorkflowTrail';
 import { PendingWorkPanel } from '../components/PendingWorkPanel';
 import { ClinicalInspector, type InspectorField, type InspectorAction } from '../components/ClinicalInspector';
-import { ClinicalCommandSurface } from '../components/ClinicalCommandSurface';
 import { WorkflowNextAction } from '../components/WorkflowNextAction';
+import { WorkActivityFeed } from '../components/WorkActivityFeed';
 
 // ─── Timeline helper (reused from PatientProfilePage) ───
 function timelineSummary(summary: any): string {
@@ -152,16 +153,20 @@ function PatientHeader({
   patient,
   encounters,
   admissions,
+  allergies,
   onBack,
 }: {
   patient: any;
   encounters: any[];
   admissions: any[];
+  allergies: any[];
   onBack: () => void;
 }) {
   const statusInfo = patientStatusInfo(patient.status);
   const activeEncounters = (encounters || []).filter((e: any) => e.status === 'open');
   const activeAdmission = (admissions || []).find((a: any) => !a.dischargedAt);
+  const allergyList = (allergies || []).filter((a: any) => a.status !== 'resolved');
+  const hasCriticalAllergy = allergyList.some((a: any) => a.severity === 'critical' || a.severity === 'severe');
 
   return (
     <div className="pw-header" role="banner" aria-label={`Patient: ${patient.fullName}`}>
@@ -217,6 +222,21 @@ function PatientHeader({
               {activeEncounters.length} active encounter{activeEncounters.length > 1 ? 's' : ''}
             </span>
           )}
+
+          {/* Allergy alert — always visible per DESIGN_SYSTEM.md §33 */}
+          {allergyList.length > 0 ? (
+            <span
+              className={`pw-header__allergy ${hasCriticalAllergy ? 'pw-header__allergy--critical' : 'pw-header__allergy--warning'}`}
+              role={hasCriticalAllergy ? 'alert' : 'status'}
+              aria-label={`Allergies: ${allergyList.map((a: any) => a.allergen).join(', ')}`}
+            >
+              ⚠ ALLERGIES: {allergyList.map((a: any) => a.allergen).join(', ')}
+            </span>
+          ) : (
+            <span className="pw-header__allergy pw-header__allergy--none" role="status" aria-label="No known allergies">
+              ✓ No known allergies
+            </span>
+          )}
         </div>
       </div>
     </div>
@@ -232,16 +252,20 @@ function CompactIdentitySpine({
   patient,
   encounters,
   admissions,
+  allergies,
   onBack,
 }: {
   patient: any;
   encounters: any[];
   admissions: any[];
+  allergies: any[];
   onBack: () => void;
 }) {
   const statusInfo = patientStatusInfo(patient.status);
   const activeEncounters = (encounters || []).filter((e: any) => e.status === 'open');
   const activeAdmission = (admissions || []).find((a: any) => !a.dischargedAt);
+  const allergyList = (allergies || []).filter((a: any) => a.status !== 'resolved');
+  const hasCriticalAllergy = allergyList.some((a: any) => a.severity === 'critical' || a.severity === 'severe');
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -289,6 +313,16 @@ function CompactIdentitySpine({
           <span className="pw-spine__encounter">
             <Stethoscope size={11} />
             {activeEncounters.length} active
+          </span>
+        )}
+        {/* Allergy chip — always visible per DESIGN_SYSTEM.md §33 */}
+        {allergyList.length > 0 && (
+          <span
+            className={`pw-spine__allergy ${hasCriticalAllergy ? 'pw-spine__allergy--critical' : 'pw-spine__allergy--warning'}`}
+            role={hasCriticalAllergy ? 'alert' : 'status'}
+            aria-label={`Allergies: ${allergyList.map((a: any) => a.allergen).join(', ')}`}
+          >
+            ⚠ {allergyList.length} allerg{allergyList.length === 1 ? 'y' : 'ies'}
           </span>
         )}
       </div>
@@ -366,129 +400,284 @@ function PatientWorkspaceNav({
 // WORKSPACE VIEWS
 // ════════════════════════════════════════════════════════════════════════════
 
-// ── Overview: What Matters Now ──
+// ── Overview: Action-Oriented Clinical Workspace (Phase 132) ──
+// Organized by: Current State → Attention Items → Next Actions → History
 function OverviewView({
+  patientId,
   encounters,
   diagnoses,
   prescriptions,
   labOrders,
   admissions,
-  appointments,
   onEncounterClick,
+  navigate,
 }: {
+  patientId: string;
   encounters: any[];
   diagnoses: any[];
   prescriptions: any[];
   labOrders: any[];
   admissions: any[];
-  appointments: any[];
   onEncounterClick?: (encounter: any) => void;
+  navigate: (path: string) => void;
 }) {
   const activeEncounters = encounters.filter((e: any) => e.status === 'open');
   const activeDiagnoses = diagnoses.filter((d: any) => d.status === 'active');
   const activePrescriptions = prescriptions.filter((p: any) => p.status === 'active');
   const pendingLabs = labOrders.filter((o: any) => !['reported', 'verified'].includes(o.status));
+  const criticalLabs = labOrders.filter((o: any) => o.priority === 'stat' || o.status === 'critical');
   const activeAdmissions = admissions.filter((a: any) => !a.dischargedAt);
-  const upcomingAppts = appointments.filter((a: any) => a.status !== 'completed' && a.status !== 'cancelled');
+
+  // Build attention items — prioritized clinical work
+  const attentionItems: Array<{
+    id: string;
+    severity: 'critical' | 'high' | 'routine';
+    label: string;
+    detail: string;
+    action: string;
+    route: string;
+    icon: React.ReactNode;
+  }> = [];
+
+  // Critical: pending labs with stat priority
+  if (criticalLabs.length > 0) {
+    attentionItems.push({
+      id: 'critical-labs',
+      severity: 'critical',
+      label: `${criticalLabs.length} critical lab result${criticalLabs.length !== 1 ? 's' : ''}`,
+      detail: 'Requires immediate review',
+      action: 'Review results',
+      route: `/clinical/patients/${patientId}?ws=lab`,
+      icon: <AlertTriangle size={14} />,
+    });
+  }
+
+  // High: pending labs (non-critical)
+  if (pendingLabs.length > 0 && criticalLabs.length === 0) {
+    attentionItems.push({
+      id: 'pending-labs',
+      severity: 'high',
+      label: `${pendingLabs.length} pending lab result${pendingLabs.length !== 1 ? 's' : ''}`,
+      detail: 'Awaiting results',
+      action: 'View labs',
+      route: `/clinical/patients/${patientId}?ws=lab`,
+      icon: <FlaskConical size={14} />,
+    });
+  }
+
+  // High: active encounter without documentation
+  if (activeEncounters.length > 0) {
+    attentionItems.push({
+      id: 'active-encounter',
+      severity: 'high',
+      label: 'Active encounter',
+      detail: `${activeEncounters[0].type} with ${activeEncounters[0].providerName || 'provider'}`,
+      action: 'Continue encounter',
+      route: `/clinical/encounters/${activeEncounters[0].id}`,
+      icon: <Stethoscope size={14} />,
+    });
+  }
+
+  // Routine: active diagnoses
+  if (activeDiagnoses.length > 0) {
+    attentionItems.push({
+      id: 'diagnoses',
+      severity: 'routine',
+      label: `${activeDiagnoses.length} active diagnosis${activeDiagnoses.length !== 1 ? 'es' : ''}`,
+      detail: activeDiagnoses.map((d: any) => d.description || d.code).filter(Boolean).slice(0, 2).join('; '),
+      action: 'View diagnoses',
+      route: `/clinical/patients/${patientId}?ws=diagnoses`,
+      icon: <ClipboardList size={14} />,
+    });
+  }
+
+  // Routine: active prescriptions
+  if (activePrescriptions.length > 0) {
+    attentionItems.push({
+      id: 'medications',
+      severity: 'routine',
+      label: `${activePrescriptions.length} active medication${activePrescriptions.length !== 1 ? 's' : ''}`,
+      detail: 'Current prescriptions',
+      action: 'View medications',
+      route: `/clinical/patients/${patientId}?ws=medications`,
+      icon: <Pill size={14} />,
+    });
+  }
+
+  // Routine: admission
+  if (activeAdmissions.length > 0) {
+    attentionItems.push({
+      id: 'admission',
+      severity: 'routine',
+      label: 'Currently admitted',
+      detail: `${activeAdmissions[0].wardName || 'Inpatient'}${activeAdmissions[0].roomNumber ? ` — Room ${activeAdmissions[0].roomNumber}` : ''}`,
+      action: 'View admission',
+      route: `/clinical/patients/${patientId}?ws=admissions`,
+      icon: <Bed size={14} />,
+    });
+  }
 
   return (
     <div className="pw-overview">
-      {/* What matters now */}
-      <section className="pw-overview__section" aria-label="What matters now">
-        <h3 className="pw-overview__heading">What Matters Now</h3>
-        <div className="pw-overview__cards">
-          {activeAdmissions.length > 0 && (
-            <div className="pw-status-card pw-status-card--active">
-              <div className="pw-status-card__icon"><Bed size={18} /></div>
-              <div className="pw-status-card__info">
-                <span className="pw-status-card__label">Currently Admitted</span>
-                <span className="pw-status-card__detail">
-                  {activeAdmissions[0].wardName || 'Inpatient'}
-                  {activeAdmissions[0].roomNumber ? ` — Room ${activeAdmissions[0].roomNumber}` : ''}
-                </span>
-              </div>
-            </div>
-          )}
-
+      {/* Current Clinical State — compact summary */}
+      <section className="pw-overview__section" aria-label="Current clinical state">
+        <div className="pw-clinical-summary">
           {activeEncounters.length > 0 && (
-            <div className="pw-status-card pw-status-card--active">
-              <div className="pw-status-card__icon"><Stethoscope size={18} /></div>
-              <div className="pw-status-card__info">
-                <span className="pw-status-card__label">Active Encounter</span>
-                <span className="pw-status-card__detail">
-                  {activeEncounters[0].type} with {activeEncounters[0].providerName || 'provider'}
-                </span>
-              </div>
+            <div className="pw-clinical-summary__item">
+              <Stethoscope size={13} />
+              <span>{activeEncounters[0].type}</span>
+              {activeEncounters[0].providerName && <span className="pw-clinical-summary__muted">with {activeEncounters[0].providerName}</span>}
             </div>
           )}
-
-          {activeDiagnoses.length > 0 && (
-            <div className="pw-status-card">
-              <div className="pw-status-card__icon"><ClipboardList size={18} /></div>
-              <div className="pw-status-card__info">
-                <span className="pw-status-card__label">Active Diagnoses</span>
-                <span className="pw-status-card__detail">
-                  {activeDiagnoses.map((d: any) => d.description || d.code).filter(Boolean).slice(0, 2).join('; ')}
-                  {activeDiagnoses.length > 2 && ` +${activeDiagnoses.length - 2}`}
-                </span>
-              </div>
+          {activeAdmissions.length > 0 && (
+            <div className="pw-clinical-summary__item">
+              <Bed size={13} />
+              <span>{activeAdmissions[0].wardName || 'Inpatient'}</span>
+              {activeAdmissions[0].roomNumber && <span className="pw-clinical-summary__muted">Rm {activeAdmissions[0].roomNumber}</span>}
             </div>
           )}
-
-          {pendingLabs.length > 0 && (
-            <div className="pw-status-card pw-status-card--warning">
-              <div className="pw-status-card__icon"><AlertTriangle size={18} /></div>
-              <div className="pw-status-card__info">
-                <span className="pw-status-card__label">Pending Labs</span>
-                <span className="pw-status-card__detail">
-                  {pendingLabs.length} order{pendingLabs.length !== 1 ? 's' : ''} awaiting results
-                </span>
-              </div>
-            </div>
-          )}
-
-          {activePrescriptions.length > 0 && (
-            <div className="pw-status-card">
-              <div className="pw-status-card__icon"><Pill size={18} /></div>
-              <div className="pw-status-card__info">
-                <span className="pw-status-card__label">Active Medications</span>
-                <span className="pw-status-card__detail">
-                  {activePrescriptions.length} prescription{activePrescriptions.length !== 1 ? 's' : ''}
-                </span>
-              </div>
-            </div>
-          )}
-
-          {upcomingAppts.length > 0 && (
-            <div className="pw-status-card">
-              <div className="pw-status-card__icon"><CalendarDays size={18} /></div>
-              <div className="pw-status-card__info">
-                <span className="pw-status-card__label">Upcoming</span>
-                <span className="pw-status-card__detail">
-                  {upcomingAppts.length} appointment{upcomingAppts.length !== 1 ? 's' : ''}
-                </span>
-              </div>
-            </div>
-          )}
-
-          {activeEncounters.length === 0 && activeDiagnoses.length === 0 &&
-           activePrescriptions.length === 0 && pendingLabs.length === 0 &&
-           activeAdmissions.length === 0 && upcomingAppts.length === 0 && (
-            <div className="pw-status-card pw-status-card--quiet">
-              <div className="pw-status-card__icon"><CheckCircle2 size={18} /></div>
-              <div className="pw-status-card__info">
-                <span className="pw-status-card__label">No urgent items</span>
-                <span className="pw-status-card__detail">No active encounters, pending labs, or upcoming appointments</span>
-              </div>
+          {activeEncounters.length === 0 && activeAdmissions.length === 0 && (
+            <div className="pw-clinical-summary__item pw-clinical-summary__item--muted">
+              <CheckCircle2 size={13} />
+              <span>No active encounter or admission</span>
             </div>
           )}
         </div>
       </section>
 
+      {/* Attention Items — prioritized clinical work */}
+      {attentionItems.length > 0 && (
+        <section className="pw-overview__section" aria-label="Items requiring attention">
+          <h3 className="pw-overview__heading">Requires attention</h3>
+          <div className="pw-attention-list">
+            {attentionItems.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={`pw-attention-item pw-attention-item--${item.severity}`}
+                onClick={() => navigate(item.route)}
+                data-testid={`attention-${item.id}`}
+                aria-label={`${item.label} — ${item.detail} — ${item.action}`}
+              >
+                <span className="pw-attention-item__icon" aria-hidden="true">
+                  {item.icon}
+                </span>
+                <div className="pw-attention-item__content">
+                  <span className="pw-attention-item__label">{item.label}</span>
+                  <span className="pw-attention-item__detail">{item.detail}</span>
+                </div>
+                <span className="pw-attention-item__action">
+                  {item.action}
+                  <ChevronRight size={12} />
+                </span>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* No items state */}
+      {attentionItems.length === 0 && (
+        <section className="pw-overview__section" aria-label="No items requiring attention">
+          <div className="pw-status-card pw-status-card--quiet">
+            <div className="pw-status-card__icon"><CheckCircle2 size={18} /></div>
+            <div className="pw-status-card__info">
+              <span className="pw-status-card__label">All clear</span>
+              <span className="pw-status-card__detail">No items require attention for this patient</span>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Clinical Snapshot — longitudinal context (Phase 134) */}
+      <section className="pw-overview__section" aria-label="Clinical context">
+        <h3 className="pw-overview__heading">Clinical context</h3>
+        <div className="pw-snapshot">
+          {/* Active Diagnoses */}
+          {activeDiagnoses.length > 0 && (
+            <div className="pw-snapshot__group">
+              <span className="pw-snapshot__label">Active diagnoses</span>
+              <div className="pw-snapshot__items">
+                {activeDiagnoses.slice(0, 4).map((d: any) => (
+                  <span key={d.id} className="pw-snapshot__chip pw-snapshot__chip--diagnosis">
+                    {d.description || d.code || 'Diagnosis'}
+                  </span>
+                ))}
+                {activeDiagnoses.length > 4 && (
+                  <span className="pw-snapshot__more">+{activeDiagnoses.length - 4}</span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Active Medications */}
+          {activePrescriptions.length > 0 && (
+            <div className="pw-snapshot__group">
+              <span className="pw-snapshot__label">Active medications</span>
+              <div className="pw-snapshot__items">
+                {activePrescriptions.slice(0, 4).map((p: any) => (
+                  <span key={p.id} className="pw-snapshot__chip pw-snapshot__chip--medication">
+                    {p.medicationName || p.medication?.name || 'Medication'}
+                  </span>
+                ))}
+                {activePrescriptions.length > 4 && (
+                  <span className="pw-snapshot__more">+{activePrescriptions.length - 4}</span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Recent Lab Results */}
+          {labOrders.length > 0 && (
+            <div className="pw-snapshot__group">
+              <span className="pw-snapshot__label">Recent labs</span>
+              <div className="pw-snapshot__items">
+                {labOrders.slice(0, 3).map((o: any) => (
+                  <span key={o.id} className={`pw-snapshot__chip pw-snapshot__chip--lab ${o.status === 'critical' || o.priority === 'stat' ? 'pw-snapshot__chip--critical' : ''}`}>
+                    {o.testName || o.name || 'Lab'}
+                    <span className="pw-snapshot__status">{o.status}</span>
+                  </span>
+                ))}
+                {labOrders.length > 3 && (
+                  <span className="pw-snapshot__more">+{labOrders.length - 3}</span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Admission Status */}
+          {activeAdmissions.length > 0 && (
+            <div className="pw-snapshot__group">
+              <span className="pw-snapshot__label">Admission</span>
+              <div className="pw-snapshot__items">
+                <span className="pw-snapshot__chip pw-snapshot__chip--admission">
+                  <Bed size={11} />
+                  {activeAdmissions[0].wardName || 'Inpatient'}
+                  {activeAdmissions[0].roomNumber ? ` · Rm ${activeAdmissions[0].roomNumber}` : ''}
+                  {activeAdmissions[0].bedNumber ? ` · Bed ${activeAdmissions[0].bedNumber}` : ''}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Empty state */}
+          {activeDiagnoses.length === 0 && activePrescriptions.length === 0 && labOrders.length === 0 && activeAdmissions.length === 0 && (
+            <div className="pw-snapshot__empty">
+              <span>No clinical history recorded for this patient</span>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Recent Activity Feed (Phase 135) */}
+      <section className="pw-overview__section" aria-label="Recent clinical activity">
+        <WorkActivityFeed patientId={patientId} maxEvents={8} />
+      </section>
+
       {/* Recent Encounters */}
       {encounters.length > 0 && (
         <section className="pw-overview__section">
-          <h3 className="pw-overview__heading">Recent Encounters</h3>
+          <h3 className="pw-overview__heading">Recent encounters</h3>
           <ul className="pw-list">
             {encounters.slice(0, 5).map((e: any) => (
               <li key={e.id} className="pw-list__item pw-list__item--clickable" onClick={() => onEncounterClick?.(e)} role="button" tabIndex={0} onKeyDown={(ev) => { if (ev.key === 'Enter') onEncounterClick?.(e); }}>
@@ -639,6 +828,7 @@ export function PatientWorkspace() {
   const documents = useFetch(() => patientsApi.documents(id!, fac), [id, fac]);
   const appointments = useFetch(() => patientsApi.followUps(id!, fac), [id, fac]);
   const timeline = useFetch(() => patientsApi.timeline(id!, fac), [id, fac]);
+  const allergies = useFetch(() => patientsApi.allergies(id!, fac), [id, fac]);
 
   // ── Clinical Inspector state ──
   const [inspectorOpen, setInspectorOpen] = useState(false);
@@ -794,6 +984,13 @@ export function PatientWorkspace() {
 
   const patient = profile.data;
 
+  // ── Patient identity validation — Phase 151 ──
+  // Ensure the loaded patient matches the URL patient ID.
+  // This prevents stale responses from rendering under the wrong patient.
+  if (patient.id && patient.id !== id) {
+    return <div className="pw-page"><EmptyState title="Patient context mismatch" body="The loaded patient does not match the requested patient. This may indicate a stale response — please refresh." /></div>;
+  }
+
   // ── Resolve workspace priorities from clinical context ──
   const workspacePriorityMap = useMemo(() => {
     const encountersArr = (encounters.data as any[]) || [];
@@ -833,13 +1030,14 @@ export function PatientWorkspace() {
               patientId={id!}
             />
             <OverviewView
+              patientId={id!}
               encounters={(encounters.data as any[]) || []}
               diagnoses={(diagnoses.data as any[]) || []}
               prescriptions={(prescriptions.data as any[]) || []}
               labOrders={(labOrders.data as any[]) || []}
               admissions={(admissions.data as any[]) || []}
-              appointments={(appointments.data as any[]) || []}
               onEncounterClick={(e) => navigate(`/clinical/encounters/${e.id}`)}
+              navigate={navigate}
             />
           </div>
         );
@@ -1087,6 +1285,7 @@ export function PatientWorkspace() {
         patient={patient}
         encounters={(encounters.data as any[]) || []}
         admissions={(admissions.data as any[]) || []}
+        allergies={(allergies.data as any[]) || []}
         onBack={() => navigate('/clinical/patients')}
       />
 
@@ -1107,13 +1306,7 @@ export function PatientWorkspace() {
         currentActivity={workspacePriorityMap[activeWorkspace]?.reason}
       />
 
-      {/* ── Clinical Command Surface (Phase 125 — unified contextual actions) ── */}
-      <ClinicalCommandSurface
-        patientId={patient.id}
-        pendingLabs={(labOrders.data as any[])?.filter((o: any) => !['reported', 'verified'].includes(o.status)).length || 0}
-        criticalItems={(labOrders.data as any[])?.filter((o: any) => o.priority === 'stat' || o.status === 'critical').length || 0}
-        activeEncounters={(encounters.data as any[])?.filter((e: any) => e.status === 'open').length || 0}
-      />
+
 
       {/* ── Contextual Action Rail (Phase 119 — priority actions) ── */}
       <ContextualActionRail
@@ -1183,6 +1376,7 @@ export function PatientWorkspace() {
         patient={patient}
         encounters={(encounters.data as any[]) || []}
         admissions={(admissions.data as any[]) || []}
+        allergies={(allergies.data as any[]) || []}
         onBack={() => navigate('/clinical/patients')}
       />
     </div>

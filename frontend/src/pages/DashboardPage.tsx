@@ -14,6 +14,7 @@ import {
   PieChart, Pie, Cell,
 } from 'recharts';
 import { dashboardApi, type DashboardMetrics, type ChartData } from '../api/dashboard';
+import { ClinicalCommandSurface } from '../components/ClinicalCommandSurface';
 import './dashboard-premium.css';
 
 /* ── Constants ── */
@@ -673,6 +674,13 @@ export function DashboardPage() {
       {/* ═══ MY WORKSPACE ═══ */}
       {!isPlatform && (
         <WorkspaceQuickActions roles={roles} />
+      )}
+
+      {/* ═══ CLINICAL COMMAND SURFACE ═══ */}
+      {!isPlatform && (
+        <div className="dash-section dash-animate">
+          <ClinicalCommandSurface />
+        </div>
       )}
 
       {/* ═══ CHARTS ═══ */}

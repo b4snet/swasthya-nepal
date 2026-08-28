@@ -140,6 +140,37 @@
   font-weight: 500;
 }
 
+/* ── Allergy Alert (Phase 131 — DESIGN_SYSTEM.md §33) ──────── */
+.pw-header__allergy {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fs-caption, 0.75rem);
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+
+.pw-header__allergy--critical {
+  color: var(--red-700);
+  background: var(--red-50);
+  border: 1px solid var(--red-200);
+}
+
+.pw-header__allergy--warning {
+  color: var(--amber-700);
+  background: var(--amber-50);
+  border: 1px solid var(--amber-200);
+}
+
+.pw-header__allergy--none {
+  color: var(--text-tertiary);
+  background: var(--gray-50);
+  border: 1px solid var(--border-subtle);
+  font-weight: 500;
+}
+
 /* ── Action Bar ─────────────────────────────────────────────── */
 .pw-actions {
   display: flex;
@@ -166,9 +197,9 @@
 }
 
 .pw-actions__btn:hover {
-  border-color: var(--blue-200);
-  color: var(--blue-600);
-  background: var(--blue-50);
+  border-color: var(--teal-200);
+  color: var(--teal-600);
+  background: var(--teal-50);
 }
 
 .pw-actions__btn:focus-visible {
@@ -309,7 +340,7 @@
 .pw-overview {
   display: flex;
   flex-direction: column;
-  gap: var(--space-5);
+  gap: var(--space-4);
 }
 
 .pw-overview__section {
@@ -319,16 +350,253 @@
 }
 
 .pw-overview__heading {
-  font-size: var(--fs-h4, 1rem);
+  font-size: var(--text-sm);
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--text-secondary);
   margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .pw-overview__cards {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: var(--space-3);
+}
+
+/* ── Clinical Workflow Summary (Phase 132) ──────────────────── */
+.pw-clinical-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: var(--gray-50);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.pw-clinical-summary__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fs-caption, 0.75rem);
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.pw-clinical-summary__item--muted {
+  color: var(--text-tertiary);
+}
+
+.pw-clinical-summary__muted {
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
+/* ── Clinical Snapshot (Phase 134) ─────────────────────────── */
+.pw-snapshot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--white);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.pw-snapshot__group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pw-snapshot__group + .pw-snapshot__group {
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.pw-snapshot__label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.pw-snapshot__items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.pw-snapshot__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.pw-snapshot__chip--diagnosis {
+  background: var(--blue-50);
+  color: var(--blue-700);
+  border: 1px solid var(--blue-200);
+}
+
+.pw-snapshot__chip--medication {
+  background: var(--teal-50);
+  color: var(--teal-700);
+  border: 1px solid var(--teal-200);
+}
+
+.pw-snapshot__chip--lab {
+  background: var(--gray-50);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+}
+
+.pw-snapshot__chip--lab.pw-snapshot__chip--critical {
+  background: var(--red-50);
+  color: var(--red-700);
+  border: 1px solid var(--red-200);
+}
+
+.pw-snapshot__chip--admission {
+  background: var(--amber-50);
+  color: var(--amber-700);
+  border: 1px solid var(--amber-200);
+}
+
+.pw-snapshot__status {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  margin-left: 2px;
+}
+
+.pw-snapshot__more {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  padding: 2px 6px;
+}
+
+.pw-snapshot__empty {
+  font-size: var(--fs-caption, 0.75rem);
+  color: var(--text-tertiary);
+  padding: var(--space-2) 0;
+}
+
+/* ── Attention Items (Phase 132) ────────────────────────────── */
+.pw-attention-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pw-attention-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--white);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease);
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  width: 100%;
+}
+
+.pw-attention-item:hover {
+  border-color: var(--teal-200);
+  background: var(--teal-50);
+}
+
+.pw-attention-item:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.pw-attention-item--critical {
+  border-left: 3px solid var(--red-500);
+  background: var(--red-50);
+}
+
+.pw-attention-item--critical:hover {
+  background: var(--red-100);
+  border-color: var(--red-200);
+}
+
+.pw-attention-item--high {
+  border-left: 3px solid var(--amber-500);
+}
+
+.pw-attention-item--high:hover {
+  background: var(--amber-50);
+  border-color: var(--amber-200);
+}
+
+.pw-attention-item__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-md);
+  background: var(--gray-50);
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.pw-attention-item--critical .pw-attention-item__icon {
+  background: var(--red-100);
+  color: var(--red-600);
+}
+
+.pw-attention-item--high .pw-attention-item__icon {
+  background: var(--amber-100);
+  color: var(--amber-600);
+}
+
+.pw-attention-item__content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pw-attention-item__label {
+  font-size: var(--fs-body, 0.875rem);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.pw-attention-item--critical .pw-attention-item__label {
+  color: var(--red-700);
+}
+
+.pw-attention-item__detail {
+  font-size: var(--fs-caption, 0.75rem);
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pw-attention-item__action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fs-caption, 0.75rem);
+  font-weight: 600;
+  color: var(--blue-600);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .pw-status-card {
@@ -753,6 +1021,31 @@
   color: var(--teal-600);
   flex-shrink: 0;
   opacity: 0.6;
+}
+
+/* ── Spine Allergy Chip (Phase 131) ─────────────────────────── */
+.pw-spine__allergy {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.pw-spine__allergy--critical {
+  color: var(--red-700);
+  background: var(--red-50);
+  border: 1px solid var(--red-200);
+}
+
+.pw-spine__allergy--warning {
+  color: var(--amber-700);
+  background: var(--amber-50);
+  border: 1px solid var(--amber-200);
 }
 
 /* ── Focus visible global for workspace ─────────────────────── */

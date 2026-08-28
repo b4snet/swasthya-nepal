@@ -72,7 +72,7 @@
 }
 
 .ops-capacity-card:hover {
-  border-color: #3b82f6;
+  border-color: var(--blue-600);
 }
 
 .ops-capacity-icon {
@@ -210,7 +210,7 @@
 }
 
 .ops-ward-card:hover {
-  border-color: #3b82f6;
+  border-color: var(--blue-600);
 }
 
 .ops-ward-header {
@@ -442,7 +442,7 @@
 }
 
 .ops-action-btn:hover {
-  border-color: #3b82f6;
+  border-color: var(--blue-600);
   color: #2563eb;
   background: #f0f7ff;
 }

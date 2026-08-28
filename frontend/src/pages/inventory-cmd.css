@@ -6,7 +6,7 @@
   background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px;
   display: flex; flex-direction: column; gap: 4px; min-width: 0;
 }
-.inv-census-card--items { border-left: 3px solid #3b82f6; }
+.inv-census-card--items { border-left: 3px solid var(--blue-600); }
 .inv-census-card--stock { border-left: 3px solid #10b981; }
 .inv-census-card--alerts { border-left: 3px solid #f59e0b; }
 .inv-census-card--requests { border-left: 3px solid #8b5cf6; }
@@ -92,7 +92,7 @@
   border-radius: 6px; background: #fff; color: #111827; width: 100%;
   box-sizing: border-box;
 }
-.inv-input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.1); }
+.inv-input:focus { outline: none; border-color: var(--blue-600); box-shadow: 0 0 0 2px rgba(13,148,136,0.1); }
 .inv-actions { display: flex; gap: 8px; }
 
 /* Responsive */
