@@ -62,7 +62,7 @@ export function useClinicalWorkSources(): ClinicalWorkSources {
   );
 
   const referrals = useFetch(
-    () => referralsApi.list({ facilityId: fac }),
+    () => referralsApi.list({ facilityId: fac }).catch(() => []),
     [fac],
   );
 
