@@ -12,7 +12,7 @@ export function AdminMedicationsPage() {
   const { t } = useI18n();
   const [createOpen, setCreateOpen] = useState(false);
 
-  const meds = useFetch(() => adminMedicationsApi.list(organizationId ?? '', selectedFacilityId), [organizationId, selectedFacilityId]);
+  const meds = useFetch(() => organizationId ? adminMedicationsApi.list(organizationId, selectedFacilityId) : Promise.resolve([]), [organizationId, selectedFacilityId]);
 
   if (meds.loading) return <Spinner />;
   if (meds.error) return <ErrorState error={meds.error} onRetry={() => void meds.refresh()} />;

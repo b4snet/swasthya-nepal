@@ -77,7 +77,7 @@ export function AdminDepartmentsPage() {
   const [deleteItem, setDeleteItem] = useState<{ id: string; name: string } | null>(null);
   const [typeFilter, setTypeFilter] = useState<string>('');
 
-  const departments = useFetch(() => adminDepartmentsApi.list(organizationId ?? '', selectedFacilityId), [organizationId, selectedFacilityId]);
+  const departments = useFetch(() => organizationId ? adminDepartmentsApi.list(organizationId, selectedFacilityId) : Promise.resolve([]), [organizationId, selectedFacilityId]);
 
   if (departments.loading) return <Spinner />;
   if (departments.error) return <ErrorState error={departments.error} onRetry={() => void departments.refresh()} />;

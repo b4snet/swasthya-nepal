@@ -13,8 +13,8 @@ export function AdminServicesPage() {
   const [editItem, setEditItem] = useState<{ id: string; name: string; code: string; serviceType: string; status: string } | null>(null);
   const [deleteItem, setDeleteItem] = useState<{ id: string; name: string } | null>(null);
 
-  const services = useFetch(() => adminServicesApi.list(organizationId ?? '', selectedFacilityId), [organizationId, selectedFacilityId]);
-  const departments = useFetch(() => adminDepartmentsApi.list(organizationId ?? '', selectedFacilityId), [organizationId, selectedFacilityId]);
+  const services = useFetch(() => organizationId ? adminServicesApi.list(organizationId, selectedFacilityId) : Promise.resolve([]), [organizationId, selectedFacilityId]);
+  const departments = useFetch(() => organizationId ? adminDepartmentsApi.list(organizationId, selectedFacilityId) : Promise.resolve([]), [organizationId, selectedFacilityId]);
 
   if (services.loading) return <Spinner />;
   if (services.error) return <ErrorState error={services.error} onRetry={() => void services.refresh()} />;
