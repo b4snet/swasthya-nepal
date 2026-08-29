@@ -22,7 +22,7 @@ export function EncounterPage() {
 
   const encounter = useFetch(() => encountersApi.show(id!, fac), [id, fac]);
   const notes = useFetch(() => encountersApi.notes(id!, fac), [id, fac]);
-  const medications = useFetch(() => catalogsApi.medications(organizationId ?? '', fac), [organizationId, fac]);
+  const medications = useFetch(() => organizationId ? catalogsApi.medications(organizationId, fac) : Promise.resolve([]), [organizationId, fac]);
 
   const [notice, setNotice] = useState<{ tone: 'success' | 'danger'; text: string } | null>(null);
   const [tab, setTab] = useState<'note' | 'diagnosis' | 'prescription' | 'lab' | 'radiology' | 'followup'>('note');
@@ -396,7 +396,7 @@ function LabOrdersTab({ encounterId, fac, signed, onError, onSaved }: { encounte
   const [clinicalIndication, setClinicalIndication] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const labTests = useFetch(() => labTestsApi.list(organizationId ?? '', fac), [organizationId, fac]);
+  const labTests = useFetch(() => organizationId ? labTestsApi.list(organizationId, fac) : Promise.resolve([]), [organizationId, fac]);
   const orders = useFetch(() => labOrdersApi.forEncounter(encounterId, fac), [encounterId, fac]);
 
   const toggleTest = (id: string) => {
@@ -505,7 +505,7 @@ function RadiologyOrdersTab({ encounterId, fac, signed, onError, onSaved }: { en
   const [clinicalIndication, setClinicalIndication] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const labTests = useFetch(() => labTestsApi.list(organizationId ?? '', fac), [organizationId, fac]);
+  const labTests = useFetch(() => organizationId ? labTestsApi.list(organizationId, fac) : Promise.resolve([]), [organizationId, fac]);
   const studies = useFetch(() => radiologyApi.queue(fac), [fac]);
 
   const toggleTest = (id: string) => {

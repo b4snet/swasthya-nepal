@@ -1005,7 +1005,7 @@ export function EncounterWorkspace() {
     return patientsApi.prescriptions(encounter.data.patientId, fac);
   }, [encounter.data?.patientId, fac]);
   const labOrders = useFetch(() => labOrdersApi.forEncounter(encounterId!, fac), [encounterId, fac]);
-  const labTests = useFetch(() => labTestsApi.list(organizationId ?? '', fac), [organizationId, fac]);
+  const labTests = useFetch(() => organizationId ? labTestsApi.list(organizationId, fac) : Promise.resolve([]), [organizationId, fac]);
   const studies = useFetch(() => radiologyApi.queue(fac), [fac]);
   const referrals = useFetch(async () => {
     if (!encounter.data?.patientId) return { data: [] };
@@ -1014,7 +1014,7 @@ export function EncounterWorkspace() {
   const followUps = useFetch(async () => {
     return followUpsApi.forEncounter(encounterId!, fac);
   }, [encounterId, fac]);
-  const medications = useFetch(() => catalogsApi.medications(organizationId ?? '', fac), [organizationId, fac]);
+  const medications = useFetch(() => organizationId ? catalogsApi.medications(organizationId, fac) : Promise.resolve([]), [organizationId, fac]);
 
   const [notice, setNotice] = useState<{ tone: 'success' | 'danger'; text: string } | null>(null);
   const [signingBusy, setSigningBusy] = useState(false);

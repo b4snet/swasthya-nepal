@@ -308,7 +308,7 @@ function ERQueueSection({ erQueue }: { erQueue: Array<{ encounterId: string; pat
       ) : (
         <div className="ops-er-list">
           {sorted.map((entry) => (
-            <div key={entry.encounterId} className="ops-er-row" onClick={() => navigate(`/patients/${entry.patientId}`)}>
+            <div key={entry.encounterId} className="ops-er-row" onClick={() => navigate(`/clinical/patients/${entry.patientId}`)}>
               {entry.triageLevel !== null && (
                 <span className="ops-triage" style={{ background: entry.triageColor ?? '#6b7280' }}>
                   T{entry.triageLevel}

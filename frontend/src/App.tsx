@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useParams } from 'react-router-dom';
 import { AuthProvider, useAuth } from './auth/AuthProvider';
 import { TenantProvider, useTenant } from './context/TenantContext';
 import { ToastProvider } from './context/ToastContext';
@@ -8,6 +8,12 @@ import { useI18n } from './i18n/I18nProvider';
 import { AppShell } from './layout/AppShell';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Button, Card, Spinner } from './components/ui';
+
+// Helper for legacy redirects that need route params interpolated
+function ParamRedirect({ to }: { to: (p: Record<string, string | undefined>) => string }) {
+  const params = useParams();
+  return <Navigate to={to(params)} replace />;
+}
 
 // Core pages — eagerly loaded
 import { LoginPage } from './pages/LoginPage';
@@ -306,15 +312,15 @@ export function App() {
               {/* ── Legacy redirects (old URLs → new module hierarchy) ── */}
               <Route path="/patients" element={<Navigate to="/clinical/patients" replace />} />
               <Route path="/patients/new" element={<Navigate to="/clinical/patients/new" replace />} />
-              <Route path="/patients/:id" element={<Navigate to="/clinical/patients/:id" replace />} />
-              <Route path="/patients/:id/profile" element={<Navigate to="/clinical/patients/:id/profile" replace />} />
+              <Route path="/patients/:id" element={<ParamRedirect to={p => `/clinical/patients/${p.id}`} />} />
+              <Route path="/patients/:id/profile" element={<ParamRedirect to={p => `/clinical/patients/${p.id}/profile`} />} />
               <Route path="/patients/import" element={<Navigate to="/clinical/patients/import" replace />} />
               <Route path="/appointments" element={<Navigate to="/clinical/appointments" replace />} />
-              <Route path="/appointments/:id" element={<Navigate to="/clinical/appointments/:id" replace />} />
+              <Route path="/appointments/:id" element={<ParamRedirect to={p => `/clinical/appointments/${p.id}`} />} />
               <Route path="/queue" element={<Navigate to="/clinical/queue" replace />} />
-              <Route path="/encounters/:id" element={<Navigate to="/clinical/encounters/:id" replace />} />
+              <Route path="/encounters/:id" element={<ParamRedirect to={p => `/clinical/encounters/${p.id}`} />} />
               <Route path="/billing" element={<Navigate to="/finance/billing" replace />} />
-              <Route path="/billing/:invoiceId" element={<Navigate to="/finance/billing/:invoiceId" replace />} />
+              <Route path="/billing/:invoiceId" element={<ParamRedirect to={p => `/finance/billing/${p.invoiceId}`} />} />
               <Route path="/inventory" element={<Navigate to="/procurement/inventory" replace />} />
               <Route path="/procurement" element={<Navigate to="/procurement/orders" replace />} />
               <Route path="/finance" element={<Navigate to="/finance/billing" replace />} />

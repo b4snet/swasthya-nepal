@@ -13,9 +13,9 @@ export function ProcurementPage() {
   const [tab, setTab] = useState<'vendors' | 'requests' | 'orders'>('vendors');
   const [notice, setNotice] = useState<{ tone: 'success' | 'danger'; text: string } | null>(null);
 
-  const vendors = useFetch(() => procurementApi.vendors(org ?? '', fac), [org, fac]);
-  const requests = useFetch(() => procurementApi.requests(org ?? '', fac), [org, fac]);
-  const orders = useFetch(() => procurementApi.orders(org ?? '', fac), [org, fac]);
+  const vendors = useFetch(() => org ? procurementApi.vendors(org, fac) : Promise.resolve([]), [org, fac]);
+  const requests = useFetch(() => org ? procurementApi.requests(org, fac) : Promise.resolve([]), [org, fac]);
+  const orders = useFetch(() => org ? procurementApi.orders(org, fac) : Promise.resolve([]), [org, fac]);
 
   return (
     <div className="page">

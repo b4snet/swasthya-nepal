@@ -16,7 +16,7 @@ export function PatientsPage() {
   const canView = hasRole('hospital_admin', 'receptionist', 'doctor', 'nurse', 'org_admin', 'pharmacist', 'lab_technician');
 
   const list = useFetch(
-    () => patientsApi.list(organizationId ?? '', { search: deferred || undefined, facilityId: selectedFacilityId }),
+    () => organizationId ? patientsApi.list(organizationId, { search: deferred || undefined, facilityId: selectedFacilityId }) : Promise.resolve([]),
     [organizationId, selectedFacilityId, deferred],
   );
 
@@ -86,9 +86,9 @@ export function PatientsPage() {
             <tbody>
               {(list.data ?? []).map((p) => (                  <tr
                   key={p.id}
-                  onClick={() => navigate(`/patients/${p.id}`)}
+                  onClick={() => navigate(`/clinical/patients/${p.id}`)}
                   tabIndex={0}
-                  onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/patients/${p.id}`); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/clinical/patients/${p.id}`); }}
                   role="link"
                   aria-label={`View patient ${p.fullName}`}
                 >

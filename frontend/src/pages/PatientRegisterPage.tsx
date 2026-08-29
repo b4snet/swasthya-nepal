@@ -37,7 +37,8 @@ export function PatientRegisterPage() {
     setFieldErrors({});
     setDuplicates(null);
     try {
-      const patient = await patientsApi.create(organizationId ?? '', {
+      if (!organizationId) throw new Error('Organization context is required');
+      const patient = await patientsApi.create(organizationId, {
         fullName: fullName.trim(),
         dateOfBirth,
         sex,
@@ -49,7 +50,7 @@ export function PatientRegisterPage() {
         emergencyContact: ecName && ecRelation && ecPhone ? { name: ecName, relation: ecRelation, phone: ecPhone } : undefined,
         identifiers: idValue ? [{ type: idType, value: idValue.trim() }] : undefined,
       });
-      navigate(`/patients/${patient.id}`);
+      navigate(`/clinical/patients/${patient.id}`);
     } catch (err) {
       const apiErr = err as ApiError;
       if (apiErr.code === 'VALIDATION' && apiErr.details) {

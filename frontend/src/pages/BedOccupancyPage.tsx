@@ -53,7 +53,7 @@ export function BedOccupancyPage() {
   const [updateTarget, setUpdateTarget] = useState<{ bed: BedInfo; wardId: string } | null>(null);
 
   const { data, loading, error, refresh } = useFetch(
-    () => bedWardApi.occupancy(organizationId ?? ''),
+    () => organizationId ? bedWardApi.occupancy(organizationId) : Promise.resolve(null),
     [organizationId],
   );
 

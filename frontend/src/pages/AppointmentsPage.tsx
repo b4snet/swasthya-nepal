@@ -376,7 +376,8 @@ function BookAppointmentDialog({
     setProviderSearch(q);
     if (q.length < 1) { setProviderResults([]); return; }
     try {
-      const staff = await catalogsApi.staff(organizationId ?? "", facilityId);
+      if (!organizationId) { setProviderResults([]); return; }
+      const staff = await catalogsApi.staff(organizationId, facilityId);
       const filtered = (Array.isArray(staff) ? staff : []).filter((s: any) =>
         s.fullName?.toLowerCase().includes(q.toLowerCase()) ||
         s.designation?.toLowerCase().includes(q.toLowerCase())
