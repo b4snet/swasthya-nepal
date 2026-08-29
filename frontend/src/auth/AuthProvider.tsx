@@ -73,6 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSessionExpiredReason(null);
   }, []);
 
+  // Session restoration on mount
   useEffect(() => {
     if (restoring.current) return;
     restoring.current = true;
@@ -81,8 +82,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setStatus('unauthenticated');
       return;
     }
-    // Session restoration: exchange the refresh token for a fresh session.
-    // The refresh token rotates; the backend flags reuse as theft (SECURITY.md §4).
     authApi
       .refresh(tokens.refreshToken)
       .then((res) => applySession(res))
@@ -92,6 +91,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setStatus('unauthenticated');
       });
   }, [applySession]);
+
+  // Proactive token refresh — refresh 5 minutes before access token expires
+  useEffect(() => {
+    if (status !== 'authenticated') return;
+    const tokens = api.getTokens();
+    if (!tokens) return;
+
+    // Refresh 5 minutes before expiry, or immediately if already close
+    const expiresAt = Date.now() + tokens.expiresIn * 1000;
+    const refreshIn = Math.max((expiresAt - Date.now()) - 5 * 60 * 1000, 0);
+
+    const timer = setTimeout(() => {
+      authApi
+        .refresh(tokens.refreshToken)
+        .then((res) => applySession(res))
+        .catch(() => {
+          api.clearTokens();
+          setSessionExpiredReason('expired');
+          setStatus('unauthenticated');
+        });
+    }, refreshIn);
+
+    return () => clearTimeout(timer);
+  }, [status, applySession]);
 
   const value = useMemo(() => ({ status, user, assignments, sessionExpiredReason, login, logout, clearExpiredReason }), [status, user, assignments, sessionExpiredReason, login, logout, clearExpiredReason]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
