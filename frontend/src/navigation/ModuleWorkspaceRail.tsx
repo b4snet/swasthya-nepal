@@ -223,18 +223,11 @@ export function ModuleWorkspaceRail({
   const { t } = useI18n();
   const railRef = useRef<HTMLDivElement>(null);
 
-  // Dashboard and standalone modules — no workspace rail
-  if (!activeModule || activeModule.persistent || activeModule.children.length === 0) {
-    return null;
-  }
-
-  const isActiveChild = (child: NavModule['children'][number]) =>
-    pathname === child.to ||
-    (child.to !== activeModule.defaultTo && pathname.startsWith(child.to + '/'));
-
   // Group actions by category
   const groups = useMemo(
-    () => groupActions(activeModule.children, activeModule.key),
+    () => activeModule && !activeModule.persistent && activeModule.children.length > 0
+      ? groupActions(activeModule.children, activeModule.key)
+      : [],
     [activeModule],
   );
 
@@ -256,6 +249,15 @@ export function ModuleWorkspaceRail({
     el.addEventListener('keydown', handleKeyDown);
     return () => el.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  // Dashboard and standalone modules — no workspace rail
+  if (!activeModule || activeModule.persistent || activeModule.children.length === 0) {
+    return null;
+  }
+
+  const isActiveChild = (child: NavModule['children'][number]) =>
+    pathname === child.to ||
+    (child.to !== activeModule.defaultTo && pathname.startsWith(child.to + '/'));
 
   return (
     <div className="workspace-rail" role="navigation" aria-label={`${t(activeModule.labelKey)} workspace`}>
