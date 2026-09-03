@@ -50,6 +50,10 @@
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <!-- Breached-password checking stays OFF in the default suite so the
+             harness never makes an external HIBP call; the breach behaviour is
+             proven by dedicated tests that enable it + fake HTTP. -->
+        <env name="SWASTHYA_BREACH_PASSWORD_CHECKING" value="false"/>
         <ini name="memory_limit" value="512M"/>
     </php>
 </phpunit>
