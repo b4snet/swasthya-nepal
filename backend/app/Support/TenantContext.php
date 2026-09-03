@@ -11,6 +11,7 @@ use App\Models\PortalAccount;
 use App\Models\Role;
 use App\Models\RoleAssignment;
 use App\Models\User;
+use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Support\Collection;
 
 /**
@@ -115,10 +116,18 @@ final class TenantContext
      */
     public function can(string $permission): bool
     {
-        // Platform admins: honor platform-role permissions (both platform-scope
-        // and tenant-scope — a platform admin viewing tenant finance data via
-        // the X-Swasthya-Tenant override should not be blocked by scope).
+        // Platform context (no active support session) may exercise ONLY
+        // 'platform'/'both'-scope permissions (TENANCY.md V2 §8). Granting a
+        // tenant business permission here — even though it is attached to a
+        // platform role — would imply unrestricted access to hospital clinical
+        // data, which is forbidden. Tenant reach requires a support session.
         if ($this->isPlatform) {
+            $scope = RolePermissionSeeder::scopes()[$permission] ?? 'tenant';
+
+            if ($scope !== 'platform' && $scope !== 'both') {
+                return false;
+            }
+
             foreach ($this->assignments as $assignment) {
                 /** @var RoleAssignment $assignment */
                 if ($assignment->role?->scope_type !== Role::SCOPE_PLATFORM) {
