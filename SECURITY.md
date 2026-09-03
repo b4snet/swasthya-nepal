@@ -92,6 +92,7 @@
 - **[REQUIRED]** Authorization matrix tested for every role × action; a permission that cannot be tested is not added.
 - **[REQUIRED]** Segregation of duties where it matters: requester ≠ approver, charge ≠ void, entry ≠ verification, prescribe ≠ dispense.
 - **[REQUIRED]** Role changes take effect immediately and are audited (grant, revoke, scope change).
+- **[REQUIRED]** Frontend/backend permission-code parity is a permanent, verified invariant: the canonical vocabulary lives only in `backend/database/seeders/RolePermissionSeeder.php::permissionCatalog()`, and `frontend/src/auth/access-parity.test.ts` reads that file as the single source of truth and fails if `useAccess.ts` diverges (no phantom codes, complete mirror, and no role over-claims beyond the backend grant). The frontend remains presentation-only; backend `authorize:` + RLS stay authoritative.
 - **[RECOMMENDED]** Quarterly review of high-privilege assignments (org admins, finance, clinical leads).
 - **[FUTURE]** Attribute-based extensions (ABAC) for record-level conditions (e.g., doctor sees patients of their own department) as policy complexity grows.
 
