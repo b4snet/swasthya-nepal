@@ -1,18 +1,68 @@
+/**
+ * PatientWorkflows.test.tsx
+ *
+ * Tests PatientWorkflows pages (PatientsPage, PatientRegisterPage, PatientProfilePage).
+ * Mocks the API endpoints module directly (file-scoped vi.mock) instead of
+ * globalThis.fetch — this eliminates cross-file contamination.
+ */
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi, beforeEach } from 'vitest';
 import { AuthProvider } from '../auth/AuthProvider';
 import { TenantProvider } from '../context/TenantContext';
 import { I18nProvider } from '../i18n/I18nProvider';
-import { jsonOk } from '../test/helpers';
 import { PatientsPage } from './PatientsPage';
 import { PatientRegisterPage } from './PatientRegisterPage';
 import { PatientProfilePage } from './PatientProfilePage';
 
-afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+// ─── Mock API endpoints (file-scoped, no cross-file leakage) ─────────────
+// vi.hoisted ensures these variables are available inside the vi.mock factory,
+// which is hoisted to the top of the file by vitest.
+const { mockAuthRefresh, mockPatientsList, mockPatientsShow } = vi.hoisted(() => ({
+  mockAuthRefresh: vi.fn(),
+  mockPatientsList: vi.fn(),
+  mockPatientsShow: vi.fn(),
+}));
+
+vi.mock('../api/endpoints', () => ({
+  authApi: { refresh: mockAuthRefresh, login: vi.fn(), logout: vi.fn() },
+  patientsApi: {
+    list: mockPatientsList,
+    show: mockPatientsShow,
+    create: vi.fn(),
+    timeline: vi.fn(),
+    search: vi.fn(),
+    update: vi.fn(),
+    identifiers: vi.fn(),
+    addIdentifier: vi.fn(),
+    contacts: vi.fn(),
+    addContact: vi.fn(),
+    updateContact: vi.fn(),
+    diagnoses: vi.fn(),
+    prescriptions: vi.fn(),
+    allergies: vi.fn(),
+    medications: vi.fn(),
+    admissions: vi.fn(),
+    documents: vi.fn(),
+    labOrders: vi.fn(),
+    radiologyOrders: vi.fn(),
+    referrals: vi.fn(),
+    followUps: vi.fn(),
+    importTemplate: vi.fn(),
+    importUpload: vi.fn(),
+    importShow: vi.fn(),
+    importMapping: vi.fn(),
+    importPreview: vi.fn(),
+    importExecute: vi.fn(),
+    importList: vi.fn(),
+    sendPortalInvite: vi.fn(),
+  },
+}));
+
+afterEach(() => { vi.restoreAllMocks(); vi.resetModules(); });
 
 function sessionPayload(roles: string[]) {
-  return jsonOk({
+  return {
     accessToken: 'at-test',
     tokenType: 'Bearer',
     expiresIn: 3600,
@@ -22,19 +72,18 @@ function sessionPayload(roles: string[]) {
     assignments: [
       { organizationId: 'org-1', organizationCode: 'SMOKE', facilityId: 'fac-1', facilityName: 'Smoke Central', roles },
     ],
-  });
+  };
 }
 
-function renderPage(ui: React.ReactNode, entry: string = '/') {
+beforeEach(() => {
   localStorage.setItem('swasthya.refreshToken', 'rt-test');
   sessionStorage.setItem('swasthya.accessToken', 'at-test');
-  const sessionRes = sessionPayload(['hospital_admin']);
-  let callCount = 0;
-  const fn = vi.fn(async () => {
-    callCount++;
-    return callCount === 1 ? sessionRes : jsonOk([]);
-  });
-  vi.stubGlobal('fetch', fn);
+  mockAuthRefresh.mockResolvedValue(sessionPayload(['hospital_admin']));
+  mockPatientsList.mockResolvedValue([]);
+  mockPatientsShow.mockResolvedValue(null);
+});
+
+function renderPage(ui: React.ReactNode, entry: string = '/') {
   return render(
     <MemoryRouter initialEntries={[entry]}>
       <I18nProvider>
@@ -57,7 +106,9 @@ describe('PatientsPage', () => {
 
   it('shows empty state when no patients', async () => {
     renderPage(<PatientsPage />);
-    expect(await screen.findByText(/no patients found/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/no patients found/i)).toBeInTheDocument();
+    }, { timeout: 5000 });
   });
 
   it('renders with proper heading', async () => {
@@ -93,36 +144,16 @@ describe('PatientRegisterPage', () => {
 
 describe('PatientProfilePage', () => {
   const mockPatient = {
-    id: 'p-1',
-    fullName: 'Test Patient',
-    mrn: 'MRN-0001',
-    dateOfBirth: '1990-01-15',
-    sex: 'male',
-    bloodGroup: 'O+',
-    status: 'active',
-    createdAt: '2025-01-01T00:00:00Z',
+    id: 'p-1', fullName: 'Test Patient', mrn: 'MRN-0001',
+    dateOfBirth: '1990-01-15', sex: 'male', bloodGroup: 'O+',
+    status: 'active', createdAt: '2025-01-01T00:00:00Z',
   };
 
-  function setupProfileFetch() {
-    localStorage.setItem('swasthya.refreshToken', 'rt-test');
-    sessionStorage.setItem('swasthya.accessToken', 'at-test');
-    let callCount = 0;
-    const fn = vi.fn(async (...args: any[]) => {
-      callCount++;
-      if (callCount === 1) return sessionPayload(['hospital_admin']);
-      // Extract URL from Request object or string
-      const url = typeof args[0] === 'string' ? args[0] : args[0]?.url ?? '';
-      // Return patient object for the main show endpoint
-      if (url.includes('/patients/p-1') && !url.includes('/timeline') && !url.includes('/diagnoses') && !url.includes('/prescriptions') && !url.includes('/lab-orders') && !url.includes('/radiology-orders') && !url.includes('/admissions') && !url.includes('/referrals') && !url.includes('/documents') && !url.includes('/follow-ups')) {
-        return jsonOk(mockPatient);
-      }
-      return jsonOk([]);
-    });
-    vi.stubGlobal('fetch', fn);
-  }
+  beforeEach(() => {
+    mockPatientsShow.mockResolvedValue(mockPatient);
+  });
 
   it('renders profile page without crashing', async () => {
-    setupProfileFetch();
     render(
       <MemoryRouter initialEntries={['/patients/p-1']}>
         <I18nProvider>
@@ -134,14 +165,12 @@ describe('PatientProfilePage', () => {
         </I18nProvider>
       </MemoryRouter>,
     );
-    // Page should render (loading spinner or patient content)
     await waitFor(() => {
       expect(document.querySelector('.page')).toBeInTheDocument();
     });
   });
 
   it('has back to patients link', async () => {
-    setupProfileFetch();
     render(
       <MemoryRouter initialEntries={['/patients/p-1']}>
         <I18nProvider>

@@ -416,6 +416,31 @@ export function filterModulesByRole(
 }
 
 /**
+ * Filter modules by their platform entitlement state (module-aware navigation).
+ *
+ * The backend is authoritative for module access (MASTER_RULES.md, Core
+ * Platform): a module that is not enabled for the current organization must
+ * not be offered in navigation. This is a pure, UX-only mirror of that rule —
+ * it never gates data access, it only hides un-entitled destinations.
+ *
+ * `isEnabled(key)` receives each module's navigation `key` (e.g. 'pharmacy')
+ * and returns whether the platform says it is enabled. Modules that report
+ * `true` are kept; `false` modules are dropped. A `persistent` module
+ * (dashboard) is always kept. When no entitlement data is available yet
+ * (callers pass `null` through `isEnabled === undefined` behavior), modules
+ * are kept unchanged so authenticated users are never locked out by a stale
+ * or absent entitlement payload — the backend gate remains the authority.
+ */
+export function filterModulesByEnablement(
+  modules: NavModule[],
+  isEnabled: (key: string) => boolean,
+): NavModule[] {
+  return modules.filter(
+    (m) => m.persistent || isEnabled(m.key),
+  );
+}
+
+/**
  * Determine default module for a user role.
  */
 export function getDefaultModuleKey(hasRole: (r: string) => boolean): string {
