@@ -367,6 +367,14 @@ class RolePermissionSeeder extends Seeder
             // campaign status, delivery tracking, and stats.
             'notification:view' => ['domain' => 'notification', 'description' => 'View notification templates, audience segments, campaigns, and delivery tracking'],
             'notification:manage' => ['domain' => 'notification', 'description' => 'Create and manage notification templates, segments, campaigns, and trigger emergency broadcasts'],
+
+            // Tenancy V2 — tenant data portability & offboarding export
+            // (TENANCY.md V2 §13-15, DATA_GOVERNANCE.md): export the tenant's
+            // own data for portability or offboarding. Tenant admins export
+            // their own tenant (org scope); platform staff export on
+            // offboarding within an explicit support session. Every export is
+            // tenant-scoped, audited, and never crosses the tenant boundary.
+            'data:export' => ['domain' => 'data', 'description' => 'Export tenant data (scoped to the current tenant, audited)'],
         ];
     }
 
@@ -395,6 +403,9 @@ class RolePermissionSeeder extends Seeder
             'role:assign' => 'both',
             'role:revoke' => 'both',
             'audit:view' => 'both',
+            // Tenant data export: exercised by tenant administrators (their
+            // own tenant) AND within an explicit platform support session.
+            'data:export' => 'both',
         ];
     }
 
@@ -520,6 +531,10 @@ class RolePermissionSeeder extends Seeder
                     // surface (definitions, dashboards, reports, exports).
                     'analytics:view', 'analytics:manage',
                     'reports:run', 'reports:schedule', 'reports:export',
+                    // Tenancy V2 — tenant data portability (org admin exports
+                    // the whole tenant's data for portability/offboarding;
+                    // the resulting artifact is tenant-scoped and audited).
+                    'data:export',
                     // Phase 3 slice 22 — Patient Portal: the org admin
                     // provisions portal accounts and consent-bound grants.
                     'portal:manage',

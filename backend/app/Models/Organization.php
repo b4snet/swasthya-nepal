@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Exceptions\ApiException;
 use App\Models\Concerns\HasUuid;
+use App\Support\ErrorCodes;
 use Database\Factories\OrganizationFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -53,6 +55,67 @@ class Organization extends Model
             'tax_config' => 'array',
             'settings' => 'array',
         ];
+    }
+
+    // ── Lifecycle state machine (TENANCY.md V2 §13) ──
+    //
+    // Active → suspended → closed → offboarded, with reactivation back to
+    // active from suspended, and close/offboard permitted from active or
+    // suspended. 'offboarded' is terminal (the tenant is a tombstone; its
+    // data is purged per policy, the row is never soft-deleted).
+
+    /**
+     * The only legal status transitions (current → list of permitted targets).
+     *
+     * @var array<string, list<string>>
+     */
+    private const TRANSITIONS = [
+        self::STATUS_ACTIVE => [self::STATUS_SUSPENDED, self::STATUS_CLOSED, self::STATUS_OFFBOARDED],
+        self::STATUS_SUSPENDED => [self::STATUS_ACTIVE, self::STATUS_CLOSED, self::STATUS_OFFBOARDED],
+        self::STATUS_CLOSED => [self::STATUS_OFFBOARDED],
+        self::STATUS_OFFBOARDED => [],
+    ];
+
+    /**
+     * Whether this organization may legally transition to $target.
+     *
+     * @return array{allowed: bool, reason: string}
+     */
+    public function canTransitionTo(string $target): array
+    {
+        $allowed = in_array($target, self::TRANSITIONS[$this->status] ?? [], true);
+
+        return [
+            'allowed' => $allowed,
+            'reason' => $allowed
+                ? "Transition from '{$this->status}' to '{$target}' is valid"
+                : "Transition from '{$this->status}' to '{$target}' is not permitted",
+        ];
+    }
+
+    /**
+     * Transition the organization to $target, enforcing the state machine.
+     *
+     * Throws an ApiException (409 INVALID_REQUEST) on an illegal transition.
+     * Callers are responsible for auditing and persisting within a transaction.
+     */
+    public function transitionStatus(
+        string $target,
+        ?string $updatedBy = null,
+    ): void {
+        $check = $this->canTransitionTo($target);
+
+        if (! $check['allowed']) {
+            throw new ApiException(
+                ErrorCodes::INVALID_REQUEST,
+                $check['reason'],
+                409,
+            );
+        }
+
+        $this->status = $target;
+        $this->updated_by = $updatedBy;
+        $this->save();
     }
 
     /**

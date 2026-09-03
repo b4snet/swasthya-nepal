@@ -72,6 +72,7 @@ final class EventProcessor
         return [
             'notification.created' => Handlers\SendNotificationHandler::class,
             'critical_value.detected' => Handlers\CriticalValueDetectedHandler::class,
+            'organization.offboarded' => Handlers\OrganizationOffboardedHandler::class,
         ];
     }
 }

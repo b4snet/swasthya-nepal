@@ -6,11 +6,13 @@ use App\Exceptions\ApiException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Organization\ProvisionOrganizationRequest;
 use App\Http\Requests\Organization\StoreOrganizationRequest;
+use App\Models\AuditEvent;
 use App\Models\Facility;
 use App\Models\Organization;
 use App\Models\Role;
 use App\Models\RoleAssignment;
 use App\Models\User;
+use App\Services\Events\EventDispatcher;
 use App\Support\AccessCheck;
 use App\Support\AuditLogger;
 use App\Support\DatabaseTenantContext;
@@ -130,6 +132,146 @@ final class OrganizationController extends Controller
             status: 201,
             request: $request,
             headers: ['X-Audit-Event-Id' => (string) $event->getKey(), 'Location' => '/api/v1/organizations/'.$organization->getKey()],
+        );
+    }
+
+    /**
+     * Suspend a tenant (TENANCY.md V2 §13): the org leaves 'active'. The
+     * ResolveTenantContext middleware already rejects every request for a
+     * non-active org (403 TENANT_SUSPENDED), so flipping the status atomically
+     * denies tenant traffic at the platform boundary. Platform-scope action.
+     */
+    public function suspend(Request $request, string $organization): JsonResponse
+    {
+        return $this->lifecycleTransition(
+            $request,
+            $organization,
+            Organization::STATUS_SUSPENDED,
+            'organization.suspended',
+        );
+    }
+
+    /**
+     * Reactivate a suspended tenant back to 'active' (TENANCY.md V2 §13).
+     */
+    public function reactivate(Request $request, string $organization): JsonResponse
+    {
+        return $this->lifecycleTransition(
+            $request,
+            $organization,
+            Organization::STATUS_ACTIVE,
+            'organization.reactivated',
+        );
+    }
+
+    /**
+     * Close a tenant (TENANCY.md V2 §13): terminal operation that prevents
+     * further transitions except offboarding. Data is retained until purge.
+     */
+    public function close(Request $request, string $organization): JsonResponse
+    {
+        return $this->lifecycleTransition(
+            $request,
+            $organization,
+            Organization::STATUS_CLOSED,
+            'organization.closed',
+        );
+    }
+
+    /**
+     * Offboard a tenant (TENANCY.md V2 §13-14): the tombstone state. Data is
+     * purged per policy; the row is never soft-deleted. Terminal — no further
+     * transitions are permitted.
+     */
+    public function offboard(Request $request, string $organization): JsonResponse
+    {
+        return $this->lifecycleTransition(
+            $request,
+            $organization,
+            Organization::STATUS_OFFBOARDED,
+            'organization.offboarded',
+        );
+    }
+
+    /**
+     * Shared platform lifecycle transition: enforce the state machine, update
+     * the status inside a transaction, and record an audited event.
+     */
+    private function lifecycleTransition(
+        Request $request,
+        string $organization,
+        string $target,
+        string $auditEvent,
+    ): JsonResponse {
+        $context = TenantContext::current();
+
+        if (! $context->isPlatform) {
+            throw new ApiException(
+                ErrorCodes::FORBIDDEN,
+                'Organization lifecycle operations are platform-only.',
+                403,
+            );
+        }
+
+        /** @var Organization $org */
+        $org = Organization::query()->findOrFail($organization);
+
+        // Enforce the state machine BEFORE any write.
+        $check = $org->canTransitionTo($target);
+
+        if (! $check['allowed']) {
+            throw new ApiException(
+                ErrorCodes::INVALID_REQUEST,
+                $check['reason'],
+                409,
+            );
+        }
+
+        $event = DB::transaction(function () use ($org, $target, $auditEvent, $context, $request): AuditEvent {
+            $org->transitionStatus($target, $context->user?->getKey());
+
+            // Dispatch a domain event for the terminal transition so follow-on
+            // side effects (data purge, assignment cleanup) run through the
+            // transactional outbox (TENANCY.md V2 §13-14).
+            if ($target === Organization::STATUS_OFFBOARDED) {
+                EventDispatcher::dispatch(
+                    eventType: 'organization.offboarded',
+                    aggregateType: 'organization',
+                    aggregateId: $org->getKey(),
+                    payload: [
+                        'organizationId' => $org->getKey(),
+                        'name' => $org->name,
+                        'code' => $org->code,
+                    ],
+                    causerId: $context->user?->getKey(),
+                    tenantId: $org->getKey(),
+                );
+            }
+
+            return $this->audit->record(
+                $auditEvent,
+                'organization',
+                $org->getKey(),
+                [
+                    'status' => $target,
+                    'previousStatus' => $org->getOriginal('status'),
+                ],
+                $request,
+                tenantId: $target === Organization::STATUS_OFFBOARDED ? null : $org->getKey(),
+            );
+        });
+
+        return Envelope::success(
+            data: [
+                'id' => $org->getKey(),
+                'code' => $org->code,
+                'name' => $org->name,
+                'status' => $org->fresh()->status,
+            ],
+            meta: [],
+            status: 200,
+            request: $request,
+            headers: ['X-Audit-Event-Id' => (string) $event->getKey()],
         );
     }
 

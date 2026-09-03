@@ -2,12 +2,14 @@
 
 use App\Exceptions\ApiExceptionMapper;
 use App\Http\Middleware\AssignRequestIds;
+use App\Http\Middleware\EnsureModuleEnabled;
 use App\Http\Middleware\EnsurePermission;
 use App\Http\Middleware\LogRequest;
 use App\Http\Middleware\ResolvePartnerContext;
 use App\Http\Middleware\ResolvePortalContext;
 use App\Http\Middleware\ResolveTenantContext;
 use App\Http\Middleware\SecurityHeaders;
+use App\Http\Middleware\ThrottleTenant;
 use Illuminate\Auth\Middleware\Authorize;
 use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Contracts\Session\Middleware\AuthenticatesSessions;
@@ -52,6 +54,13 @@ return Application::configure(basePath: dirname(__DIR__))
         // TenantContext, never client input.
         $middleware->alias([
             'authorize' => EnsurePermission::class,
+            'module' => EnsureModuleEnabled::class,
+            // Per-tenant request cap (TENANCY.md V2 §7). Prefix intentionally
+            // NOT `throttle:` — Laravel special-cases that for the built-in
+            // ThrottleRequests (which bootstrap priority pulls ahead of
+            // ResolveTenantContext). This runs explicitly after tenant
+            // resolution.
+            'throttleTenant' => ThrottleTenant::class,
         ]);
 
         // Explicit middleware priority (SECURITY.md §17, TENANCY.md V2 §7, §10).

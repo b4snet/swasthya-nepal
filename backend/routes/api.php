@@ -157,13 +157,17 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
     // Session.
     Route::post('auth/logout', [AuthController::class, 'logout']);
     Route::get('auth/me', [AuthController::class, 'me']);
+    // Authenticated password change (SECURITY.md §1–2): verifies the current
+    // credential, enforces the strength floor, and revokes EVERY session
+    // (SECURITY.md §2 password change invalidates all outstanding tokens).
+    Route::post('auth/password/change', [AuthController::class, 'changePassword'])->middleware('throttle:writes','throttleTenant');
 
     // MFA lifecycle (Phase 2) — authenticated endpoints.
     Route::get('auth/mfa/status', [MfaController::class, 'status']);
-    Route::post('auth/mfa/enroll', [MfaController::class, 'enroll'])->middleware('throttle:writes');
-    Route::post('auth/mfa/activate', [MfaController::class, 'activate'])->middleware('throttle:writes');
-    Route::post('auth/mfa/disable', [MfaController::class, 'disable'])->middleware('throttle:writes');
-    Route::post('auth/mfa/recovery-codes', [MfaController::class, 'regenerateRecoveryCodes'])->middleware('throttle:writes');
+    Route::post('auth/mfa/enroll', [MfaController::class, 'enroll'])->middleware('throttle:writes','throttleTenant');
+    Route::post('auth/mfa/activate', [MfaController::class, 'activate'])->middleware('throttle:writes','throttleTenant');
+    Route::post('auth/mfa/disable', [MfaController::class, 'disable'])->middleware('throttle:writes','throttleTenant');
+    Route::post('auth/mfa/recovery-codes', [MfaController::class, 'regenerateRecoveryCodes'])->middleware('throttle:writes','throttleTenant');
     Route::get('users/me', [UserController::class, 'me']);
 
     // Organizations.
@@ -176,7 +180,7 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
     Route::get('organizations/{organization}/facilities', [FacilityController::class, 'index'])
         ->middleware('authorize:facility:view');
     Route::post('organizations/{organization}/facilities', [FacilityController::class, 'store'])
-        ->middleware('authorize:facility:create');
+        ->middleware('authorize:facility:create', 'throttleTenant');
     Route::get('facilities/{facility}', [FacilityController::class, 'show'])
         ->middleware('authorize:facility:view');
 
@@ -211,6 +215,20 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
     Route::post('platform/organizations/{organization}/provision', [OrganizationController::class, 'provision'])
         ->middleware('authorize:organization:manage');
 
+    // Tenant lifecycle (TENANCY.md V2 §13): platform-scoped transitions that
+    // move an organization through the state machine
+    // (active → suspended → closed → offboarded). Suspension/closure flip the
+    // status, which the ResolveTenantContext middleware enforces at the
+    // request boundary (403 TENANT_SUSPENDED).
+    Route::post('platform/organizations/{organization}/suspend', [OrganizationController::class, 'suspend'])
+        ->middleware('authorize:organization:manage');
+    Route::post('platform/organizations/{organization}/reactivate', [OrganizationController::class, 'reactivate'])
+        ->middleware('authorize:organization:manage');
+    Route::post('platform/organizations/{organization}/close', [OrganizationController::class, 'close'])
+        ->middleware('authorize:organization:manage');
+    Route::post('platform/organizations/{organization}/offboard', [OrganizationController::class, 'offboard'])
+        ->middleware('authorize:organization:manage');
+
     // Platform-scope role assignments (platform roles only — tenant roles are
     // granted by tenant administrators through the organization endpoints).
     Route::post('platform/users/{user}/assignments', [PlatformAssignmentController::class, 'grant'])
@@ -239,7 +257,9 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
 
     // Data Governance (PHASE 91) — classification, retention, export authorization,
     // correction workflows, tenant offboarding readiness.
-    Route::middleware(['authorize:admin:manage'])->prefix('governance')->group(function (): void {
+    // Read-only governance views are gated by audit:view; the tenant data
+    // export (portability/offboarding) is gated by data:export.
+    Route::middleware(['authorize:audit:view'])->prefix('governance')->group(function (): void {
         Route::get('classification', [
             DataGovernanceController::class, 'classification',
         ]);
@@ -253,6 +273,12 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
             DataGovernanceController::class, 'exportManifest',
         ]);
     });
+
+    // Tenant data export (TENANCY.md V2 §15, DATA_GOVERNANCE.md): the org
+    // admin exports their own tenant's facts-only bundle. The server derives
+    // the tenant from context; it is never client-chosen.
+    Route::post('governance/export', [DataGovernanceController::class, 'export'])
+        ->middleware('authorize:data:export');
 
     // Phase 4 — Hospital Administration catalogs. Reads scope to the
     // caller's facility; writes resolve the facility from the context or a
