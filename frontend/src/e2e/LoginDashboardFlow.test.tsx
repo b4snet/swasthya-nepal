@@ -10,6 +10,10 @@ import { jsonOk, jsonError, stubFetch } from '../test/helpers';
 import { useEffect } from 'react';
 
 const envResp = jsonOk({ data: { environment: 'testing', version: '1.0' } });
+// AuthProvider refreshes the httpOnly cookie on mount; on the login page there
+// is no session, so the refresh 401s. Prepended to fetch stubs so the response
+// slots line up (env is consumed by LoginPage first, then the refresh).
+const noSession = jsonError(401, 'UNAUTHORIZED', 'No active session.');
 
 function LocationSpy() {
   const loc = useLocation();
@@ -54,7 +58,7 @@ describe('E2E: Authentication + Role Routing', () => {
   });
 
   it('shows alert on invalid credentials (401)', async () => {
-    stubFetch(envResp, jsonError(401, 'INVALID_CREDENTIALS', 'Invalid credentials.'));
+    stubFetch(envResp, noSession, jsonError(401, 'INVALID_CREDENTIALS', 'Invalid credentials.'));
     renderLogin();
     const user = (await import('@testing-library/user-event')).default.setup();
     await user.type(screen.getByLabelText(/email/i), 'a@b.test');
@@ -64,7 +68,7 @@ describe('E2E: Authentication + Role Routing', () => {
   });
 
   it('shows rate-limit message on 429', async () => {
-    stubFetch(envResp, jsonError(429, 'RATE_LIMITED', 'Too many attempts'));
+    stubFetch(envResp, noSession, jsonError(429, 'RATE_LIMITED', 'Too many attempts'));
     renderLogin();
     const user = (await import('@testing-library/user-event')).default.setup();
     await user.type(screen.getByLabelText(/email/i), 'a@b.test');

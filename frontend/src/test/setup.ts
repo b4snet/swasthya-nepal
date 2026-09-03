@@ -1,6 +1,7 @@
 import '@testing-library/jest-dom/vitest';
 import { afterEach } from 'vitest';
 import { cleanup } from '@testing-library/react';
+import { tokenStore } from '../api/client';
 
 // Node >= 22 defines experimental `localStorage`/`sessionStorage` globals (they
 // return undefined unless --localstorage-file is passed). vitest 2.x's jsdom
@@ -56,4 +57,9 @@ afterEach(() => {
   cleanup();
   sessionStorage.clear();
   localStorage.clear();
+  // Reset the real api/client.ts singleton state between files. The
+  // singleThread worker runs all files in one V8 isolate; module-level
+  // singletons like tokenStore/accessTokenMemory persist and cause
+  // cross-file leakage that manifests as flaky findBy* timeouts.
+  tokenStore.clear();
 });

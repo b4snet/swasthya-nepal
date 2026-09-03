@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { useI18n } from '../i18n/I18nProvider';
 import { Button, Input } from '../components/ui';
@@ -118,6 +118,9 @@ export function LoginPage() {
           <Button type="submit" full loading={submitting}>
             {t('login.signIn')}
           </Button>
+          <p className="login__subtitle" style={{ textAlign: 'center', marginTop: 0 }}>
+            <Link to="/forgot-password">Forgot password?</Link>
+          </p>
         </form>
       </div>
     </main>

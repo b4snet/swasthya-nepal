@@ -9,7 +9,7 @@
  * This is the foundational security boundary for every frontend API call.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from 'vitest';
 
 // ─── Shared fixtures ─────────────────────────────────────────────────────────
 const VALID_TOKENS = {
@@ -42,29 +42,27 @@ const mockFetch = vi.fn();
 const sessionStore = new Map<string, string>();
 const localStore = new Map<string, string>();
 
-// Use beforeAll to ensure stubs are in place before any imports
-vi.hoisted(() => {
-  // These run before module imports
-});
-
-Object.defineProperty(globalThis, 'fetch', { value: mockFetch, writable: true, configurable: true });
-Object.defineProperty(globalThis, 'sessionStorage', {
-  value: {
+// Use vi.stubGlobal instead of Object.defineProperty so vitest can properly
+// track and restore these globals. Object.defineProperty bypasses vitest's
+// cleanup, causing cross-file contamination (PatientWorkflows + AdminPages).
+beforeAll(() => {
+  vi.stubGlobal('fetch', mockFetch);
+  vi.stubGlobal('sessionStorage', {
     getItem: (k: string) => sessionStore.get(k) ?? null,
     setItem: (k: string, v: string) => sessionStore.set(k, v),
     removeItem: (k: string) => sessionStore.delete(k),
     clear: () => sessionStore.clear(),
-  },
-  writable: true, configurable: true,
-});
-Object.defineProperty(globalThis, 'localStorage', {
-  value: {
+  });
+  vi.stubGlobal('localStorage', {
     getItem: (k: string) => localStore.get(k) ?? null,
     setItem: (k: string, v: string) => localStore.set(k, v),
     removeItem: (k: string) => localStore.delete(k),
     clear: () => localStore.clear(),
-  },
-  writable: true, configurable: true,
+  });
+});
+
+afterAll(() => {
+  vi.unstubAllGlobals();
 });
 
 // ─── Import after global mocks ──────────────────────────────────────────────
@@ -74,6 +72,7 @@ import type { AuthTokens } from '../api/client';
 beforeEach(() => {
   sessionStore.clear();
   localStore.clear();
+  tokenStore.clear(); // reset in-memory access token (module-level state)
   mockFetch.mockReset();
   mockFetch.mockResolvedValue(jsonResponse({ id: '1', name: 'test' }));
 });
@@ -83,47 +82,44 @@ beforeEach(() => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 describe('Phase 228 — Token store architecture', () => {
-  it('stores access token in sessionStorage (not localStorage)', () => {
+  it('stores access token in MEMORY ONLY (no sessionStorage, no localStorage)', () => {
     tokenStore.set(VALID_TOKENS);
-    expect(sessionStore.has('swasthya.accessToken')).toBe(true);
+    expect(sessionStore.has('swasthya.accessToken')).toBe(false);
     expect(localStore.has('swasthya.accessToken')).toBe(false);
   });
 
-  it('stores refresh token in localStorage (not sessionStorage)', () => {
+  it('never stores the refresh token in JS-accessible storage', () => {
     tokenStore.set(VALID_TOKENS);
-    expect(localStore.has('swasthya.refreshToken')).toBe(true);
+    expect(localStore.has('swasthya.refreshToken')).toBe(false);
     expect(sessionStore.has('swasthya.refreshToken')).toBe(false);
   });
 
-  it('returns null when no tokens are stored', () => {
+  it('returns null when no token is held in memory', () => {
     expect(tokenStore.get()).toBeNull();
   });
 
-  it('returns tokens when both access and refresh are present', () => {
+  it('returns the access token when held in memory (refresh via httpOnly cookie)', () => {
     tokenStore.set(VALID_TOKENS);
     const tokens = tokenStore.get();
     expect(tokens).not.toBeNull();
     expect(tokens?.accessToken).toBe(VALID_TOKENS.accessToken);
-    expect(tokens?.refreshToken).toBe(VALID_TOKENS.refreshToken);
   });
 
-  it('returns null when only access token is present', () => {
+  it('returns null when no access token is held in memory despite stale browser storage', () => {
+    // A leftover key in browser storage must never resurrect a session —
+    // tokens are authoritative only when in memory (cleared on reload/logout).
     sessionStore.set('swasthya.accessToken', 'abc');
-    expect(tokenStore.get()).toBeNull();
-  });
-
-  it('returns null when only refresh token is present', () => {
     localStore.set('swasthya.refreshToken', 'xyz');
     expect(tokenStore.get()).toBeNull();
   });
 
-  it('clear() removes both access and refresh tokens', () => {
+  it('clear() removes the in-memory access token', () => {
     tokenStore.set(VALID_TOKENS);
     tokenStore.clear();
     expect(tokenStore.get()).toBeNull();
   });
 
-  it('clear() removes tokens from the correct storage mechanism', () => {
+  it('clear() leaves no token residue in any browser storage', () => {
     tokenStore.set(VALID_TOKENS);
     tokenStore.clear();
     expect(sessionStore.has('swasthya.accessToken')).toBe(false);
@@ -141,8 +137,14 @@ describe('Phase 228 — Token store safety', () => {
     expect(localStore.has('swasthya.accessToken')).toBe(false);
   });
 
-  it('refresh token is NOT stored in sessionStorage', () => {
+  it('access token is NOT persisted in sessionStorage (memory only)', () => {
     tokenStore.set(VALID_TOKENS);
+    expect(sessionStore.has('swasthya.accessToken')).toBe(false);
+  });
+
+  it('refresh token is NOT stored in any browser storage (httpOnly cookie)', () => {
+    tokenStore.set(VALID_TOKENS);
+    expect(localStore.has('swasthya.refreshToken')).toBe(false);
     expect(sessionStore.has('swasthya.refreshToken')).toBe(false);
   });
 
@@ -420,7 +422,7 @@ describe('Phase 228 — Token refresh on 401', () => {
     expect(tokenStore.get()).toBeNull();
   });
 
-  it('sends refresh request to /api/v1/auth/refresh with refreshToken', async () => {
+  it('sends refresh request to /api/v1/auth/refresh with NO token in body (httpOnly cookie)', async () => {
     tokenStore.set(VALID_TOKENS);
     mockFetch
       .mockResolvedValueOnce(errorResponse(401, { message: 'expired' }))
@@ -434,8 +436,9 @@ describe('Phase 228 — Token refresh on 401', () => {
     await api.request('/api/v1/test');
     const refreshCall = mockFetch.mock.calls[1];
     expect(refreshCall[0]).toContain('/api/v1/auth/refresh');
-    const body = JSON.parse(refreshCall[1].body);
-    expect(body.refreshToken).toBe(VALID_TOKENS.refreshToken);
+    // The refresh token NEVER travels in the request body — it is sent via
+    // the httpOnly cookie automatically (SECURITY.md §4, §23).
+    expect(refreshCall[1].body).toBeUndefined();
   });
 });
 
@@ -460,15 +463,25 @@ describe('Phase 228 — Token refresh safety', () => {
     expect(refreshHeaders.Authorization).toBeUndefined();
   });
 
-  it('does not refresh when no tokens are stored', async () => {
-    mockFetch.mockResolvedValue(errorResponse(401, { message: 'no auth' }));
-    try { await api.request('/api/v1/test'); } catch (e) {
-      expect((e as ApiError).code).toBe('UNAUTHORIZED');
-    }
-    expect(mockFetch).toHaveBeenCalledTimes(1);
+  it('attempts a cookie-based refresh even when no in-memory token exists (reload restore)', async () => {
+    // After a page reload the in-memory access token is gone, but the
+    // httpOnly cookie may still hold a valid refresh session — so a 401
+    // MUST attempt refresh rather than silently dropping the request.
+    mockFetch
+      .mockResolvedValueOnce(errorResponse(401, { message: 'no auth' }))
+      .mockResolvedValueOnce({
+        ok: true, status: 200, json: async () => ({
+          data: { accessToken: 'restored', expiresIn: 3600, refreshExpiresIn: 604800 },
+        }),
+      })
+      .mockResolvedValueOnce(jsonResponse({ id: '1' }));
+
+    const result = await api.request<{ id: string }>('/api/v1/test');
+    expect(result).toEqual({ id: '1' });
+    expect(mockFetch).toHaveBeenCalledTimes(3);
   });
 
-  it('new tokens from refresh are stored immediately', async () => {
+  it('new access token from refresh is held in memory immediately', async () => {
     tokenStore.set(VALID_TOKENS);
     mockFetch
       .mockResolvedValueOnce(errorResponse(401, {}))
@@ -482,7 +495,8 @@ describe('Phase 228 — Token refresh safety', () => {
     await api.request('/api/v1/test');
     const tokens = tokenStore.get();
     expect(tokens?.accessToken).toBe('new-acc');
-    expect(tokens?.refreshToken).toBe('new-ref');
+    // Refresh token is never held in JS — delivered via httpOnly cookie only.
+    expect(localStore.has('swasthya.refreshToken')).toBe(false);
   });
 
   it('concurrent 401s only trigger one refresh (single-flight dedup)', async () => {

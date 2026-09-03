@@ -24,12 +24,17 @@ describe('Session expiry UX', () => {
     sessionStorage.clear();
   });
 
-  it('shows expired session banner when refresh token fails', async () => {
-    // Seed a refresh token so AuthProvider attempts refresh on mount.
-    localStorage.setItem('swasthya.refreshToken', 'expired-rt');
-    sessionStorage.setItem('swasthya.accessToken', 'expired-at');
+  // LoginPage fetches /health/env and AuthProvider refreshes the cookie on
+  // mount. Child effects (fetchEnvironment) run before the AuthProvider's
+  // refresh effect, so the first stub response serves env and the second the
+  // refresh call.
+  const envResponse = jsonOk({ environment: 'testing', isProduction: false });
+
+  it('shows expired session banner when the cookie-based refresh fails', async () => {
+    // AuthProvider ALWAYS attempts a cookie-based refresh on mount (the
+    // refresh token lives only in the httpOnly cookie, never JS storage).
     // Stub the refresh endpoint to fail (401).
-    stubFetch(jsonError(401, 'TOKEN_EXPIRED', 'Refresh token expired.'));
+    stubFetch(envResponse, jsonError(401, 'TOKEN_EXPIRED', 'Refresh token expired.'));
 
     renderLogin();
 
@@ -38,9 +43,8 @@ describe('Session expiry UX', () => {
   });
 
   it('clears the expired banner after login attempt', async () => {
-    localStorage.setItem('swasthya.refreshToken', 'expired-rt');
-    sessionStorage.setItem('swasthya.accessToken', 'expired-at');
     stubFetch(
+      envResponse,
       jsonError(401, 'TOKEN_EXPIRED', 'Refresh token expired.'), // refresh fails
     );
 
@@ -68,9 +72,26 @@ describe('Session expiry UX', () => {
     });
   });
 
-  it('does not show expired banner when there were no stored tokens', async () => {
+  it('recovers a valid session from the cookie on reload (no expired banner)', async () => {
+    // On reload with a valid cookie, refresh succeeds and restores the
+    // session — no expired banner, authenticated state.
+    stubFetch(
+      envResponse,
+      jsonOk({
+        accessToken: 'restored-at',
+        tokenType: 'Bearer',
+        expiresIn: 3600,
+        refreshToken: 'restored-rt',
+        refreshExpiresIn: 604800,
+        user: { id: 'u1', email: 'a@b.test', status: 'active' },
+        assignments: [{ organizationId: 'org-1', organizationCode: 'A', facilityId: 'fac-1', facilityName: 'Fac', roles: ['hospital_admin'] }],
+      }),
+    );
+
     renderLogin();
-    await act(async () => { await Promise.resolve(); });
-    expect(screen.queryByTestId('session-expired-banner')).not.toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('session-expired-banner')).not.toBeInTheDocument();
+    });
   });
 });

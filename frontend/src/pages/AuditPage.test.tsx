@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { AuthProvider, useAuth } from '../auth/AuthProvider';
 import { TenantProvider } from '../context/TenantContext';
 import { AuditPage } from './AuditPage';
-import { jsonOk, stubFetch } from '../test/helpers';
+import { jsonOk, jsonError, stubFetch } from '../test/helpers';
 
 // The real session flow: login() issues the POST /auth/login and the backend
 // returns the assignments payload. No local-storage-derived authorization.
@@ -26,7 +26,8 @@ function renderAudit(roles: string[], ...extra: Response[]) {
       refreshExpiresIn: 604800,
       user: { id: 'u1', email: 'x@y.test', status: 'active' },
       assignments: [{ organizationId: 'org-1', organizationCode: 'A', facilityId: 'fac-1', facilityName: 'Smoke Central', roles }],
-    }),
+    }), // login (Harness child effect runs first)
+    jsonError(401, 'UNAUTHORIZED', 'No active session.'), // mount refresh
     ...extra,
   );
   return render(

@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import { describe, expect, it, beforeEach } from 'vitest';
 import { AuthProvider, useAuth } from '../auth/AuthProvider';
 import { TenantProvider, useTenant } from './TenantContext';
-import { jsonOk, stubFetch } from '../test/helpers';
+import { jsonOk, jsonError, stubFetch } from '../test/helpers';
 
 function Probe() {
   const t = useTenant();
@@ -42,6 +42,8 @@ function renderTenant(assignments: unknown[], extra?: React.ReactNode) {
       user: { id: 'u1', email: 'x@y.test', status: 'active' },
       assignments,
     }),
+    // AuthProvider's mount refresh consumes this after the explicit login.
+    jsonError(401, 'UNAUTHORIZED', 'No active session.'),
   );
   return render(
     <AuthProvider>
@@ -171,7 +173,7 @@ describe('TenantContext', () => {
       const { logout } = useAuth();
       return <button data-testid="logout" onClick={() => void logout()}>logout</button>;
     }
-    // Provide two responses: one for login, one for the logout API call.
+    // Provide three responses: login, the mount refresh, and the logout API call.
     stubFetch(
       jsonOk({
         accessToken: 'at', refreshToken: 'rt', tokenType: 'Bearer',
@@ -181,6 +183,7 @@ describe('TenantContext', () => {
           { organizationId: 'org-1', organizationCode: 'A', facilityId: 'fac-1', facilityName: 'Smoke Central', roles: ['hospital_admin'] },
         ],
       }),
+      jsonError(401, 'UNAUTHORIZED', 'No active session.'), // mount refresh
       jsonOk(null), // response for logout API call
     );
     render(

@@ -35,6 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const restoring = useRef(false);
 
   const applySession = useCallback((data: { user: SessionUser; assignments: Assignment[]; accessToken: string; refreshToken: string; expiresIn: number; refreshExpiresIn: number }) => {
+    sessionApplied.current = true;
     api.setTokens({
       accessToken: data.accessToken,
       refreshToken: data.refreshToken,
@@ -56,6 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(async () => {
+    sessionApplied.current = true;
     try {
       await authApi.logout();
     } catch {
@@ -73,38 +75,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSessionExpiredReason(null);
   }, []);
 
-  // Session restoration on mount
+  // Session restoration on mount — always attempt a refresh via the httpOnly
+  // cookie. On page reload, the in-memory access token is gone but the cookie
+  // is still valid; the backend issues fresh tokens. If the cookie is missing
+  // or expired the refresh fails and we show the login page.
+  //
+  // The mount refresh is last-resort bookkeeping: if the user performs an
+  // explicit action (login/logout) or a session was already applied while the
+  // refresh was in flight, the refresh result must NOT clobber it.
+  const sessionApplied = useRef(false);
   useEffect(() => {
     if (restoring.current) return;
     restoring.current = true;
-    const tokens = api.getTokens();
-    if (!tokens) {
-      setStatus('unauthenticated');
-      return;
-    }
     authApi
-      .refresh(tokens.refreshToken)
-      .then((res) => applySession(res))
+      .refresh()
+      .then((res) => {
+        if (sessionApplied.current) return;
+        applySession(res);
+      })
       .catch(() => {
+        if (sessionApplied.current) return;
         api.clearTokens();
         setSessionExpiredReason('expired');
         setStatus('unauthenticated');
       });
   }, [applySession]);
 
-  // Proactive token refresh — refresh 5 minutes before access token expires
+  // Proactive token refresh — refresh 5 minutes before the access token
+  // expires using the absolute expiry recorded at issuance
   useEffect(() => {
     if (status !== 'authenticated') return;
     const tokens = api.getTokens();
     if (!tokens) return;
 
-    // Refresh 5 minutes before expiry, or immediately if already close
-    const expiresAt = Date.now() + tokens.expiresIn * 1000;
+    // Prefer the absolute expiry; fall back to relative expiresIn
+    const expiresAt = tokens.expiresAt ?? (Date.now() + tokens.expiresIn * 1000);
     const refreshIn = Math.max((expiresAt - Date.now()) - 5 * 60 * 1000, 0);
 
     const timer = setTimeout(() => {
       authApi
-        .refresh(tokens.refreshToken)
+        .refresh()
         .then((res) => applySession(res))
         .catch(() => {
           api.clearTokens();

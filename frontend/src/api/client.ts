@@ -51,6 +51,14 @@ export interface RequestOptions {
   retries?: number;
   timeoutMs?: number;
   signal?: AbortSignal;
+  credentials?: RequestCredentials;
+  /**
+   * Skip the single-flight 401 auto-refresh for this request. Set for the
+   * refresh/change endpoints themselves — a 401 there means the submitted
+   * credential (cookie/token) is expired, and re-triggering a refresh would
+   * loop and consume an extra request.
+   */
+  noRefresh?: boolean;
 }
 
 export interface AuthTokens {
@@ -58,6 +66,9 @@ export interface AuthTokens {
   refreshToken: string;
   expiresIn: number;
   refreshExpiresIn: number;
+  /** Absolute timestamp (ms) when the access token expires — used for
+   *  proactive refresh after page reload when expiresIn defaults to 3600. */
+  expiresAt?: number;
 }
 
 interface TokenStore {
@@ -66,31 +77,42 @@ interface TokenStore {
   clear(): void;
 }
 
-// Access token lives in memory only. The refresh token is persisted so a
-// reload can restore the session; the backend rotates it on every use and
-// flags reuse as a theft signal (SECURITY.md §4). This tradeoff is
-// documented in FRONTEND_FOUNDATION_REPORT.md §4.
-const REFRESH_KEY = 'swasthya.refreshToken';
+// Access token lives in MEMORY ONLY — not sessionStorage, not localStorage.
+// This eliminates the XSS attack vector where injected scripts can exfiltrate
+// the token from browser storage. The refresh token travels exclusively via
+// the httpOnly swasthya_refresh cookie (set by the backend on login/refresh);
+// on page reload the SPA calls POST /auth/refresh with no body — the browser
+// sends the cookie automatically — and receives fresh tokens. This removes
+// the previous localStorage persistence entirely (SECURITY.md §4, §23).
+let accessTokenMemory: string | null = null;
+let accessTokenExpiresAt: number | null = null;
 
 export const tokenStore: TokenStore = {
   get() {
-    const access = sessionStorage.getItem('swasthya.accessToken');
-    const refresh = localStorage.getItem(REFRESH_KEY);
-    if (!access || !refresh) return null;
+    const access = accessTokenMemory;
+    if (!access) return null;
     return {
       accessToken: access,
-      refreshToken: refresh,
+      // Refresh token is never held client-side — the httpOnly cookie is
+      // sent by the browser on /auth/refresh. These values exist only for
+      // type compatibility with AuthTokens; the refresh flow never reads
+      // refreshToken from this store.
+      refreshToken: '',
       expiresIn: 3600,
       refreshExpiresIn: 604800,
+      expiresAt: accessTokenExpiresAt ?? undefined,
     };
   },
   set(tokens) {
-    sessionStorage.setItem('swasthya.accessToken', tokens.accessToken);
-    localStorage.setItem(REFRESH_KEY, tokens.refreshToken);
+    accessTokenMemory = tokens.accessToken;
+    // Compute absolute expiry from the server-issued expiresIn (seconds).
+    accessTokenExpiresAt = Date.now() + (tokens.expiresIn ?? 3600) * 1000;
+    // Refresh token is delivered exclusively via the httpOnly cookie;
+    // never persisted in JS-accessible storage (SECURITY.md §23).
   },
   clear() {
-    sessionStorage.removeItem('swasthya.accessToken');
-    localStorage.removeItem(REFRESH_KEY);
+    accessTokenMemory = null;
+    accessTokenExpiresAt = null;
   },
 };
 
@@ -123,6 +145,7 @@ function createClient(baseUrl: string): ApiClient {
         method: options.method ?? 'GET',
         headers,
         body: options.body === undefined ? undefined : JSON.stringify(options.body),
+        credentials: options.credentials ?? 'same-origin',
         signal: controller.signal,
       });
     } catch (err) {
@@ -136,27 +159,32 @@ function createClient(baseUrl: string): ApiClient {
   };
 
   const refreshTokens = async (): Promise<boolean> => {
-    const tokens = tokenStore.get();
-    if (!tokens) return false;
     try {
+      // The refresh token travels exclusively via the httpOnly cookie
+      // (swasthya_refresh) — never in the request body or JS-accessible
+      // storage. The browser sends it automatically on same-origin requests
+      // (SECURITY.md §4, §23). On page reload, tokenStore.get() returns null
+      // (access token was in memory), but the cookie is still valid and the
+      // backend accepts it.
       const res = await fetch(`${baseUrl}/api/v1/auth/refresh`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken: tokens.refreshToken }),
+        credentials: 'same-origin',
       });
-      const body = (await res.json()) as { data?: { accessToken: string; refreshToken: string; expiresIn: number; refreshExpiresIn: number } };
+      const body = (await res.json()) as { data?: { accessToken: string; expiresIn: number } };
       if (!res.ok || !body.data) {
         tokenStore.clear();
         return false;
       }
       tokenStore.set({
         accessToken: body.data.accessToken,
-        refreshToken: body.data.refreshToken,
+        refreshToken: '', // cookie-only; not held in JS
         expiresIn: body.data.expiresIn,
-        refreshExpiresIn: body.data.refreshExpiresIn,
+        refreshExpiresIn: 604800,
       });
       return true;
     } catch {
+      tokenStore.clear();
       return false;
     }
   };
@@ -195,10 +223,11 @@ function createClient(baseUrl: string): ApiClient {
         return body.data;
       }
       if (res.status === 401) {
-        // Don't attempt staff token refresh for portal routes —
-        // portal tokens use a separate auth system and refreshing
-        // via /auth/refresh would fail and clear the portal token.
-        if (!path.startsWith('/api/v1/portal/')) {
+        // Don't attempt staff token refresh for portal/refresh routes first —
+        // portal tokens use a separate auth system, and a 401 on /auth/refresh
+        // itself means the cookie is expired (re-refreshing would loop).
+        const skip = options.noRefresh === true || path.startsWith('/api/v1/portal/');
+        if (!skip) {
           // One single-flight refresh attempt, then a single replay.
           pendingRefresh ??= refreshTokens();
           const ok = await pendingRefresh;

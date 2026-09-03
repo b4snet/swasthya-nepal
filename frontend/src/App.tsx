@@ -17,6 +17,8 @@ function ParamRedirect({ to }: { to: (p: Record<string, string | undefined>) => 
 
 // Core pages — eagerly loaded
 import { LoginPage } from './pages/LoginPage';
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { ForbiddenPage } from './pages/ForbiddenPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { RoleDashboardRouter } from './auth/RoleDashboardRouter';
@@ -183,6 +185,8 @@ export function App() {
         <ToastProvider>
           <Routes>
             <Route path="/login" element={<LoginRoute />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
             <Route path="/forbidden" element={<ForbiddenPage />} />
             <Route path="/portal/activate/:token" element={<LazySuspense><PortalActivationPage /></LazySuspense>} />
             <Route path="/portal" element={<LazySuspense><PatientPortalPage /></LazySuspense>} />

@@ -123,14 +123,15 @@ describe('Phase 230 — Login safety', () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 describe('Phase 230 — Refresh architecture', () => {
-  it('sends POST to /api/v1/auth/refresh with refreshToken', async () => {
+  it('sends POST to /api/v1/auth/refresh with no body (httpOnly cookie)', async () => {
     mockRequest.mockResolvedValue({
       accessToken: 'new-at', refreshToken: 'new-rt', expiresIn: 3600, refreshExpiresIn: 604800,
     });
-    await authApi.refresh('refresh-token-xyz');
+    await authApi.refresh();
     expect(mockRequest).toHaveBeenCalledWith('/api/v1/auth/refresh', {
       method: 'POST',
-      body: { refreshToken: 'refresh-token-xyz' },
+      credentials: 'same-origin',
+      noRefresh: true,
     });
   });
 
@@ -139,42 +140,49 @@ describe('Phase 230 — Refresh architecture', () => {
       accessToken: 'new-at', refreshToken: 'new-rt', expiresIn: 3600, refreshExpiresIn: 604800,
     };
     mockRequest.mockResolvedValue(resp);
-    const result = await authApi.refresh('old-rt');
+    const result = await authApi.refresh();
     expect(result.accessToken).toBe('new-at');
     expect(result.refreshToken).toBe('new-rt');
   });
 });
 
 describe('Phase 230 — Refresh safety', () => {
-  it('refresh token is sent in body, never in URL', async () => {
+  it('does not place the refresh token in the URL', async () => {
     mockRequest.mockResolvedValue({});
-    await authApi.refresh('refresh-token-xyz');
+    await authApi.refresh();
     const url = mockRequest.mock.calls[0][0] as string;
-    expect(url).not.toContain('refresh-token-xyz');
+    expect(url).toBe('/api/v1/auth/refresh');
     expect(url).not.toContain('refresh_token');
+  });
+
+  it('sends no refresh token in the requested body (cookie-only transport)', async () => {
+    mockRequest.mockResolvedValue({});
+    await authApi.refresh();
+    const opts = mockRequest.mock.calls[0][1] as Record<string, unknown>;
+    // The client must NOT put the refresh token in a JS-sendable request —
+    // the httpOnly cookie is the only carrier (SECURITY.md §4, §23).
+    expect(opts.body).toBeUndefined();
   });
 
   it('refresh does not include client-side timestamp', async () => {
     mockRequest.mockResolvedValue({});
-    await authApi.refresh('rt');
-    const body = mockRequest.mock.calls[0][1].body;
-    expect(body).not.toHaveProperty('timestamp');
-    expect(body).not.toHaveProperty('client_time');
+    await authApi.refresh();
+    const opts = mockRequest.mock.calls[0][1] as Record<string, unknown>;
+    expect(opts.body).toBeUndefined();
   });
 
   it('refresh endpoint is server-auditable', async () => {
     mockRequest.mockResolvedValue({});
-    await authApi.refresh('rt');
-    expect(mockRequest.mock.calls[0][1].body).not.toHaveProperty('skip_audit');
+    await authApi.refresh();
+    const opts = mockRequest.mock.calls[0][1] as Record<string, unknown>;
+    expect(opts.body).toBeUndefined();
   });
 
-  it('refresh does not include Authorization header (uses body only)', async () => {
+  it('refresh uses same-origin credentials so the httpOnly cookie is sent', async () => {
     mockRequest.mockResolvedValue({});
-    await authApi.refresh('rt');
-    // The authApi.refresh calls api.request with only body, no headers
-    const opts = mockRequest.mock.calls[0][1];
-    expect(opts).not.toHaveProperty('headers');
-    expect(opts).not.toHaveProperty('Authorization');
+    await authApi.refresh();
+    const opts = mockRequest.mock.calls[0][1] as Record<string, unknown>;
+    expect(opts.credentials).toBe('same-origin');
   });
 });
 
@@ -495,8 +503,9 @@ describe('Phase 230 — Audit trail', () => {
 
   it('refresh is server-auditable', async () => {
     mockRequest.mockResolvedValue({});
-    await authApi.refresh('rt');
-    expect(mockRequest.mock.calls[0][1].body).not.toHaveProperty('skip_audit');
+    await authApi.refresh();
+    // Request carries no body (cookie-only); no client-side skip_audit flag.
+    expect(mockRequest.mock.calls[0][1].body).toBeUndefined();
   });
 
   it('logout is server-auditable', async () => {
@@ -566,12 +575,14 @@ describe('Phase 230 — Privacy', () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 describe('Phase 230 — Architecture completeness', () => {
-  it('authApi exposes exactly 3 methods: login, refresh, logout', () => {
+  it('authApi exposes exactly 5 methods: login, refresh, logout, forgotPassword, resetPassword', () => {
     const methods = Object.keys(authApi);
     expect(methods).toContain('login');
     expect(methods).toContain('refresh');
     expect(methods).toContain('logout');
-    expect(methods.length).toBe(3);
+    expect(methods).toContain('forgotPassword');
+    expect(methods).toContain('resetPassword');
+    expect(methods.length).toBe(5);
   });
 
   it('portalActivationApi exposes exactly 3 methods: verifyToken, activate, forgotPassword', () => {

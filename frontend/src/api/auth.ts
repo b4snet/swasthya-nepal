@@ -9,10 +9,28 @@ export const authApi = {
   login: (email: string, password: string) =>
     api.request<LoginResponse>('/api/v1/auth/login', { method: 'POST', body: { email, password } }),
 
-  refresh: (refreshToken: string) =>
-    api.request<LoginResponse>('/api/v1/auth/refresh', { method: 'POST', body: { refreshToken } }),
+  // Refresh uses the httpOnly swasthya_refresh cookie — the browser sends it
+  // automatically on same-origin requests. No body is needed; the backend
+  // reads from the cookie (SECURITY.md §4, §23). noRefresh: a 401 here means
+  // the cookie is expired — re-triggering the auto-refresh would loop.
+  refresh: () =>
+    api.request<LoginResponse>('/api/v1/auth/refresh', { method: 'POST', credentials: 'same-origin', noRefresh: true }),
 
   logout: (facilityId?: string | null) => api.request<void>('/api/v1/auth/logout', { method: 'POST', ...opt(facilityId) }),
+
+  // Staff password reset (SECURITY.md §2, §5): the forgot response is generic
+  // on purpose to avoid account enumeration; the reset token is single-use and
+  // short-lived, delivered by email.
+  forgotPassword: (email: string) =>
+    api.request<{ message: string }>(
+      '/api/v1/auth/password/forgot',
+      { method: 'POST', body: { email } },
+    ),
+  resetPassword: (token: string, password: string) =>
+    api.request<{ message: string }>(
+      '/api/v1/auth/password/reset',
+      { method: 'POST', body: { token, password } },
+    ),
 };
 
 export const portalActivationApi = {

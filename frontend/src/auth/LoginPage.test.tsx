@@ -6,8 +6,11 @@ import { LoginPage } from '../pages/LoginPage';
 import { AuthProvider } from './AuthProvider';
 import { jsonError, jsonOk, stubFetch, assignments } from '../test/helpers';
 
-/** Environment response that stubFetch will return for the /health/env call. */
+/** Environment response that stubFetch returns for the /health/env call. */
 const envResponse = jsonOk({ environment: 'testing', isProduction: false });
+
+/** AuthProvider refreshes from the httpOnly cookie on mount; no session => 401. */
+const noSessionRefresh = jsonError(401, 'UNAUTHORIZED', 'No active session.');
 
 function renderLogin() {
   return render(
@@ -19,37 +22,39 @@ function renderLogin() {
   );
 }
 
+const loginSuccess = {
+  accessToken: 'at-1',
+  tokenType: 'Bearer',
+  expiresIn: 3600,
+  refreshToken: 'rt-1',
+  refreshExpiresIn: 604800,
+  user: { id: 'u1', email: 'a@b.test', status: 'active' },
+  assignments: assignments(),
+} as const;
+
 describe('LoginPage', () => {
   it('submits real credentials to the backend login endpoint', async () => {
-    const fetchMock = stubFetch(
-      envResponse,
-      jsonOk({
-        accessToken: 'at-1',
-        tokenType: 'Bearer',
-        expiresIn: 3600,
-        refreshToken: 'rt-1',
-        refreshExpiresIn: 604800,
-        user: { id: 'u1', email: 'a@b.test', status: 'active' },
-        assignments: assignments(),
-      }),
-    );
+    const fetchMock = stubFetch(noSessionRefresh, envResponse, jsonOk(loginSuccess));
     const user = userEvent.setup();
     renderLogin();
     await user.type(screen.getByLabelText(/email/i), 'a@b.test');
     await user.type(screen.getByLabelText(/password/i), 'secret');
     await user.click(screen.getByRole('button', { name: 'Sign in' }));
 
-    // First call is env, second is login.
+    // Call 0 = env fetch, call 1 = AuthProvider cookie refresh (401),
+    // call 2 = login.
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(fetchMock).toHaveBeenCalledTimes(3);
     });
-    const [url, init] = fetchMock.mock.calls[1] as unknown as [string, RequestInit];
-    expect(url).toBe('/api/v1/auth/login');
-    expect(JSON.parse(String(init.body))).toEqual({ email: 'a@b.test', password: 'secret' });
+    const loginCall = fetchMock.mock.calls.find(
+      ([url]) => String(url) === '/api/v1/auth/login',
+    ) as unknown as [string, RequestInit] | undefined;
+    expect(loginCall?.[0]).toBe('/api/v1/auth/login');
+    expect(JSON.parse(String(loginCall?.[1].body))).toEqual({ email: 'a@b.test', password: 'secret' });
   });
 
   it('maps a 401 to a user-facing error message', async () => {
-    stubFetch(envResponse, jsonError(401, 'INVALID_CREDENTIALS', 'Invalid credentials.'));
+    stubFetch(noSessionRefresh, envResponse, jsonError(401, 'INVALID_CREDENTIALS', 'Invalid credentials.'));
     const user = userEvent.setup();
     renderLogin();
     await user.type(screen.getByLabelText(/email/i), 'a@b.test');
@@ -59,7 +64,7 @@ describe('LoginPage', () => {
   });
 
   it('shows a rate-limit specific message on 429', async () => {
-    stubFetch(envResponse, jsonError(429, 'RATE_LIMITED', 'Too many attempts.'));
+    stubFetch(noSessionRefresh, envResponse, jsonError(429, 'RATE_LIMITED', 'Too many attempts.'));
     const user = userEvent.setup();
     renderLogin();
     await user.type(screen.getByLabelText(/email/i), 'a@b.test');
@@ -72,7 +77,7 @@ describe('LoginPage', () => {
     // The form is intentionally noValidate: the backend is authoritative.
     // An empty submit reaches the API and its 422 VALIDATION surfaces as a
     // user-facing message rather than being silently swallowed.
-    stubFetch(envResponse, jsonError(422, 'VALIDATION', 'The email field is required.'));
+    stubFetch(noSessionRefresh, envResponse, jsonError(422, 'VALIDATION', 'The email field is required.'));
     const user = userEvent.setup();
     renderLogin();
     await user.click(screen.getByRole('button', { name: 'Sign in' }));
