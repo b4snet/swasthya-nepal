@@ -9,6 +9,7 @@ use App\Models\Organization;
 use App\Models\Role;
 use App\Models\RoleAssignment;
 use App\Models\User;
+use App\Services\BreachedPasswordService;
 use App\Support\AccessCheck;
 use App\Support\AuditLogger;
 use App\Support\Envelope;
@@ -29,6 +30,7 @@ final class UserController extends Controller
 {
     public function __construct(
         private readonly AuditLogger $audit,
+        private readonly BreachedPasswordService $breach,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -77,6 +79,17 @@ final class UserController extends Controller
             );
         }
         $role = $this->resolveRoleForTenant((string) $request->validated('roleCode'), $organization, $request);
+
+        // Breached-password rejection at provisioning (SECURITY.md §2): a
+        // credential that appears in known breach lists is refused before a
+        // user/identity is ever created. Off by default under tests.
+        if ($this->breach->enabled() && $this->breach->isBreached((string) $request->validated('password'))) {
+            throw new ApiException(
+                ErrorCodes::BREACHED_PASSWORD,
+                'This password appears in known password-breach lists. Choose a different one.',
+                422,
+            );
+        }
 
         $user = DB::transaction(function () use ($request, $organization, $role, $context): User {
             $user = User::query()->create([

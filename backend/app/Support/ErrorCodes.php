@@ -26,9 +26,13 @@ final class ErrorCodes
 
     public const INVALID_CREDENTIALS = 'INVALID_CREDENTIALS';
 
+    public const BREACHED_PASSWORD = 'BREACHED_PASSWORD';
+
     public const FORBIDDEN = 'FORBIDDEN';
 
     public const SCOPE_DENIED = 'SCOPE_DENIED';
+
+    public const MODULE_DISABLED = 'MODULE_DISABLED';
 
     public const FACILITY_DENIED = 'FACILITY_DENIED';
 

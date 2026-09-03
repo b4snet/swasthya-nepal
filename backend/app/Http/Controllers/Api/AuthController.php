@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Api;
 
 use App\Exceptions\ApiException;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Auth\ChangePasswordRequest;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RefreshRequest;
 use App\Models\User;
+use App\Services\BreachedPasswordService;
 use App\Services\MfaService;
 use App\Services\RefreshTokenService;
 use App\Support\AuditLogger;
@@ -15,7 +17,6 @@ use App\Support\Envelope;
 use App\Support\ErrorCodes;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Symfony\Component\HttpFoundation\Cookie;
@@ -39,6 +40,7 @@ final class AuthController extends Controller
         private readonly RefreshTokenService $refreshTokens,
         private readonly AuditLogger $audit,
         private readonly MfaService $mfa,
+        private readonly BreachedPasswordService $breach,
     ) {}
 
     public function login(LoginRequest $request): JsonResponse
@@ -46,12 +48,16 @@ final class AuthController extends Controller
         $email = strtolower(trim((string) $request->validated('email')));
         $password = (string) $request->validated('password');
 
-        $this->assertNotLockedOut($email, $request);
-
         $user = User::query()->whereRaw('lower(email) = ?', [$email])->first();
 
+        // DB-backed per-account lockout (SECURITY.md §18): a locked user is
+        // refused before any credential work, with the remaining lockout
+        // window in Retry-After. The row read here is identity only — the
+        // password hash is never loaded into memory until the check below.
+        $this->assertNotLockedOut($user, $request);
+
         if ($user === null || ! Hash::check($password, (string) $user->password_hash)) {
-            $this->recordFailedAttempt($email);
+            $this->recordFailedAttempt($user, $request);
 
             $this->audit->record('auth.login_failed', 'user', $user?->getKey(), [], $request, actorEmail: $email);
 
@@ -84,9 +90,13 @@ final class AuthController extends Controller
             );
         }
 
-        Cache::forget('auth.failures:'.$email);
-
-        $user->forceFill(['last_login_at' => now()])->save();
+        // Success: clear the DB-backed lockout state and stamp last_login_at.
+        $user->forceFill([
+            'last_login_at' => now(),
+            'failed_attempts' => 0,
+            'locked_until' => null,
+            'last_failed_at' => null,
+        ])->save();
 
         $accessToken = $user->createToken(
             'access',
@@ -252,6 +262,99 @@ final class AuthController extends Controller
     }
 
     /**
+     * Authenticated password change (SECURITY.md §1–2, MASTER_RULES.md §7).
+     *
+     * Requires a valid session and the current password (proof of account
+     * control), enforces the shared strength floor, and — because the
+     * security contract states that a password change invalidates ALL
+     * outstanding tokens and sessions — revokes the current access token and
+     * every refresh token for the user (SECURITY.md §2, §4, §5). The client
+     * must therefore re-authenticate after a successful change.
+     */
+    public function changePassword(ChangePasswordRequest $request): JsonResponse
+    {
+        $user = $request->user();
+
+        // Proof of account control: the supplied current password must match.
+        // This is a credential-verification failure, not a session fault.
+        if (! Hash::check((string) $request->validated('current_password'), (string) $user->password_hash)) {
+            $this->audit->record(
+                'auth.password_change_failed',
+                'user',
+                $user->getKey(),
+                ['reason' => 'current_password_mismatch'],
+                $request,
+                $user,
+            );
+
+            throw new ApiException(
+                ErrorCodes::INVALID_CREDENTIALS,
+                'The current password is incorrect.',
+                401,
+            );
+        }
+
+        $newPassword = (string) $request->validated('new_password');
+
+        // The new password must actually differ from the current credential.
+        if (Hash::check($newPassword, (string) $user->password_hash)) {
+            $this->audit->record(
+                'auth.password_change_failed',
+                'user',
+                $user->getKey(),
+                ['reason' => 'new_matches_current'],
+                $request,
+                $user,
+            );
+
+            throw new ApiException(
+                ErrorCodes::INVALID_REQUEST,
+                'The new password must be different from the current password.',
+                422,
+            );
+        }
+
+        // Breached-password rejection (SECURITY.md §2): a new credential that
+        // appears in known breach lists is refused, k-anonymously (only a
+        // SHA-1 prefix ever leaves the server). Off by default under tests.
+        if ($this->breach->enabled() && $this->breach->isBreached($newPassword)) {
+            $this->audit->record(
+                'auth.password_change_failed',
+                'user',
+                $user->getKey(),
+                ['reason' => 'breached_password'],
+                $request,
+                $user,
+            );
+
+            throw new ApiException(
+                ErrorCodes::BREACHED_PASSWORD,
+                'This password appears in known password-breach lists. Choose a different one.',
+                422,
+            );
+        }
+
+        // The `hashed` cast hashes the plaintext on save; users is a
+        // NON-RLS identity table, so the authenticated principal may update
+        // its own credential row directly.
+        $user->forceFill([
+            'password_hash' => $newPassword,
+            'password_changed_at' => now(),
+        ])->save();
+
+        $this->audit->record('auth.password_changed', 'user', $user->getKey(), [], $request, $user);
+
+        // SECURITY.md §2/§4/§5: password change invalidates every outstanding
+        // token and session for this user — revoke the current access token
+        // and all refresh tokens, immediately and everywhere.
+        $user->currentAccessToken()?->delete();
+        $this->refreshTokens->revokeAllForUser($user);
+
+        return response()->json(null, 204)
+            ->withCookie($this->expiredRefreshCookie());
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function userPayload(User $user): array
@@ -328,28 +431,56 @@ final class AuthController extends Controller
         );
     }
 
-    private function assertNotLockedOut(string $email, Request $request): void
+    /**
+     * DB-backed per-account lockout check (SECURITY.md §18). A user whose
+     * stored locked_until is still in the future is refused with the remaining
+     * window in Retry-After. Accounts that do not exist cannot be locked — the
+     * response is identical to the generic INVALID_CREDENTIALS path so no
+     * account presence is revealed.
+     */
+    private function assertNotLockedOut(?User $user, Request $request): void
     {
-        $failures = (int) Cache::get('auth.failures:'.$email, 0);
-
-        if ($failures >= config('swasthya.auth.login_failure_threshold')) {
-            $this->audit->record('auth.lockout', 'user', null, ['email' => $email], $request);
-
-            throw new ApiException(
-                ErrorCodes::RATE_LIMITED,
-                'Too many failed login attempts. Try again later.',
-                429,
-                [],
-                ['Retry-After' => (string) (config('swasthya.auth.login_lockout_minutes') * 60)],
-            );
+        if ($user === null || $user->locked_until === null || ! $user->locked_until->isFuture()) {
+            return;
         }
+
+        $this->audit->record('auth.lockout', 'user', $user->getKey(), ['email' => $user->email], $request);
+
+        throw new ApiException(
+            ErrorCodes::RATE_LIMITED,
+            'Too many failed login attempts. Try again later.',
+            429,
+            [],
+            ['Retry-After' => (string) ($user->locked_until->diffInSeconds(now()) ?: 1)],
+        );
     }
 
-    private function recordFailedAttempt(string $email): void
+    /**
+     * Persist a failed attempt and derive the lockout window in the user's row.
+     * Row-locked update serializes concurrent attempts so the counter can
+     * never race (SECURITY.md §18). Accounts that do not exist are silently
+     * skipped — there is no row to lock; the generic failure path already
+     * protects them.
+     */
+    private function recordFailedAttempt(?User $user, Request $request): void
     {
-        $key = 'auth.failures:'.$email;
-        $failures = (int) Cache::get($key, 0) + 1;
+        if ($user === null) {
+            return;
+        }
 
-        Cache::put($key, $failures, now()->addMinutes(config('swasthya.auth.login_lockout_minutes')));
+        DB::transaction(function () use ($user): void {
+            /** @var User $locked */
+            $locked = User::query()->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
+
+            $attempts = $locked->failed_attempts + 1;
+            $threshold = (int) config('swasthya.auth.login_failure_threshold');
+            $lockMinutes = (int) config('swasthya.auth.login_lockout_minutes');
+
+            $locked->forceFill([
+                'failed_attempts' => $attempts,
+                'last_failed_at' => now(),
+                'locked_until' => $attempts >= $threshold ? now()->addMinutes($lockMinutes) : $locked->locked_until,
+            ])->save();
+        });
     }
 }

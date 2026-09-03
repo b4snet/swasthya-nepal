@@ -54,6 +54,9 @@ class User extends Authenticatable
         'profile_data',
         'professional_status',
         'onboarding_completed_at',
+        'failed_attempts',
+        'locked_until',
+        'last_failed_at',
     ];
 
     /**
@@ -78,6 +81,9 @@ class User extends Authenticatable
             'onboarding_complete' => 'boolean',
             'profile_data' => 'array',
             'onboarding_completed_at' => 'datetime',
+            'failed_attempts' => 'integer',
+            'locked_until' => 'datetime',
+            'last_failed_at' => 'datetime',
         ];
     }
 

@@ -81,12 +81,16 @@ final class PasswordResetService
             'password_hash' => $newPassword, // hashed by the model cast
             'password_changed_at' => now(),
             'status' => User::STATUS_ACTIVE,
+            // A completed reset is proof of account control: clear any login
+            // lockout persisted on the row (SECURITY.md §18).
+            'failed_attempts' => 0,
+            'locked_until' => null,
+            'last_failed_at' => null,
         ])->save();
 
         // A compromised or lost token is not a credential anyone keeps using:
         // every session dies on password change (SECURITY.md §5).
         app(RefreshTokenService::class)->revokeAllForUser($user);
-        Cache::forget('auth.failures:'.strtolower((string) $user->email));
         Cache::forget($this->failureKey($user));
 
         return $user;

@@ -35,6 +35,18 @@ return [
         'login_failure_threshold' => (int) env('SWASTHYA_LOGIN_FAILURE_THRESHOLD', 5),
         'login_lockout_minutes' => (int) env('SWASTHYA_LOGIN_LOCKOUT_MINUTES', 15),
 
+        // Breached-password checking (SECURITY.md §2, §20): k-anonymity query
+        // against Have I Been Pwned's Pwned Passwords range endpoint. Only the
+        // first 5 SHA-1 hex chars leave the server. fail_policy:
+        // 'fail-open' (default) treats an outage as "not breached" so users are
+        // never locked out of setting a password; 'fail-closed' blocks instead.
+        'breach' => [
+            'enabled' => (bool) env('SWASTHYA_BREACH_PASSWORD_CHECKING', true),
+            'api_url' => (string) env('SWASTHYA_BREACH_API_URL', 'https://api.pwnedpasswords.com'),
+            'timeout_seconds' => (float) env('SWASTHYA_BREACH_TIMEOUT_SECONDS', 3),
+            'fail_policy' => (string) env('SWASTHYA_BREACH_FAIL_POLICY', 'fail-open'),
+        ],
+
         // Phase 3 — Supabase-native access-token claims (see
         // App\Support\JwtClaims). HS256-signed JWTs whose payload carries the
         // five `app_*` claims the RLS layer reads from `request.jwt.claims`.
@@ -60,6 +72,10 @@ return [
         'api' => (int) env('SWASTHYA_RATE_LIMIT_API', 300),   // default reads
         'auth' => (int) env('SWASTHYA_RATE_LIMIT_AUTH', 5),   // authentication endpoints
         'writes' => (int) env('SWASTHYA_RATE_LIMIT_WRITES', 60), // create/mutate endpoints
+        // Per-tenant aggregate (TENANCY.md V2 §7): a per-minute budget shared
+        // by all requests within a tenant, applied AFTER tenant resolution so
+        // one tenant cannot starve another. Empty = no per-tenant cap.
+        'tenant' => (int) env('SWASTHYA_RATE_LIMIT_TENANT', 0),
     ],
 
 ];
