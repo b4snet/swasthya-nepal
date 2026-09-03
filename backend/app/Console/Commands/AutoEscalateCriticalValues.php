@@ -5,11 +5,15 @@ namespace App\Console\Commands;
 use App\Models\CriticalValueEvent;
 use App\Models\Staff;
 use App\Services\Notification\NotificationService;
+use App\Support\Concerns\RunsInTenantContext;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
 /**
  * Automatically escalate unacknowledged critical lab values after a timeout.
+ *
+ * Each event is processed inside a transaction with the tenant context
+ * restored from the event's stored tenant_id (TENANCY.md V2 §12).
  *
  * Usage:
  *   php artisan critical-values:auto-escalate [--timeout_minutes=30] [--dry-run]
@@ -24,6 +28,8 @@ use Illuminate\Support\Facades\DB;
  */
 final class AutoEscalateCriticalValues extends Command
 {
+    use RunsInTenantContext;
+
     protected $signature = 'critical-values:auto-escalate
         {--timeout_minutes=30 : Minutes before auto-escalation}
         {--dry-run : Show what would be escalated without changing data}';
@@ -66,71 +72,78 @@ final class AutoEscalateCriticalValues extends Command
         $escalated = 0;
 
         foreach ($events as $event) {
-            // Find a supervisor (any active doctor in the same tenant) as the escalator
-            $supervisor = Staff::query()
-                ->where('tenant_id', $event->tenant_id)
-                ->where('status', 'active')
-                ->where('role_code', 'doctor')
-                ->where('id', '!=', $event->target_staff_id)
-                ->first();
+            $context = $this->contextFromEvent([
+                'tenant_id' => $event->tenant_id,
+                'facility_id' => $event->facility_id,
+            ]);
 
-            // Fallback: use any active staff
-            if (! $supervisor) {
+            $this->runInTenantContext($context, function () use ($event, $notifications, $timeoutMinutes, &$escalated) {
+                // Find a supervisor (any active doctor in the same tenant) as the escalator
                 $supervisor = Staff::query()
                     ->where('tenant_id', $event->tenant_id)
                     ->where('status', 'active')
+                    ->where('role_code', 'doctor')
                     ->where('id', '!=', $event->target_staff_id)
                     ->first();
-            }
 
-            if (! $supervisor) {
-                $this->warn("  Skipping event {$event->getKey()}: no available supervisor to escalate.");
+                // Fallback: use any active staff
+                if (! $supervisor) {
+                    $supervisor = Staff::query()
+                        ->where('tenant_id', $event->tenant_id)
+                        ->where('status', 'active')
+                        ->where('id', '!=', $event->target_staff_id)
+                        ->first();
+                }
 
-                continue;
-            }
+                if (! $supervisor) {
+                    $this->warn("  Skipping event {$event->getKey()}: no available supervisor to escalate.");
 
-            $result = DB::table('critical_value_events')
-                ->where('id', $event->getKey())
-                ->where('status', CriticalValueEvent::STATUS_TRIGGERED)
-                ->where('lock_version', $event->lock_version)
-                ->update([
-                    'status' => CriticalValueEvent::STATUS_ESCALATED,
-                    'escalated_by_staff_id' => $supervisor->getKey(),
-                    'escalated_at' => now(),
-                    'lock_version' => $event->lock_version + 1,
-                    'updated_at' => now(),
-                ]);
+                    return;
+                }
 
-            if ($result !== 1) {
-                $this->warn("  Skipped event {$event->getKey()}: concurrent modification.");
+                $result = DB::table('critical_value_events')
+                    ->where('id', $event->getKey())
+                    ->where('status', CriticalValueEvent::STATUS_TRIGGERED)
+                    ->where('lock_version', $event->lock_version)
+                    ->update([
+                        'status' => CriticalValueEvent::STATUS_ESCALATED,
+                        'escalated_by_staff_id' => $supervisor->getKey(),
+                        'escalated_at' => now(),
+                        'lock_version' => $event->lock_version + 1,
+                        'updated_at' => now(),
+                    ]);
 
-                continue;
-            }
+                if ($result !== 1) {
+                    $this->warn("  Skipped event {$event->getKey()}: concurrent modification.");
 
-            // Send in-app notification to the target clinician
-            if ($event->target?->user_id) {
+                    return;
+                }
+
+                // Send in-app notification to the target clinician
+                if ($event->target?->user_id) {
+                    $testName = $event->item?->test?->name ?? 'Unknown test';
+                    $patientName = trim(($event->patient?->first_name ?? '').' '.($event->patient?->last_name ?? ''));
+
+                    $notifications->createNotification(
+                        tenantId: $event->tenant_id,
+                        userId: $event->target->user_id,
+                        type: 'critical_value_escalated',
+                        channel: 'in_app',
+                        payload: [
+                            'subject' => 'URGENT: Critical value auto-escalated',
+                            'body' => "{$testName} for patient {$patientName} was not acknowledged within {$timeoutMinutes} minutes and has been auto-escalated.",
+                            'critical_value_event_id' => $event->getKey(),
+                            'patient_id' => $event->patient_id,
+                        ],
+                        sensitive: true,
+                        patientId: $event->patient_id,
+                    );
+                }
+
                 $testName = $event->item?->test?->name ?? 'Unknown test';
-                $patientName = trim(($event->patient?->first_name ?? '').' '.($event->patient?->last_name ?? ''));
-
-                $notifications->createNotification(
-                    tenantId: $event->tenant_id,
-                    userId: $event->target->user_id,
-                    type: 'critical_value_escalated',
-                    channel: 'in_app',
-                    payload: [
-                        'subject' => 'URGENT: Critical value auto-escalated',
-                        'body' => "{$testName} for patient {$patientName} was not acknowledged within {$timeoutMinutes} minutes and has been auto-escalated.",
-                        'critical_value_event_id' => $event->getKey(),
-                        'patient_id' => $event->patient_id,
-                    ],
-                    sensitive: true,
-                    patientId: $event->patient_id,
-                );
-            }
-
-            $testName = $event->item?->test?->name ?? 'Unknown test';
-            $this->line("  Escalated: {$testName} (event {$event->getKey()})");
-            $escalated++;
+                $this->line("  Escalated: {$testName} (event {$event->getKey()})");
+                $escalated++;
+            });
         }
 
         $this->info("Auto-escalated {$escalated} critical value(s).");

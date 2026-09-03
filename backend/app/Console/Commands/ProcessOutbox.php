@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\DomainEvent;
 use App\Services\Events\EventProcessor;
+use App\Support\Concerns\RunsInTenantContext;
 use Illuminate\Console\Command;
 
 /**
@@ -11,6 +12,9 @@ use Illuminate\Console\Command;
  *
  * Polls the domain_events table for pending events, resolves
  * their handler, and processes them with retry/dead-letter support.
+ *
+ * Each event is processed inside a transaction with the tenant context
+ * restored from the event's stored tenant_id/facility_id (TENANCY.md V2 §12).
  *
  * Usage:
  *   php artisan outbox:process           # process one batch
@@ -21,6 +25,8 @@ use Illuminate\Console\Command;
  */
 class ProcessOutbox extends Command
 {
+    use RunsInTenantContext;
+
     protected $signature = 'outbox:process
                             {--once : Process one batch and exit}
                             {--sleep=2 : Seconds between polls when running continuously}
@@ -78,10 +84,17 @@ class ProcessOutbox extends Command
 
         foreach ($events as $event) {
             try {
-                $event->markProcessing();
-                EventProcessor::process($event);
-                $processed++;
+                $context = $this->contextFromEvent([
+                    'tenant_id' => $event->tenant_id,
+                    'facility_id' => $event->facility_id,
+                ]);
 
+                $this->runInTenantContext($context, function () use ($event) {
+                    $event->markProcessing();
+                    EventProcessor::process($event);
+                });
+
+                $processed++;
                 $this->line("  ✓ {$event->event_type} ({$event->aggregate_type}:{$event->aggregate_id})");
             } catch (\Throwable $e) {
                 $event->markFailed($e->getMessage());

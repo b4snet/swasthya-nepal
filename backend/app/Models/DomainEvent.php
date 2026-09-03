@@ -70,7 +70,10 @@ class DomainEvent extends Model
     public function scopePending($query)
     {
         return $query->where('status', self::STATUS_PENDING)
-            ->where('next_attempt_at', '<=', now());
+            ->where(function ($q) {
+                $q->whereNull('next_attempt_at')
+                    ->orWhere('next_attempt_at', '<=', now());
+            });
     }
 
     public function scopeForProcessing($query)
