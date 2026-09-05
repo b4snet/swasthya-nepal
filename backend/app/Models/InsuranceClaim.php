@@ -47,6 +47,21 @@ class InsuranceClaim extends Model
 
     public const STATUS_DENIED = 'denied';
 
+    public const STATUS_REJECTED = 'rejected';
+
+    /**
+     * Claim statuses that have NOT been accepted for processing by the payer
+     * (submission not accepted → rejected) vs processed-but-not-payable
+     * (→ denied). §25 keeps rejection and denial distinct; this list is the
+     * set of statuses that may be reopened for correction and resubmission.
+     *
+     * @return list<string>
+     */
+    public static function reopenableStatuses(): array
+    {
+        return [self::STATUS_DENIED, self::STATUS_REJECTED];
+    }
+
     /**
      * @var list<string>
      */
@@ -111,6 +126,20 @@ class InsuranceClaim extends Model
     public function lines(): HasMany
     {
         return $this->hasMany(InsuranceClaimLine::class, 'claim_id');
+    }
+
+    /**
+     * The claim's append-only submission snapshots, oldest first. Each row is
+     * an immutable record of exactly what was submitted on that attempt
+     * (INSURANCE - COVERAGE §20); resubmission appends rather than overwrites
+     * (§24, §62).
+     *
+     * @return HasMany<InsuranceClaimSubmission, $this>
+     */
+    public function submissions(): HasMany
+    {
+        return $this->hasMany(InsuranceClaimSubmission::class, 'claim_id')
+            ->orderBy('submission_number');
     }
 
     /**

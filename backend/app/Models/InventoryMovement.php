@@ -29,6 +29,9 @@ class InventoryMovement extends Model
     // Phase 14 — inter-facility transfers (paired source/destination rows).
     public const TYPE_TRANSFER = 'transfer';
 
+    // Pharmacy wastage — medication destroyed/wasted with traceable reason.
+    public const TYPE_WASTAGE = 'wastage';
+
     /**
      * @var list<string>
      */
@@ -46,6 +49,7 @@ class InventoryMovement extends Model
         // Phase 3 — the standalone dispensing record a movement belongs to
         // (dispensing without a prescription; no prescription_line_id).
         'dispensing_id',
+        'wastage_id',
         'occurred_at',
         'created_by',
     ];

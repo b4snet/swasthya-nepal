@@ -139,7 +139,7 @@ final class IpdNursingController extends Controller
                 'admissionId' => $admission->getKey(),
                 'patientId' => $admission->patient_id,
                 'type' => $vital->type,
-                'measuredAt' => $vital->measured_at?->toIso8601String(),
+                'observedAt' => $vital->observed_at?->toIso8601String(),
             ],
             $request,
         );
@@ -158,7 +158,7 @@ final class IpdNursingController extends Controller
         $vitals = VitalObservation::query()
             ->where('tenant_id', $admission->tenant_id)
             ->where('admission_id', $admission->getKey())
-            ->orderBy('measured_at')
+            ->orderBy('observed_at')
             ->orderBy('id')
             ->get()
             ->map(fn (VitalObservation $vital): array => self::presentVital($vital));
@@ -315,9 +315,8 @@ final class IpdNursingController extends Controller
             'patientId' => $vital->patient_id,
             'type' => $vital->type,
             'value' => $vital->value,
-            'measuredAt' => $vital->measured_at?->toIso8601String(),
-            'measuredBy' => $vital->measured_by,
-            'isAbnormal' => $vital->is_abnormal,
+            'observedAt' => $vital->observed_at?->toIso8601String(),
+            'recordedBy' => $vital->recorded_by,
         ];
     }
 

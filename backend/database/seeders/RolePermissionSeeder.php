@@ -95,6 +95,7 @@ class RolePermissionSeeder extends Seeder
             'appointment:checkin' => ['domain' => 'appointment', 'description' => 'Check patients in and issue queue tokens'],
             'appointment:cancel' => ['domain' => 'appointment', 'description' => 'Cancel appointments with a captured reason'],
             'queue:view' => ['domain' => 'queue', 'description' => 'View the live queue for a provider/date'],
+            'clinical:manage' => ['domain' => 'queue', 'description' => 'Manage queue entries (call-next, transfer, skip, recall, cancel, no-show)'],
 
             // Phase 7 — OPD (the clinical spine).
             'encounter:view' => ['domain' => 'encounter', 'description' => 'View encounters and their clinical content'],
@@ -487,7 +488,7 @@ class RolePermissionSeeder extends Seeder
                     // schedules, bookings, clinical record, and finance.
                     'schedule:view', 'schedule:manage',
                     'appointment:view', 'appointment:book', 'appointment:checkin', 'appointment:cancel',
-                    'queue:view',
+                    'queue:view', 'clinical:manage',
                     'encounter:view', 'encounter:create', 'encounter:document',
                     'encounter:prescribe', 'encounter:sign',
                     'medication:view', 'medication:manage',
@@ -623,7 +624,7 @@ class RolePermissionSeeder extends Seeder
                     // clinical workflows.
                     'schedule:view', 'schedule:manage',
                     'appointment:view', 'appointment:book', 'appointment:checkin', 'appointment:cancel',
-                    'queue:view',
+                    'queue:view', 'clinical:manage',
                     'encounter:view', 'encounter:create', 'encounter:document',
                     'encounter:prescribe', 'encounter:sign',
 
@@ -907,9 +908,10 @@ class RolePermissionSeeder extends Seeder
                 'scope_type' => 'facility',
                 // Phase 3 slice 2 — verification and report release: the
                 // quality gate AFTER entry (entry ≠ verification).
+                // lab:manage allows catalog management (test activation/deactivation).
                 'permissions' => [
                     'patient:view', 'patient:search',
-                    'lab:view', 'lab:verify', 'lab:report', 'lab:escalate', 'lab:correct',
+                    'lab:view', 'lab:manage', 'lab:verify', 'lab:report', 'lab:escalate', 'lab:correct',
                 ],
             ],
             // Phase 3 slice 16 — Radiology roles (PRODUCT_REQUIREMENTS §6.9

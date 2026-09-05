@@ -860,3 +860,399 @@ it('keeps patient identifiers and all clinical content out of ER audit payloads'
         ->toHaveKey('encounterId', $encounter->getKey())
         ->toHaveKey('isUnidentified', false);
 });
+
+it('moves a patient to immediate treatment bypassing the queue', function () {
+    $org = Identity::organization();
+    $facility = Identity::facility($org);
+
+    [$registration, $patient, $encounter] = erRegister($this, $org, $facility);
+
+    // Encounter starts open.
+    expect($encounter->status)->toBe(Encounter::STATUS_OPEN);
+
+    $doctor = Identity::user();
+    erStaff($org, $facility, $doctor, 'ER Physician');
+    Identity::assign($doctor, 'doctor', $org, $facility);
+
+    $this->withToken(Identity::tokenFor($doctor))
+        ->postJson('/api/v1/er/encounters/'.$encounter->getKey().'/immediate-treatment', [
+            'reason' => 'Cardiac arrest on arrival',
+        ])
+        ->assertOk();
+
+    // Encounter is now in_progress.
+    $encounter->refresh();
+    expect($encounter->status)->toBe(Encounter::STATUS_IN_PROGRESS);
+
+    // ER event recorded.
+    $event = ErEvent::query()
+        ->where('encounter_id', $encounter->getKey())
+        ->where('event_type', ErEvent::TYPE_IMMEDIATE_TREATMENT)
+        ->firstOrFail();
+    expect($event->notes)->toBe('Cardiac arrest on arrival')
+        ->and($event->actor_staff_id)->not->toBeNull();
+
+    // Audited — facts only.
+    $audit = AuditEvent::query()->where('action', 'er.immediate_treatment')->firstOrFail();
+    expect($audit->payload)->toHaveKey('encounterId', $encounter->getKey())
+        ->toHaveKey('patientId', $patient->getKey())
+        ->not->toHaveKey('reason');
+});
+
+it('rejects immediate treatment without clinical authority', function () {
+    $org = Identity::organization();
+    $facility = Identity::facility($org);
+
+    [$registration, $patient, $encounter] = erRegister($this, $org, $facility);
+
+    $nurse = Identity::user();
+    erStaff($org, $facility, $nurse, 'Staff Nurse');
+    Identity::assign($nurse, 'nurse', $org, $facility);
+
+    // Nurse cannot grant immediate treatment — only er:disposition holders can.
+    $this->withToken(Identity::tokenFor($nurse))
+        ->postJson('/api/v1/er/encounters/'.$encounter->getKey().'/immediate-treatment', [
+            'reason' => 'Urgent',
+        ])
+        ->assertStatus(403);
+});
+
+it('rejects immediate treatment on disposed encounters', function () {
+    $org = Identity::organization();
+    $facility = Identity::facility($org);
+
+    [$registration, $patient, $encounter] = erRegister($this, $org, $facility);
+
+    $doctor = Identity::user();
+    erStaff($org, $facility, $doctor, 'ER Physician');
+    Identity::assign($doctor, 'doctor', $org, $facility);
+
+    // Discharge first.
+    $this->withToken(Identity::tokenFor($doctor))
+        ->postJson('/api/v1/er/encounters/'.$encounter->getKey().'/disposition', [
+            'disposition' => 'home',
+        ])
+        ->assertOk();
+
+    // Now try immediate treatment — should fail (encounter is closed).
+    $this->withToken(Identity::tokenFor($doctor))
+        ->postJson('/api/v1/er/encounters/'.$encounter->getKey().'/immediate-treatment', [
+            'reason' => 'Too late',
+        ])
+        ->assertStatus(409);
+});
+
+it('reconciles an unidentified ER patient to an existing canonical patient', function () {
+    $org = Identity::organization();
+    $facility = Identity::facility($org);
+
+    // Register an unidentified patient.
+    [$registration, $erPatient, $encounter] = erRegister($this, $org, $facility, [
+        'patientName' => null,
+        'sex' => 'unknown',
+        'estimatedAge' => 40,
+        'presentingComplaint' => 'Unresponsive',
+    ]);
+
+    expect($registration['isUnidentified'])->toBeTrue();
+
+    // Create the canonical patient record that this person is eventually identified as.
+    $canonicalPatient = Patient::factory()->create([
+        'tenant_id' => $org->getKey(),
+        'facility_id' => $facility->getKey(),
+        'full_name' => 'Sita Devi',
+        'status' => Patient::STATUS_ACTIVE,
+    ]);
+
+    $doctor = Identity::user();
+    erStaff($org, $facility, $doctor, 'ER Physician');
+    Identity::assign($doctor, 'doctor', $org, $facility);
+
+    $this->withToken(Identity::tokenFor($doctor))
+        ->postJson('/api/v1/er/registrations/'.$registration['id'].'/reconcile-identity', [
+            'targetPatientId' => $canonicalPatient->getKey(),
+            'reason' => 'Wristband matched to existing MRN',
+        ])
+        ->assertOk();
+
+    // ER patient record is now merged.
+    $erPatient->refresh();
+    expect($erPatient->status)->toBe(Patient::STATUS_MERGED)
+        ->and($erPatient->merge_into_patient_id)->toBe($canonicalPatient->getKey());
+
+    // Registration is stamped as completed.
+    $reg = ErRegistration::query()->findOrFail($registration['id']);
+    expect($reg->completed_at)->not->toBeNull()
+        ->and($reg->completed_by)->not->toBeNull();
+
+    // ER event recorded.
+    $event = ErEvent::query()
+        ->where('encounter_id', $encounter->getKey())
+        ->where('event_type', ErEvent::TYPE_IDENTITY_RECONCILED)
+        ->firstOrFail();
+    expect($event->notes)->toBe('Wristband matched to existing MRN');
+
+    // Canonical patient is still active.
+    $canonicalPatient->refresh();
+    expect($canonicalPatient->status)->toBe(Patient::STATUS_ACTIVE);
+});
+
+it('rejects identity reconciliation for already-completed registrations', function () {
+    $org = Identity::organization();
+    $facility = Identity::facility($org);
+
+    [$registration, $erPatient, $encounter] = erRegister($this, $org, $facility, [
+        'patientName' => null,
+        'sex' => 'unknown',
+        'estimatedAge' => 40,
+    ]);
+
+    $canonicalPatient = Patient::factory()->create([
+        'tenant_id' => $org->getKey(),
+        'facility_id' => $facility->getKey(),
+        'status' => Patient::STATUS_ACTIVE,
+    ]);
+
+    $doctor = Identity::user();
+    erStaff($org, $facility, $doctor, 'ER Physician');
+    Identity::assign($doctor, 'doctor', $org, $facility);
+
+    // First reconciliation succeeds.
+    $this->withToken(Identity::tokenFor($doctor))
+        ->postJson('/api/v1/er/registrations/'.$registration['id'].'/reconcile-identity', [
+            'targetPatientId' => $canonicalPatient->getKey(),
+        ])
+        ->assertOk();
+
+    // Second attempt fails — already completed.
+    $this->withToken(Identity::tokenFor($doctor))
+        ->postJson('/api/v1/er/registrations/'.$registration['id'].'/reconcile-identity', [
+            'targetPatientId' => $canonicalPatient->getKey(),
+        ])
+        ->assertStatus(409);
+});
+
+it('rejects identity reconciliation for non-unidentified registrations', function () {
+    $org = Identity::organization();
+    $facility = Identity::facility($org);
+
+    // Register a KNOWN patient (not unidentified).
+    [$registration, $patient, $encounter] = erRegister($this, $org, $facility, [
+        'patientName' => 'Known Patient',
+    ]);
+
+    expect($registration['isUnidentified'])->toBeFalse();
+
+    $targetPatient = Patient::factory()->create([
+        'tenant_id' => $org->getKey(),
+        'facility_id' => $facility->getKey(),
+        'status' => Patient::STATUS_ACTIVE,
+    ]);
+
+    $doctor = Identity::user();
+    erStaff($org, $facility, $doctor, 'ER Physician');
+    Identity::assign($doctor, 'doctor', $org, $facility);
+
+    $this->withToken(Identity::tokenFor($doctor))
+        ->postJson('/api/v1/er/registrations/'.$registration['id'].'/reconcile-identity', [
+            'targetPatientId' => $targetPatient->getKey(),
+        ])
+        ->assertStatus(409);
+});
+
+it('returns the ER dashboard with operational counts and enforces er:view', function () {
+    $org = Identity::organization();
+    $facility = Identity::facility($org);
+
+    $doctor = Identity::user();
+    erStaff($org, $facility, $doctor, 'ER Physician');
+    Identity::assign($doctor, 'doctor', $org, $facility);
+
+    // Register two ER patients; triage one; discharge one.
+    [$registrationA, $patientA, $encounterA] = erRegister($this, $org, $facility, ['patientName' => 'Dash Patient A']);
+    [$registrationB, $patientB, $encounterB] = erRegister($this, $org, $facility, ['patientName' => 'Dash Patient B']);
+
+    $scale = erScale($org, $facility, ['level' => 1, 'code' => 'DASH1']);
+    $this->withToken(Identity::tokenFor($doctor))
+        ->postJson('/api/v1/er/encounters/'.$encounterB->getKey().'/triage', ['scaleId' => $scale->getKey()])
+        ->assertCreated();
+
+    $this->withToken(Identity::tokenFor($doctor))
+        ->postJson('/api/v1/er/encounters/'.$encounterA->getKey().'/disposition', ['disposition' => 'home'])
+        ->assertOk();
+
+    // Server-truth aggregate: 1 open, 0 in_progress, 1 closed, total 2;
+    // triage distribution counts the active level for open encounters;
+    // average waiting time is a number for open encounters.
+    $this->withToken(Identity::tokenFor($doctor))
+        ->getJson('/api/v1/er/dashboard')
+        ->assertOk()
+        ->assertJsonPath('data.statusCounts.open', 1)
+        ->assertJsonPath('data.statusCounts.inProgress', 0)
+        ->assertJsonPath('data.statusCounts.closed', 1)
+        ->assertJsonPath('data.statusCounts.total', 2)
+        ->assertJsonPath('data.triageDistribution.level_1', 1)
+        ->assertJsonPath('data.avgWaitingMinutes', fn ($value) => is_int($value) || is_float($value) || $value === null);
+
+    // No PHI: patient names and complaints never appear on the dashboard.
+    $payload = json_encode($this->withToken(Identity::tokenFor($doctor))
+        ->getJson('/api/v1/er/dashboard')->json());
+    expect($payload)->not->toContain('Dash Patient A')
+        ->and($payload)->not->toContain('Dash Patient B');
+
+    // A pharmacist (no er:view) is denied.
+    $pharmacist = Identity::user();
+    Identity::assign($pharmacist, 'pharmacist', $org, $facility);
+    $this->withToken(Identity::tokenFor($pharmacist))
+        ->getJson('/api/v1/er/dashboard')
+        ->assertStatus(403);
+});
+
+it('exposes registration facts (id, unidentified flag, complaint) on the queue for the workspace', function () {
+    $org = Identity::organization();
+    $facility = Identity::facility($org);
+
+    $nurse = Identity::user();
+    erStaff($org, $facility, $nurse, 'Staff Nurse');
+    Identity::assign($nurse, 'nurse', $org, $facility);
+
+    [$registration, $patient, $encounter] = erRegister($this, $org, $facility, [
+        'patientName' => 'Queue-Facts-Patient',
+        'presentingComplaint' => 'Abdominal pain',
+    ]);
+
+    $this->withToken(Identity::tokenFor($nurse))
+        ->getJson('/api/v1/er/queue')
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.registrationId', $registration['id'])
+        ->assertJsonPath('data.0.encounterId', $encounter->getKey())
+        ->assertJsonPath('data.0.patientId', $patient->getKey())
+        ->assertJsonPath('data.0.presentingComplaint', 'Abdominal pain')
+        ->assertJsonPath('data.0.isUnidentified', false);
+
+    // The unidentified path is also exposed so the workspace can offer
+    // identity reconciliation for exactly those registrations.
+    [$anon] = erRegister($this, $org, $facility, [
+        'patientName' => null,
+        'estimatedAge' => 40,
+        'presentingComplaint' => 'Unresponsive',
+    ]);
+
+    // Both are untriaged → arrival order (registered_at); the unidentified
+    // registration is the second arrival.
+    $this->withToken(Identity::tokenFor($nurse))
+        ->getJson('/api/v1/er/queue')
+        ->assertOk()
+        ->assertJsonCount(2, 'data')
+        ->assertJsonPath('data.1.isUnidentified', true)
+        ->assertJsonPath('data.1.registrationId', $anon['id']);
+});
+
+it('disposes a deceased patient: encounter closes with the deceased disposition', function () {
+    $org = Identity::organization();
+    $facility = Identity::facility($org);
+    $doctor = Identity::user();
+    erStaff($org, $facility, $doctor, 'ER Physician');
+    Identity::assign($doctor, 'doctor', $org, $facility);
+
+    [$registration, $patient, $encounter] = erRegister($this, $org, $facility);
+
+    $this->withToken(Identity::tokenFor($doctor))
+        ->postJson('/api/v1/er/encounters/'.$encounter->getKey().'/disposition', [
+            'disposition' => 'deceased',
+            'notes' => 'Resuscitation ceased',
+        ])
+        ->assertOk()
+        ->assertJsonPath('data.encounter.disposition', 'deceased')
+        ->assertJsonPath('data.encounter.status', 'closed')
+        ->assertJsonPath('data.admissionId', null);
+
+    $fresh = $encounter->refresh();
+    expect($fresh->status)->toBe(Encounter::STATUS_CLOSED)
+        ->and($fresh->ended_at)->not->toBeNull();
+
+    // No admission, no bed claimed, disposition event recorded.
+    expect(Admission::query()->count())->toBe(0)
+        ->and(ErEvent::query()->where('encounter_id', $encounter->getKey())->where('event_type', ErEvent::TYPE_DISPOSITION)->count())->toBe(1)
+        ->and(AuditEvent::query()->where('action', 'er.disposition')->count())->toBe(1);
+});
+
+it('cannot create a second admission when an ER-to-IPD disposition is retried', function () {
+    $org = Identity::organization();
+    $facility = Identity::facility($org);
+    $doctor = Identity::user();
+    erStaff($org, $facility, $doctor, 'ER Physician');
+    Identity::assign($doctor, 'doctor', $org, $facility);
+
+    [$registration, $patient, $encounter] = erRegister($this, $org, $facility);
+    $bed = erBed($org, $facility);
+
+    // First disposition: admitted → admission + bed claim.
+    $this->withToken(Identity::tokenFor($doctor))
+        ->postJson('/api/v1/er/encounters/'.$encounter->getKey().'/disposition', [
+            'disposition' => 'admitted',
+            'bedId' => $bed->getKey(),
+            'admittingDiagnosis' => 'Acute pancreatitis',
+        ])
+        ->assertOk();
+
+    expect(Admission::query()->count())->toBe(1);
+
+    // Retry (client resend / worker retry): the encounter is already
+    // disposed → 409, and NO second admission or double bed claim happens.
+    $this->withToken(Identity::tokenFor($doctor))
+        ->postJson('/api/v1/er/encounters/'.$encounter->getKey().'/disposition', [
+            'disposition' => 'admitted',
+            'bedId' => $bed->getKey(),
+            'admittingDiagnosis' => 'Acute pancreatitis',
+        ])
+        ->assertStatus(409)
+        ->assertJsonPath('error.code', 'CONFLICT');
+
+    expect(Admission::query()->count())->toBe(1)
+        ->and($bed->refresh()->current_admission_id)->not->toBeNull();
+});
+
+it('blocks cross-facility ER access within the same tenant (facility isolation)', function () {
+    $org = Identity::organization();
+    $facilityA = Identity::facility($org);
+    $facilityB = Identity::facility($org);
+
+    [$registration, $patientA, $encounterA] = erRegister($this, $org, $facilityA, [
+        'patientName' => 'Facility-A-Patient',
+    ]);
+
+    // A doctor scoped to facility B attempts to reach facility A's ER record.
+    $doctorB = Identity::user();
+    erStaff($org, $facilityB, $doctorB, 'ER Physician');
+    Identity::assign($doctorB, 'doctor', $org, $facilityB);
+
+    // Queue is facility-scoped: facility B sees no facility A patients.
+    $this->withToken(Identity::tokenFor($doctorB))
+        ->getJson('/api/v1/er/queue')
+        ->assertOk()
+        ->assertJsonCount(0, 'data');
+
+    // Direct object access to A's encounter/events is denied.
+    $this->withToken(Identity::tokenFor($doctorB))
+        ->getJson('/api/v1/er/encounters/'.$encounterA->getKey().'/events')
+        ->assertStatus(404);
+
+    $this->withToken(Identity::tokenFor($doctorB))
+        ->postJson('/api/v1/er/encounters/'.$encounterA->getKey().'/events', [
+            'eventType' => 'seen_by_doctor',
+        ])
+        ->assertStatus(403);
+
+    // Disposition of A's encounter by a B-scoped doctor is denied.
+    $this->withToken(Identity::tokenFor($doctorB))
+        ->postJson('/api/v1/er/encounters/'.$encounterA->getKey().'/disposition', [
+            'disposition' => 'home',
+        ])
+        ->assertStatus(403);
+
+    // A's data is untouched.
+    expect(ErEvent::query()->where('encounter_id', $encounterA->getKey())->count())->toBe(1)
+        ->and($encounterA->refresh()->disposition)->toBeNull();
+});

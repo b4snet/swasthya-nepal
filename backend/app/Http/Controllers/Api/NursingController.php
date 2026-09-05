@@ -108,12 +108,8 @@ final class NursingController extends Controller
             'notes' => 'nullable|string|max:2000',
             'admissionId' => 'nullable|uuid',
         ]);
-        $vital = VitalObservation::create([
-            'tenant_id' => $context->tenantId(),
-            'facility_id' => $context->facilityId(),
-            'patient_id' => $request->input('patientId'),
-            'admission_id' => $request->input('admissionId'),
-            'recorded_by' => $request->input('recordedBy'),
+
+        $value = array_filter([
             'temperature_celsius' => $request->input('temperatureCelsius'),
             'heart_rate_bpm' => $request->input('heartRateBpm'),
             'respiratory_rate' => $request->input('respiratoryRate'),
@@ -123,6 +119,18 @@ final class NursingController extends Controller
             'pain_score' => $request->input('painScore'),
             'gcs_score' => $request->input('gcsScore'),
             'notes' => $request->input('notes'),
+        ], fn ($v) => $v !== null);
+
+        $type = 'composite';
+
+        $vital = VitalObservation::create([
+            'tenant_id' => $context->tenantId(),
+            'facility_id' => $context->facilityId(),
+            'patient_id' => $request->input('patientId'),
+            'admission_id' => $request->input('admissionId'),
+            'type' => $type,
+            'value' => $value,
+            'recorded_by' => $request->input('recordedBy'),
             'observed_at' => $request->input('observedAt'),
         ]);
         $this->audit->record('vital_observation.recorded', 'vital_observation', $vital->getKey(), [], $request);

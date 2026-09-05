@@ -79,6 +79,73 @@ final class LabTestController extends Controller
     }
 
     /**
+     * PATCH /organizations/{organization}/lab-tests/{labTest} — update or
+     * deactivate a catalog entry. Retired tests stay referenced by order
+     * history (soft-deletable via the model).
+     */
+    public function update(Request $request, Organization $organization, LabTest $labTest): JsonResponse
+    {
+        AccessCheck::organization($organization->getKey(), write: true);
+
+        $context = TenantContext::current();
+
+        if ($labTest->tenant_id !== $organization->getKey()) {
+            throw new \App\Exceptions\ApiException(
+                \App\Support\ErrorCodes::SCOPE_DENIED,
+                'This test does not belong to this organization.',
+                403,
+            );
+        }
+
+        $data = $request->validate([
+            'name' => 'sometimes|string|max:255',
+            'category' => 'sometimes|string|max:100',
+            'sampleType' => 'sometimes|string|max:100',
+            'unit' => 'sometimes|string|max:50',
+            'referenceRange' => 'sometimes|string|max:255',
+            'method' => 'sometimes|string|max:255',
+            'status' => 'sometimes|string|in:active,inactive',
+        ]);
+
+        $mapped = [];
+        if (isset($data['name'])) {
+            $mapped['name'] = $data['name'];
+        }
+        if (isset($data['category'])) {
+            $mapped['category'] = $data['category'];
+        }
+        if (isset($data['sampleType'])) {
+            $mapped['sample_type'] = $data['sampleType'];
+        }
+        if (isset($data['unit'])) {
+            $mapped['unit'] = $data['unit'];
+        }
+        if (isset($data['referenceRange'])) {
+            $mapped['reference_range'] = $data['referenceRange'];
+        }
+        if (isset($data['method'])) {
+            $mapped['method'] = $data['method'];
+        }
+        if (isset($data['status'])) {
+            $mapped['status'] = $data['status'];
+        }
+
+        $mapped['updated_by'] = $context->user?->getKey();
+
+        $labTest->update($mapped);
+
+        $this->audit->record(
+            'lab_test.updated',
+            'lab_test',
+            $labTest->getKey(),
+            ['code' => $labTest->code, 'name' => $labTest->name, 'status' => $labTest->status],
+            $request,
+        );
+
+        return Envelope::success(data: self::present($labTest->fresh()), request: $request);
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private static function present(LabTest $test): array

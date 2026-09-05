@@ -7,6 +7,7 @@ use App\Models\Deposit;
 use App\Models\DepositAllocation;
 use App\Models\InsuranceClaim;
 use App\Models\InsuranceClaimLine;
+use App\Models\InsuranceClaimSubmission;
 use App\Models\InsurancePolicy;
 use App\Models\Invoice;
 use App\Models\Payment;
@@ -383,7 +384,12 @@ final class FinanceService
 
     /**
      * Submit a draft claim: draft → submitted (CAS). Requires at least one
-     * line (always true by construction) and stamps submitted_at.
+     * line (always true by construction) and stamps submitted_at. In the same
+     * transaction, writes a NEW immutable submission snapshot (claim
+     * submissions §20) capturing exactly what was submitted — the frozen
+     * billed lines and claim context. A CAS-guarded submit means only one
+     * attempt wins; a reopen-and-resubmit appends the next submission_number
+     * so the prior submission is never overwritten (§24, §62).
      */
     public function submitClaim(InsuranceClaim $claim, ?string $submittedBy = null): InsuranceClaim
     {
@@ -394,6 +400,18 @@ final class FinanceService
                 throw new ApiException(ErrorCodes::LOCK_CONFLICT, 'Only a draft claim can be submitted.', 409);
             }
 
+            $billedLines = $claim->lines()
+                ->orderBy('id')
+                ->get()
+                ->map(fn (InsuranceClaimLine $line): array => [
+                    'invoiceLineId' => $line->invoice_line_id,
+                    'billedMinor' => (int) $line->billed_minor,
+                ])
+                ->values()
+                ->all();
+
+            $now = now();
+
             $affected = DB::table('claims')
                 ->where('tenant_id', $claim->tenant_id)
                 ->where('id', $claim->getKey())
@@ -401,44 +419,73 @@ final class FinanceService
                 ->where('lock_version', $claim->lock_version)
                 ->update([
                     'status' => InsuranceClaim::STATUS_SUBMITTED,
-                    'submitted_at' => now(),
+                    'submitted_at' => $now,
                     'lock_version' => $claim->lock_version + 1,
                     'updated_by' => $submittedBy,
-                    'updated_at' => now(),
+                    'updated_at' => $now,
                 ]);
 
             if ($affected !== 1) {
                 throw new ApiException(ErrorCodes::LOCK_CONFLICT, 'The claim was concurrently modified; reload and retry.', 409);
             }
 
+            $sequence = (int) InsuranceClaimSubmission::query()
+                ->where('tenant_id', $claim->tenant_id)
+                ->where('claim_id', $claim->getKey())
+                ->max('submission_number');
+
+            InsuranceClaimSubmission::query()->create([
+                'tenant_id' => $claim->tenant_id,
+                'claim_id' => $claim->getKey(),
+                'submission_number' => $sequence + 1,
+                'submitted_snapshot' => [
+                    'claimNumber' => $claim->claim_number,
+                    'invoiceId' => $claim->invoice_id,
+                    'policyId' => $claim->policy_id,
+                    'payerId' => $claim->payer_id,
+                    'status' => InsuranceClaim::STATUS_SUBMITTED,
+                    'billedTotalMinor' => array_sum(array_column($billedLines, 'billedMinor')),
+                    'lines' => $billedLines,
+                ],
+                'submitted_at' => $now,
+                'submitted_by' => $submittedBy,
+                'created_by' => $submittedBy,
+            ]);
+
             return $claim->refresh();
         });
     }
 
     /**
-     * Reopen a DENIED claim for resubmission (denied → draft, CAS): the
-     * denial is preserved in the audit trail, the claim lines stay unique
-     * per invoice line, and the clerk can revise and submit again — no
-     * fabricated duplicate claim lines (PRODUCT_REQUIREMENTS §6.14
-     * "denials with reasons and resubmission").
+     * Reopen a DENIED or REJECTED claim for correction and resubmission
+     * (denied|rejected → draft, CAS): the outcome is preserved in the audit
+     * trail and in the immutable submission snapshots, the claim lines stay
+     * unique per invoice line, and the clerk can revise and submit again —
+     * no fabricated duplicate claim lines (PRODUCT_REQUIREMENTS §6.14
+     * "denials with reasons and resubmission"; INSURANCE - COVERAGE §24).
      */
     public function reopenClaim(InsuranceClaim $claim, ?string $actorId = null): InsuranceClaim
     {
         return DB::transaction(function () use ($claim, $actorId): InsuranceClaim {
             $claim->refresh();
 
-            if ($claim->status !== InsuranceClaim::STATUS_DENIED) {
-                throw new ApiException(ErrorCodes::CONFLICT, 'Only a denied claim can be reopened for resubmission.', 409);
+            if (! in_array($claim->status, InsuranceClaim::reopenableStatuses(), true)) {
+                throw new ApiException(
+                    ErrorCodes::CONFLICT,
+                    'Only a denied or rejected claim can be reopened for resubmission.',
+                    409,
+                );
             }
 
             $affected = DB::table('claims')
                 ->where('tenant_id', $claim->tenant_id)
                 ->where('id', $claim->getKey())
-                ->where('status', InsuranceClaim::STATUS_DENIED)
+                ->whereIn('status', InsuranceClaim::reopenableStatuses())
                 ->where('lock_version', $claim->lock_version)
                 ->update([
                     'status' => InsuranceClaim::STATUS_DRAFT,
                     'denial_reason' => null,
+                    'rejection_reason' => null,
                     'lock_version' => $claim->lock_version + 1,
                     'updated_by' => $actorId,
                     'updated_at' => now(),
@@ -454,11 +501,14 @@ final class FinanceService
 
     /**
      * Record a payer status update on a submitted/pending claim
-     * (submitted → pending | denied; pending → partial | paid | denied).
-     * A denial requires a reason; partial/paid record the payer settlement
-     * (never more than the claim's billed total — invoice truth).
-     * `insurance:settle` gates the money-moving statuses; the service also
-     * refuses a settlement on a claim that already has one.
+     * (submitted → pending | denied | rejected; pending →
+     * partial | paid | denied | rejected). A denial requires a reason; a
+     * rejection (claim NOT accepted for processing, §25) requires its own
+     * rejection reason — kept distinct from denial so the two outcomes are
+     * never collapsed. Partial/paid record the payer settlement (never more
+     * than the claim's billed total — invoice truth). `insurance:settle`
+     * gates the money-moving statuses; the service also refuses a settlement
+     * on a claim that already has one.
      *
      * @return array{0: InsuranceClaim, 1: string} [claim, transition]
      */
@@ -466,16 +516,26 @@ final class FinanceService
         InsuranceClaim $claim,
         string $status,
         ?string $denialReason = null,
+        ?string $rejectionReason = null,
         ?int $settlementMinor = null,
         ?string $actorId = null,
     ): array {
-        return DB::transaction(function () use ($claim, $status, $denialReason, $settlementMinor, $actorId): array {
+        return DB::transaction(function () use ($claim, $status, $denialReason, $rejectionReason, $settlementMinor, $actorId): array {
             $claim->refresh();
             $from = $claim->status;
 
             $allowed = match ($from) {
-                InsuranceClaim::STATUS_SUBMITTED => [InsuranceClaim::STATUS_PENDING, InsuranceClaim::STATUS_DENIED],
-                InsuranceClaim::STATUS_PENDING => [InsuranceClaim::STATUS_PARTIAL, InsuranceClaim::STATUS_PAID, InsuranceClaim::STATUS_DENIED],
+                InsuranceClaim::STATUS_SUBMITTED => [
+                    InsuranceClaim::STATUS_PENDING,
+                    InsuranceClaim::STATUS_DENIED,
+                    InsuranceClaim::STATUS_REJECTED,
+                ],
+                InsuranceClaim::STATUS_PENDING => [
+                    InsuranceClaim::STATUS_PARTIAL,
+                    InsuranceClaim::STATUS_PAID,
+                    InsuranceClaim::STATUS_DENIED,
+                    InsuranceClaim::STATUS_REJECTED,
+                ],
                 default => [],
             };
 
@@ -489,6 +549,10 @@ final class FinanceService
 
             if ($status === InsuranceClaim::STATUS_DENIED && ($denialReason === null || trim($denialReason) === '')) {
                 throw new ApiException(ErrorCodes::VALIDATION_ERROR, 'A denial requires a reason.', 422);
+            }
+
+            if ($status === InsuranceClaim::STATUS_REJECTED && ($rejectionReason === null || trim($rejectionReason) === '')) {
+                throw new ApiException(ErrorCodes::VALIDATION_ERROR, 'A rejection requires a reason.', 422);
             }
 
             if (in_array($status, [InsuranceClaim::STATUS_PARTIAL, InsuranceClaim::STATUS_PAID], true)) {
@@ -517,6 +581,7 @@ final class FinanceService
                 ->update([
                     'status' => $status,
                     'denial_reason' => $status === InsuranceClaim::STATUS_DENIED ? $denialReason : null,
+                    'rejection_reason' => $status === InsuranceClaim::STATUS_REJECTED ? $rejectionReason : null,
                     'settlement_minor' => in_array($status, [InsuranceClaim::STATUS_PARTIAL, InsuranceClaim::STATUS_PAID], true) ? $settlementMinor : null,
                     'lock_version' => $claim->lock_version + 1,
                     'updated_by' => $actorId,

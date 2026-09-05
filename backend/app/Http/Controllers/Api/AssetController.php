@@ -578,4 +578,180 @@ final class AssetController extends Controller
             'lockVersion' => $order->lock_version,
         ];
     }
+
+    // ── Calibration (§81-82) ──────────────────────────────────────
+
+    public function calibrationRecords(Request $request, Asset $asset): JsonResponse
+    {
+        AccessCheck::scoped($asset, write: false);
+
+        $records = $asset->calibrationRecords()
+            ->orderByDesc('calibrated_at')
+            ->paginate($request->integer('per_page', 25));
+
+        return response()->json($records);
+    }
+
+    public function storeCalibration(Request $request, Asset $asset): JsonResponse
+    {
+        AccessCheck::scoped($asset, write: true);
+
+        $validated = $request->validate([
+            'calibration_type' => 'required|string|in:internal,external,vendor',
+            'provider' => 'nullable|string|max:255',
+            'calibrated_at' => 'required|date',
+            'due_at' => 'required|date|after:calibrated_at',
+            'result' => 'required|string|in:pass,fail,conditional',
+            'notes' => 'nullable|string|max:2000',
+            'performed_by_staff_id' => 'nullable|uuid',
+            'document_id' => 'nullable|uuid',
+        ]);
+
+        /** @var \App\Services\HrAssetsService $service */
+        $service = app(\App\Services\HrAssetsService::class);
+
+        $record = $service->recordCalibration(
+            $asset->tenant_id,
+            $asset->facility_id,
+            $asset->getKey(),
+            $validated['calibration_type'],
+            \Carbon\CarbonImmutable::parse($validated['calibrated_at']),
+            \Carbon\CarbonImmutable::parse($validated['due_at']),
+            $validated['result'],
+            $validated['provider'] ?? null,
+            $validated['notes'] ?? null,
+            $validated['performed_by_staff_id'] ?? null,
+            $validated['document_id'] ?? null,
+            $this->currentStaffId(TenantContext::current(), $asset->facility_id),
+        );
+
+        $this->audit->record('calibration_record.create', 'calibration_record', $record->getKey(), [
+            'asset_id' => $asset->getKey(),
+            'result' => $record->result,
+        ]);
+
+        return response()->json($record, 201);
+    }
+
+    // ── Equipment Incidents (§88) ──────────────────────────────────
+
+    public function incidents(Request $request, Asset $asset): JsonResponse
+    {
+        AccessCheck::scoped($asset, write: false);
+
+        $incidents = $asset->incidents()
+            ->orderByDesc('occurred_at')
+            ->paginate($request->integer('per_page', 25));
+
+        return response()->json($incidents);
+    }
+
+    public function storeIncident(Request $request, Asset $asset): JsonResponse
+    {
+        AccessCheck::scoped($asset, write: true);
+
+        $validated = $request->validate([
+            'incident_type' => 'required|string|in:malfunction,safety,near_miss,other',
+            'description' => 'required|string|max:2000',
+            'reported_by_staff_id' => 'required|uuid',
+            'occurred_at' => 'required|date',
+            'severity' => 'required|string|in:low,medium,high,critical',
+        ]);
+
+        /** @var \App\Services\HrAssetsService $service */
+        $service = app(\App\Services\HrAssetsService::class);
+
+        $incident = $service->reportIncident(
+            $asset->tenant_id,
+            $asset->facility_id,
+            $asset->getKey(),
+            $validated['incident_type'],
+            $validated['description'],
+            $validated['reported_by_staff_id'],
+            \Carbon\CarbonImmutable::parse($validated['occurred_at']),
+            $validated['severity'],
+            $this->currentStaffId(TenantContext::current(), $asset->facility_id),
+        );
+
+        $this->audit->record('equipment_incident.create', 'equipment_incident', $incident->getKey(), [
+            'asset_id' => $asset->getKey(),
+            'severity' => $incident->severity,
+        ]);
+
+        return response()->json($incident, 201);
+    }
+
+    public function resolveIncident(Request $request, \App\Models\EquipmentIncident $incident): JsonResponse
+    {
+        AccessCheck::scoped($incident, write: true);
+
+        $validated = $request->validate([
+            'resolution' => 'required|string|max:2000',
+        ]);
+
+        /** @var \App\Services\HrAssetsService $service */
+        $service = app(\App\Services\HrAssetsService::class);
+
+        $resolved = $service->resolveIncident(
+            $incident,
+            $validated['resolution'],
+            $this->currentStaffId(TenantContext::current(), $incident->facility_id),
+        );
+
+        $this->audit->record('equipment_incident.resolve', 'equipment_incident', $resolved->getKey(), [
+            'status' => $resolved->status,
+        ]);
+
+        return response()->json($resolved);
+    }
+
+    // ── Asset Disposal (§91) ───────────────────────────────────────
+
+    public function disposals(Request $request, Asset $asset): JsonResponse
+    {
+        AccessCheck::scoped($asset, write: false);
+
+        $disposals = $asset->disposals()
+            ->orderByDesc('disposed_at')
+            ->paginate($request->integer('per_page', 25));
+
+        return response()->json($disposals);
+    }
+
+    public function dispose(Request $request, Asset $asset): JsonResponse
+    {
+        AccessCheck::scoped($asset, write: true);
+
+        $validated = $request->validate([
+            'disposal_type' => 'required|string|in:donated,recycled,destroyed,sold,other',
+            'reason' => 'required|string|max:2000',
+            'authorization_ref' => 'nullable|string|max:255',
+            'authorized_by_staff_id' => 'required|uuid',
+            'performed_by_staff_id' => 'nullable|uuid',
+            'disposed_at' => 'required|date',
+            'notes' => 'nullable|string|max:2000',
+        ]);
+
+        /** @var \App\Services\HrAssetsService $service */
+        $service = app(\App\Services\HrAssetsService::class);
+
+        $disposal = $service->disposeAsset(
+            $asset,
+            $validated['disposal_type'],
+            $validated['reason'],
+            $validated['authorized_by_staff_id'],
+            \Carbon\CarbonImmutable::parse($validated['disposed_at']),
+            $validated['performed_by_staff_id'] ?? null,
+            $validated['authorization_ref'] ?? null,
+            $validated['notes'] ?? null,
+            $this->currentStaffId(TenantContext::current(), $asset->facility_id),
+        );
+
+        $this->audit->record('asset_disposal.create', 'asset_disposal', $disposal->getKey(), [
+            'asset_id' => $asset->getKey(),
+            'disposal_type' => $disposal->disposal_type,
+        ]);
+
+        return response()->json($disposal, 201);
+    }
 }

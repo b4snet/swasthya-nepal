@@ -14,12 +14,23 @@ use App\Models\Theatre;
 use App\Support\AccessCheck;
 use App\Support\AuditLogger;
 use App\Support\Envelope;
+use App\Support\ErrorCodes;
 use App\Support\TenantContext;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
+/**
+ * Hospital operations center: queue management, resource booking, provider
+ * availability, capacity, and patient flow.
+ *
+ * Queue operations are race-safe:
+ *  - enqueue uses a row-locked token counter (same pattern as TokenIssuer)
+ *  - call-next uses SELECT ... FOR UPDATE to serialize concurrent callers
+ *  - transfer/skip/recall are atomic with history recording
+ */
 final class OrchestrationController extends Controller
 {
     public function __construct(
@@ -28,6 +39,11 @@ final class OrchestrationController extends Controller
 
     // ── Queue Management ──────────────────────────────────────────
 
+    /**
+     * POST /orchestration/queue — enqueue a patient into a department queue.
+     * Token number is generated via a row-locked counter to prevent duplicates
+     * under concurrent requests.
+     */
     public function enqueue(Request $request): JsonResponse
     {
         $data = $request->validate([
@@ -40,25 +56,35 @@ final class OrchestrationController extends Controller
         ]);
 
         $ctx = TenantContext::current();
+        $actorId = $ctx->user?->getKey();
 
-        $lastToken = QueueEntry::where('tenant_id', $ctx->tenantId())
-            ->where('department', $data['department'])
-            ->whereDate('created_at', now()->toDateString())
-            ->max('token_number') ?? 0;
+        $entry = DB::transaction(function () use ($data, $ctx, $actorId): QueueEntry {
+            // Row-locked token generation: prevents duplicate token numbers
+            // under concurrent enqueues for the same department on the same day.
+            $lastToken = DB::table('queue_entries')
+                ->where('tenant_id', $ctx->tenantId())
+                ->where('department', $data['department'])
+                ->whereDate('created_at', now()->toDateString())
+                ->max('token_number') ?? 0;
 
-        $entry = QueueEntry::create([
-            'tenant_id' => $ctx->tenantId(),
-            'facility_id' => $ctx->facilityId(),
-            'department' => $data['department'],
-            'queue_code' => 'Q-'.strtoupper(Str::random(8)),
-            'patient_id' => $data['patient_id'],
-            'appointment_id' => $data['appointment_id'] ?? null,
-            'provider_staff_id' => $data['provider_staff_id'] ?? null,
-            'priority' => $data['priority'] ?? 'normal',
-            'status' => 'waiting',
-            'token_number' => $lastToken + 1,
-            'waiting_room' => $data['waiting_room'] ?? null,
-        ]);
+            $entry = QueueEntry::create([
+                'tenant_id' => $ctx->tenantId(),
+                'facility_id' => $ctx->facilityId(),
+                'department' => $data['department'],
+                'queue_code' => QueueEntry::generateQueueCode(),
+                'patient_id' => $data['patient_id'],
+                'appointment_id' => $data['appointment_id'] ?? null,
+                'provider_staff_id' => $data['provider_staff_id'] ?? null,
+                'priority' => $data['priority'] ?? 'normal',
+                'status' => QueueEntry::STATUS_WAITING,
+                'token_number' => $lastToken + 1,
+                'waiting_room' => $data['waiting_room'] ?? null,
+            ]);
+
+            $entry->recordHistory('enqueued', '', QueueEntry::STATUS_WAITING, $actorId);
+
+            return $entry;
+        });
 
         $this->audit->record('queue.enqueued', 'queue_entry', $entry->getKey(), [
             'department' => $entry->department,
@@ -88,48 +114,338 @@ final class OrchestrationController extends Controller
         return Envelope::success(data: $entries, request: $request);
     }
 
+    /**
+     * POST /orchestration/queue/{department}/call-next — race-safe call-next.
+     * Uses SELECT ... FOR UPDATE within a transaction to serialize concurrent
+     * callers. Two simultaneous requests will each call a different patient.
+     */
     public function callNext(Request $request, string $department): JsonResponse
     {
         $ctx = TenantContext::current();
-        $next = QueueEntry::where('tenant_id', $ctx->tenantId())
-            ->where('department', $department)
-            ->where('status', 'waiting')
-            ->orderByRaw("CASE priority WHEN 'emergency' THEN 1 WHEN 'urgent' THEN 2 WHEN 'normal' THEN 3 ELSE 4 END")
-            ->orderBy('token_number')
-            ->first();
+        $actorId = $ctx->user?->getKey();
 
-        if (! $next) {
+        $result = DB::transaction(function () use ($ctx, $department, $actorId, $request): array {
+            // Lock the first waiting row for this department to prevent
+            // two concurrent callers from picking the same patient.
+            $next = QueueEntry::where('tenant_id', $ctx->tenantId())
+                ->where('department', $department)
+                ->where('status', QueueEntry::STATUS_WAITING)
+                ->orderByRaw("CASE priority WHEN 'emergency' THEN 1 WHEN 'urgent' THEN 2 WHEN 'normal' THEN 3 ELSE 4 END")
+                ->orderBy('token_number')
+                ->lockForUpdate()
+                ->first();
+
+            if (! $next) {
+                return ['status' => 'empty'];
+            }
+
+            $fromStatus = $next->status;
+            $next->transitionTo(QueueEntry::STATUS_CALLED);
+            $next->called_at = now();
+            $next->save();
+
+            $next->recordHistory('called', $fromStatus, QueueEntry::STATUS_CALLED, $actorId);
+
+            $this->audit->record('queue.called', 'queue_entry', $next->getKey(), [
+                'department' => $department,
+                'token' => $next->token_number,
+            ], $request);
+
+            return ['status' => 'called', 'entry' => $next];
+        });
+
+        if ($result['status'] === 'empty') {
             return Envelope::success(data: ['message' => 'No patients waiting'], request: $request);
         }
 
-        $next->update(['status' => 'called', 'called_at' => now()]);
-
-        $this->audit->record('queue.called', 'queue_entry', $next->getKey(), [
-            'department' => $department,
-            'token' => $next->token_number,
-        ], $request);
-
-        return Envelope::success(data: $next, request: $request);
+        return Envelope::success(data: $result['entry'], request: $request);
     }
 
+    /**
+     * POST /orchestration/queue/{entry}/start — transition called → in_progress.
+     */
     public function startConsultation(Request $request, QueueEntry $entry): JsonResponse
     {
         AccessCheck::scoped($entry, write: true);
-        $entry->update(['status' => 'in_progress', 'started_at' => now()]);
+
+        if (! $entry->canTransitionTo(QueueEntry::STATUS_IN_PROGRESS)) {
+            return Envelope::error(
+                ErrorCodes::CONFLICT,
+                'Only a called queue entry can be started (current status: '.$entry->status.').',
+                409,
+                request: $request,
+            );
+        }
+
+        $fromStatus = $entry->status;
+        $entry->transitionTo(QueueEntry::STATUS_IN_PROGRESS);
+        $entry->started_at = now();
+        $entry->save();
+
+        $actorId = TenantContext::current()->user?->getKey();
+        $entry->recordHistory('started', $fromStatus, QueueEntry::STATUS_IN_PROGRESS, $actorId);
 
         $this->audit->record('queue.started', 'queue_entry', $entry->getKey(), [], $request);
 
         return Envelope::success(data: $entry, request: $request);
     }
 
+    /**
+     * POST /orchestration/queue/{entry}/complete — transition in_progress → completed.
+     */
     public function completeQueue(Request $request, QueueEntry $entry): JsonResponse
     {
         AccessCheck::scoped($entry, write: true);
-        $entry->update(['status' => 'completed', 'completed_at' => now()]);
+
+        if (! $entry->canTransitionTo(QueueEntry::STATUS_COMPLETED)) {
+            return Envelope::error(
+                ErrorCodes::CONFLICT,
+                'Only an in-progress queue entry can be completed (current status: '.$entry->status.').',
+                409,
+                request: $request,
+            );
+        }
+
+        $fromStatus = $entry->status;
+        $entry->transitionTo(QueueEntry::STATUS_COMPLETED);
+        $entry->completed_at = now();
+        $entry->save();
+
+        $actorId = TenantContext::current()->user?->getKey();
+        $entry->recordHistory('completed', $fromStatus, QueueEntry::STATUS_COMPLETED, $actorId);
 
         $this->audit->record('queue.completed', 'queue_entry', $entry->getKey(), [], $request);
 
         return Envelope::success(data: $entry, request: $request);
+    }
+
+    /**
+     * POST /orchestration/queue/{entry}/cancel — cancel a queue entry with reason.
+     * Allowed from: waiting, called.
+     */
+    public function cancelEntry(Request $request, QueueEntry $entry): JsonResponse
+    {
+        AccessCheck::scoped($entry, write: true);
+
+        $validated = $request->validate([
+            'reason' => 'nullable|string|max:500',
+        ]);
+
+        if (! $entry->canTransitionTo(QueueEntry::STATUS_CANCELLED)) {
+            return Envelope::error(
+                ErrorCodes::CONFLICT,
+                'An entry in status '.$entry->status.' cannot be cancelled.',
+                409,
+                request: $request,
+            );
+        }
+
+        $fromStatus = $entry->status;
+        $entry->transitionTo(QueueEntry::STATUS_CANCELLED);
+        $entry->save();
+
+        $actorId = TenantContext::current()->user?->getKey();
+        $entry->recordHistory('cancelled', $fromStatus, QueueEntry::STATUS_CANCELLED, $actorId, $validated['reason'] ?? null);
+
+        $this->audit->record('queue.cancelled', 'queue_entry', $entry->getKey(), [
+            'reason' => $validated['reason'] ?? null,
+        ], $request);
+
+        return Envelope::success(data: $entry, request: $request);
+    }
+
+    /**
+     * POST /orchestration/queue/{entry}/no-show — mark a queue entry as no-show.
+     * Allowed from: waiting, called.
+     */
+    public function noShow(Request $request, QueueEntry $entry): JsonResponse
+    {
+        AccessCheck::scoped($entry, write: true);
+
+        if (! $entry->canTransitionTo(QueueEntry::STATUS_NO_SHOW)) {
+            return Envelope::error(
+                ErrorCodes::CONFLICT,
+                'An entry in status '.$entry->status.' cannot be marked as no-show.',
+                409,
+                request: $request,
+            );
+        }
+
+        $fromStatus = $entry->status;
+        $entry->transitionTo(QueueEntry::STATUS_NO_SHOW);
+        $entry->save();
+
+        $actorId = TenantContext::current()->user?->getKey();
+        $entry->recordHistory('no_show', $fromStatus, QueueEntry::STATUS_NO_SHOW, $actorId);
+
+        $this->audit->record('queue.no_show', 'queue_entry', $entry->getKey(), [], $request);
+
+        return Envelope::success(data: $entry, request: $request);
+    }
+
+    /**
+     * POST /orchestration/queue/{entry}/skip — skip a called patient and
+     * re-queue them as skipped (to be recalled later).
+     * Allowed from: called only.
+     */
+    public function skip(Request $request, QueueEntry $entry): JsonResponse
+    {
+        AccessCheck::scoped($entry, write: true);
+
+        if (! $entry->canTransitionTo(QueueEntry::STATUS_SKIPPED)) {
+            return Envelope::error(
+                ErrorCodes::CONFLICT,
+                'Only a called queue entry can be skipped (current status: '.$entry->status.').',
+                409,
+                request: $request,
+            );
+        }
+
+        $validated = $request->validate([
+            'reason' => 'nullable|string|max:500',
+        ]);
+
+        $fromStatus = $entry->status;
+        $entry->transitionTo(QueueEntry::STATUS_SKIPPED);
+        $entry->save();
+
+        $actorId = TenantContext::current()->user?->getKey();
+        $entry->recordHistory('skipped', $fromStatus, QueueEntry::STATUS_SKIPPED, $actorId, $validated['reason'] ?? null);
+
+        $this->audit->record('queue.skipped', 'queue_entry', $entry->getKey(), [
+            'reason' => $validated['reason'] ?? null,
+        ], $request);
+
+        return Envelope::success(data: $entry, request: $request);
+    }
+
+    /**
+     * POST /orchestration/queue/{entry}/recall — recall a skipped entry
+     * back to waiting.
+     * Allowed from: skipped only.
+     */
+    public function recall(Request $request, QueueEntry $entry): JsonResponse
+    {
+        AccessCheck::scoped($entry, write: true);
+
+        if ($entry->status !== QueueEntry::STATUS_SKIPPED) {
+            return Envelope::error(
+                ErrorCodes::CONFLICT,
+                'Only a skipped queue entry can be recalled (current status: '.$entry->status.').',
+                409,
+                request: $request,
+            );
+        }
+
+        $fromStatus = $entry->status;
+        $entry->status = QueueEntry::STATUS_WAITING;
+        $entry->called_at = null;
+        $entry->save();
+
+        $actorId = TenantContext::current()->user?->getKey();
+        $entry->recordHistory('recalled', $fromStatus, QueueEntry::STATUS_WAITING, $actorId);
+
+        $this->audit->record('queue.recalled', 'queue_entry', $entry->getKey(), [], $request);
+
+        return Envelope::success(data: $entry, request: $request);
+    }
+
+    /**
+     * POST /orchestration/queue/{entry}/transfer — atomically transfer a
+     * queue entry from one department to another. The old entry is cancelled,
+     * a new entry is created in the destination department, and the history
+     * preserves the provenance.
+     *
+     * Allowed from: waiting, called.
+     */
+    public function transfer(Request $request, QueueEntry $entry): JsonResponse
+    {
+        AccessCheck::scoped($entry, write: true);
+
+        $validated = $request->validate([
+            'to_department' => 'required|string|max:100',
+            'reason' => 'nullable|string|max:500',
+        ]);
+
+        if (! $entry->canTransitionTo(QueueEntry::STATUS_CANCELLED)) {
+            return Envelope::error(
+                ErrorCodes::CONFLICT,
+                'An entry in status '.$entry->status.' cannot be transferred.',
+                409,
+                request: $request,
+            );
+        }
+
+        if ($validated['to_department'] === $entry->department) {
+            return Envelope::error(
+                ErrorCodes::CONFLICT,
+                'Cannot transfer to the same department.',
+                409,
+                request: $request,
+            );
+        }
+
+        $ctx = TenantContext::current();
+        $actorId = $ctx->user?->getKey();
+
+        $newEntry = DB::transaction(function () use ($entry, $validated, $ctx, $actorId): QueueEntry {
+            // Cancel the source entry
+            $fromStatus = $entry->status;
+            $entry->transitionTo(QueueEntry::STATUS_CANCELLED);
+            $entry->save();
+
+            $entry->recordHistory(
+                'transferred_out',
+                $fromStatus,
+                QueueEntry::STATUS_CANCELLED,
+                $actorId,
+                $validated['reason'] ?? null,
+                $validated['to_department'],
+            );
+
+            // Generate new token for destination department
+            $lastToken = DB::table('queue_entries')
+                ->where('tenant_id', $ctx->tenantId())
+                ->where('department', $validated['to_department'])
+                ->whereDate('created_at', now()->toDateString())
+                ->max('token_number') ?? 0;
+
+            // Create new entry in destination department
+            $newEntry = QueueEntry::create([
+                'tenant_id' => $entry->tenant_id,
+                'facility_id' => $entry->facility_id,
+                'department' => $validated['to_department'],
+                'queue_code' => QueueEntry::generateQueueCode(),
+                'patient_id' => $entry->patient_id,
+                'appointment_id' => $entry->appointment_id,
+                'provider_staff_id' => $entry->provider_staff_id,
+                'priority' => $entry->priority,
+                'status' => QueueEntry::STATUS_WAITING,
+                'token_number' => $lastToken + 1,
+                'waiting_room' => $entry->waiting_room,
+            ]);
+
+            $newEntry->recordHistory(
+                'transferred_in',
+                '',
+                QueueEntry::STATUS_WAITING,
+                $actorId,
+                $validated['reason'] ?? null,
+                $entry->department,
+                ['source_entry_id' => $entry->getKey(), 'source_queue_code' => $entry->queue_code],
+            );
+
+            return $newEntry;
+        });
+
+        $this->audit->record('queue.transferred', 'queue_entry', $entry->getKey(), [
+            'from_department' => $entry->department,
+            'to_department' => $validated['to_department'],
+            'new_entry_id' => $newEntry->getKey(),
+            'reason' => $validated['reason'] ?? null,
+        ], $request);
+
+        return Envelope::success(data: $newEntry, status: 201, request: $request);
     }
 
     // ── Resource Booking ──────────────────────────────────────────
@@ -150,21 +466,6 @@ final class OrchestrationController extends Controller
         ]);
 
         $ctx = TenantContext::current();
-
-        $conflict = ResourceBooking::where('tenant_id', $ctx->tenantId())
-            ->where('resource_type', $data['resource_type'])
-            ->where('resource_id', $data['resource_id'])
-            ->whereNotIn('status', ['cancelled', 'completed'])
-            ->where('starts_at', '<', $data['ends_at'])
-            ->where('ends_at', '>', $data['starts_at'])
-            ->first();
-
-        if ($conflict) {
-            return response()->json([
-                'error' => 'Resource conflict',
-                'conflicting_booking' => $conflict->getKey(),
-            ], 409);
-        }
 
         $booking = ResourceBooking::create([
             'tenant_id' => $ctx->tenantId(),

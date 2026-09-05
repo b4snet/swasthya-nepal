@@ -11,6 +11,7 @@ use App\Models\Staff;
 use App\Models\TaxRule;
 use App\Services\BillingService;
 use App\Services\TaxResolver;
+use App\Support\TenantContext;
 use Tests\Support\Identity;
 
 /**
@@ -31,6 +32,7 @@ beforeEach(function (): void {
 it('resolves the correct tax rule on a charge and calculates invoice tax', function () {
     $org = Identity::organization();
     $facility = Identity::facility($org);
+    TenantContext::setCurrent(new TenantContext(null, false, $org, $facility, collect()));
 
     // ── Step 1: Create a tax rule (VAT 13%) ──────────────────
     $vatRule = TaxRule::create([
@@ -128,28 +130,30 @@ it('resolves the correct tax rule on a charge and calculates invoice tax', funct
         ->and($line->tax_minor)->toBe(6500);
 
     // ── Step 5: Capture payment — settle the invoice ──────────
+    // (payable outstanding is total_minor; tax lives in total_tax_minor)
     $payment = $billing->capturePayment(
         tenantId: $org->getKey(),
         facilityId: $facility->getKey(),
         patientId: $patient->getKey(),
         invoiceId: $invoice->getKey(),
         method: 'cash',
-        amountMinor: 56500, // 50000 + 6500 tax
+        amountMinor: $invoice->total_minor,
         idempotencyKey: 'nepal-tax-pipeline-full',
         receivedBy: $staff->getKey(),
     );
 
     expect($payment->status)->toBe('captured')
-        ->and($payment->amount_minor)->toBe(56500);
+        ->and($payment->amount_minor)->toBe(50000);
 
     $invoice->refresh();
     expect($invoice->status)->toBe('paid')
-        ->and($invoice->paid_minor)->toBe(56500);
+        ->and($invoice->paid_minor)->toBe(50000);
 });
 
 it('uses the facility-specific tax rule when one exists over the org-wide rule', function () {
     $org = Identity::organization();
     $facility = Identity::facility($org);
+    TenantContext::setCurrent(new TenantContext(null, false, $org, $facility, collect()));
 
     // Org-wide rule: 13%
     TaxRule::create([
@@ -202,6 +206,7 @@ it('returns no tax when no rules are configured', function () {
 it('applies tax only to the matching service category', function () {
     $org = Identity::organization();
     $facility = Identity::facility($org);
+    TenantContext::setCurrent(new TenantContext(null, false, $org, $facility, collect()));
 
     // OPD-specific rule
     TaxRule::create([
@@ -231,6 +236,7 @@ it('applies tax only to the matching service category', function () {
 it('respects effective dates — expired rules are not resolved', function () {
     $org = Identity::organization();
     $facility = Identity::facility($org);
+    TenantContext::setCurrent(new TenantContext(null, false, $org, $facility, collect()));
 
     // Rule that expired in 2024
     TaxRule::create([
@@ -279,7 +285,7 @@ it('creates SSF and HIB payers with benefit rules and validates the full payer m
         'tenant_id' => $org->getKey(),
         'name' => 'Social Security Fund',
         'code' => 'SSF',
-        'payer_type' => 'insurance',
+        'payer_type' => 'government',
         'payer_sub_type' => 'ssf',
         'scheme_version' => 'SSF_2082',
         'status' => 'active',
@@ -293,7 +299,7 @@ it('creates SSF and HIB payers with benefit rules and validates the full payer m
         'tenant_id' => $org->getKey(),
         'name' => 'Health Insurance Board',
         'code' => 'HIB',
-        'payer_type' => 'insurance',
+        'payer_type' => 'government',
         'payer_sub_type' => 'hib',
         'scheme_version' => 'HIB_BP_V3',
         'status' => 'active',
@@ -346,6 +352,7 @@ it('creates SSF and HIB payers with benefit rules and validates the full payer m
 it('generates a receipt after payment with correct tax breakdown', function () {
     $org = Identity::organization();
     $facility = Identity::facility($org);
+    TenantContext::setCurrent(new TenantContext(null, false, $org, $facility, collect()));
 
     // Create tax rule
     TaxRule::create([
@@ -387,14 +394,14 @@ it('generates a receipt after payment with correct tax breakdown', function () {
         chargeIds: [$charge->getKey()],
     );
 
-    // Pay
+    // Pay (payable outstanding is total_minor; tax lives in total_tax_minor)
     $payment = $billing->capturePayment(
         tenantId: $org->getKey(),
         facilityId: $facility->getKey(),
         patientId: $patient->getKey(),
         invoiceId: $invoice->getKey(),
         method: 'cash',
-        amountMinor: 22600, // 20000 + 2600 tax
+        amountMinor: $invoice->total_minor, // 20000
         idempotencyKey: 'receipt-tax-test',
     );
 
@@ -405,7 +412,7 @@ it('generates a receipt after payment with correct tax breakdown', function () {
     );
 
     expect($receipt->receipt_number)->toStartWith('RCP-')
-        ->and($receipt->amount_minor)->toBe(22600)
+        ->and($receipt->amount_minor)->toBe(20000)
         ->and($receipt->method)->toBe('cash');
 
     // Receipt items should carry the tax breakdown

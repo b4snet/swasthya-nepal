@@ -8,8 +8,10 @@ use Illuminate\Validation\Rule;
 
 /**
  * POST claims/{claim}/status — record a payer status update on a
- * submitted/pending claim. A denial requires a reason; paid/partial
- * record the payer settlement (never more than the claim's billed total).
+ * submitted/pending claim. A denial requires a denial reason; a rejection
+ * (claim not accepted for processing, §25) requires its own rejection
+ * reason — kept distinct from denial. Paid/partial record the payer
+ * settlement (never more than the claim's billed total).
  */
 class RecordClaimStatusRequest extends ApiRequest
 {
@@ -24,8 +26,10 @@ class RecordClaimStatusRequest extends ApiRequest
                 InsuranceClaim::STATUS_PARTIAL,
                 InsuranceClaim::STATUS_PAID,
                 InsuranceClaim::STATUS_DENIED,
+                InsuranceClaim::STATUS_REJECTED,
             ])],
             'denialReason' => ['nullable', 'string', 'max:1000'],
+            'rejectionReason' => ['nullable', 'string', 'max:1000'],
             'settlementMinor' => ['nullable', 'integer', 'min:0'],
         ];
     }

@@ -6,7 +6,9 @@ use App\Exceptions\ApiException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Er\AssignTriageRequest;
 use App\Http\Requests\Er\ErDispositionRequest;
+use App\Http\Requests\Er\ReconcileIdentityRequest;
 use App\Http\Requests\Er\StoreErEventRequest;
+use App\Http\Requests\Er\StoreImmediateTreatmentRequest;
 use App\Http\Requests\Er\StoreErRegistrationRequest;
 use App\Http\Requests\Er\StoreTriageScaleRequest;
 use App\Http\Requests\Er\UpdateTriageScaleRequest;
@@ -375,8 +377,10 @@ final class ErController extends Controller
                 'encounters.patient_id',
                 'encounters.facility_id',
                 'encounters.started_at',
+                'er_registrations.id as registration_id',
                 'er_registrations.registered_at',
                 'er_registrations.presenting_complaint',
+                'er_registrations.is_unidentified',
                 'triage_assignments.level',
                 'triage_assignments.color',
                 'triage_assignments.assessed_at',
@@ -385,11 +389,14 @@ final class ErController extends Controller
             ->map(function (object $row): array {
                 return [
                     'encounterId' => $row->encounter_id,
+                    'registrationId' => $row->registration_id,
                     'patientId' => $row->patient_id,
                     'facilityId' => $row->facility_id,
                     'registeredAt' => $row->registered_at !== null
                         ? Carbon::parse($row->registered_at)->toIso8601String()
                         : null,
+                    'presentingComplaint' => $row->presenting_complaint,
+                    'isUnidentified' => (bool) $row->is_unidentified,
                     'triageLevel' => $row->level !== null ? (int) $row->level : null,
                     'triageColor' => $row->color,
                     'triageAssessedAt' => $row->assessed_at !== null
@@ -399,6 +406,164 @@ final class ErController extends Controller
             });
 
         return Envelope::success(data: $rows, request: $request);
+    }
+
+    /**
+     * POST er/encounters/{encounter}/immediate-treatment — bypass the queue
+     * and move the patient directly into active treatment. Requires clinical
+     * authority (er:disposition).
+     */
+    public function admitImmediate(StoreImmediateTreatmentRequest $request, Encounter $encounter): JsonResponse
+    {
+        AccessCheck::scoped($encounter, write: true);
+
+        $this->assertErEncounter($encounter);
+
+        $context = TenantContext::current();
+        if (! $context->can('er:disposition')) {
+            throw new ApiException(
+                ErrorCodes::SCOPE_DENIED,
+                'Immediate treatment override requires clinical authority.',
+                403,
+            );
+        }
+
+        $actor = $this->currentStaff($encounter->tenant_id, $encounter->facility_id);
+
+        $updated = $this->er->admitImmediate(
+            $encounter,
+            $actor,
+            $request->validated('reason'),
+        );
+
+        $this->audit->record(
+            'er.immediate_treatment',
+            'encounter',
+            $updated->getKey(),
+            [
+                'encounterId' => $updated->getKey(),
+                'patientId' => $updated->patient_id,
+                'status' => $updated->status,
+            ],
+            $request,
+        );
+
+        return Envelope::success(data: [
+            'id' => $updated->getKey(),
+            'status' => $updated->status,
+        ], request: $request);
+    }
+
+    /**
+     * POST er/registrations/{registration}/reconcile-identity — link an
+     * unidentified ER patient to an existing canonical patient record.
+     */
+    public function reconcileIdentity(ReconcileIdentityRequest $request, ErRegistration $registration): JsonResponse
+    {
+        AccessCheck::scoped($registration, write: true);
+
+        $context = TenantContext::current();
+        $actor = $this->currentStaff($registration->tenant_id, $registration->facility_id);
+
+        $targetPatient = Patient::query()
+            ->where('tenant_id', $registration->tenant_id)
+            ->where('id', $request->validated('targetPatientId'))
+            ->first();
+
+        if ($targetPatient === null) {
+            throw new ApiException(ErrorCodes::NOT_FOUND, 'Target patient not found.', 404);
+        }
+
+        $updated = $this->er->reconcileIdentity(
+            $registration,
+            $targetPatient,
+            $actor,
+            $request->validated('reason'),
+        );
+
+        $this->audit->record(
+            'er.identity_reconciled',
+            'er_registration',
+            $updated->getKey(),
+            [
+                'registrationId' => $updated->getKey(),
+                'patientId' => $updated->patient_id,
+                'targetPatientId' => $targetPatient->getKey(),
+                'completedAt' => $updated->completed_at?->toIso8601String(),
+            ],
+            $request,
+        );
+
+        return Envelope::success(data: [
+            'id' => $updated->getKey(),
+            'patientId' => $updated->patient_id,
+            'targetPatientId' => $targetPatient->getKey(),
+            'completedAt' => $updated->completed_at?->toIso8601String(),
+        ], request: $request);
+    }
+
+    /**
+     * GET er/dashboard — operational dashboard (§66-70): aggregate counts
+     * of ER encounters by status and triage level. PHI-minimized — no
+     * clinical detail exposed to non-clinical roles.
+     */
+    public function dashboard(Request $request): JsonResponse
+    {
+        $context = TenantContext::current();
+
+        // Columns are qualified throughout: the waiting-time query joins
+        // er_registrations, and an unqualified tenant_id/type/facility_id
+        // would be ambiguous (SQLSTATE[42702]).
+        $encounterQuery = DB::table('encounters')
+            ->where('encounters.tenant_id', $context->tenantId())
+            ->where('encounters.type', Encounter::TYPE_ER);
+
+        if ($context->facilityId() !== null) {
+            $encounterQuery->where('encounters.facility_id', $context->facilityId());
+        }
+
+        // Status counts
+        $statusCounts = (clone $encounterQuery)
+            ->select('status', DB::raw('count(*) as total'))
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
+        // Triage level distribution for open/in-progress encounters
+        $triageDistribution = DB::table('encounters')
+            ->leftJoin('triage_assignments', function ($join): void {
+                $join->on('triage_assignments.encounter_id', '=', 'encounters.id')
+                    ->where('triage_assignments.tenant_id', '=', DB::raw('encounters.tenant_id'))
+                    ->where('triage_assignments.status', '=', 'active');
+            })
+            ->where('encounters.tenant_id', $context->tenantId())
+            ->where('encounters.type', Encounter::TYPE_ER)
+            ->whereIn('encounters.status', [Encounter::STATUS_OPEN, Encounter::STATUS_IN_PROGRESS])
+            ->when($context->facilityId() !== null, fn ($q) => $q->where('encounters.facility_id', $context->facilityId()))
+            ->select('triage_assignments.level', DB::raw('count(*) as total'))
+            ->groupBy('triage_assignments.level')
+            ->pluck('total', 'level');
+
+        // Waiting time: average minutes from registration to now for open encounters
+        $avgWaitingMinutes = (clone $encounterQuery)
+            ->leftJoin('er_registrations', function ($join): void {
+                $join->on('er_registrations.encounter_id', '=', 'encounters.id')
+                    ->where('er_registrations.tenant_id', '=', DB::raw('encounters.tenant_id'));
+            })
+            ->where('encounters.status', Encounter::STATUS_OPEN)
+            ->whereNull('encounters.disposition')
+            ->selectRaw('avg(extract(epoch from (now() - er_registrations.registered_at)) / 60) as avg_minutes')
+            ->value('avg_minutes');
+
+        return Envelope::success(data: [
+            'statusCounts' => [
+                'open' => (int) ($statusCounts[Encounter::STATUS_OPEN] ?? 0),
+                'inProgress' => (int) ($statusCounts[Encounter::STATUS_IN_PROGRESS] ?? 0),
+                'closed' => (int) ($statusCounts[Encounter::STATUS_CLOSED] ?? 0),
+                'total' => (int) $statusCounts->sum(),
+            ],
+            'triageDistribution' => $triageDistribution->mapWithKeys(fn ($count, $level) => ['level_' . ($level ?? 'untriaged') => (int) $count])->all(),
+            'avgWaitingMinutes' => $avgWaitingMinutes !== null ? round((float) $avgWaitingMinutes, 1) : null,
+        ], request: $request);
     }
 
     /**

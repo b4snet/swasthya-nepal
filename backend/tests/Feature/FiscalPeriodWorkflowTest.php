@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Exceptions\ApiException;
 use App\Models\Charge;
 use App\Models\FinancialPeriod;
+use App\Support\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\Identity;
 use Tests\TestCase;
@@ -30,7 +31,11 @@ class FiscalPeriodWorkflowTest extends TestCase
         $org = Identity::organization();
         $facility = Identity::facility($org);
         $admin = Identity::user();
-        Identity::assign($admin, 'hospital_admin', $org, $facility);
+        // Org-level assignment (no facility): fiscal years are tenant-wide
+        // rows, and AccessCheck::scoped() only lets a facility-null context
+        // write them. Direct PeriodGuard calls read TenantContext likewise.
+        Identity::assign($admin, 'hospital_admin', $org);
+        TenantContext::setCurrent(new TenantContext($admin, false, $org, $facility, collect()));
 
         return ['org' => $org, 'facility' => $facility, 'admin' => $admin];
     }
@@ -65,7 +70,7 @@ class FiscalPeriodWorkflowTest extends TestCase
 
         // Use the original FinancialPeriodController lock route
         $this->withToken(Identity::tokenFor($ctx['admin']))
-            ->postJson("/api/v1/financial-periods/{$id}/lock")
+            ->postJson("/api/v1/enterprise/financial-periods/{$id}/lock")
             ->assertOk()
             ->assertJsonPath('data.status', 'locked');
     }
@@ -119,7 +124,7 @@ class FiscalPeriodWorkflowTest extends TestCase
 
         // Lock
         $this->withToken(Identity::tokenFor($ctx['admin']))
-            ->postJson("/api/v1/financial-periods/{$id}/lock")
+            ->postJson("/api/v1/enterprise/financial-periods/{$id}/lock")
             ->assertOk();
 
         // Try to reopen — should fail

@@ -4,14 +4,18 @@ namespace App\Services;
 
 use App\Exceptions\ApiException;
 use App\Models\Asset;
+use App\Models\AssetDisposal;
 use App\Models\AssetTransfer;
 use App\Models\AttendanceRecord;
+use App\Models\CalibrationRecord;
+use App\Models\EquipmentIncident;
 use App\Models\LeaveRequest;
 use App\Models\LeaveType;
 use App\Models\MaintenanceSchedule;
 use App\Models\PayrollExport;
 use App\Models\Roster;
 use App\Models\ShiftTemplate;
+use App\Models\StaffTransfer;
 use App\Models\WorkOrder;
 use App\Support\ErrorCodes;
 use Carbon\CarbonImmutable;
@@ -902,6 +906,186 @@ final class HrAssetsService
         [$h, $m] = array_map('intval', explode(':', $hhmm));
 
         return $h * 60 + $m;
+    }
+
+    // ──────────────────── Calibration (§81-82) ────────────────────
+
+    public function recordCalibration(
+        string $tenantId,
+        string $facilityId,
+        string $assetId,
+        string $calibrationType,
+        CarbonInterface $calibratedAt,
+        CarbonInterface $dueAt,
+        string $result,
+        ?string $provider = null,
+        ?string $notes = null,
+        ?string $performedByStaffId = null,
+        ?string $documentId = null,
+        ?string $createdBy = null,
+    ): CalibrationRecord {
+        return CalibrationRecord::query()->create([
+            'tenant_id' => $tenantId,
+            'facility_id' => $facilityId,
+            'asset_id' => $assetId,
+            'calibration_type' => $calibrationType,
+            'provider' => $provider,
+            'calibrated_at' => $calibratedAt,
+            'due_at' => $dueAt,
+            'result' => $result,
+            'notes' => $notes,
+            'performed_by_staff_id' => $performedByStaffId,
+            'document_id' => $documentId,
+            'created_by' => $createdBy,
+        ]);
+    }
+
+    // ──────────────────── Equipment Incidents (§88) ────────────────
+
+    public function reportIncident(
+        string $tenantId,
+        string $facilityId,
+        string $assetId,
+        string $incidentType,
+        string $description,
+        string $reportedByStaffId,
+        CarbonInterface $occurredAt,
+        string $severity,
+        ?string $createdBy = null,
+    ): EquipmentIncident {
+        return EquipmentIncident::query()->create([
+            'tenant_id' => $tenantId,
+            'facility_id' => $facilityId,
+            'asset_id' => $assetId,
+            'incident_type' => $incidentType,
+            'description' => $description,
+            'reported_by_staff_id' => $reportedByStaffId,
+            'occurred_at' => $occurredAt,
+            'severity' => $severity,
+            'status' => EquipmentIncident::STATUS_OPEN,
+            'created_by' => $createdBy,
+        ]);
+    }
+
+    public function resolveIncident(
+        EquipmentIncident $incident,
+        string $resolution,
+        string $resolvedByStaffId,
+        ?CarbonInterface $resolvedAt = null,
+        ?string $updatedBy = null,
+    ): EquipmentIncident {
+        return DB::transaction(function () use ($incident, $resolution, $resolvedByStaffId, $resolvedAt, $updatedBy): EquipmentIncident {
+            $incident->refresh();
+
+            $affected = DB::table('equipment_incidents')
+                ->where('tenant_id', $incident->tenant_id)
+                ->where('id', $incident->getKey())
+                ->whereIn('status', [EquipmentIncident::STATUS_OPEN, EquipmentIncident::STATUS_INVESTIGATING])
+                ->where('lock_version', $incident->lock_version ?? 0)
+                ->update([
+                    'status' => EquipmentIncident::STATUS_RESOLVED,
+                    'resolution' => $resolution,
+                    'resolved_by_staff_id' => $resolvedByStaffId,
+                    'resolved_at' => $resolvedAt ?? now(),
+                    'updated_by' => $updatedBy,
+                    'updated_at' => now(),
+                ]);
+
+            if ($affected !== 1) {
+                throw new ApiException(ErrorCodes::LOCK_CONFLICT, 'The incident was concurrently modified; reload and retry.', 409);
+            }
+
+            return $incident->refresh();
+        });
+    }
+
+    // ──────────────────── Asset Disposal (§91) ─────────────────────
+
+    public function disposeAsset(
+        Asset $asset,
+        string $disposalType,
+        string $reason,
+        string $authorizedByStaffId,
+        CarbonInterface $disposedAt,
+        ?string $performedByStaffId = null,
+        ?string $authorizationRef = null,
+        ?string $notes = null,
+        ?string $createdBy = null,
+    ): AssetDisposal {
+        return DB::transaction(function () use ($asset, $disposalType, $reason, $authorizedByStaffId, $disposedAt, $performedByStaffId, $authorizationRef, $notes, $createdBy): AssetDisposal {
+            $asset->refresh();
+
+            if ($asset->lifecycle_status === Asset::LIFECYCLE_RETIRED) {
+                throw new ApiException(ErrorCodes::CONFLICT, 'A retired asset cannot be disposed again.', 409);
+            }
+
+            // Transition to retired if not already
+            $this->transitionLifecycle($asset, Asset::LIFECYCLE_RETIRED, $authorizedByStaffId);
+
+            return AssetDisposal::query()->create([
+                'tenant_id' => $asset->tenant_id,
+                'facility_id' => $asset->facility_id,
+                'asset_id' => $asset->getKey(),
+                'disposal_type' => $disposalType,
+                'reason' => $reason,
+                'authorization_ref' => $authorizationRef,
+                'authorized_by_staff_id' => $authorizedByStaffId,
+                'performed_by_staff_id' => $performedByStaffId,
+                'disposed_at' => $disposedAt,
+                'notes' => $notes,
+                'created_by' => $createdBy,
+            ]);
+        });
+    }
+
+    // ──────────────────── Staff Transfers (§58-59) ─────────────────
+
+    public function transferStaff(
+        string $tenantId,
+        string $facilityId,
+        string $staffId,
+        ?string $fromDepartmentId,
+        ?string $toDepartmentId,
+        ?string $toFacilityId,
+        string $authorizedByStaffId,
+        CarbonInterface $effectiveAt,
+        ?string $reason = null,
+        ?string $notes = null,
+        ?string $createdBy = null,
+    ): StaffTransfer {
+        return DB::transaction(function () use ($tenantId, $facilityId, $staffId, $fromDepartmentId, $toDepartmentId, $toFacilityId, $authorizedByStaffId, $effectiveAt, $reason, $notes, $createdBy): StaffTransfer {
+            // Record the transfer
+            $transfer = StaffTransfer::query()->create([
+                'tenant_id' => $tenantId,
+                'facility_id' => $facilityId,
+                'staff_id' => $staffId,
+                'from_department_id' => $fromDepartmentId,
+                'to_department_id' => $toDepartmentId,
+                'to_facility_id' => $toFacilityId,
+                'reason' => $reason,
+                'authorized_by_staff_id' => $authorizedByStaffId,
+                'effective_at' => $effectiveAt,
+                'notes' => $notes,
+                'created_by' => $createdBy,
+            ]);
+
+            // Apply the transfer to the staff record
+            $updates = ['updated_at' => now()];
+            if ($toDepartmentId !== null) {
+                $updates['department_id'] = $toDepartmentId;
+            }
+            if ($toFacilityId !== null) {
+                $updates['facility_id'] = $toFacilityId;
+            }
+
+            DB::table('staff')
+                ->where('tenant_id', $tenantId)
+                ->where('facility_id', $facilityId)
+                ->where('id', $staffId)
+                ->update($updates);
+
+            return $transfer;
+        });
     }
 
     private function nextWorkOrderNumber(string $tenantId): string

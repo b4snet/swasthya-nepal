@@ -94,6 +94,7 @@ export interface Appointment {
   source: string;
   cancelReason: string | null;
   lockVersion: number;
+  rescheduledFrom: string | null;
 }
 
 /**
@@ -861,6 +862,7 @@ export interface InsuranceClaim {
   status: string;
   submittedAt: string | null;
   denialReason: string | null;
+  rejectionReason: string | null;
   settlementMinor: number;
   billedMinor: number;
   lockVersion: number;
@@ -870,6 +872,21 @@ export interface InsuranceClaim {
     billedMinor: number;
     approvedMinor: number;
     status: string;
+  }>;
+  submissions: Array<{
+    id: string;
+    submissionNumber: number;
+    submittedAt: string;
+    submittedBy: string | null;
+    snapshot: {
+      claimNumber: string;
+      invoiceId: string;
+      policyId: string;
+      payerId: string;
+      status: string;
+      billedTotalMinor: number;
+      lines: Array<{ invoiceLineId: string; billedMinor: number }>;
+    };
   }>;
 }
 

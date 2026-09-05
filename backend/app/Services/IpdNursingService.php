@@ -121,9 +121,8 @@ final class IpdNursingService
                 'patient_id' => $admission->patient_id,
                 'type' => $type,
                 'value' => $value,
-                'measured_at' => $measuredAt,
-                'measured_by' => $measuredBy->getKey(),
-                'created_by' => $measuredBy->user_id,
+                'observed_at' => $measuredAt,
+                'recorded_by' => $measuredBy->getKey(),
             ]);
         });
     }

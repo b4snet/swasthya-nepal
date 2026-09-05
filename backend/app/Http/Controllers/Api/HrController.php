@@ -715,4 +715,54 @@ final class HrController extends Controller
             'lockVersion' => $leave->lock_version,
         ];
     }
+
+    // ── Staff Transfers (§58-59) ───────────────────────────────────
+
+    public function transferStaff(Request $request, \App\Models\Staff $staff): JsonResponse
+    {
+        AccessCheck::scoped($staff, write: true);
+
+        $validated = $request->validate([
+            'to_department_id' => 'nullable|uuid',
+            'to_facility_id' => 'nullable|uuid',
+            'reason' => 'nullable|string|max:255',
+            'authorized_by_staff_id' => 'required|uuid',
+            'effective_at' => 'required|date',
+            'notes' => 'nullable|string|max:2000',
+        ]);
+
+        $transfer = $this->hr->transferStaff(
+            $staff->tenant_id,
+            $staff->facility_id,
+            $staff->getKey(),
+            $staff->department_id,
+            $validated['to_department_id'] ?? null,
+            $validated['to_facility_id'] ?? null,
+            $validated['authorized_by_staff_id'],
+            \Carbon\CarbonImmutable::parse($validated['effective_at']),
+            $validated['reason'] ?? null,
+            $validated['notes'] ?? null,
+            $this->currentStaffId(TenantContext::current(), $staff->facility_id),
+        );
+
+        $this->audit->record('staff.transfer', 'staff_transfer', $transfer->getKey(), [
+            'staffId' => $staff->getKey(),
+        ], $request);
+
+        return Envelope::success(data: $transfer->toArray(), request: $request);
+    }
+
+    public function staffTransfers(Request $request, \App\Models\Staff $staff): JsonResponse
+    {
+        AccessCheck::scoped($staff, write: false);
+
+        $transfers = \App\Models\StaffTransfer::query()
+            ->where('tenant_id', $staff->tenant_id)
+            ->where('facility_id', $staff->facility_id)
+            ->where('staff_id', $staff->getKey())
+            ->orderByDesc('effective_at')
+            ->get();
+
+        return Envelope::success(data: $transfers->toArray(), request: $request);
+    }
 }

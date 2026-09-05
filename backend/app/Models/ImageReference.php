@@ -9,12 +9,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * A DICOM/PACS reference attached to a study (DATABASE.md §3.29,
- * PRODUCT_REQUIREMENTS §6.9). References ONLY — study/series/SOP instance
- * UIDs and PACS URLs, never pixels (PACS owns the images). The composite
- * FK to `studies` is the no-dangling guarantee: a reference can only exist
- * against a study in the same tenant, so a report can never point at
- * imagery that does not exist or belongs elsewhere.
+ * DICOM/PACS reference attached to a performed/reported study.
+ * References only — never pixels. Composite FK guarantees no dangling refs.
  *
  * Tenant+facility scoped, RLS on + FORCED.
  */
@@ -23,14 +19,6 @@ class ImageReference extends Model
     /** @use HasFactory<ImageReferenceFactory> */
     use HasFactory, HasUuid;
 
-    public const TYPE_STUDY_UID = 'dicom_study_instance_uid';
-
-    public const TYPE_SERIES_UID = 'dicom_series_instance_uid';
-
-    public const TYPE_SOP_UID = 'dicom_sop_instance_uid';
-
-    public const TYPE_PACS_URL = 'pacs_url';
-
     /**
      * @var list<string>
      */
@@ -38,8 +26,10 @@ class ImageReference extends Model
         'tenant_id',
         'facility_id',
         'study_id',
-        'reference_type',
+        'reference_type', // dicom_study_instance_uid, dicom_series_instance_uid, dicom_sop_instance_uid, pacs_url
         'reference_value',
+        'series_instance_uid',
+        'sop_instance_uid',
         'description',
         'created_by',
     ];

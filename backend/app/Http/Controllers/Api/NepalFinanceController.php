@@ -186,7 +186,7 @@ final class NepalFinanceController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'code' => 'required|string|max:50',
-            'payerType' => 'required|string|in:insurance,government,self_pay',
+            'payerType' => 'required|string|in:government,private,tpa,other',
             'payerSubType' => 'nullable|string|in:ssf,hib,private,corporate,government,other',
             'schemeVersion' => 'nullable|string|max:50',
         ]);
@@ -209,7 +209,7 @@ final class NepalFinanceController extends Controller
             'payer_sub_type' => $validated['payerSubType'] ?? null,
             'scheme_version' => $validated['schemeVersion'] ?? null,
             'status' => Payer::STATUS_ACTIVE,
-            'created_by' => $context->user?->getKey(),
+            'created_by' => TenantContext::current()->user?->getKey(),
         ]);
 
         $this->audit->record('payer.created', 'payer', $payer->getKey(), [

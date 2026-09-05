@@ -112,4 +112,19 @@ class Asset extends Model
     {
         return $this->hasMany(IotReading::class, 'asset_id');
     }
+
+    public function calibrationRecords(): HasMany
+    {
+        return $this->hasMany(CalibrationRecord::class, 'asset_id');
+    }
+
+    public function incidents(): HasMany
+    {
+        return $this->hasMany(EquipmentIncident::class, 'asset_id');
+    }
+
+    public function disposals(): HasMany
+    {
+        return $this->hasMany(AssetDisposal::class, 'asset_id');
+    }
 }

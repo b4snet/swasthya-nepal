@@ -6,6 +6,7 @@ use App\Models\Charge;
 use App\Models\Payer;
 use App\Models\TaxRule;
 use App\Services\TaxResolver;
+use App\Support\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\Identity;
 use Tests\TestCase;
@@ -26,7 +27,11 @@ class NepalFinanceTest extends TestCase
         $org = Identity::organization();
         $facility = Identity::facility($org);
         $admin = Identity::user();
-        Identity::assign($admin, 'hospital_admin', $org, $facility);
+        // Org-level assignment (no facility): fiscal years are tenant-wide
+        // rows writable only from a facility-null context. Direct
+        // resolver/service calls read TenantContext likewise (AuditTest).
+        Identity::assign($admin, 'hospital_admin', $org);
+        TenantContext::setCurrent(new TenantContext($admin, false, $org, $facility, collect()));
 
         return ['org' => $org, 'facility' => $facility, 'admin' => $admin];
     }
@@ -219,7 +224,7 @@ class NepalFinanceTest extends TestCase
             'tenant_id' => $ctx['org']->getKey(),
             'name' => 'SSF',
             'code' => 'SSF',
-            'payer_type' => 'insurance',
+            'payer_type' => 'government',
             'status' => 'active',
         ]);
 
@@ -268,7 +273,7 @@ class NepalFinanceTest extends TestCase
             'tenant_id' => $ctx['org']->getKey(),
             'name' => 'SSF',
             'code' => 'SSF',
-            'payer_type' => 'insurance',
+            'payer_type' => 'government',
             'status' => 'active',
         ]);
 
@@ -352,7 +357,7 @@ class NepalFinanceTest extends TestCase
             ->postJson('/api/v1/enterprise/finance/payers', [
                 'name' => 'Social Security Fund',
                 'code' => 'SSF',
-                'payerType' => 'insurance',
+                'payerType' => 'government',
                 'payerSubType' => 'ssf',
                 'schemeVersion' => 'SSF_2082',
             ])
@@ -365,7 +370,7 @@ class NepalFinanceTest extends TestCase
             ->postJson('/api/v1/enterprise/finance/payers', [
                 'name' => 'Health Insurance Board',
                 'code' => 'HIB',
-                'payerType' => 'insurance',
+                'payerType' => 'government',
                 'payerSubType' => 'hib',
                 'schemeVersion' => 'HIB_BP_V3',
             ])
@@ -385,7 +390,7 @@ class NepalFinanceTest extends TestCase
         $payload = [
             'name' => 'SSF',
             'code' => 'SSF',
-            'payerType' => 'insurance',
+            'payerType' => 'government',
         ];
 
         $this->withToken(Identity::tokenFor($ctx['admin']))

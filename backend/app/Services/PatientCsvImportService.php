@@ -301,7 +301,6 @@ final class PatientCsvImportService
                             'patient_id' => $patient->getKey(),
                             'type' => 'national_id',
                             'value' => $mapped['nationalId'],
-                            'value_hash' => PatientIdentifier::hashValue($mapped['nationalId']),
                             'status' => 'active',
                             'created_by' => $context->user?->getKey() ?? null,
                         ]);
@@ -313,7 +312,6 @@ final class PatientCsvImportService
                             'patient_id' => $patient->getKey(),
                             'type' => 'passport',
                             'value' => $mapped['passport'],
-                            'value_hash' => PatientIdentifier::hashValue($mapped['passport']),
                             'status' => 'active',
                             'created_by' => $context->user?->getKey() ?? null,
                         ]);

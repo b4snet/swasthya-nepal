@@ -139,9 +139,11 @@ final class ScheduleController extends Controller
     }
 
     /**
-     * GET /staff/{staff}/availability?date=YYYY-MM-DD — derived open slots
-     * for one provider on one date (DATABASE.md §3.16). The route parameter
-     * name MUST match the method parameter for implicit binding.
+     * GET /staff/{staff}/availability?date=YYYY-MM-DD&serviceId=... — derived
+     * open slots for one provider on one date (DATABASE.md §3.16). When a
+     * serviceId is provided, slots are grouped into contiguous blocks
+     * matching the service's default_duration_minutes; a slot is only
+     * available if ALL consecutive sub-slots within the block have capacity.
      */
     public function availability(Request $request, Staff $staff): JsonResponse
     {
@@ -149,6 +151,7 @@ final class ScheduleController extends Controller
 
         $date = (string) $request->query('date', today()->toDateString());
         $includeUnavailable = $request->boolean('includeUnavailable');
+        $serviceId = $request->query('serviceId');
         $context = TenantContext::current();
 
         $slots = $this->slots->slotsFor(
@@ -156,6 +159,7 @@ final class ScheduleController extends Controller
             (string) $staff->getKey(),
             $date,
             $includeUnavailable,
+            $serviceId,
         );
 
         return Envelope::success(data: $slots->values()->all(), request: $request);

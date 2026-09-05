@@ -217,6 +217,35 @@ final class InventoryController extends Controller
     }
 
     /**
+     * GET /inventory-items/{inventoryItem}/movements — the append-only stock
+     * ledger for one item (PRODUCT_REQUIREMENTS §6.15, §18, §98): every
+     * receipt, adjustment, dispense, return, transfer, and wastage row,
+     * newest first. Facility-scoped principals see only their facility's
+     * movements; org/platform see the whole tenant. Read-only — no mutation,
+     * no audit (mirrors the inventory index).
+     */
+    public function movements(InventoryItem $inventoryItem, Request $request): JsonResponse
+    {
+        AccessCheck::scoped($inventoryItem, write: false);
+
+        $context = TenantContext::current();
+
+        $query = InventoryMovement::query()
+            ->where('tenant_id', $inventoryItem->tenant_id)
+            ->where('inventory_item_id', $inventoryItem->getKey());
+
+        if (! $context->isPlatform && $context->facilityId() !== null) {
+            $query->where('facility_id', $context->facilityId());
+        }
+
+        $movements = $query->orderByDesc('occurred_at')
+            ->orderByDesc('created_at')
+            ->paginate(min((int) $request->input('perPage', 50), 100));
+
+        return Envelope::success(data: $movements, request: $request);
+    }
+
+    /**
      * POST /inventory-items/{inventoryItem}/adjust — a signed stock
      * adjustment with a mandatory reason. CAS on (quantity, lock_version):
      * concurrent adjustments cannot drive stock negative or double-apply.

@@ -47,6 +47,10 @@ class ErEvent extends Model
 
     public const TYPE_DISCHARGED = 'discharged';
 
+    public const TYPE_IMMEDIATE_TREATMENT = 'immediate_treatment';
+
+    public const TYPE_IDENTITY_RECONCILED = 'identity_reconciled';
+
     public const TYPE_OTHER = 'other';
 
     /**

@@ -313,7 +313,7 @@ final class FinanceController extends Controller
     {
         AccessCheck::scoped($this->claimInvoice($claim), write: false);
 
-        $claim->load('lines');
+        $claim->load('lines', 'submissions');
 
         return Envelope::success(data: self::presentClaim($claim), request: $request);
     }
@@ -365,6 +365,7 @@ final class FinanceController extends Controller
             $claim,
             (string) $request->validated('status'),
             $request->validated('denialReason'),
+            $request->validated('rejectionReason'),
             null,
             $request->user()?->getKey(),
         );
@@ -373,6 +374,8 @@ final class FinanceController extends Controller
             'invoiceId' => $claim->invoice_id,
             'transition' => $transition,
             'denied' => $claim->status === InsuranceClaim::STATUS_DENIED,
+            'rejected' => $claim->status === InsuranceClaim::STATUS_REJECTED,
+            'settlementMinor' => $claim->settlement_minor,
         ], $request);
 
         return Envelope::success(data: self::presentClaim($claim), request: $request);
@@ -391,6 +394,7 @@ final class FinanceController extends Controller
         [$claim, $transition] = $this->finance->recordClaimStatus(
             $claim,
             (string) $request->validated('status'),
+            null,
             null,
             (int) $request->validated('settlementMinor'),
             $request->user()?->getKey(),
@@ -476,6 +480,7 @@ final class FinanceController extends Controller
             'status' => $claim->status,
             'submittedAt' => $claim->submitted_at?->toIso8601String(),
             'denialReason' => $claim->denial_reason,
+            'rejectionReason' => $claim->rejection_reason,
             'settlementMinor' => $claim->settlement_minor,
             'billedMinor' => $claim->billedTotalMinor(),
             'lockVersion' => $claim->lock_version,
@@ -486,6 +491,15 @@ final class FinanceController extends Controller
                     'billedMinor' => $line->billed_minor,
                     'approvedMinor' => $line->approved_minor,
                     'status' => $line->status,
+                ])->values()
+                : [],
+            'submissions' => $claim->relationLoaded('submissions')
+                ? $claim->submissions->map(fn ($submission): array => [
+                    'id' => $submission->getKey(),
+                    'submissionNumber' => $submission->submission_number,
+                    'submittedAt' => $submission->submitted_at?->toIso8601String(),
+                    'submittedBy' => $submission->submitted_by,
+                    'snapshot' => $submission->submitted_snapshot,
                 ])->values()
                 : [],
         ];

@@ -27,6 +27,7 @@ use App\Http\Controllers\Api\DocumentCenterController;
 use App\Http\Controllers\Api\DocumentPlatformController;
 use App\Http\Controllers\Api\DocumentPrefillController;
 use App\Http\Controllers\Api\DomainEventController;
+use App\Http\Controllers\Api\DrugInteractionController;
 use App\Http\Controllers\Api\EncounterController;
 use App\Http\Controllers\Api\ErController;
 use App\Http\Controllers\Api\ExpenseController;
@@ -59,9 +60,11 @@ use App\Http\Controllers\Api\OnboardingController;
 use App\Http\Controllers\Api\OnboardingProfileController;
 use App\Http\Controllers\Api\OncologyController;
 use App\Http\Controllers\Api\OrchestrationController;
+use App\Http\Controllers\Api\OrderSetController;
 use App\Http\Controllers\Api\OrganizationController;
 use App\Http\Controllers\Api\OtController;
 use App\Http\Controllers\Api\PasswordResetController;
+use App\Http\Controllers\Api\PatientAllergyController;
 use App\Http\Controllers\Api\PatientContactController;
 use App\Http\Controllers\Api\PatientController;
 use App\Http\Controllers\Api\PatientDocumentController;
@@ -75,6 +78,7 @@ use App\Http\Controllers\Api\PharmacyReturnController;
 use App\Http\Controllers\Api\PlatformAssignmentController;
 use App\Http\Controllers\Api\PlatformSupportController;
 use App\Http\Controllers\Api\PortalActivationController;
+use App\Http\Controllers\Api\ProblemController;
 use App\Http\Controllers\Api\ProcurementController;
 use App\Http\Controllers\Api\RadiologyController;
 use App\Http\Controllers\Api\RealtimeController;
@@ -90,10 +94,12 @@ use App\Http\Controllers\Api\ServiceController;
 use App\Http\Controllers\Api\SpecialtyController;
 use App\Http\Controllers\Api\StaffController;
 use App\Http\Controllers\Api\StandaloneDispensingController;
+use App\Http\Controllers\Api\StockCountController;
 use App\Http\Controllers\Api\TaxRuleController;
 use App\Http\Controllers\Api\TelehealthController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\WardController;
+use App\Http\Controllers\Api\WastageController;
 use App\Http\Middleware\ResolvePartnerContext;
 use App\Http\Middleware\ResolvePortalContext;
 use App\Http\Middleware\ResolveTenantContext;
@@ -160,14 +166,14 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
     // Authenticated password change (SECURITY.md §1–2): verifies the current
     // credential, enforces the strength floor, and revokes EVERY session
     // (SECURITY.md §2 password change invalidates all outstanding tokens).
-    Route::post('auth/password/change', [AuthController::class, 'changePassword'])->middleware('throttle:writes','throttleTenant');
+    Route::post('auth/password/change', [AuthController::class, 'changePassword'])->middleware('throttle:writes', 'throttleTenant');
 
     // MFA lifecycle (Phase 2) — authenticated endpoints.
     Route::get('auth/mfa/status', [MfaController::class, 'status']);
-    Route::post('auth/mfa/enroll', [MfaController::class, 'enroll'])->middleware('throttle:writes','throttleTenant');
-    Route::post('auth/mfa/activate', [MfaController::class, 'activate'])->middleware('throttle:writes','throttleTenant');
-    Route::post('auth/mfa/disable', [MfaController::class, 'disable'])->middleware('throttle:writes','throttleTenant');
-    Route::post('auth/mfa/recovery-codes', [MfaController::class, 'regenerateRecoveryCodes'])->middleware('throttle:writes','throttleTenant');
+    Route::post('auth/mfa/enroll', [MfaController::class, 'enroll'])->middleware('throttle:writes', 'throttleTenant');
+    Route::post('auth/mfa/activate', [MfaController::class, 'activate'])->middleware('throttle:writes', 'throttleTenant');
+    Route::post('auth/mfa/disable', [MfaController::class, 'disable'])->middleware('throttle:writes', 'throttleTenant');
+    Route::post('auth/mfa/recovery-codes', [MfaController::class, 'regenerateRecoveryCodes'])->middleware('throttle:writes', 'throttleTenant');
     Route::get('users/me', [UserController::class, 'me']);
 
     // Organizations.
@@ -399,6 +405,22 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
         ->middleware('authorize:patient:merge');
     Route::get('patients/{patient}/timeline', [PatientController::class, 'timeline'])
         ->middleware('authorize:patient:view');
+    Route::get('patients/{patient}/allergies', [PatientAllergyController::class, 'index'])
+        ->middleware('authorize:patient:view');
+    Route::post('patients/{patient}/allergies', [PatientAllergyController::class, 'store'])
+        ->middleware('authorize:encounter:document');
+    Route::post('patients/{patient}/allergies/{allergy}/resolve', [PatientAllergyController::class, 'resolve'])
+        ->middleware('authorize:encounter:document');
+
+    // Problem list — longitudinal patient conditions.
+    Route::get('patients/{patient}/problems', [ProblemController::class, 'index'])
+        ->middleware('authorize:patient:view');
+    Route::post('patients/{patient}/problems', [ProblemController::class, 'store'])
+        ->middleware('authorize:encounter:document');
+    Route::post('patients/{patient}/problems/{problem}/resolve', [ProblemController::class, 'resolve'])
+        ->middleware('authorize:encounter:document');
+    Route::post('patients/{patient}/problems/{problem}/rule-out', [ProblemController::class, 'ruleOut'])
+        ->middleware('authorize:encounter:document');
 
     // Patient CSV import (Phase 80).
     Route::get('organizations/{organization}/patients/import/template', [PatientImportController::class, 'template'])
@@ -497,8 +519,14 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
         ->middleware('authorize:appointment:checkin');
     Route::post('appointments/{appointment}/cancel', [AppointmentController::class, 'cancel'])
         ->middleware('authorize:appointment:cancel');
+    Route::post('appointments/{appointment}/no-show', [AppointmentController::class, 'noShow'])
+        ->middleware('authorize:appointment:cancel');
+    Route::post('appointments/{appointment}/reschedule', [AppointmentController::class, 'reschedule'])
+        ->middleware('authorize:appointment:book');
 
     // Phase 7 — OPD: the clinical spine.
+    Route::post('encounters/walk-in', [EncounterController::class, 'startWalkIn'])
+        ->middleware('authorize:encounter:create');
     Route::post('appointments/{appointment}/start-encounter', [EncounterController::class, 'start'])
         ->middleware('authorize:encounter:create');
     Route::get('encounters/{encounter}', [EncounterController::class, 'show'])
@@ -511,16 +539,38 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
         ->middleware('authorize:encounter:document');
     Route::post('encounters/{encounter}/notes/{note}/sign', [EncounterController::class, 'signNote'])
         ->middleware('authorize:encounter:sign');
+    Route::post('encounters/{encounter}/notes/{note}/amend', [EncounterController::class, 'amendNote'])
+        ->middleware('authorize:encounter:sign');
     Route::post('encounters/{encounter}/diagnoses', [EncounterController::class, 'storeDiagnosis'])
         ->middleware('authorize:encounter:document');
     Route::post('encounters/{encounter}/prescriptions', [EncounterController::class, 'storePrescription'])
         ->middleware('authorize:encounter:prescribe');
     Route::post('encounters/{encounter}/sign', [EncounterController::class, 'sign'])
         ->middleware('authorize:encounter:sign');
+    Route::post('encounters/{encounter}/vitals', [EncounterController::class, 'storeVitals'])
+        ->middleware('authorize:nursing:document');
+    Route::get('encounters/{encounter}/vitals', [EncounterController::class, 'vitals'])
+        ->middleware('authorize:encounter:view');
     Route::get('encounters/{encounter}/charges', [EncounterController::class, 'charges'])
         ->middleware('authorize:billing:view');
     Route::post('encounters/{encounter}/invoice', [EncounterController::class, 'invoice'])
         ->middleware('authorize:billing:invoice');
+
+    // CPOE — Order Sets (versioned order bundles).
+    Route::get('order-sets', [OrderSetController::class, 'index'])
+        ->middleware('authorize:encounter:view');
+    Route::post('order-sets', [OrderSetController::class, 'store'])
+        ->middleware('authorize:encounter:document');
+    Route::get('order-sets/{orderSet}', [OrderSetController::class, 'show'])
+        ->middleware('authorize:encounter:view');
+    Route::post('order-sets/{orderSet}/publish', [OrderSetController::class, 'publish'])
+        ->middleware('authorize:encounter:document');
+    Route::post('order-sets/{orderSet}/retire', [OrderSetController::class, 'retire'])
+        ->middleware('authorize:encounter:document');
+    Route::post('encounters/{encounter}/order-sets/{orderSet}/apply', [OrderSetController::class, 'apply'])
+        ->middleware('authorize:encounter:document');
+    Route::get('encounters/{encounter}/order-set-applications', [OrderSetController::class, 'forEncounter'])
+        ->middleware('authorize:encounter:view');
 
     // Formulary (medications) — the prescription reference catalog.
     Route::get('organizations/{organization}/medications', [MedicationController::class, 'index'])
@@ -533,11 +583,15 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
         ->middleware('authorize:lab:view');
     Route::post('organizations/{organization}/lab-tests', [LabTestController::class, 'store'])
         ->middleware('authorize:lab:manage');
+    Route::patch('organizations/{organization}/lab-tests/{labTest}', [LabTestController::class, 'update'])
+        ->middleware('authorize:lab:manage');
     Route::post('encounters/{encounter}/lab-orders', [LabOrderController::class, 'store'])
         ->middleware('authorize:lab:order');
     Route::get('encounters/{encounter}/lab-orders', [LabOrderController::class, 'forEncounter'])
         ->middleware('authorize:lab:view');
     Route::get('patients/{patient}/lab-orders', [LabOrderController::class, 'forPatient'])
+        ->middleware('authorize:lab:view');
+    Route::get('lab-orders', [LabOrderController::class, 'index'])
         ->middleware('authorize:lab:view');
     Route::get('lab-orders/{labOrder}', [LabOrderController::class, 'show'])
         ->middleware('authorize:lab:view');
@@ -551,11 +605,15 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
         ->middleware('authorize:lab:verify');
     Route::post('lab-orders/{labOrder}/report', [LabOrderController::class, 'report'])
         ->middleware('authorize:lab:report');
+    Route::post('lab-orders/{labOrder}/cancel', [LabOrderController::class, 'cancel'])
+        ->middleware('authorize:lab:order');
 
     // Phase 3 slice 15 — specimen custody (PRODUCT_REQUIREMENTS §6.8):
     // collection mints per-tenant accession numbers and advances the order;
     // accession → processing → completed | rejected records WHO/WHEN at each
     // custody step (the medico-legal specimen chain).
+    Route::get('specimens', [LabOrderController::class, 'specimens'])
+        ->middleware('authorize:lab:view');
     Route::post('lab-orders/{labOrder}/specimens', [LabOrderController::class, 'collectSpecimens'])
         ->middleware('authorize:lab:specimen');
     Route::post('specimens/{specimen}/accession', [LabOrderController::class, 'accession'])
@@ -598,6 +656,8 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
         ->middleware('authorize:radiology:order');
     Route::get('radiology/queue', [RadiologyController::class, 'queue'])
         ->middleware('authorize:radiology:view');
+    Route::get('radiology/worklist', [RadiologyController::class, 'worklist'])
+        ->middleware('authorize:radiology:view');
     Route::get('radiology/modalities', [RadiologyController::class, 'modalities'])
         ->middleware('authorize:radiology:view');
     Route::post('radiology/modalities', [RadiologyController::class, 'storeModality'])
@@ -627,6 +687,38 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
     Route::get('radiology/stats', [RadiologyController::class, 'stats'])
         ->middleware('authorize:radiology:view');
 
+    // Extended study lifecycle
+    Route::post('studies/{study}/assign-technician', [RadiologyController::class, 'assignTechnician'])
+        ->middleware('authorize:radiology:perform');
+    Route::post('studies/{study}/arrive', [RadiologyController::class, 'arrive'])
+        ->middleware('authorize:radiology:perform');
+    Route::post('studies/{study}/start-acquisition', [RadiologyController::class, 'startAcquisition'])
+        ->middleware('authorize:radiology:perform');
+    Route::post('studies/{study}/complete-acquisition', [RadiologyController::class, 'completeAcquisition'])
+        ->middleware('authorize:radiology:perform');
+    Route::post('studies/{study}/mark-pending-interpretation', [RadiologyController::class, 'markPendingInterpretation'])
+        ->middleware('authorize:radiology:perform');
+    Route::post('studies/{study}/reject', [RadiologyController::class, 'rejectStudy'])
+        ->middleware('authorize:radiology:perform');
+    Route::post('studies/{study}/release-to-clinician', [RadiologyController::class, 'releaseToClinician'])
+        ->middleware('authorize:radiology:report');
+    Route::post('studies/{study}/reschedule', [RadiologyController::class, 'reschedule'])
+        ->middleware('authorize:radiology:schedule');
+
+    // Study events
+    Route::get('studies/{study}/events', [RadiologyController::class, 'studyEvents'])
+        ->middleware('authorize:radiology:view');
+
+    // Modality schedule exceptions
+    Route::get('radiology/modalities/{modality}/schedule-exceptions', [RadiologyController::class, 'modalityScheduleExceptions'])
+        ->middleware('authorize:radiology:view');
+    Route::post('radiology/modalities/{modality}/schedule-exceptions', [RadiologyController::class, 'storeModalityScheduleException'])
+        ->middleware('authorize:radiology:manage');
+    Route::patch('radiology/modalities/{modality}/schedule-exceptions/{exception}', [RadiologyController::class, 'updateModalityScheduleException'])
+        ->middleware('authorize:radiology:manage');
+    Route::delete('radiology/modalities/{modality}/schedule-exceptions/{exception}', [RadiologyController::class, 'deleteModalityScheduleException'])
+        ->middleware('authorize:radiology:manage');
+
     // Billing and payments.
     // Phase 3 slice 3 — pharmacy dispensing & inventory
     // (PRODUCT_REQUIREMENTS §6.9): prescription → verification → stock
@@ -634,6 +726,8 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
     Route::get('organizations/{organization}/inventory', [InventoryController::class, 'index'])
         ->middleware('authorize:pharmacy:view');
     Route::get('inventory-items/{inventoryItem}/batches', [InventoryController::class, 'batches'])
+        ->middleware('authorize:pharmacy:view');
+    Route::get('inventory-items/{inventoryItem}/movements', [InventoryController::class, 'movements'])
         ->middleware('authorize:pharmacy:view');
     Route::post('organizations/{organization}/inventory', [InventoryController::class, 'store'])
         ->middleware('authorize:pharmacy:stock');
@@ -722,6 +816,29 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
     // workflow 2 — "verify by a second pharmacist where policy requires").
     Route::post('prescription-lines/{prescriptionLine}/dual-verify', [PharmacyController::class, 'dualVerify'])
         ->middleware('authorize:pharmacy:dispense');
+
+    // Medication history (prompt §24, §75): prescribed, dispensed, and
+    // administered medications for a patient — unified timeline.
+    Route::get('patients/{patientId}/medication-history', [PharmacyController::class, 'medicationHistory'])
+        ->middleware('authorize:pharmacy:view');
+
+    // Pharmacy wastage (prompt §38): medication destroyed/wasted with
+    // traceable reason, actor, and optional witness. CAS stock decrement
+    // + ledger movement (TYPE_WASTAGE).
+    Route::post('wastages', [WastageController::class, 'store'])
+        ->middleware('authorize:pharmacy:stock');
+    Route::get('organizations/{organization}/wastages', [WastageController::class, 'index'])
+        ->middleware('authorize:pharmacy:view');
+
+    // Stock count / cycle counting (prompt §58): expected vs counted
+    // quantity with variance, reason, and review. Reviewed counts with
+    // variance trigger approval-gated adjustment.
+    Route::post('stock-counts', [StockCountController::class, 'store'])
+        ->middleware('authorize:pharmacy:stock');
+    Route::get('organizations/{organization}/stock-counts', [StockCountController::class, 'index'])
+        ->middleware('authorize:pharmacy:view');
+    Route::post('stock-counts/{stockCount}/review', [StockCountController::class, 'review'])
+        ->middleware('authorize:pharmacy:stock');
 
     // Phase 3 slice 4 — discharge & follow-up (PRODUCT_REQUIREMENTS §6.7):
     // clinical close of the visit + planned return visits linked to it.
@@ -905,6 +1022,12 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
         ->middleware('authorize:er:document');
     Route::post('er/encounters/{encounter}/disposition', [ErController::class, 'disposition'])
         ->middleware('authorize:er:disposition');
+    Route::post('er/encounters/{encounter}/immediate-treatment', [ErController::class, 'admitImmediate'])
+        ->middleware('authorize:er:disposition');
+    Route::post('er/registrations/{registration}/reconcile-identity', [ErController::class, 'reconcileIdentity'])
+        ->middleware('authorize:er:disposition');
+    Route::get('er/dashboard', [ErController::class, 'dashboard'])
+        ->middleware('authorize:er:view');
 
     // Phase 3 slice 19 — HR (ROADMAP Phase 15, PRODUCT_REQUIREMENTS §6.17,
     // DATABASE.md §3.45): positions, shift templates, rosters (conflict
@@ -989,6 +1112,42 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
         ->middleware('authorize:assets:maintain');
     Route::post('assets/{asset}/iot-readings', [AssetController::class, 'storeIotReading'])
         ->middleware('authorize:assets:maintain');
+
+    // ── HR/Asset gap closure — credentials, calibration, incidents, disposal, transfers ──
+    Route::get('credentials', [\App\Http\Controllers\Api\CredentialController::class, 'index'])
+        ->middleware('authorize:hr:employee');
+    Route::post('credentials', [\App\Http\Controllers\Api\CredentialController::class, 'store'])
+        ->middleware('authorize:hr:employee');
+    Route::get('credentials/{credential}', [\App\Http\Controllers\Api\CredentialController::class, 'show'])
+        ->middleware('authorize:hr:employee');
+    Route::patch('credentials/{credential}', [\App\Http\Controllers\Api\CredentialController::class, 'update'])
+        ->middleware('authorize:hr:employee');
+    Route::post('credentials/{credential}/verify', [\App\Http\Controllers\Api\CredentialController::class, 'verify'])
+        ->middleware('authorize:hr:employee');
+    Route::get('credentials-expiring', [\App\Http\Controllers\Api\CredentialController::class, 'expiring'])
+        ->middleware('authorize:hr:employee');
+
+    Route::post('assets/{asset}/calibration', [AssetController::class, 'storeCalibration'])
+        ->middleware('authorize:assets:maintain');
+    Route::get('assets/{asset}/calibration', [AssetController::class, 'calibrationRecords'])
+        ->middleware('authorize:assets:maintain');
+
+    Route::post('assets/{asset}/incidents', [AssetController::class, 'storeIncident'])
+        ->middleware('authorize:assets:maintain');
+    Route::get('assets/{asset}/incidents', [AssetController::class, 'incidents'])
+        ->middleware('authorize:assets:maintain');
+    Route::post('equipment-incidents/{incident}/resolve', [AssetController::class, 'resolveIncident'])
+        ->middleware('authorize:assets:maintain');
+
+    Route::post('assets/{asset}/dispose', [AssetController::class, 'dispose'])
+        ->middleware('authorize:assets:retire');
+    Route::get('assets/{asset}/disposals', [AssetController::class, 'disposals'])
+        ->middleware('authorize:assets:retire');
+
+    Route::post('staff/{staff}/transfer', [\App\Http\Controllers\Api\HrController::class, 'transferStaff'])
+        ->middleware('authorize:hr:employee');
+    Route::get('staff/{staff}/transfers', [\App\Http\Controllers\Api\HrController::class, 'staffTransfers'])
+        ->middleware('authorize:hr:employee');
 
     // Phase 3 slice 20 — Operating Theatre (ROADMAP Phase 16, PRODUCT
     // REQUIREMENTS §6.10, DATABASE.md §3.48): theatre scheduling with
@@ -1375,6 +1534,15 @@ Route::middleware(['throttle:api', 'auth:sanctum', ResolveTenantContext::class])
         ->middleware('authorize:cdss:manage');
     Route::post('cdss/pathways/{cdssRule}/evaluate', [CdssController::class, 'evaluatePathway'])
         ->middleware('authorize:cdss:view');
+
+    // Drug interaction clinical decision support (PHASE 29): check
+    // medication pairs for known interactions, list rules, create rules.
+    Route::post('drug-interactions/check', [DrugInteractionController::class, 'check'])
+        ->middleware('authorize:cdss:view');
+    Route::get('drug-interactions', [DrugInteractionController::class, 'index'])
+        ->middleware('authorize:cdss:view');
+    Route::post('drug-interactions', [DrugInteractionController::class, 'store'])
+        ->middleware('authorize:cdss:manage');
 
     // Phase 21 — Governed assistive AI (AI_RULES.md §1–§19): registry,
     // kill switches, gated invocation, and drafts that reach a record only
@@ -1794,6 +1962,11 @@ Route::middleware(['throttle:api', ResolveTenantContext::class])->prefix('notifi
     Route::post('orchestration/queue/{department}/call-next', [OrchestrationController::class, 'callNext'])->middleware('authorize:clinical:manage');
     Route::post('orchestration/queue/{entry}/start', [OrchestrationController::class, 'startConsultation'])->middleware('authorize:clinical:manage');
     Route::post('orchestration/queue/{entry}/complete', [OrchestrationController::class, 'completeQueue'])->middleware('authorize:clinical:manage');
+    Route::post('orchestration/queue/{entry}/cancel', [OrchestrationController::class, 'cancelEntry'])->middleware('authorize:clinical:manage');
+    Route::post('orchestration/queue/{entry}/no-show', [OrchestrationController::class, 'noShow'])->middleware('authorize:clinical:manage');
+    Route::post('orchestration/queue/{entry}/skip', [OrchestrationController::class, 'skip'])->middleware('authorize:clinical:manage');
+    Route::post('orchestration/queue/{entry}/recall', [OrchestrationController::class, 'recall'])->middleware('authorize:clinical:manage');
+    Route::post('orchestration/queue/{entry}/transfer', [OrchestrationController::class, 'transfer'])->middleware('authorize:clinical:manage');
     Route::post('orchestration/bookings', [OrchestrationController::class, 'bookResource'])->middleware('authorize:clinical:manage');
     Route::get('orchestration/bookings', [OrchestrationController::class, 'listBookings'])->middleware('authorize:clinical:view');
     Route::post('orchestration/bookings/{booking}/cancel', [OrchestrationController::class, 'cancelBooking'])->middleware('authorize:clinical:manage');

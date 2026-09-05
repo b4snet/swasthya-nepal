@@ -40,6 +40,8 @@ class LabOrder extends Model
 
     public const STATUS_CORRECTING = 'correcting';
 
+    public const STATUS_CANCELLED = 'cancelled';
+
     public const PRIORITY_ROUTINE = 'routine';
 
     public const PRIORITY_URGENT = 'urgent';

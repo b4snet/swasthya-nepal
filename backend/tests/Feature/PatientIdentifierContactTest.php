@@ -48,6 +48,30 @@ it('encrypts identifier values at rest and returns plaintext on read', function 
     expect(json_encode($event->payload))->not->toContain('NP-778899');
 });
 
+it('encrypts identifiers at rest through the mass-assignment path (CSV import parity)', function () {
+    $org = Identity::organization();
+    $facility = Identity::facility($org);
+    $patient = Patient::factory()->create(['tenant_id' => $org->getKey(), 'facility_id' => $facility->getKey()]);
+
+    // Regression: PatientCsvImportService writes identifiers via
+    // create(['value' => ...]) — the same mass-assignment path the controller
+    // mutator uses. `value` must route through setValueAttribute so the row
+    // persists ciphertext at rest and the derived dedupe hash, never a null
+    // value_encrypted or a bare plaintext copy.
+    $patient->identifiers()->create([
+        'tenant_id' => $org->getKey(),
+        'type' => 'national_id',
+        'value' => 'NID-IMPORT-001',
+        'status' => 'active',
+    ]);
+
+    $raw = DB::table('patient_identifiers')->where('type', 'national_id')->first();
+    expect($raw)->not->toBeNull()
+        ->and($raw->value_encrypted)->not->toBe('NID-IMPORT-001')            // ciphertext at rest
+        ->and($raw->value_encrypted)->not->toBeNull()                         // mutator actually ran
+        ->and($raw->value_hash)->toBe(PatientIdentifier::hashValue('NID-IMPORT-001'));
+});
+
 it('refuses an identifier already active on another patient (409 RESOURCE_EXISTS)', function () {
     $org = Identity::organization();
     $facility = Identity::facility($org);
@@ -164,6 +188,72 @@ it('requires exactly one of value or address, and a name for emergency contacts'
             'address' => ['line1' => 'Kathmandu 1', 'city' => 'Kathmandu'],
         ])
         ->assertCreated();
+});
+
+it('rejects a contact update that breaks the exactly-one-of value/address invariant (422, not 500)', function () {
+    $org = Identity::organization();
+    $facility = Identity::facility($org);
+    $patient = Patient::factory()->create(['tenant_id' => $org->getKey(), 'facility_id' => $facility->getKey()]);
+    $admin = Identity::user();
+    Identity::assign($admin, 'org_admin', $org);
+
+    $contact = PatientContact::factory()->create([
+        'tenant_id' => $org->getKey(),
+        'patient_id' => $patient->getKey(),
+        'type' => 'phone',
+        'value' => '+977-9800-000000',
+        'status' => 'active',
+    ]);
+
+    // value → null leaves neither value nor address set → 422 (was a raw DB
+    // integrity error / HTTP 500).
+    $this->withToken(Identity::tokenFor($admin))
+        ->patchJson("/api/v1/patients/{$patient->getKey()}/contacts/{$contact->getKey()}", ['value' => null])
+        ->assertStatus(422);
+
+    // value + address together → 422 (mirrors the store XOR rule).
+    $this->withToken(Identity::tokenFor($admin))
+        ->patchJson("/api/v1/patients/{$patient->getKey()}/contacts/{$contact->getKey()}", [
+            'value' => '+977-9800-000001',
+            'address' => ['line1' => 'x'],
+        ])
+        ->assertStatus(422);
+
+    // A valid value-only change still succeeds.
+    $this->withToken(Identity::tokenFor($admin))
+        ->patchJson("/api/v1/patients/{$patient->getKey()}/contacts/{$contact->getKey()}", ['value' => '+977-9800-000002'])
+        ->assertOk()
+        ->assertJsonPath('data.value', '+977-9800-000002');
+});
+
+it('rejects stripping the name of an emergency contact on update (invariant held)', function () {
+    $org = Identity::organization();
+    $facility = Identity::facility($org);
+    $patient = Patient::factory()->create(['tenant_id' => $org->getKey(), 'facility_id' => $facility->getKey()]);
+    $admin = Identity::user();
+    Identity::assign($admin, 'org_admin', $org);
+
+    $emergency = PatientContact::factory()->create([
+        'tenant_id' => $org->getKey(),
+        'patient_id' => $patient->getKey(),
+        'type' => 'emergency_contact',
+        'value' => '+977-9800-000003',
+        'contact_person' => ['name' => 'Sita Thapa', 'relation' => 'spouse'],
+        'status' => 'active',
+    ]);
+
+    // contactPerson → null would erase the required person identity → 422.
+    $this->withToken(Identity::tokenFor($admin))
+        ->patchJson("/api/v1/patients/{$patient->getKey()}/contacts/{$emergency->getKey()}", ['contactPerson' => null])
+        ->assertStatus(422);
+
+    // Renaming the emergency contact (name preserved) still succeeds.
+    $this->withToken(Identity::tokenFor($admin))
+        ->patchJson("/api/v1/patients/{$patient->getKey()}/contacts/{$emergency->getKey()}", [
+            'contactPerson' => ['name' => 'Sita Thapa', 'relation' => 'spouse'],
+        ])
+        ->assertOk()
+        ->assertJsonPath('data.contactPerson.name', 'Sita Thapa');
 });
 
 it('records identifier and contact changes on the patient timeline', function () {

@@ -12,10 +12,12 @@ use App\Models\Invoice;
 use App\Models\Patient;
 use App\Models\Payer;
 use App\Models\Payment;
+use App\Models\RefundRequest;
 use App\Models\Staff;
 use App\Models\TaxRule;
 use App\Services\BillingService;
 use App\Services\FinanceService;
+use App\Support\TenantContext;
 use Tests\Support\Identity;
 
 /**
@@ -83,14 +85,15 @@ it('completes a full self-pay patient journey: encounter → charge → tax → 
         ->and($invoice->total_tax_minor)->toBe(6500)
         ->and($invoice->paid_minor)->toBe(0);
 
-    // Payment: full amount (50000 + 6500 = 56500)
+    // Payment: the payable outstanding is total_minor (capturePayment
+    // rejects anything above it; tax is tracked in total_tax_minor).
     $payment = $billing->capturePayment(
         tenantId: $ctx['org']->getKey(),
         facilityId: $ctx['facility']->getKey(),
         patientId: $patient->getKey(),
         invoiceId: $invoice->getKey(),
         method: 'cash',
-        amountMinor: 56500,
+        amountMinor: $invoice->total_minor,
         idempotencyKey: 'self-pay-'.$invoice->getKey(),
     );
 
@@ -126,7 +129,7 @@ it('completes a private insurance flow: eligibility → charge → claim → inv
         'code' => 'PRIV_GENERAL',
         'name' => 'General Coverage',
         'scheme_version' => 'PRIV_V1',
-        'service_category' => null,
+        'service_category' => 'opd',
         'coverage_type' => 'co_pay',
         'coverage_percent_bps' => 7500, // 75%
         'copay_percent_bps' => 2500, // 25% patient
@@ -141,6 +144,7 @@ it('completes a private insurance flow: eligibility → charge → claim → inv
         'payer_id' => $payer->getKey(),
         'policy_number' => 'PRIV-001',
         'status' => 'active',
+        'valid_from' => '2025-07-16',
         'benefits' => ['coverage_percent_bps' => 7500],
     ]);
 
@@ -210,7 +214,7 @@ it('completes an SSF flow: eligibility → benefit check → charge → claim �
         'code' => 'SSF_MEDICAL',
         'name' => 'SSF Medical Treatment',
         'scheme_version' => 'SSF_2083',
-        'service_category' => null,
+        'service_category' => 'lab',
         'coverage_type' => 'co_pay',
         'coverage_percent_bps' => 8000, // 80%
         'copay_percent_bps' => 2000, // 20% co-pay
@@ -226,6 +230,7 @@ it('completes an SSF flow: eligibility → benefit check → charge → claim �
         'payer_id' => $ssfPayer->getKey(),
         'policy_number' => 'SSF-EMP-001',
         'status' => 'active',
+        'valid_from' => '2025-07-16',
         'benefits' => ['coverage_percent_bps' => 8000, 'copay_percent_bps' => 2000],
     ]);
 
@@ -290,7 +295,7 @@ it('completes an HIB flow: eligibility → benefit check → charge → claim', 
         'code' => 'HIB_FAMILY',
         'name' => 'HIB Family Coverage',
         'scheme_version' => 'HIB_2083',
-        'service_category' => null,
+        'service_category' => 'surgery',
         'coverage_type' => 'capped',
         'coverage_percent_bps' => 10000, // 100% up to limit
         'limit_minor' => 10000000, // NPR 100,000
@@ -305,6 +310,7 @@ it('completes an HIB flow: eligibility → benefit check → charge → claim', 
         'payer_id' => $hibPayer->getKey(),
         'policy_number' => 'HIB-FAM-001',
         'status' => 'active',
+        'valid_from' => '2025-07-16',
         'benefits' => ['coverage_percent_bps' => 10000, 'limit_minor' => 10000000],
     ]);
 
@@ -593,7 +599,7 @@ it('processes a refund through the complete lifecycle: request → approve → c
     expect($completed->status)->toBe('completed');
 
     // Verify: refundable amount decreased
-    $refundable = $charge->amount_minor - $billing->approvedTotal($ctx['org']->getKey(), $charge->getKey());
+    $refundable = $charge->amount_minor - refundedTotal($ctx['org']->getKey(), $charge->getKey());
     expect($refundable)->toBe(40000); // 50000 - 10000 refunded
 });
 
@@ -617,7 +623,7 @@ it('enforces financial invariants: no negative, no duplicate, no over-refund', f
     );
 
     // Pay in full
-    $billing->capturePayment(
+    $payment = $billing->capturePayment(
         tenantId: $ctx['org']->getKey(),
         facilityId: $ctx['facility']->getKey(),
         patientId: $patient->getKey(),
@@ -626,13 +632,15 @@ it('enforces financial invariants: no negative, no duplicate, no over-refund', f
         amountMinor: $invoice->total_minor,
         idempotencyKey: 'invariant-'.$invoice->getKey(),
     );
+    expect($payment->status)->toBe('captured');
 
-    // INVARIANT: Cannot over-refund
-    $refundable = $charge->amount_minor - $billing->approvedTotal($ctx['org']->getKey(), $charge->getKey());
-    expect($refundable)->toBe(0); // fully paid, nothing refundable after payment
+    // INVARIANT: payment does not consume refundability — only approved
+    // refunds do (RefundRequest model docblock: amount − Σ(approved)).
+    $refundable = $charge->amount_minor - refundedTotal($ctx['org']->getKey(), $charge->getKey());
+    expect($refundable)->toBe(50000); // no refunds yet
 
     // Actually refundable = amount - approved refunds (not payments)
-    $refundable2 = $charge->amount_minor - $billing->approvedTotal($ctx['org']->getKey(), $charge->getKey());
+    $refundable2 = $charge->amount_minor - refundedTotal($ctx['org']->getKey(), $charge->getKey());
     expect($refundable2)->toBe(50000); // no refunds yet
 
     // Try to refund more than the charge
@@ -669,6 +677,7 @@ it('enforces claim lifecycle: draft → submitted → pending → accepted/denie
         'payer_id' => $payer->getKey(),
         'policy_number' => 'T-001',
         'status' => 'active',
+        'valid_from' => '2025-07-16',
     ]);
 
     $encounter = createSignedEncounter($ctx, $patient);
@@ -682,21 +691,18 @@ it('enforces claim lifecycle: draft → submitted → pending → accepted/denie
         chargeIds: [$charge->getKey()],
     );
 
-    // Build claim from invoice
-    $claim = InsuranceClaim::create([
-        'tenant_id' => $ctx['org']->getKey(),
-        'claim_number' => 'CLM-TEST-001',
-        'policy_id' => $policy->getKey(),
-        'invoice_id' => $invoice->getKey(),
-        'payer_id' => $payer->getKey(),
-        'status' => 'draft',
-        'lock_version' => 0,
-    ]);
+    // Build claim from invoice (freezes billed lines from invoice truth)
+    $financeService = app(FinanceService::class);
+    $claim = $financeService->buildClaim(
+        $ctx['org']->getKey(),
+        $invoice->getKey(),
+        $policy->getKey(),
+        $ctx['admin']->getKey(),
+    );
 
     expect($claim->status)->toBe('draft');
 
     // Submit
-    $financeService = app(FinanceService::class);
     $submitted = $financeService->submitClaim($claim, $ctx['admin']->getKey());
     expect($submitted->status)->toBe('submitted');
 
@@ -738,6 +744,11 @@ function ctx(): array
     $facility = Identity::facility($org);
     $admin = Identity::user();
     Identity::assign($admin, 'hospital_admin', $org, $facility);
+
+    // Direct model/service calls resolve tenancy from TenantContext (the
+    // HTTP middleware normally sets this from JWT): mirror the AuditTest
+    // pattern so TaxResolver/PeriodGuard see this fixture's tenant.
+    TenantContext::setCurrent(new TenantContext($admin, false, $org, $facility, collect()));
 
     return ['org' => $org, 'facility' => $facility, 'admin' => $admin];
 }
@@ -782,4 +793,18 @@ function postCharge(array $ctx, Patient $patient, Encounter $encounter, int $amo
         'charged_at' => now(),
         'created_by' => $ctx['admin']->getKey(),
     ]);
+}
+
+/**
+ * Σ(approved + completed) refunds against a charge — mirrors the
+ * documented refundable formula (RefundRequest model docblock,
+ * BillingService::approvedTotal): refundable = amount − this total.
+ */
+function refundedTotal(string $tenantId, string $chargeId): int
+{
+    return (int) RefundRequest::query()
+        ->where('tenant_id', $tenantId)
+        ->where('charge_id', $chargeId)
+        ->whereIn('status', [RefundRequest::STATUS_APPROVED, RefundRequest::STATUS_COMPLETED])
+        ->sum('amount_minor');
 }

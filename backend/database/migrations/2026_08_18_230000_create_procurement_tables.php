@@ -122,6 +122,7 @@ return new class extends Migration
         DB::statement("alter table vendors add constraint chk_vendors_status check (status in ('active', 'blacklisted'))");
         DB::statement('create unique index uq_vendors_tenant_code on vendors (tenant_id, code)');
         DB::statement('create unique index uq_vendors_tenant_id on vendors (tenant_id, id)');
+        DB::statement('create unique index uq_vendors_tenant_facility on vendors (tenant_id, facility_id, id)');
         DB::statement('create index idx_vendors_tenant_facility on vendors (tenant_id, facility_id)');
 
         Schema::create('purchase_requests', function (Blueprint $table): void {

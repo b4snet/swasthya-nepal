@@ -12,6 +12,7 @@ use App\Support\AuditLogger;
 use App\Support\Envelope;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 /**
  * Versioned benefit rules for payers (SSF, HIB, private insurance).
@@ -31,8 +32,9 @@ final class BenefitRuleController extends Controller
 
     public function index(Request $request, string $payer): JsonResponse
     {
-        // Scope-check the payer belongs to this tenant.
-        $payerModel = Payer::query()->find($payer);
+        // Scope-check the payer belongs to this tenant. A non-UUID
+        // identifier can never match (uuid PK) — 404, never a 22P02 500.
+        $payerModel = Str::isUuid($payer) ? Payer::query()->find($payer) : null;
         if ($payerModel === null) {
             return Envelope::error('NOT_FOUND', 'Payer not found.', 404, request: $request);
         }
@@ -48,7 +50,7 @@ final class BenefitRuleController extends Controller
 
     public function store(StoreBenefitRuleRequest $request, string $payer): JsonResponse
     {
-        $payerModel = Payer::query()->find($payer);
+        $payerModel = Str::isUuid($payer) ? Payer::query()->find($payer) : null;
         if ($payerModel === null) {
             return Envelope::error('NOT_FOUND', 'Payer not found.', 404, request: $request);
         }

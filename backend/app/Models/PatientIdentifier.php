@@ -40,6 +40,7 @@ class PatientIdentifier extends Model
         'tenant_id',
         'patient_id',
         'type',
+        'value',
         'value_encrypted',
         'value_hash',
         'issuing_country',

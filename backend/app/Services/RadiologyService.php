@@ -156,17 +156,18 @@ final class RadiologyService
     /**
      * scheduled → performed (the radiographer captures the images).
      */
-    public function perform(Study $study, string $performedByStaffId, int $clientLockVersion): Study
+    public function perform(Study $study, string $performedByStaffId, int $clientLockVersion, ?string $procedureStartedAt = null): Study
     {
         $context = TenantContext::current();
 
-        DB::transaction(function () use ($study, $performedByStaffId, $clientLockVersion, $context): void {
+        DB::transaction(function () use ($study, $performedByStaffId, $clientLockVersion, $procedureStartedAt, $context): void {
             $affected = Study::query()
                 ->whereKey($study->getKey())
                 ->where('status', Study::STATUS_SCHEDULED)
                 ->where('lock_version', $clientLockVersion)
                 ->update([
                     'status' => Study::STATUS_PERFORMED,
+                    'procedure_started_at' => $procedureStartedAt,
                     'performed_at' => now(),
                     'performed_by_staff_id' => $performedByStaffId,
                     'lock_version' => DB::raw('lock_version + 1'),
@@ -425,5 +426,356 @@ final class RadiologyService
         });
 
         return $created;
+    }
+
+    // ──────────────────── Extended Study Lifecycle ───────────────────────
+
+    /**
+     * Assign a technician to a scheduled study.
+     */
+    public function assignTechnician(Study $study, string $technicianStaffId, int $clientLockVersion): Study
+    {
+        $context = TenantContext::current();
+
+        DB::transaction(function () use ($study, $technicianStaffId, $clientLockVersion, $context): void {
+            $affected = Study::query()
+                ->whereKey($study->getKey())
+                ->whereIn('status', [Study::STATUS_SCHEDULED, Study::STATUS_ORDERED])
+                ->where('lock_version', $clientLockVersion)
+                ->update([
+                    'assigned_technician_id' => $technicianStaffId,
+                    'lock_version' => DB::raw('lock_version + 1'),
+                    'updated_by' => $context->user?->getKey(),
+                ]);
+
+            if ($affected !== 1) {
+                throw new ApiException(
+                    ErrorCodes::LOCK_CONFLICT,
+                    'The study changed concurrently. Refresh and retry.',
+                    409,
+                );
+            }
+        });
+
+        return $study->fresh();
+    }
+
+    /**
+     * scheduled → arrived (patient checked in).
+     */
+    public function arrive(Study $study, int $clientLockVersion): Study
+    {
+        $context = TenantContext::current();
+
+        DB::transaction(function () use ($study, $clientLockVersion, $context): void {
+            $affected = Study::query()
+                ->whereKey($study->getKey())
+                ->where('status', Study::STATUS_SCHEDULED)
+                ->where('lock_version', $clientLockVersion)
+                ->update([
+                    'status' => Study::STATUS_ARRIVED,
+                    'lock_version' => DB::raw('lock_version + 1'),
+                    'updated_by' => $context->user?->getKey(),
+                ]);
+
+            if ($affected !== 1) {
+                throw new ApiException(
+                    ErrorCodes::LOCK_CONFLICT,
+                    'The study changed concurrently. Refresh and retry.',
+                    409,
+                );
+            }
+        });
+
+        return $study->fresh();
+    }
+
+    /**
+     * arrived → in_progress (acquisition started).
+     */
+    public function startAcquisition(Study $study, int $clientLockVersion, ?string $procedureStartedAt = null): Study
+    {
+        $context = TenantContext::current();
+
+        DB::transaction(function () use ($study, $clientLockVersion, $procedureStartedAt, $context): void {
+            $affected = Study::query()
+                ->whereKey($study->getKey())
+                ->where('status', Study::STATUS_ARRIVED)
+                ->where('lock_version', $clientLockVersion)
+                ->update([
+                    'status' => Study::STATUS_IN_PROGRESS,
+                    'procedure_started_at' => $procedureStartedAt ?? now(),
+                    'lock_version' => DB::raw('lock_version + 1'),
+                    'updated_by' => $context->user?->getKey(),
+                ]);
+
+            if ($affected !== 1) {
+                throw new ApiException(
+                    ErrorCodes::LOCK_CONFLICT,
+                    'The study changed concurrently. Refresh and retry.',
+                    409,
+                );
+            }
+        });
+
+        return $study->fresh();
+    }
+
+    /**
+     * in_progress → acquired (images captured, pending review).
+     */
+    public function completeAcquisition(Study $study, string $performedByStaffId, int $clientLockVersion, ?string $acquisitionNotes = null): Study
+    {
+        $context = TenantContext::current();
+
+        DB::transaction(function () use ($study, $performedByStaffId, $clientLockVersion, $acquisitionNotes, $context): void {
+            $affected = Study::query()
+                ->whereKey($study->getKey())
+                ->where('status', Study::STATUS_IN_PROGRESS)
+                ->where('lock_version', $clientLockVersion)
+                ->update([
+                    'status' => Study::STATUS_ACQUIRED,
+                    'performed_at' => now(),
+                    'performed_by_staff_id' => $performedByStaffId,
+                    'acquisition_notes' => $acquisitionNotes,
+                    'lock_version' => DB::raw('lock_version + 1'),
+                    'updated_by' => $context->user?->getKey(),
+                ]);
+
+            if ($affected !== 1) {
+                throw new ApiException(
+                    ErrorCodes::LOCK_CONFLICT,
+                    'The study changed concurrently. Refresh and retry.',
+                    409,
+                );
+            }
+        });
+
+        return $study->fresh();
+    }
+
+    /**
+     * acquired → pending_interpretation (ready for radiologist).
+     * This is an alias of the existing perform() but with more granular steps.
+     */
+    public function markPendingInterpretation(Study $study, int $clientLockVersion): Study
+    {
+        $context = TenantContext::current();
+
+        DB::transaction(function () use ($study, $clientLockVersion, $context): void {
+            $affected = Study::query()
+                ->whereKey($study->getKey())
+                ->where('status', Study::STATUS_ACQUIRED)
+                ->where('lock_version', $clientLockVersion)
+                ->update([
+                    'status' => Study::STATUS_PENDING_INTERPRETATION,
+                    'lock_version' => DB::raw('lock_version + 1'),
+                    'updated_by' => $context->user?->getKey(),
+                ]);
+
+            if ($affected !== 1) {
+                throw new ApiException(
+                    ErrorCodes::LOCK_CONFLICT,
+                    'The study changed concurrently. Refresh and retry.',
+                    409,
+                );
+            }
+        });
+
+        return $study->fresh();
+    }
+
+    /**
+     * performed → rejected (quality issues, repeat required).
+     */
+    public function reject(Study $study, string $reason, int $clientLockVersion): Study
+    {
+        $context = TenantContext::current();
+
+        DB::transaction(function () use ($study, $reason, $clientLockVersion, $context): void {
+            $affected = Study::query()
+                ->whereKey($study->getKey())
+                ->whereIn('status', [Study::STATUS_PERFORMED, Study::STATUS_ACQUIRED, Study::STATUS_PENDING_INTERPRETATION])
+                ->where('lock_version', $clientLockVersion)
+                ->update([
+                    'status' => Study::STATUS_REJECTED,
+                    'cancel_reason' => $reason, // reuse field for rejection reason
+                    'repeat_acquisition_reason' => $reason,
+                    'lock_version' => DB::raw('lock_version + 1'),
+                    'updated_by' => $context->user?->getKey(),
+                ]);
+
+            if ($affected !== 1) {
+                throw new ApiException(
+                    ErrorCodes::LOCK_CONFLICT,
+                    'The study changed concurrently. Refresh and retry.',
+                    409,
+                );
+            }
+        });
+
+        return $study->fresh();
+    }
+
+    /**
+     * verified → released_to_clinician (result delivery to ordering clinician).
+     */
+    public function releaseToClinician(Study $study, int $clientLockVersion): Study
+    {
+        $context = TenantContext::current();
+
+        DB::transaction(function () use ($study, $clientLockVersion, $context): void {
+            $affected = Study::query()
+                ->whereKey($study->getKey())
+                ->where('status', Study::STATUS_VERIFIED)
+                ->where('lock_version', $clientLockVersion)
+                ->update([
+                    'status' => Study::STATUS_RELEASED_TO_CLINICIAN,
+                    'released_to_clinician_at' => now(),
+                    'lock_version' => DB::raw('lock_version + 1'),
+                    'updated_by' => $context->user?->getKey(),
+                ]);
+
+            if ($affected !== 1) {
+                throw new ApiException(
+                    ErrorCodes::LOCK_CONFLICT,
+                    'The study changed concurrently. Refresh and retry.',
+                    409,
+                );
+            }
+        });
+
+        return $study->fresh();
+    }
+
+    /**
+     * Reschedule a study (scheduled → rescheduled).
+     */
+    public function reschedule(Study $study, string $modalityId, string $scheduledAt, ?string $rescheduleReason, int $clientLockVersion): Study
+    {
+        $context = TenantContext::current();
+
+        $modality = Modality::query()
+            ->where('tenant_id', $study->tenant_id)
+            ->where('facility_id', $study->facility_id)
+            ->where('id', $modalityId)
+            ->where('status', Modality::STATUS_ACTIVE)
+            ->first();
+
+        if ($modality === null) {
+            throw new ApiException(
+                ErrorCodes::VALIDATION_ERROR,
+                'The modality must be an active modality in scope.',
+                422,
+            );
+        }
+
+        DB::transaction(function () use ($study, $modality, $scheduledAt, $rescheduleReason, $clientLockVersion, $context): void {
+            $affected = Study::query()
+                ->whereKey($study->getKey())
+                ->where('status', Study::STATUS_SCHEDULED)
+                ->where('lock_version', $clientLockVersion)
+                ->update([
+                    'status' => Study::STATUS_SCHEDULED, // stays scheduled
+                    'modality_id' => $modality->getKey(),
+                    'scheduled_at' => $scheduledAt,
+                    'rescheduled_at' => now(),
+                    'reschedule_reason' => $rescheduleReason,
+                    'lock_version' => DB::raw('lock_version + 1'),
+                    'updated_by' => $context->user?->getKey(),
+                ]);
+
+            if ($affected !== 1) {
+                throw new ApiException(
+                    ErrorCodes::LOCK_CONFLICT,
+                    'The study changed concurrently. Refresh and retry.',
+                    409,
+                );
+            }
+        });
+
+        return $study->fresh();
+    }
+
+    /**
+     * Log a study event for explicit audit trail.
+     */
+    public function logStudyEvent(Study $study, string $eventType, ?string $description = null, ?string $actorStaffId = null, ?array $metadata = null): void
+    {
+        $context = TenantContext::current();
+
+        StudyEvent::query()->create([
+            'tenant_id' => $study->tenant_id,
+            'facility_id' => $study->facility_id,
+            'study_id' => $study->getKey(),
+            'event_type' => $eventType,
+            'event_description' => $description,
+            'actor_staff_id' => $actorStaffId,
+            'metadata' => $metadata,
+            'created_by' => $context->user?->getKey(),
+        ]);
+    }
+
+    // ──────────────────── Result Delivery ────────────────────────────────
+
+    /**
+     * After final report verification, release to clinician and log event.
+     * This should be called after verifyReport when the report is FINAL.
+     */
+    public function deliverResult(Study $study, int $clientLockVersion): Study
+    {
+        return $this->releaseToClinician($study, $clientLockVersion);
+    }
+
+    // ──────────────────── Scheduling Helpers ────────────────────────────
+
+    /**
+     * Check if a modality is available at a given time (respecting schedule exceptions).
+     */
+    public function isModalityAvailable(Modality $modality, string $scheduledAt): bool
+    {
+        $date = \Carbon\Carbon::parse($scheduledAt)->toDateString();
+        $time = \Carbon\Carbon::parse($scheduledAt)->format('H:i:s');
+
+        // Check if modality is active
+        if ($modality->status !== Modality::STATUS_ACTIVE) {
+            return false;
+        }
+
+        // Check schedule exceptions
+        $exception = ModalityScheduleException::query()
+            ->where('tenant_id', $modality->tenant_id)
+            ->where('facility_id', $modality->facility_id)
+            ->where('modality_id', $modality->getKey())
+            ->where('exception_date', $date)
+            ->where(function ($query) use ($time) {
+                $query->whereNull('start_time')
+                    ->orWhere(function ($q) use ($time) {
+                        $q->where('start_time', '<=', $time)
+                          ->where(function ($q2) use ($time) {
+                              $q2->whereNull('end_time')
+                                 ->orWhere('end_time', '>=', $time);
+                          });
+                      });
+            })
+            ->where('deleted_at', null)
+            ->first();
+
+        if ($exception) {
+            if ($exception->is_blocked) {
+                return false; // blocked time
+            }
+            // extra hours = available
+            return true;
+        }
+
+        // Check operating hours
+        if ($modality->operating_hours_start && $modality->operating_hours_end) {
+            if ($time < $modality->operating_hours_start || $time > $modality->operating_hours_end) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

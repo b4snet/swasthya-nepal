@@ -15,9 +15,11 @@ use App\Models\Diagnosis;
 use App\Models\Encounter;
 use App\Models\Invoice;
 use App\Models\Medication;
+use App\Models\Patient;
 use App\Models\Prescription;
 use App\Models\PrescriptionLine;
 use App\Models\Staff;
+use App\Models\VitalObservation;
 use App\Services\BillingService;
 use App\Support\AccessCheck;
 use App\Support\AuditLogger;
@@ -42,6 +44,66 @@ final class EncounterController extends Controller
         private readonly AuditLogger $audit,
         private readonly BillingService $billing,
     ) {}
+
+    /**
+     * POST /encounters/walk-in — create an encounter directly for a walk-in
+     * patient without an appointment. The requesting user must be a clinical
+     * provider assigned to the same tenant/facility.
+     */
+    public function startWalkIn(Request $request): JsonResponse
+    {
+        $request->validate([
+            'patientId' => 'required|uuid',
+            'providerStaffId' => 'required|uuid',
+            'type' => 'sometimes|string|in:opd,er',
+        ]);
+
+        $context = TenantContext::current();
+        $patientId = $request->input('patientId');
+        $providerStaffId = $request->input('providerStaffId');
+        $type = $request->input('type', Encounter::TYPE_OPD);
+
+        $patient = Patient::query()
+            ->where('tenant_id', $context->tenantId())
+            ->where('id', $patientId)
+            ->first();
+
+        if ($patient === null) {
+            throw new ApiException(ErrorCodes::NOT_FOUND, 'Patient not found.', 404);
+        }
+
+        $staff = Staff::query()
+            ->where('tenant_id', $context->tenantId())
+            ->where('id', $providerStaffId)
+            ->where('status', '!=', Staff::STATUS_DEPARTED)
+            ->first();
+
+        if ($staff === null) {
+            throw new ApiException(ErrorCodes::NOT_FOUND, 'Provider not found.', 404);
+        }
+
+        $encounter = Encounter::query()->create([
+            'tenant_id' => $context->tenantId(),
+            'facility_id' => $context->facilityId(),
+            'patient_id' => $patientId,
+            'provider_staff_id' => $providerStaffId,
+            'type' => $type,
+            'status' => Encounter::STATUS_OPEN,
+            'started_at' => now(),
+            'lock_version' => 0,
+            'created_by' => $context->user?->getKey(),
+        ]);
+
+        $this->audit->record(
+            'encounter.walk_in_started',
+            'encounter',
+            $encounter->getKey(),
+            ['patientId' => $patientId, 'providerStaffId' => $providerStaffId, 'type' => $type],
+            $request,
+        );
+
+        return Envelope::success(data: self::present($encounter), status: 201, request: $request);
+    }
 
     /**
      * POST /appointments/{appointment}/start-encounter — the doctor calls
@@ -186,10 +248,22 @@ final class EncounterController extends Controller
             return Envelope::error(ErrorCodes::SCOPE_DENIED, 'Only the note author can sign it.', 403, request: $request);
         }
 
-        $note->status = ClinicalNote::STATUS_SIGNED;
-        $note->signed_at = now();
-        $note->lock_version += 1;
-        $note->save();
+        $updated = DB::table('clinical_notes')
+            ->where('id', $note->getKey())
+            ->where('lock_version', $note->lock_version)
+            ->where('status', ClinicalNote::STATUS_DRAFT)
+            ->update([
+                'status' => ClinicalNote::STATUS_SIGNED,
+                'signed_at' => now(),
+                'lock_version' => $note->lock_version + 1,
+                'updated_by' => $context->user?->getKey(),
+            ]);
+
+        if ($updated !== 1) {
+            throw new ApiException(ErrorCodes::CONFLICT, 'This note was concurrently modified; refresh and retry.', 409);
+        }
+
+        $note->refresh();
 
         $this->audit->record(
             'note.signed',
@@ -205,6 +279,85 @@ final class EncounterController extends Controller
                 'status' => $note->status,
                 'signedAt' => $note->signed_at?->toIso8601String(),
             ],
+            request: $request,
+        );
+    }
+
+    /**
+     * POST /encounters/{encounter}/notes/{note}/amend — create an amended
+     * version of a signed note. The original is preserved; a new child note
+     * is created with the corrected content and a correction reason.
+     */
+    public function amendNote(Request $request, Encounter $encounter, ClinicalNote $note): JsonResponse
+    {
+        AccessCheck::scoped($encounter, write: true);
+
+        if ($note->encounter_id !== $encounter->getKey()) {
+            return Envelope::error(ErrorCodes::NOT_FOUND, 'Note not found on this encounter.', 404, request: $request);
+        }
+
+        if ($note->status !== ClinicalNote::STATUS_SIGNED) {
+            return Envelope::error(ErrorCodes::CONFLICT, 'Only a signed note can be amended.', 409, request: $request);
+        }
+
+        $request->validate([
+            'content' => 'required|array',
+            'correctionReason' => 'required|string|max:2000',
+        ]);
+
+        $context = TenantContext::current();
+        $author = $this->currentProvider($encounter, $context);
+
+        // Mark the original as amended (CAS on lock_version)
+        $updated = DB::table('clinical_notes')
+            ->where('id', $note->getKey())
+            ->where('lock_version', $note->lock_version)
+            ->where('status', ClinicalNote::STATUS_SIGNED)
+            ->update([
+                'status' => ClinicalNote::STATUS_AMENDED,
+                'lock_version' => $note->lock_version + 1,
+            ]);
+
+        if ($updated !== 1) {
+            throw new ApiException(ErrorCodes::CONFLICT, 'This note was concurrently modified; refresh and retry.', 409);
+        }
+
+        // Create the amended note as a child
+        $amended = ClinicalNote::query()->create([
+            'tenant_id' => $encounter->tenant_id,
+            'encounter_id' => $encounter->getKey(),
+            'note_type' => $note->note_type,
+            'author_staff_id' => $author->getKey(),
+            'content' => $request->input('content'),
+            'status' => ClinicalNote::STATUS_DRAFT,
+            'parent_note_id' => $note->getKey(),
+            'lock_version' => 0,
+            'created_by' => $context->user?->getKey(),
+        ]);
+
+        $this->audit->record(
+            'note.amended',
+            'clinical_note',
+            $amended->getKey(),
+            [
+                'encounterId' => $encounter->getKey(),
+                'originalNoteId' => $note->getKey(),
+                'authorStaffId' => $author->getKey(),
+                'correctionReason' => $request->input('correctionReason'),
+            ],
+            $request,
+        );
+
+        return Envelope::success(
+            data: [
+                'id' => $amended->getKey(),
+                'parentNoteId' => $note->getKey(),
+                'noteType' => $amended->note_type,
+                'author' => ['id' => $author->getKey(), 'fullName' => $author->full_name],
+                'content' => $amended->content,
+                'status' => $amended->status,
+            ],
+            status: 201,
             request: $request,
         );
     }
@@ -352,12 +505,24 @@ final class EncounterController extends Controller
         $context = TenantContext::current();
         $provider = $this->currentProvider($encounter, $context);
 
-        $encounter->status = Encounter::STATUS_SIGNED;
-        $encounter->ended_at = now();
-        $encounter->signed_by = $context->user?->getKey();
-        $encounter->signed_at = now();
-        $encounter->lock_version += 1;
-        $encounter->save();
+        $updated = DB::table('encounters')
+            ->where('id', $encounter->getKey())
+            ->where('lock_version', $encounter->lock_version)
+            ->where('status', Encounter::STATUS_OPEN)
+            ->update([
+                'status' => Encounter::STATUS_SIGNED,
+                'ended_at' => now(),
+                'signed_by' => $context->user?->getKey(),
+                'signed_at' => now(),
+                'lock_version' => $encounter->lock_version + 1,
+                'updated_by' => $context->user?->getKey(),
+            ]);
+
+        if ($updated !== 1) {
+            throw new ApiException(ErrorCodes::CONFLICT, 'This encounter was concurrently modified; refresh and retry.', 409);
+        }
+
+        $encounter->refresh();
 
         if ($encounter->appointment_id !== null) {
             $appointment = $encounter->appointment;
@@ -645,6 +810,78 @@ final class EncounterController extends Controller
             ]);
 
         return Envelope::success(data: $encounters, request: $request);
+    }
+
+    /**
+     * POST /encounters/{encounter}/vitals — record vital signs for this encounter.
+     */
+    public function storeVitals(Request $request, Encounter $encounter): JsonResponse
+    {
+        AccessCheck::scoped($encounter, write: true);
+
+        $data = $request->validate([
+            'temperatureCelsius' => 'nullable|numeric|between:30.0,45.0',
+            'heartRateBpm' => 'nullable|integer|between:0,300',
+            'respiratoryRate' => 'nullable|integer|between:0,100',
+            'systolicBp' => 'nullable|integer|between:0,300',
+            'diastolicBp' => 'nullable|integer|between:0,200',
+            'spo2Percent' => 'nullable|numeric|between:0,100',
+            'weightKg' => 'nullable|numeric|between:0,500',
+            'heightCm' => 'nullable|numeric|between:0,300',
+            'painScore' => 'nullable|integer|between:0,10',
+            'gcsScore' => 'nullable|integer|between:3,15',
+            'notes' => 'nullable|string|max:2000',
+        ]);
+
+        $context = TenantContext::current();
+
+        $vital = VitalObservation::query()->create([
+            'tenant_id' => $encounter->tenant_id,
+            'facility_id' => $encounter->facility_id,
+            'patient_id' => $encounter->patient_id,
+            'encounter_id' => $encounter->getKey(),
+            'type' => 'composite',
+            'value' => array_filter([
+                'temperature_celsius' => $data['temperatureCelsius'] ?? null,
+                'heart_rate_bpm' => $data['heartRateBpm'] ?? null,
+                'respiratory_rate' => $data['respiratoryRate'] ?? null,
+                'systolic_bp' => $data['systolicBp'] ?? null,
+                'diastolic_bp' => $data['diastolicBp'] ?? null,
+                'spo2_percent' => $data['spo2Percent'] ?? null,
+                'weight_kg' => $data['weightKg'] ?? null,
+                'height_cm' => $data['heightCm'] ?? null,
+                'pain_score' => $data['painScore'] ?? null,
+                'gcs_score' => $data['gcsScore'] ?? null,
+                'notes' => $data['notes'] ?? null,
+            ], fn ($v) => $v !== null),
+            'recorded_by' => $context->user?->getKey(),
+            'observed_at' => now(),
+        ]);
+
+        $this->audit->record(
+            'vitals.recorded',
+            'vital_observation',
+            $vital->getKey(),
+            ['encounterId' => $encounter->getKey(), 'patientId' => $encounter->patient_id],
+            $request,
+        );
+
+        return Envelope::success(data: $vital, status: 201, request: $request);
+    }
+
+    /**
+     * GET /encounters/{encounter}/vitals — list vital observations for this encounter.
+     */
+    public function vitals(Request $request, Encounter $encounter): JsonResponse
+    {
+        AccessCheck::scoped($encounter, write: false);
+
+        $vitals = VitalObservation::query()
+            ->where('encounter_id', $encounter->getKey())
+            ->orderByDesc('observed_at')
+            ->get();
+
+        return Envelope::success(data: $vitals, request: $request);
     }
 
     /**

@@ -342,6 +342,156 @@ final class ErService
         });
     }
 
+    /**
+     * Immediate treatment override (§18): bypass the normal queue and move
+     * the patient directly into active treatment. Requires clinical authority
+     * (er:disposition permission). The encounter transitions to in_progress
+     * and an audited ER event records the override with its reason.
+     *
+     * This does NOT create a second encounter or bypass the canonical queue
+     * engine — it marks the existing ER encounter as receiving immediate
+     * treatment and skips the enqueue step.
+     */
+    public function admitImmediate(
+        Encounter $encounter,
+        Staff $actor,
+        ?string $reason,
+    ): Encounter {
+        return DB::transaction(function () use ($encounter, $actor, $reason): Encounter {
+            $this->assertOpenErEncounter($encounter);
+
+            // CAS: only an open encounter can be moved to immediate treatment.
+            $updated = DB::table('encounters')
+                ->where('tenant_id', $encounter->tenant_id)
+                ->where('id', $encounter->getKey())
+                ->where('status', Encounter::STATUS_OPEN)
+                ->where('lock_version', $encounter->lock_version)
+                ->update([
+                    'status' => Encounter::STATUS_IN_PROGRESS,
+                    'lock_version' => $encounter->lock_version + 1,
+                    'updated_by' => $actor->user_id,
+                    'updated_at' => now(),
+                ]);
+
+            if ($updated !== 1) {
+                throw new ApiException(
+                    ErrorCodes::LOCK_CONFLICT,
+                    'This encounter was modified concurrently. Reload and retry.',
+                    409,
+                );
+            }
+
+            ErEvent::query()->create([
+                'tenant_id' => $encounter->tenant_id,
+                'facility_id' => $encounter->facility_id,
+                'encounter_id' => $encounter->getKey(),
+                'patient_id' => $encounter->patient_id,
+                'event_type' => ErEvent::TYPE_IMMEDIATE_TREATMENT,
+                'notes' => $reason,
+                'occurred_at' => now(),
+                'actor_staff_id' => $actor->getKey(),
+                'created_by' => $actor->user_id,
+            ]);
+
+            return $encounter->refresh();
+        });
+    }
+
+    /**
+     * Identity reconciliation (§9): when an unidentified ER patient is
+     * matched to an existing patient record, merge the ER-created patient
+     * into the canonical record. Preserves the original ER registration,
+     * the matching action, actor, timestamp, and confidence/decision.
+     *
+     * Uses the Patient Master's merge architecture (STATUS_MERGED +
+     * merge_into_patient_id). The ER registration's completed_at/completed_by
+     * are stamped to document the reconciliation.
+     */
+    public function reconcileIdentity(
+        ErRegistration $registration,
+        Patient $targetPatient,
+        Staff $actor,
+        ?string $reason,
+    ): ErRegistration {
+        return DB::transaction(function () use ($registration, $targetPatient, $actor, $reason): ErRegistration {
+            // The registration must belong to an unidentified patient.
+            if (! $registration->is_unidentified) {
+                throw new ApiException(
+                    ErrorCodes::CONFLICT,
+                    'This registration is not for an unidentified patient.',
+                    409,
+                );
+            }
+
+            // The registration must not already be completed.
+            if ($registration->completed_at !== null) {
+                throw new ApiException(
+                    ErrorCodes::CONFLICT,
+                    'This registration identity has already been reconciled.',
+                    409,
+                );
+            }
+
+            // The target patient must be active and in the same tenant.
+            if ($targetPatient->status !== Patient::STATUS_ACTIVE) {
+                throw new ApiException(
+                    ErrorCodes::CONFLICT,
+                    'The target patient record is not active.',
+                    409,
+                );
+            }
+
+            if ($targetPatient->tenant_id !== $registration->tenant_id) {
+                throw new ApiException(
+                    ErrorCodes::SCOPE_DENIED,
+                    'Cannot reconcile across tenants.',
+                    403,
+                );
+            }
+
+            $erPatient = Patient::query()->where('id', $registration->patient_id)->first();
+
+            if ($erPatient === null) {
+                throw new ApiException(ErrorCodes::NOT_FOUND, 'ER patient record not found.', 404);
+            }
+
+            // Merge the ER-created patient into the canonical record using
+            // the Patient Master merge architecture.
+            DB::table('patients')
+                ->where('id', $erPatient->getKey())
+                ->update([
+                    'status' => Patient::STATUS_MERGED,
+                    'merge_into_patient_id' => $targetPatient->getKey(),
+                    'updated_by' => $actor->user_id,
+                    'updated_at' => now(),
+                ]);
+
+            // Stamp the registration as completed.
+            DB::table('er_registrations')
+                ->where('id', $registration->getKey())
+                ->update([
+                    'completed_at' => now(),
+                    'completed_by' => $actor->getKey(),
+                    'updated_at' => now(),
+                ]);
+
+            // Record the reconciliation event.
+            ErEvent::query()->create([
+                'tenant_id' => $registration->tenant_id,
+                'facility_id' => $registration->facility_id,
+                'encounter_id' => $registration->encounter_id,
+                'patient_id' => $registration->patient_id,
+                'event_type' => ErEvent::TYPE_IDENTITY_RECONCILED,
+                'notes' => $reason,
+                'occurred_at' => now(),
+                'actor_staff_id' => $actor->getKey(),
+                'created_by' => $actor->user_id,
+            ]);
+
+            return $registration->refresh();
+        });
+    }
+
     private function assertOpenErEncounter(Encounter $encounter): void
     {
         if ($encounter->type !== Encounter::TYPE_ER) {

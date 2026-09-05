@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Patient;
 
 use App\Http\Requests\ApiRequest;
+use App\Models\PatientContact;
 use Illuminate\Validation\Validator;
 
 /**
@@ -33,8 +34,43 @@ class UpdateContactRequest extends ApiRequest
         parent::withValidator($validator);
 
         $validator->after(function (Validator $validator): void {
-            if (! $this->has('status') && ! $this->has('value') && ! $this->has('address') && ! $this->has('isPrimary') && ! $this->has('contactPerson')) {
+            if ($this->has('status') || $this->has('value') || $this->has('address') || $this->has('isPrimary') || $this->has('contactPerson')) {
+                // Fall through to the invariants below.
+            } else {
                 $validator->errors()->add('_', 'Nothing to update.');
+
+                return;
+            }
+
+            /** @var PatientContact|null $contact */
+            $contact = $this->route('contact');
+
+            // Exactly one of value / address must hold for the RESULTING row
+            // (mirrors StoreContactRequest and the chk_contacts_value CHECK).
+            // A breach here previously surfaced as a raw DB integrity error
+            // (HTTP 500); enforce it as a clean 422 instead.
+            $currentValue = $contact?->value;
+            $currentAddress = $contact?->address !== null;
+            $hasValueChange = $this->has('value');
+            $hasAddressChange = $this->has('address');
+
+            $resultingValue = $hasValueChange ? $this->input('value') : $currentValue;
+            $resultingAddress = ($hasAddressChange ? ($this->input('address') !== null) : $currentAddress);
+
+            if (($resultingValue !== null) === $resultingAddress) {
+                $validator->errors()->add('value', 'Provide exactly one of value (phone/email) or address.');
+            }
+
+            // An emergency contact must keep a name (and may carry a relation).
+            // Stripping the person identity via contactPerson: null was a hole.
+            if ($this->has('contactPerson')) {
+                $type = $contact?->type;
+                $keepsContactPerson = $this->input('contactPerson') !== null;
+                $resultingName = $keepsContactPerson ? $this->input('contactPerson.name') : null;
+
+                if ($type === 'emergency_contact' && $resultingName === null) {
+                    $validator->errors()->add('contactPerson', 'An emergency contact requires a name.');
+                }
             }
         });
     }

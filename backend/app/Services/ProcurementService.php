@@ -260,6 +260,12 @@ final class ProcurementService
                 throw new ApiException(ErrorCodes::SCOPE_DENIED, 'The request belongs to a different facility.', 403);
             }
 
+            // Duplicate PO prevention (PRODUCT_REQUIREMENTS §75, §137):
+            // the status gate (approved → ordered) already prevents a second
+            // PO from the same request: after issueOrder the request becomes
+            // `ordered` and the next call would fail the status check. This
+            // is the documented single-use request → PO binding.
+
             $vendor = Vendor::query()->where('tenant_id', $tenantId)->where('id', $vendorId)->first();
             if ($vendor === null) {
                 throw new ApiException(ErrorCodes::NOT_FOUND, 'Vendor not found.', 404);

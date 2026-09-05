@@ -8,6 +8,7 @@ use App\Models\DepositAllocation;
 use App\Models\Encounter;
 use App\Models\Facility;
 use App\Models\InsuranceClaim;
+use App\Models\InsuranceClaimSubmission;
 use App\Models\InsurancePolicy;
 use App\Models\Invoice;
 use App\Models\Organization;
@@ -678,6 +679,182 @@ it('reopens a denied claim for resubmission (no duplicate rows, no fabricated li
         ->and($claim->refresh()->lines()->count())->toBe(1)
         ->and($claim->denial_reason)->toBeNull()
         ->and(AuditEvent::query()->where('action', 'insurance_claim.status')->where('resource_id', $claim->getKey())->exists())->toBeTrue();
+});
+
+it('distinguishes a rejection from a denial (rejection needs its own reason, §25)', function () {
+    $org = Identity::organization();
+    $facility = Identity::facility($org);
+    ['patient' => $patient, 'invoice' => $invoice, 'clerk' => $clerk] = finInvoice($org, $facility, 20000);
+    $policy = finPolicy($org, $patient);
+
+    $this->withToken(Identity::tokenFor($clerk))
+        ->postJson('/api/v1/invoices/'.$invoice->getKey().'/claims', ['policyId' => $policy->getKey()])
+        ->assertCreated();
+    $claim = InsuranceClaim::query()->firstOrFail();
+
+    $this->withToken(Identity::tokenFor($clerk))
+        ->postJson('/api/v1/claims/'.$claim->getKey().'/submit')
+        ->assertOk();
+
+    // A rejection without a reason → 422 (a rejection is NOT a bare outcome).
+    $this->withToken(Identity::tokenFor($clerk))
+        ->postJson('/api/v1/claims/'.$claim->getKey().'/status', ['status' => 'rejected'])
+        ->assertStatus(422);
+
+    // A valid rejection → rejected, with the rejection reason preserved and
+    // surfaced — distinct from a denial (denialReason stays null).
+    $this->withToken(Identity::tokenFor($clerk))
+        ->postJson('/api/v1/claims/'.$claim->getKey().'/status', [
+            'status' => 'rejected',
+            'rejectionReason' => 'Member number does not match the payer record',
+        ])
+        ->assertOk()
+        ->assertJsonPath('data.status', 'rejected')
+        ->assertJsonPath('data.rejectionReason', 'Member number does not match the payer record')
+        ->assertJsonPath('data.denialReason', null);
+
+    expect($claim->refresh()->status)->toBe(InsuranceClaim::STATUS_REJECTED)
+        ->and($claim->rejection_reason)->toBe('Member number does not match the payer record')
+        ->and($claim->denial_reason)->toBeNull();
+});
+
+it('captures an immutable submission snapshot at submit and appends on resubmission', function () {
+    $org = Identity::organization();
+    $facility = Identity::facility($org);
+    ['patient' => $patient, 'invoice' => $invoice, 'clerk' => $clerk] = finInvoice($org, $facility, 20000);
+    $policy = finPolicy($org, $patient);
+
+    $this->withToken(Identity::tokenFor($clerk))
+        ->postJson('/api/v1/invoices/'.$invoice->getKey().'/claims', ['policyId' => $policy->getKey()])
+        ->assertCreated();
+    $claim = InsuranceClaim::query()->firstOrFail();
+
+    // First submit writes submission #1 with the frozen billed representation.
+    $this->withToken(Identity::tokenFor($clerk))
+        ->postJson('/api/v1/claims/'.$claim->getKey().'/submit')
+        ->assertOk();
+
+    $submission = InsuranceClaimSubmission::query()->firstOrFail();
+    expect($submission->submission_number)->toBe(1)
+        ->and($submission->submitted_snapshot['billedTotalMinor'])->toBe(22600)
+        ->and($submission->submitted_snapshot['lines'])->toHaveCount(1)
+        ->and($submission->submitted_snapshot['lines'][0]['billedMinor'])->toBe(22600)
+        ->and($submission->submitted_snapshot['claimNumber'])->toBe($claim->claim_number)
+        ->and($submission->submitted_at)->not->toBeNull();
+
+    // The snapshot appears in the claim detail payload (answer: "what was
+    // submitted to the payer?").
+    $this->withToken(Identity::tokenFor($clerk))
+        ->getJson('/api/v1/claims/'.$claim->getKey())
+        ->assertOk()
+        ->assertJsonPath('data.submissions.0.submissionNumber', 1)
+        ->assertJsonPath('data.submissions.0.snapshot.billedTotalMinor', 22600);
+
+    // Move to rejected, then reopen → draft → submit again. A NEW submission
+    // (#2) is appended — the first is never overwritten (§24, §62).
+    $this->withToken(Identity::tokenFor($clerk))
+        ->postJson('/api/v1/claims/'.$claim->getKey().'/status', [
+            'status' => 'rejected',
+            'rejectionReason' => 'Line item description missing',
+        ])
+        ->assertOk();
+    $this->withToken(Identity::tokenFor($clerk))
+        ->postJson('/api/v1/claims/'.$claim->getKey().'/reopen')
+        ->assertOk()
+        ->assertJsonPath('data.status', 'draft');
+    $this->withToken(Identity::tokenFor($clerk))
+        ->postJson('/api/v1/claims/'.$claim->getKey().'/submit')
+        ->assertOk();
+
+    $submissions = InsuranceClaimSubmission::query()
+        ->where('claim_id', $claim->getKey())
+        ->orderBy('submission_number')
+        ->get();
+    expect($submissions)->toHaveCount(2)
+        ->and((int) $submissions[0]->submission_number)->toBe(1)
+        ->and((int) $submissions[1]->submission_number)->toBe(2)
+        // The historical submission captured on attempt #1 is immutable.
+        ->and($submissions[0]->submitted_snapshot['billedTotalMinor'])->toBe(22600);
+});
+
+it('reopens a rejected claim and appends an immutable submission snapshot', function () {
+    $org = Identity::organization();
+    $facility = Identity::facility($org);
+    ['patient' => $patient, 'invoice' => $invoice, 'clerk' => $clerk] = finInvoice($org, $facility, 20000);
+    $policy = finPolicy($org, $patient);
+
+    $this->withToken(Identity::tokenFor($clerk))
+        ->postJson('/api/v1/invoices/'.$invoice->getKey().'/claims', ['policyId' => $policy->getKey()])
+        ->assertCreated();
+    $claim = InsuranceClaim::query()->firstOrFail();
+
+    $this->withToken(Identity::tokenFor($clerk))
+        ->postJson('/api/v1/claims/'.$claim->getKey().'/submit')
+        ->assertOk();
+    $this->withToken(Identity::tokenFor($clerk))
+        ->postJson('/api/v1/claims/'.$claim->getKey().'/status', [
+            'status' => 'rejected',
+            'rejectionReason' => 'Incorrect policy number',
+        ])
+        ->assertOk();
+
+    // Building a NEW claim for the same invoice+policy is still refused —
+    // resubmission reopens the SAME claim (one claim per invoice+policy).
+    $this->withToken(Identity::tokenFor($clerk))
+        ->postJson('/api/v1/invoices/'.$invoice->getKey().'/claims', ['policyId' => $policy->getKey()])
+        ->assertStatus(409)
+        ->assertJsonPath('error.code', 'CONFLICT');
+
+    // Reopen the rejected claim (rejected → draft) and re-submit it.
+    $this->withToken(Identity::tokenFor($clerk))
+        ->postJson('/api/v1/claims/'.$claim->getKey().'/reopen')
+        ->assertOk()
+        ->assertJsonPath('data.status', 'draft');
+    $this->withToken(Identity::tokenFor($clerk))
+        ->postJson('/api/v1/claims/'.$claim->getKey().'/submit')
+        ->assertOk()
+        ->assertJsonPath('data.status', 'submitted');
+
+    // Exactly one claim, two immutable submissions, rejection_reason cleared.
+    expect(InsuranceClaim::query()->count())->toBe(1)
+        ->and($claim->refresh()->lines()->count())->toBe(1)
+        ->and($claim->rejection_reason)->toBeNull()
+        ->and($claim->submissions()->count())->toBe(2);
+});
+
+it('isolates immutable claim submissions across tenants (RLS / IDOR)', function () {
+    $orgA = Identity::organization();
+    $facilityA = Identity::facility($orgA);
+    ['patient' => $patientA, 'invoice' => $invoiceA, 'clerk' => $clerkA] = finInvoice($orgA, $facilityA, 20000);
+    $policyA = finPolicy($orgA, $patientA);
+
+    $this->withToken(Identity::tokenFor($clerkA))
+        ->postJson('/api/v1/invoices/'.$invoiceA->getKey().'/claims', ['policyId' => $policyA->getKey()])
+        ->assertCreated();
+    $claimA = InsuranceClaim::query()->firstOrFail();
+    $this->withToken(Identity::tokenFor($clerkA))
+        ->postJson('/api/v1/claims/'.$claimA->getKey().'/submit')
+        ->assertOk();
+
+    $submissionA = InsuranceClaimSubmission::query()->firstOrFail();
+
+    // Tenant B's finance officer cannot read A's submission (safe 404).
+    $orgB = Identity::organization();
+    $facilityB = Identity::facility($orgB);
+    $financeB = Identity::user();
+    Identity::assign($financeB, 'org_finance', $orgB, $facilityB);
+
+    $this->withToken(Identity::tokenFor($financeB))
+        ->getJson('/api/v1/claims/'.$claimA->getKey())
+        ->assertStatus(404);
+
+    // No row from tenant B can even be fetched at the model layer — RLS @
+    // TENANT tier (same boundary as the parent claim) hides A's submission.
+    $visible = InsuranceClaimSubmission::query()
+        ->where('tenant_id', $orgB->getKey())
+        ->count();
+    expect($visible)->toBe(0)
+        ->and($submissionA->tenant_id)->toBe($orgA->getKey());
 });
 
 it('enforces RBAC and segregation of duties across the finance surface', function () {

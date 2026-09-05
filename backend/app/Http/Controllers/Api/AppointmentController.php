@@ -23,8 +23,9 @@ use Illuminate\Support\Facades\DB;
 /**
  * The front-desk booking surface (DATABASE.md §3.15): book a slot, check
  * the patient in (issuing a queue token), view the day's queue, cancel with
- * a reason. Slot double-booking is prevented by validating against derived
- * availability AND racing on the partial unique index.
+ * a reason, mark no-show, reschedule. Slot double-booking is prevented by
+ * validating against derived availability AND racing on the partial unique
+ * index. Status transitions are enforced by the Appointment state machine.
  */
 final class AppointmentController extends Controller
 {
@@ -150,7 +151,7 @@ final class AppointmentController extends Controller
     {
         AccessCheck::scoped($appointment, write: true);
 
-        if ($appointment->status !== Appointment::STATUS_BOOKED) {
+        if (! $appointment->canTransitionTo(Appointment::STATUS_CHECKED_IN)) {
             return Envelope::error(
                 ErrorCodes::CONFLICT,
                 'Only a booked appointment can be checked in (current status: '.$appointment->status.').',
@@ -167,11 +168,10 @@ final class AppointmentController extends Controller
             $appointment->starts_at->toDateString(),
         );
 
-        $appointment->status = Appointment::STATUS_CHECKED_IN;
+        $appointment->transitionTo(Appointment::STATUS_CHECKED_IN);
         $appointment->token_no = $token;
         $appointment->checked_in_by = $context->user?->getKey();
         $appointment->checked_in_at = now();
-        $appointment->lock_version += 1;
         $appointment->save();
 
         $this->audit->record(
@@ -229,12 +229,13 @@ final class AppointmentController extends Controller
 
     /**
      * POST /appointments/{appointment}/cancel — reason required.
+     * State machine: booked|checked_in → cancelled.
      */
     public function cancel(CancelAppointmentRequest $request, Appointment $appointment): JsonResponse
     {
         AccessCheck::scoped($appointment, write: true);
 
-        if (in_array($appointment->status, [Appointment::STATUS_CANCELLED, Appointment::STATUS_COMPLETED], true)) {
+        if (! $appointment->canTransitionTo(Appointment::STATUS_CANCELLED)) {
             return Envelope::error(
                 ErrorCodes::CONFLICT,
                 'An appointment in status '.$appointment->status.' cannot be cancelled.',
@@ -243,9 +244,8 @@ final class AppointmentController extends Controller
             );
         }
 
-        $appointment->status = Appointment::STATUS_CANCELLED;
+        $appointment->transitionTo(Appointment::STATUS_CANCELLED);
         $appointment->cancel_reason = $request->validated('reason');
-        $appointment->lock_version += 1;
         $appointment->save();
 
         $this->audit->record(
@@ -257,6 +257,136 @@ final class AppointmentController extends Controller
         );
 
         return Envelope::success(data: self::present($appointment), request: $request);
+    }
+
+    /**
+     * POST /appointments/{appointment}/no-show — mark the patient as
+     * a no-show. State machine: booked|checked_in → no_show.
+     */
+    public function noShow(Request $request, Appointment $appointment): JsonResponse
+    {
+        AccessCheck::scoped($appointment, write: true);
+
+        if (! $appointment->canTransitionTo(Appointment::STATUS_NO_SHOW)) {
+            return Envelope::error(
+                ErrorCodes::CONFLICT,
+                'An appointment in status '.$appointment->status.' cannot be marked as no-show.',
+                409,
+                request: $request,
+            );
+        }
+
+        $appointment->transitionTo(Appointment::STATUS_NO_SHOW);
+        $appointment->save();
+
+        $this->audit->record(
+            'appointment.no_show',
+            'appointment',
+            $appointment->getKey(),
+            ['patientId' => $appointment->patient_id, 'providerStaffId' => $appointment->provider_staff_id],
+            $request,
+        );
+
+        return Envelope::success(data: self::present($appointment), request: $request);
+    }
+
+    /**
+     * POST /appointments/{appointment}/reschedule — release the old slot
+     * and book a new one. The old appointment is marked as cancelled with
+     * rescheduled_from provenance on the new appointment.
+     *
+     * State machine: booked|checked_in → cancelled (old), new appointment
+     * created as booked. All within one transaction.
+     */
+    public function reschedule(Request $request, Appointment $appointment): JsonResponse
+    {
+        AccessCheck::scoped($appointment, write: true);
+
+        if (! $appointment->canTransitionTo(Appointment::STATUS_CANCELLED)) {
+            return Envelope::error(
+                ErrorCodes::CONFLICT,
+                'An appointment in status '.$appointment->status.' cannot be rescheduled.',
+                409,
+                request: $request,
+            );
+        }
+
+        $validated = $request->validate([
+            'startsAt' => 'required|date',
+            'endsAt' => 'required|date|after:startsAt',
+        ]);
+
+        $context = TenantContext::current();
+        $newStartsAt = CarbonImmutable::parse($validated['startsAt']);
+        $newEndsAt = CarbonImmutable::parse($validated['endsAt']);
+
+        // Validate new slot against derived availability
+        $open = $this->slots->slotsFor(
+            (string) $context->tenantId(),
+            (string) $appointment->provider_staff_id,
+            $newStartsAt->toDateString(),
+        )->first(fn (array $slot): bool => $slot['startsAt'] === $newStartsAt->toISOString() && $slot['available']);
+
+        if ($open === null) {
+            return Envelope::error(
+                ErrorCodes::CONFLICT,
+                'The new slot is not available — choose an open slot from availability.',
+                409,
+                request: $request,
+            );
+        }
+
+        try {
+            $newAppointment = DB::transaction(function () use ($appointment, $context, $newStartsAt, $newEndsAt): Appointment {
+                // Cancel the old appointment with provenance
+                $appointment->transitionTo(Appointment::STATUS_CANCELLED);
+                $appointment->cancel_reason = 'Rescheduled by staff';
+                $appointment->save();
+
+                // Book the new appointment
+                return Appointment::query()->create([
+                    'tenant_id' => $appointment->tenant_id,
+                    'facility_id' => $appointment->facility_id,
+                    'patient_id' => $appointment->patient_id,
+                    'provider_staff_id' => $appointment->provider_staff_id,
+                    'service_id' => $appointment->service_id,
+                    'appointment_type' => $appointment->appointment_type,
+                    'starts_at' => $newStartsAt,
+                    'ends_at' => $newEndsAt,
+                    'status' => Appointment::STATUS_BOOKED,
+                    'source' => $appointment->source,
+                    'lock_version' => 0,
+                    'rescheduled_from' => $appointment->getKey(),
+                    'created_by' => $context->user?->getKey(),
+                ]);
+            });
+        } catch (QueryException $e) {
+            if (str_contains($e->getMessage(), 'uq_appointments_tenant_provider_start')) {
+                return Envelope::error(
+                    ErrorCodes::CONFLICT,
+                    'The new slot was just booked by someone else — choose another slot.',
+                    409,
+                    request: $request,
+                );
+            }
+
+            throw $e;
+        }
+
+        $this->audit->record(
+            'appointment.rescheduled',
+            'appointment',
+            $appointment->getKey(),
+            [
+                'patientId' => $appointment->patient_id,
+                'oldStartsAt' => $appointment->starts_at->toISOString(),
+                'newAppointmentId' => $newAppointment->getKey(),
+                'newStartsAt' => $newStartsAt->toISOString(),
+            ],
+            $request,
+        );
+
+        return Envelope::success(data: self::present($newAppointment), status: 201, request: $request);
     }
 
     /**
@@ -280,6 +410,7 @@ final class AppointmentController extends Controller
             'source' => $appointment->source,
             'cancelReason' => $appointment->cancel_reason,
             'lockVersion' => $appointment->lock_version,
+            'rescheduledFrom' => $appointment->rescheduled_from,
         ];
     }
 }

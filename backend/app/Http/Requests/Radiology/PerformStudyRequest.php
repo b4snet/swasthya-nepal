@@ -12,6 +12,7 @@ class PerformStudyRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'procedureStartedAt' => ['sometimes', 'nullable', 'date'],
             'lockVersion' => ['required', 'integer', 'min:0'],
         ];
     }

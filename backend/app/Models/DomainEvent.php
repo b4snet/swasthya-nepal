@@ -54,6 +54,21 @@ class DomainEvent extends Model
         'idempotency_key',
     ];
 
+    /**
+     * Mirror the migration defaults (2026_08_25_000002) in memory so a
+     * freshly dispatched event behaves identically before and after a
+     * refresh — markFailed() must see attempt_count 0 / max_attempts 5,
+     * otherwise `attempt >= max` evaluates against null and a first
+     * failure wrongly transitions straight to dead.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'status' => self::STATUS_PENDING,
+        'attempt_count' => 0,
+        'max_attempts' => 5,
+    ];
+
     protected function casts(): array
     {
         return [

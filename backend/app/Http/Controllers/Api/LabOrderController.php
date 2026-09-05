@@ -406,6 +406,60 @@ final class LabOrderController extends Controller
         ], 'lab_order.reported');
     }
 
+    /**
+     * GET /lab-orders — facility-wide lab order worklist (PRODUCT_REQUIREMENTS
+     * §6.8, §83). Supports status filtering and pagination for lab staff
+     * queues: awaiting collection, awaiting receipt, processing, result entry,
+     * verification, critical notification, report finalization.
+     */
+    public function index(Request $request): JsonResponse
+    {
+        $context = TenantContext::current();
+        $query = LabOrder::query()
+            ->where('tenant_id', $context->tenantId())
+            ->when($context->facilityId() !== null, fn ($q) => $q->where('facility_id', $context->facilityId()))
+            ->with('items.test:id,name,sample_type')
+            ->orderBy('ordered_at', 'desc');
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->input('status'));
+        }
+
+        if ($request->filled('patientId')) {
+            $query->where('patient_id', $request->input('patientId'));
+        }
+
+        $orders = $query->paginate($request->integer('per_page', 25))
+            ->through(fn (LabOrder $order): array => $this->present($order));
+
+        return Envelope::success(data: $orders, request: $request);
+    }
+
+    /**
+     * POST /lab-orders/{labOrder}/cancel — cancel a lab order that has not
+     * yet reached processing. Only orders in 'ordered' or 'collected' status
+     * may be cancelled (before results entry). The order is immutable
+     * afterwards. Requires lab:order permission (the ordering role).
+     */
+    public function cancel(Request $request, LabOrder $labOrder): JsonResponse
+    {
+        AccessCheck::scoped($labOrder, write: true);
+
+        if (! in_array($labOrder->status, [LabOrder::STATUS_ORDERED, LabOrder::STATUS_COLLECTED], true)) {
+            throw new ApiException(
+                ErrorCodes::CONFLICT,
+                'This lab order cannot be cancelled from its current state ('.$labOrder->status.').',
+                409,
+            );
+        }
+
+        $context = TenantContext::current();
+
+        return $this->transition($request, $labOrder, [
+            'status' => 'cancelled',
+        ], 'lab_order.cancelled');
+    }
+
     /* ------------------------------------------------------------------ */
     /* Phase 3 slice 15 — specimen custody (PRODUCT_REQUIREMENTS §6.8). */
     /* ------------------------------------------------------------------ */
@@ -600,6 +654,35 @@ final class LabOrderController extends Controller
         );
 
         return Envelope::success(data: $this->presentSpecimen($specimen->fresh()), request: $request);
+    }
+
+    /**
+     * GET /specimens — facility-wide specimen worklist (PRODUCT_REQUIREMENTS
+     * §6.8, §83). Supports status filtering and pagination for lab staff
+     * queues: awaiting collection, awaiting receipt, processing, completed,
+     * rejected.
+     */
+    public function specimens(Request $request): JsonResponse
+    {
+        $context = TenantContext::current();
+        $query = Specimen::query()
+            ->where('tenant_id', $context->tenantId())
+            ->when($context->facilityId() !== null, fn ($q) => $q->where('facility_id', $context->facilityId()))
+            ->with('order:id,patient_id,encounter_id,status')
+            ->orderBy('collected_at', 'desc');
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->input('status'));
+        }
+
+        if ($request->filled('orderId')) {
+            $query->where('lab_order_id', $request->input('orderId'));
+        }
+
+        $specimens = $query->paginate($request->integer('per_page', 25))
+            ->through(fn (Specimen $specimen): array => $this->presentSpecimen($specimen));
+
+        return Envelope::success(data: $specimens, request: $request);
     }
 
     /* ------------------------------------------------------------------ */

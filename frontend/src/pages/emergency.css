@@ -454,3 +454,21 @@
     grid-template-columns: 1fr 1fr;
   }
 }
+
+/* ── Immediate Treatment / Identity Reconciliation dialogs ──────── */
+.er-dialog-hint {
+  font-size: 0.875rem;
+  color: var(--text-secondary, #555);
+  margin: 0 0 0.75rem;
+}
+
+.er-reconcile-search {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.er-reconcile-search .input-field,
+.er-reconcile-search label {
+  flex: 1;
+}

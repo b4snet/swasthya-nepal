@@ -10,8 +10,10 @@ use App\Services\Events\EventDispatcher;
 use App\Services\Events\EventProcessor;
 use App\Services\Events\Handlers\CriticalValueDetectedHandler;
 use App\Services\Events\Handlers\SendNotificationHandler;
+use App\Services\IntegrationRegistryService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Tests\Support\Identity;
 
 /**
  * Phase 33 async infrastructure tests — EventDispatcher, DomainEvent,
@@ -28,12 +30,13 @@ beforeEach(function (): void {
 
 it('dispatches a single domain event with all fields', function (): void {
     $eventId = Str::uuid()->toString();
+    $causerId = Str::uuid()->toString();
     $event = EventDispatcher::dispatch(
         eventType: 'notification.created',
         aggregateType: 'notification',
         aggregateId: $eventId,
         payload: ['user_id' => 'user-1', 'title' => 'Test'],
-        causerId: 'staff-1',
+        causerId: $causerId,
         facilityId: 'fac-1',
         tenantId: 'tenant-1',
         correlationId: 'corr-123',
@@ -45,7 +48,7 @@ it('dispatches a single domain event with all fields', function (): void {
         ->and($event->aggregate_type)->toBe('notification')
         ->and($event->aggregate_id)->toBe($eventId)
         ->and($event->payload)->toBe(['user_id' => 'user-1', 'title' => 'Test'])
-        ->and($event->causer_id)->toBe('staff-1')
+        ->and($event->causer_id)->toBe($causerId)
         ->and($event->facility_id)->toBe('fac-1')
         ->and($event->tenant_id)->toBe('tenant-1')
         ->and($event->correlation_id)->toBe('corr-123')
@@ -59,7 +62,7 @@ it('generates a correlation_id when not provided', function (): void {
     $event = EventDispatcher::dispatch(
         eventType: 'test.event',
         aggregateType: 'test',
-        aggregateId: 'agg-1',
+        aggregateId: eid(),
     );
 
     expect($event->correlation_id)->not->toBeEmpty()
@@ -68,9 +71,9 @@ it('generates a correlation_id when not provided', function (): void {
 
 it('dispatches multiple events atomically', function (): void {
     $events = EventDispatcher::dispatchMany([
-        ['eventType' => 'event.a', 'aggregateType' => 'agg', 'aggregateId' => 'a-1'],
-        ['eventType' => 'event.b', 'aggregateType' => 'agg', 'aggregateId' => 'b-2'],
-        ['eventType' => 'event.c', 'aggregateType' => 'agg', 'aggregateId' => 'c-3'],
+        ['eventType' => 'event.a', 'aggregateType' => 'agg', 'aggregateId' => eid()],
+        ['eventType' => 'event.b', 'aggregateType' => 'agg', 'aggregateId' => eid()],
+        ['eventType' => 'event.c', 'aggregateType' => 'agg', 'aggregateId' => eid()],
     ]);
 
     expect(count($events))->toBe(3);
@@ -87,7 +90,7 @@ it('transitions from pending to processing and increments attempt count', functi
     $event = EventDispatcher::dispatch(
         eventType: 'test',
         aggregateType: 'test',
-        aggregateId: '1',
+        aggregateId: eid(),
     );
 
     expect($event->status)->toBe(DomainEvent::STATUS_PENDING)
@@ -107,7 +110,7 @@ it('transitions from processing to completed with timestamp', function (): void 
     $event = EventDispatcher::dispatch(
         eventType: 'test',
         aggregateType: 'test',
-        aggregateId: '1',
+        aggregateId: eid(),
     );
     $event->markProcessing();
     $event->markCompleted();
@@ -121,7 +124,7 @@ it('transitions from processing to failed with exponential backoff', function ()
     $event = EventDispatcher::dispatch(
         eventType: 'test',
         aggregateType: 'test',
-        aggregateId: '1',
+        aggregateId: eid(),
     );
     $event->markProcessing();
     $event->markFailed('Something went wrong');
@@ -137,7 +140,7 @@ it('transitions to dead after exhausting max attempts', function (): void {
     $event = EventDispatcher::dispatch(
         eventType: 'test',
         aggregateType: 'test',
-        aggregateId: '1',
+        aggregateId: eid(),
     );
 
     // Simulate max_attempts=3 for test speed
@@ -161,7 +164,7 @@ it('transitions to dead after exhausting max attempts', function (): void {
 });
 
 it('correctly identifies retryable vs dead events', function (): void {
-    $retryable = EventDispatcher::dispatch(eventType: 'test', aggregateType: 't', aggregateId: '1');
+    $retryable = EventDispatcher::dispatch(eventType: 'test', aggregateType: 't', aggregateId: eid());
     expect($retryable->isRetryable())->toBeTrue()
         ->and($retryable->isDead())->toBeFalse();
 
@@ -170,7 +173,7 @@ it('correctly identifies retryable vs dead events', function (): void {
     expect($retryable->fresh()->isRetryable())->toBeTrue()
         ->and($retryable->fresh()->isDead())->toBeFalse();
 
-    $dead = EventDispatcher::dispatch(eventType: 'test', aggregateType: 't', aggregateId: '2');
+    $dead = EventDispatcher::dispatch(eventType: 'test', aggregateType: 't', aggregateId: eid());
     $dead->update(['max_attempts' => 1]);
     $dead->markProcessing();
     $dead->markFailed('fatal');
@@ -180,14 +183,14 @@ it('correctly identifies retryable vs dead events', function (): void {
 
 it('scope forProcessing returns only pending events due for processing', function (): void {
     // Pending, ready now
-    $ready = EventDispatcher::dispatch(eventType: 'test', aggregateType: 't', aggregateId: '1');
+    $ready = EventDispatcher::dispatch(eventType: 'test', aggregateType: 't', aggregateId: eid());
 
     // Pending, but delayed
-    $delayed = EventDispatcher::dispatch(eventType: 'test', aggregateType: 't', aggregateId: '2');
+    $delayed = EventDispatcher::dispatch(eventType: 'test', aggregateType: 't', aggregateId: eid());
     $delayed->update(['next_attempt_at' => now()->addHour()]);
 
     // Completed
-    $done = EventDispatcher::dispatch(eventType: 'test', aggregateType: 't', aggregateId: '3');
+    $done = EventDispatcher::dispatch(eventType: 'test', aggregateType: 't', aggregateId: eid());
     $done->markProcessing();
     $done->markCompleted();
 
@@ -219,7 +222,7 @@ it('processes an event and marks it completed', function (): void {
     $event = EventDispatcher::dispatch(
         eventType: 'critical_value.detected',
         aggregateType: 'lab_order',
-        aggregateId: 'lab-1',
+        aggregateId: eid(),
         payload: ['patient_id' => 'p-1', 'severity' => 'critical'],
     );
     $event->markProcessing();
@@ -236,7 +239,7 @@ it('marks unhandled event types as completed (no-op)', function (): void {
     $event = EventDispatcher::dispatch(
         eventType: 'unregistered.event',
         aggregateType: 'test',
-        aggregateId: '1',
+        aggregateId: eid(),
     );
     $event->markProcessing();
 
@@ -251,10 +254,11 @@ it('marks unhandled event types as completed (no-op)', function (): void {
 // ─────────────────── SendNotificationHandler ───────────────────
 
 it('creates an in-app notification from the event payload', function (): void {
+    $org = Identity::organization();
     $event = EventDispatcher::dispatch(
         eventType: 'notification.created',
         aggregateType: 'notification',
-        aggregateId: 'n-1',
+        aggregateId: eid(),
         payload: [
             'user_id' => Identity::user()->getKey(),
             'title' => 'Appointment Confirmed',
@@ -262,8 +266,8 @@ it('creates an in-app notification from the event payload', function (): void {
             'type' => 'success',
             'link' => '/appointments/apt-1',
         ],
-        tenantId: Identity::organization()->getKey(),
-        facilityId: Identity::facility()->getKey(),
+        tenantId: $org->getKey(),
+        facilityId: Identity::facility($org)->getKey(),
     );
     $event->markProcessing();
 
@@ -286,7 +290,7 @@ it('is idempotent — does not create duplicate notifications', function (): voi
     $event = EventDispatcher::dispatch(
         eventType: 'notification.created',
         aggregateType: 'notification',
-        aggregateId: 'n-2',
+        aggregateId: eid(),
         payload: [
             'user_id' => $userId,
             'title' => 'Duplicate Test',
@@ -311,7 +315,7 @@ it('skips notification when user_id is missing from payload', function (): void 
     $event = EventDispatcher::dispatch(
         eventType: 'notification.created',
         aggregateType: 'notification',
-        aggregateId: 'n-3',
+        aggregateId: eid(),
         payload: ['title' => 'No User', 'body' => 'Missing user_id'],
     );
     $event->markProcessing();
@@ -329,7 +333,7 @@ it('logs the critical value detection event', function (): void {
     $event = EventDispatcher::dispatch(
         eventType: 'critical_value.detected',
         aggregateType: 'lab_order',
-        aggregateId: 'lab-cv-1',
+        aggregateId: eid(),
         payload: [
             'critical_value_event_id' => 'cv-evt-1',
             'patient_id' => 'p-1',
@@ -352,7 +356,7 @@ it('processes pending events with the outbox command', function (): void {
     $event = EventDispatcher::dispatch(
         eventType: 'critical_value.detected',
         aggregateType: 'lab_order',
-        aggregateId: 'cmd-1',
+        aggregateId: eid(),
         payload: ['patient_id' => 'p-1', 'severity' => 'critical'],
     );
 
@@ -375,7 +379,7 @@ it('dry-run shows pending events without processing them', function (): void {
     $event = EventDispatcher::dispatch(
         eventType: 'test.event',
         aggregateType: 'test',
-        aggregateId: 'dry-1',
+        aggregateId: eid(),
     );
 
     $this->artisan(ProcessOutbox::class, ['--once' => true, '--dry-run' => true])
@@ -386,10 +390,10 @@ it('dry-run shows pending events without processing them', function (): void {
 });
 
 it('processes events in order (oldest first)', function (): void {
-    $old = EventDispatcher::dispatch(eventType: 'test', aggregateType: 't', aggregateId: 'old');
+    $old = EventDispatcher::dispatch(eventType: 'test', aggregateType: 't', aggregateId: eid());
     $old->update(['created_at' => now()->subHour()]);
 
-    $new = EventDispatcher::dispatch(eventType: 'test', aggregateType: 't', aggregateId: 'new');
+    $new = EventDispatcher::dispatch(eventType: 'test', aggregateType: 't', aggregateId: eid());
 
     Log::shouldReceive('info')->atLeast()->once();
 
@@ -403,14 +407,14 @@ it('handles mixed success and failure events in one batch', function (): void {
     $ok = EventDispatcher::dispatch(
         eventType: 'critical_value.detected',
         aggregateType: 'lab',
-        aggregateId: 'ok-1',
+        aggregateId: eid(),
         payload: ['patient_id' => 'p-1', 'severity' => 'critical'],
     );
 
     $fail = EventDispatcher::dispatch(
         eventType: 'notification.created',
         aggregateType: 'notification',
-        aggregateId: 'fail-1',
+        aggregateId: eid(),
         payload: ['title' => 'Test', 'body' => 'Test'], // missing user_id → handler logs warning but doesn't throw
     );
 
@@ -472,3 +476,8 @@ it('rejects invalid integration event direction', function (): void {
     expect(fn () => $service->recordEvent($integration, 'sideways', 'test', []))
         ->toThrow(ApiException::class, 'direction');
 });
+
+function eid(): string
+{
+    return Str::uuid()->toString();
+}

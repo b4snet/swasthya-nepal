@@ -5,22 +5,35 @@ namespace App\Http\Controllers\Api;
 use App\Exceptions\ApiException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Radiology\AmendRadiologyReportRequest;
+use App\Http\Requests\Radiology\ArriveStudyRequest;
+use App\Http\Requests\Radiology\AssignTechnicianRequest;
 use App\Http\Requests\Radiology\CancelStudyRequest;
+use App\Http\Requests\Radiology\CompleteAcquisitionRequest;
 use App\Http\Requests\Radiology\DraftRadiologyReportRequest;
+use App\Http\Requests\Radiology\MarkPendingInterpretationRequest;
 use App\Http\Requests\Radiology\PerformStudyRequest;
+use App\Http\Requests\Radiology\RejectStudyRequest;
+use App\Http\Requests\Radiology\ReleaseToClinicianRequest;
+use App\Http\Requests\Radiology\RescheduleStudyRequest;
 use App\Http\Requests\Radiology\ScheduleStudyRequest;
+use App\Http\Requests\Radiology\StartAcquisitionRequest;
 use App\Http\Requests\Radiology\StoreImageReferenceRequest;
 use App\Http\Requests\Radiology\StoreModalityRequest;
+use App\Http\Requests\Radiology\StoreModalityScheduleExceptionRequest;
 use App\Http\Requests\Radiology\StoreRadiologyOrderRequest;
 use App\Http\Requests\Radiology\UpdateModalityRequest;
+use App\Http\Requests\Radiology\UpdateModalityScheduleExceptionRequest;
 use App\Http\Requests\Radiology\VerifyRadiologyReportRequest;
 use App\Models\Encounter;
+use App\Models\ImageReference;
 use App\Models\LabOrder;
 use App\Models\Modality;
+use App\Models\ModalityScheduleException;
 use App\Models\Patient;
 use App\Models\RadiologyReport;
 use App\Models\Staff;
 use App\Models\Study;
+use App\Models\StudyEvent;
 use App\Services\RadiologyService;
 use App\Support\AccessCheck;
 use App\Support\AuditLogger;
@@ -103,6 +116,36 @@ final class RadiologyController extends Controller
             ->orderBy('studies.ordered_at')
             ->select('studies.*')
             ->with('modality:id,code,name', 'order:id,priority,patient_id')
+            ->get()
+            ->map(fn (Study $study): array => $this->presentStudy($study))
+            ->values();
+
+        return Envelope::success(data: $rows, request: $request);
+    }
+
+    /**
+     * GET /radiology/worklist — the radiologist's interpretation worklist:
+     * performed studies without a verified final report, priority-aware.
+     */
+    public function worklist(Request $request): JsonResponse
+    {
+        $rows = Study::query()
+            ->join('lab_orders', function ($join): void {
+                $join->on('lab_orders.id', '=', 'studies.lab_order_id')
+                    ->on('lab_orders.tenant_id', '=', 'studies.tenant_id');
+            })
+            ->where('studies.status', Study::STATUS_PERFORMED)
+            ->whereDoesntHave('reports', function ($query): void {
+                $query->whereIn('status', [
+                    RadiologyReport::STATUS_DRAFT,
+                    RadiologyReport::STATUS_PRELIMINARY,
+                    RadiologyReport::STATUS_FINAL,
+                ]);
+            })
+            ->orderByRaw("case lab_orders.priority when 'stat' then 0 when 'urgent' then 1 else 2 end")
+            ->orderBy('studies.performed_at')
+            ->select('studies.*')
+            ->with('modality:id,code,name', 'order:id,priority,patient_id,clinical_indication')
             ->get()
             ->map(fn (Study $study): array => $this->presentStudy($study))
             ->values();
@@ -245,7 +288,7 @@ final class RadiologyController extends Controller
         $context = TenantContext::current();
         $actor = $this->currentStaff($study->tenant_id, $study->facility_id);
 
-        $performed = $this->radiology->perform($study, $actor->getKey(), $request->validated('lockVersion'));
+        $performed = $this->radiology->perform($study, $actor->getKey(), $request->validated('lockVersion'), $request->validated('procedureStartedAt'));
 
         $this->audit->record(
             'radiology_study.performed',
@@ -513,6 +556,7 @@ final class RadiologyController extends Controller
             'status' => $study->status,
             'orderedAt' => $study->ordered_at?->toIso8601String(),
             'scheduledAt' => $study->scheduled_at?->toIso8601String(),
+            'procedureStartedAt' => $study->procedure_started_at?->toIso8601String(),
             'performedAt' => $study->performed_at?->toIso8601String(),
             'performedByStaffId' => $study->performed_by_staff_id,
             'preparationInstructions' => $study->preparation_instructions,
@@ -565,6 +609,263 @@ final class RadiologyController extends Controller
             'referenceType' => $reference->reference_type,
             'referenceValue' => $reference->reference_value,
             'description' => $reference->description,
+        ];
+    }
+
+    // ──────────────────── Extended Study Lifecycle ───────────────────────
+
+    /**
+     * POST /studies/{study}/assign-technician — assign a radiographer.
+     */
+    public function assignTechnician(AssignTechnicianRequest $request, Study $study): JsonResponse
+    {
+        AccessCheck::scoped($study, write: true);
+
+        $assigned = $this->radiology->assignTechnician($study, $request->validated('technicianStaffId'), $request->validated('lockVersion'));
+
+        $this->audit->record('study.technician_assigned', 'study', $assigned->getKey(), ['technicianStaffId' => $assigned->assigned_technician_id], $request);
+
+        return Envelope::success(data: $this->presentStudy($assigned->fresh(['modality', 'reports', 'imageReferences'])), request: $request);
+    }
+
+    /**
+     * POST /studies/{study}/arrive — scheduled → arrived (patient check-in).
+     */
+    public function arrive(ArriveStudyRequest $request, Study $study): JsonResponse
+    {
+        AccessCheck::scoped($study, write: true);
+
+        $arrived = $this->radiology->arrive($study, $request->validated('lockVersion'));
+
+        $this->audit->record('study.arrived', 'study', $arrived->getKey(), [], $request);
+
+        return Envelope::success(data: $this->presentStudy($arrived->fresh(['modality', 'reports', 'imageReferences'])), request: $request);
+    }
+
+    /**
+     * POST /studies/{study}/start-acquisition — arrived → in_progress.
+     */
+    public function startAcquisition(StartAcquisitionRequest $request, Study $study): JsonResponse
+    {
+        AccessCheck::scoped($study, write: true);
+
+        $started = $this->radiology->startAcquisition($study, $request->validated('lockVersion'), $request->validated('procedureStartedAt'));
+
+        $this->audit->record('study.acquisition_started', 'study', $started->getKey(), ['procedureStartedAt' => $started->procedure_started_at?->toIso8601String()], $request);
+
+        return Envelope::success(data: $this->presentStudy($started->fresh(['modality', 'reports', 'imageReferences'])), request: $request);
+    }
+
+    /**
+     * POST /studies/{study}/complete-acquisition — in_progress → acquired.
+     */
+    public function completeAcquisition(CompleteAcquisitionRequest $request, Study $study): JsonResponse
+    {
+        AccessCheck::scoped($study, write: true);
+
+        $acquired = $this->radiology->completeAcquisition($study, $request->validated('performedByStaffId'), $request->validated('lockVersion'), $request->validated('acquisitionNotes'));
+
+        $this->audit->record('study.acquisition_completed', 'study', $acquired->getKey(), ['performedByStaffId' => $acquired->performed_by_staff_id], $request);
+
+        return Envelope::success(data: $this->presentStudy($acquired->fresh(['modality', 'reports', 'imageReferences'])), request: $request);
+    }
+
+    /**
+     * POST /studies/{study}/mark-pending-interpretation — acquired → pending_interpretation.
+     */
+    public function markPendingInterpretation(MarkPendingInterpretationRequest $request, Study $study): JsonResponse
+    {
+        AccessCheck::scoped($study, write: true);
+
+        $pending = $this->radiology->markPendingInterpretation($study, $request->validated('lockVersion'));
+
+        $this->audit->record('study.pending_interpretation', 'study', $pending->getKey(), [], $request);
+
+        return Envelope::success(data: $this->presentStudy($pending->fresh(['modality', 'reports', 'imageReferences'])), request: $request);
+    }
+
+    /**
+     * POST /studies/{study}/reject — performed/acquired → rejected (quality issue).
+     */
+    public function rejectStudy(RejectStudyRequest $request, Study $study): JsonResponse
+    {
+        AccessCheck::scoped($study, write: true);
+
+        $rejected = $this->radiology->reject($study, $request->validated('reason'), $request->validated('lockVersion'));
+
+        $this->audit->record('study.rejected', 'study', $rejected->getKey(), ['reason' => $rejected->cancel_reason], $request);
+
+        return Envelope::success(data: $this->presentStudy($rejected->fresh(['modality', 'reports', 'imageReferences'])), request: $request);
+    }
+
+    /**
+     * POST /studies/{study}/release-to-clinician — verified → released_to_clinician (result delivery).
+     */
+    public function releaseToClinician(ReleaseToClinicianRequest $request, Study $study): JsonResponse
+    {
+        AccessCheck::scoped($study, write: true);
+
+        $released = $this->radiology->releaseToClinician($study, $request->validated('lockVersion'));
+
+        $this->audit->record('study.released_to_clinician', 'study', $released->getKey(), ['releasedAt' => $released->released_to_clinician_at?->toIso8601String()], $request);
+
+        return Envelope::success(data: $this->presentStudy($released->fresh(['modality', 'reports', 'imageReferences'])), request: $request);
+    }
+
+    /**
+     * POST /studies/{study}/reschedule — reschedule a scheduled study.
+     */
+    public function reschedule(RescheduleStudyRequest $request, Study $study): JsonResponse
+    {
+        AccessCheck::scoped($study, write: true);
+
+        $rescheduled = $this->radiology->reschedule($study, $request->validated('modalityId'), $request->validated('scheduledAt'), $request->validated('rescheduleReason'), $request->validated('lockVersion'));
+
+        $this->audit->record('study.rescheduled', 'study', $rescheduled->getKey(), ['modalityId' => $rescheduled->modality_id, 'scheduledAt' => $rescheduled->scheduled_at?->toIso8601String()], $request);
+
+        return Envelope::success(data: $this->presentStudy($rescheduled->fresh(['modality', 'reports', 'imageReferences'])), request: $request);
+    }
+
+    // ──────────────────── Modality Schedule Exceptions ───────────────────
+
+    /**
+     * GET /radiology/modalities/{modality}/schedule-exceptions — list exceptions.
+     */
+    public function modalityScheduleExceptions(Request $request, Modality $modality): JsonResponse
+    {
+        AccessCheck::scoped($modality, write: false);
+
+        $exceptions = ModalityScheduleException::query()
+            ->where('tenant_id', $modality->tenant_id)
+            ->where('facility_id', $modality->facility_id)
+            ->where('modality_id', $modality->getKey())
+            ->whereNull('deleted_at')
+            ->orderBy('exception_date')
+            ->get()
+            ->map(fn (ModalityScheduleException $ex): array => $this->presentScheduleException($ex))
+            ->values();
+
+        return Envelope::success(data: $exceptions, request: $request);
+    }
+
+    /**
+     * POST /radiology/modalities/{modality}/schedule-exceptions — create exception.
+     */
+    public function storeModalityScheduleException(StoreModalityScheduleExceptionRequest $request, Modality $modality): JsonResponse
+    {
+        AccessCheck::scoped($modality, write: true);
+
+        $exception = ModalityScheduleException::query()->create([
+            'tenant_id' => $modality->tenant_id,
+            'facility_id' => $modality->facility_id,
+            'modality_id' => $modality->getKey(),
+            'exception_date' => $request->validated('exceptionDate'),
+            'start_time' => $request->validated('startTime'),
+            'end_time' => $request->validated('endTime'),
+            'reason' => $request->validated('reason'),
+            'is_blocked' => $request->validated('isBlocked', true),
+            'lock_version' => 0,
+            'created_by' => TenantContext::current()->user?->getKey(),
+        ]);
+
+        $this->audit->record('modality_schedule_exception.created', 'modality_schedule_exception', $exception->getKey(), ['modalityId' => $modality->getKey(), 'exceptionDate' => $exception->exception_date], $request);
+
+        return Envelope::success(data: $this->presentScheduleException($exception), status: 201, request: $request);
+    }
+
+    /**
+     * PATCH /radiology/modalities/{modality}/schedule-exceptions/{exception} — update exception.
+     */
+    public function updateModalityScheduleException(UpdateModalityScheduleExceptionRequest $request, Modality $modality, ModalityScheduleException $exception): JsonResponse
+    {
+        AccessCheck::scoped($modality, write: true);
+        AccessCheck::scoped($exception, write: true);
+
+        $affected = ModalityScheduleException::query()
+            ->whereKey($exception->getKey())
+            ->where('lock_version', $request->validated('lockVersion'))
+            ->update([
+                'exception_date' => $request->validated('exceptionDate', $exception->exception_date),
+                'start_time' => $request->validated('startTime', $exception->start_time),
+                'end_time' => $request->validated('endTime', $exception->end_time),
+                'reason' => $request->validated('reason', $exception->reason),
+                'is_blocked' => $request->validated('isBlocked', $exception->is_blocked),
+                'lock_version' => DB::raw('lock_version + 1'),
+                'updated_by' => TenantContext::current()->user?->getKey(),
+            ]);
+
+        if ($affected !== 1) {
+            throw new ApiException(ErrorCodes::LOCK_CONFLICT, 'The schedule exception changed concurrently. Refresh and retry.', 409);
+        }
+
+        $this->audit->record('modality_schedule_exception.updated', 'modality_schedule_exception', $exception->getKey(), ['modalityId' => $modality->getKey()], $request);
+
+        return Envelope::success(data: $this->presentScheduleException($exception->fresh()), request: $request);
+    }
+
+    /**
+     * DELETE /radiology/modalities/{modality}/schedule-exceptions/{exception} — delete exception.
+     */
+    public function deleteModalityScheduleException(Request $request, Modality $modality, ModalityScheduleException $exception): JsonResponse
+    {
+        AccessCheck::scoped($modality, write: true);
+        AccessCheck::scoped($exception, write: true);
+
+        $exception->delete();
+
+        $this->audit->record('modality_schedule_exception.deleted', 'modality_schedule_exception', $exception->getKey(), ['modalityId' => $modality->getKey()], $request);
+
+        return Envelope::success(data: ['deleted' => true], request: $request);
+    }
+
+    // ──────────────────── Study Events ──────────────────────────────────
+
+    /**
+     * GET /studies/{study}/events — study event timeline.
+     */
+    public function studyEvents(Request $request, Study $study): JsonResponse
+    {
+        AccessCheck::scoped($study, write: false);
+
+        $events = StudyEvent::query()
+            ->where('tenant_id', $study->tenant_id)
+            ->where('study_id', $study->getKey())
+            ->with('actor:id,full_name,designation')
+            ->orderBy('created_at')
+            ->get()
+            ->map(fn (StudyEvent $event): array => $this->presentStudyEvent($event))
+            ->values();
+
+        return Envelope::success(data: $events, request: $request);
+    }
+
+    // ──────────────────── Presenters ────────────────────────────────────
+
+    private function presentScheduleException(ModalityScheduleException $ex): array
+    {
+        return [
+            'id' => $ex->getKey(),
+            'modalityId' => $ex->modality_id,
+            'exceptionDate' => $ex->exception_date,
+            'startTime' => $ex->start_time?->format('H:i'),
+            'endTime' => $ex->end_time?->format('H:i'),
+            'reason' => $ex->reason,
+            'isBlocked' => $ex->is_blocked,
+            'lockVersion' => $ex->lock_version,
+        ];
+    }
+
+    private function presentStudyEvent(StudyEvent $event): array
+    {
+        return [
+            'id' => $event->getKey(),
+            'eventType' => $event->event_type,
+            'eventDescription' => $event->event_description,
+            'actorStaffId' => $event->actor_staff_id,
+            'actorName' => $event->actor?->full_name,
+            'actorDesignation' => $event->actor?->designation,
+            'metadata' => $event->metadata,
+            'createdAt' => $event->created_at?->toIso8601String(),
         ];
     }
 }

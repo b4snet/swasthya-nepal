@@ -360,6 +360,116 @@ final class PharmacyController extends Controller
         return Envelope::success(data: $this->presentLine($verified), request: $request);
     }
 
+    /**
+     * GET /patients/{patient}/medication-history — the complete medication
+     * history for a patient: prescribed (via prescriptions), dispensed
+     * (via prescription lines with batch stamps), and administered (via
+     * MAR entries). Returns a unified timeline sorted by date desc.
+     */
+    public function medicationHistory(Request $request, string $patientId): JsonResponse
+    {
+        $context = TenantContext::current();
+        $tenantId = (string) $context->tenantId();
+
+        // Verify the patient exists and is in scope.
+        $patient = \App\Models\Patient::query()
+            ->where('tenant_id', $tenantId)
+            ->where('id', $patientId)
+            ->first();
+
+        if ($patient === null) {
+            throw new ApiException(ErrorCodes::NOT_FOUND, 'Patient not found.', 404);
+        }
+
+        $history = [];
+
+        // Prescribed medications (all prescriptions for this patient).
+        $prescriptions = Prescription::query()
+            ->where('tenant_id', $tenantId)
+            ->where('patient_id', $patientId)
+            ->with('lines.medication:id,generic_name,brand_name,strength,form,unit')
+            ->orderByDesc('created_at')
+            ->limit(100)
+            ->get();
+
+        foreach ($prescriptions as $prescription) {
+            foreach ($prescription->lines as $line) {
+                $history[] = [
+                    'type' => 'prescribed',
+                    'prescriptionId' => $prescription->getKey(),
+                    'medicationId' => $line->medication_id,
+                    'medicationName' => $line->medication?->generic_name,
+                    'dose' => $line->dose,
+                    'route' => $line->route,
+                    'frequency' => $line->frequency,
+                    'quantityMinor' => $line->quantity_minor,
+                    'status' => $line->status,
+                    'prescriberStaffId' => $prescription->prescriber_staff_id,
+                    'date' => $prescription->created_at?->toIso8601String(),
+                ];
+            }
+        }
+
+        // Dispensed medications (lines with dispensed stamps).
+        $dispensedLines = \App\Models\PrescriptionLine::query()
+            ->where('tenant_id', $tenantId)
+            ->where('patient_id', $patientId) // through prescription
+            ->where('status', PrescriptionLine::STATUS_DISPENSED)
+            ->orWhere('status', PrescriptionLine::STATUS_REVERSED)
+            ->with('medication:id,generic_name,brand_name,strength')
+            ->whereHas('prescription', fn ($q) => $q->where('patient_id', $patientId))
+            ->orderByDesc('dispensed_at')
+            ->limit(100)
+            ->get();
+
+        foreach ($dispensedLines as $line) {
+            $history[] = [
+                'type' => 'dispensed',
+                'prescriptionLineId' => $line->getKey(),
+                'medicationId' => $line->medication_id,
+                'medicationName' => $line->medication?->generic_name,
+                'batchNumber' => $line->batch_number,
+                'batchExpiresAt' => $line->batch_expires_at?->toDateString(),
+                'quantityMinor' => $line->batch_quantity_minor,
+                'returnedQuantityMinor' => $line->returned_quantity_minor,
+                'dispensedByStaffId' => $line->dispensed_by_staff_id,
+                'date' => $line->dispensed_at?->toIso8601String(),
+            ];
+        }
+
+        // MAR entries (administered medications for IPD).
+        $marEntries = \App\Models\MarEntry::query()
+            ->where('tenant_id', $tenantId)
+            ->whereHas('prescriptionLine', fn ($q) => $q->whereHas('prescription', fn ($pq) => $pq->where('patient_id', $patientId)))
+            ->with('prescriptionLine.medication:id,generic_name,brand_name,strength')
+            ->orderByDesc('scheduled_at')
+            ->limit(100)
+            ->get();
+
+        foreach ($marEntries as $entry) {
+            $history[] = [
+                'type' => 'administered',
+                'marEntryId' => $entry->getKey(),
+                'medicationId' => $entry->prescriptionLine?->medication_id,
+                'medicationName' => $entry->prescriptionLine?->medication?->generic_name,
+                'status' => $entry->status,
+                'administeredBy' => $entry->administered_by,
+                'scheduledAt' => $entry->scheduled_at?->toIso8601String(),
+                'administeredAt' => $entry->administered_at?->toIso8601String(),
+                'reason' => $entry->reason,
+            ];
+        }
+
+        // Sort by date desc.
+        usort($history, function ($a, $b) {
+            $dateA = $a['date'] ?? $a['scheduledAt'] ?? '';
+            $dateB = $b['date'] ?? $b['scheduledAt'] ?? '';
+            return strcmp($dateB, $dateA);
+        });
+
+        return Envelope::success(data: array_slice($history, 0, 200), request: $request);
+    }
+
     /* ------------------------------------------------------------------ */
 
     /**

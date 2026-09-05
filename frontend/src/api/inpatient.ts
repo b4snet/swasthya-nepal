@@ -180,9 +180,9 @@ export const erApi = {
     '/api/v1/er/registrations', { method: 'POST', body: payload },
   ),
   queue: () => api.request<Array<{
-    encounterId: string; patientId: string; facilityId: string;
-    registeredAt: string | null; triageLevel: number | null;
-    triageColor: string | null; presentingComplaint: string | null;
+    encounterId: string; registrationId: string; patientId: string; facilityId: string;
+    registeredAt: string | null; presentingComplaint: string | null; isUnidentified: boolean;
+    triageLevel: number | null; triageColor: string | null; triageAssessedAt: string | null;
   }>>('/api/v1/er/queue'),
   triageScales: (orgId: string) => api.request<Array<{
     id: string; code: string; name: string; level: number; color: string;
@@ -203,6 +203,19 @@ export const erApi = {
     disposition: string; notes?: string; bedId?: string; admittingDiagnosis?: string;
   }) => api.request<{ encounter: { id: string; disposition: string; status: string }; admissionId: string | null }>(    `/api/v1/er/encounters/${encounterId}/disposition`, { method: 'POST', body: payload },
   ),
+  immediateTreatment: (encounterId: string, payload: { reason?: string }) =>
+    api.request<{ id: string; status: string }>(
+      `/api/v1/er/encounters/${encounterId}/immediate-treatment`, { method: 'POST', body: payload },
+    ),
+  reconcileIdentity: (registrationId: string, payload: { targetPatientId: string; reason?: string }) =>
+    api.request<{ id: string; patientId: string; targetPatientId: string; completedAt: string | null }>(
+      `/api/v1/er/registrations/${registrationId}/reconcile-identity`, { method: 'POST', body: payload },
+    ),
+  dashboard: () => api.request<{
+    statusCounts: { open: number; inProgress: number; closed: number; total: number };
+    triageDistribution: Record<string, number>;
+    avgWaitingMinutes: number | null;
+  }>('/api/v1/er/dashboard'),
 };
 
 export const otApi = {
