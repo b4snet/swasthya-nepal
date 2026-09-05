@@ -46,7 +46,7 @@ beforeEach(function (): void {
 // ══════════════════════════════════════════════════════════════
 
 it('completes a full self-pay patient journey: encounter → charge → tax → invoice → payment', function () {
-    $ctx = $this->ctx();
+    $ctx = ctx();
     $patient = Patient::factory()->create(['tenant_id' => $ctx['org']->getKey(), 'facility_id' => $ctx['facility']->getKey()]);
 
     // Tax rule: VAT 13%
@@ -62,10 +62,10 @@ it('completes a full self-pay patient journey: encounter → charge → tax → 
     ]);
 
     // Signed encounter
-    $encounter = $this->createSignedEncounter($ctx, $patient);
+    $encounter = createSignedEncounter($ctx, $patient);
 
     // Charge: NPR 500 consultation
-    $charge = $this->postCharge($ctx, $patient, $encounter, 50000, 'opd');
+    $charge = postCharge($ctx, $patient, $encounter, 50000, 'opd');
 
     expect($charge->tax_rule_id)->toBe($taxRule->getKey())
         ->and($charge->tax_rate_bps)->toBe(1300);
@@ -107,7 +107,7 @@ it('completes a full self-pay patient journey: encounter → charge → tax → 
 // ══════════════════════════════════════════════════════════════
 
 it('completes a private insurance flow: eligibility → charge → claim → invoice → patient share', function () {
-    $ctx = $this->ctx();
+    $ctx = ctx();
     $patient = Patient::factory()->create(['tenant_id' => $ctx['org']->getKey(), 'facility_id' => $ctx['facility']->getKey()]);
 
     // Private insurance payer with 75% coverage
@@ -115,7 +115,7 @@ it('completes a private insurance flow: eligibility → charge → claim → inv
         'tenant_id' => $ctx['org']->getKey(),
         'name' => 'Nepal Insurance Co',
         'code' => 'PRIV_INS',
-        'payer_type' => 'insurance',
+        'payer_type' => 'private',
         'payer_sub_type' => 'private',
         'status' => 'active',
     ]);
@@ -145,8 +145,8 @@ it('completes a private insurance flow: eligibility → charge → claim → inv
     ]);
 
     // Service charge: NPR 10,000
-    $encounter = $this->createSignedEncounter($ctx, $patient);
-    $charge = $this->postCharge($ctx, $patient, $encounter, 1000000, 'opd'); // NPR 10,000
+    $encounter = createSignedEncounter($ctx, $patient);
+    $charge = postCharge($ctx, $patient, $encounter, 1000000, 'opd'); // NPR 10,000
 
     // Coverage calculation: 75% covered = 750,000 minor; patient = 250,000 minor
     $coverage = $benefit->calculateCoverage(1000000);
@@ -189,7 +189,7 @@ it('completes a private insurance flow: eligibility → charge → claim → inv
 // ══════════════════════════════════════════════════════════════
 
 it('completes an SSF flow: eligibility → benefit check → charge → claim → patient responsibility', function () {
-    $ctx = $this->ctx();
+    $ctx = ctx();
     $patient = Patient::factory()->create(['tenant_id' => $ctx['org']->getKey(), 'facility_id' => $ctx['facility']->getKey()]);
 
     // SSF payer
@@ -197,7 +197,7 @@ it('completes an SSF flow: eligibility → benefit check → charge → claim �
         'tenant_id' => $ctx['org']->getKey(),
         'name' => 'Social Security Fund',
         'code' => 'SSF',
-        'payer_type' => 'insurance',
+        'payer_type' => 'government',
         'payer_sub_type' => 'ssf',
         'scheme_version' => 'SSF_2083',
         'status' => 'active',
@@ -230,8 +230,8 @@ it('completes an SSF flow: eligibility → benefit check → charge → claim �
     ]);
 
     // Service: NPR 20,000 lab test
-    $encounter = $this->createSignedEncounter($ctx, $patient);
-    $charge = $this->postCharge($ctx, $patient, $encounter, 2000000, 'lab'); // NPR 20,000
+    $encounter = createSignedEncounter($ctx, $patient);
+    $charge = postCharge($ctx, $patient, $encounter, 2000000, 'lab'); // NPR 20,000
 
     // SSF coverage: 80% = 1,600,000 minor; patient = 400,000 minor
     $coverage = $ssfBenefit->calculateCoverage(2000000);
@@ -269,7 +269,7 @@ it('completes an SSF flow: eligibility → benefit check → charge → claim �
 // ══════════════════════════════════════════════════════════════
 
 it('completes an HIB flow: eligibility → benefit check → charge → claim', function () {
-    $ctx = $this->ctx();
+    $ctx = ctx();
     $patient = Patient::factory()->create(['tenant_id' => $ctx['org']->getKey(), 'facility_id' => $ctx['facility']->getKey()]);
 
     // HIB payer
@@ -277,7 +277,7 @@ it('completes an HIB flow: eligibility → benefit check → charge → claim', 
         'tenant_id' => $ctx['org']->getKey(),
         'name' => 'Health Insurance Board',
         'code' => 'HIB',
-        'payer_type' => 'insurance',
+        'payer_type' => 'government',
         'payer_sub_type' => 'hib',
         'scheme_version' => 'HIB_2083',
         'status' => 'active',
@@ -309,8 +309,8 @@ it('completes an HIB flow: eligibility → benefit check → charge → claim', 
     ]);
 
     // Service: NPR 50,000 surgery
-    $encounter = $this->createSignedEncounter($ctx, $patient);
-    $charge = $this->postCharge($ctx, $patient, $encounter, 5000000, 'surgery');
+    $encounter = createSignedEncounter($ctx, $patient);
+    $charge = postCharge($ctx, $patient, $encounter, 5000000, 'surgery');
 
     // HIB covers 100% up to NPR 100,000
     $coverage = $hibBenefit->calculateCoverage(5000000);
@@ -335,7 +335,7 @@ it('completes an HIB flow: eligibility → benefit check → charge → claim', 
 // ══════════════════════════════════════════════════════════════
 
 it('handles corporate sponsor coverage correctly', function () {
-    $ctx = $this->ctx();
+    $ctx = ctx();
     $patient = Patient::factory()->create(['tenant_id' => $ctx['org']->getKey(), 'facility_id' => $ctx['facility']->getKey()]);
 
     // Corporate payer
@@ -343,7 +343,7 @@ it('handles corporate sponsor coverage correctly', function () {
         'tenant_id' => $ctx['org']->getKey(),
         'name' => 'Nepal Telecom',
         'code' => 'NTC',
-        'payer_type' => 'insurance',
+        'payer_type' => 'other',
         'payer_sub_type' => 'corporate',
         'status' => 'active',
     ]);
@@ -389,7 +389,7 @@ it('handles corporate sponsor coverage correctly', function () {
 // ══════════════════════════════════════════════════════════════
 
 it('preserves historical tax when rules change — rule V1 transactions remain unchanged after V2', function () {
-    $ctx = $this->ctx();
+    $ctx = ctx();
     $patient = Patient::factory()->create(['tenant_id' => $ctx['org']->getKey(), 'facility_id' => $ctx['facility']->getKey()]);
 
     // Rule V1: 13% VAT, effective Jul 16 2025
@@ -418,7 +418,7 @@ it('preserves historical tax when rules change — rule V1 transactions remain u
     ]);
 
     // Charge under V1 (historical)
-    $encounter1 = $this->createSignedEncounter($ctx, $patient);
+    $encounter1 = createSignedEncounter($ctx, $patient);
     $chargeV1 = Charge::query()->create([
         'tenant_id' => $ctx['org']->getKey(),
         'facility_id' => $ctx['facility']->getKey(),
@@ -446,7 +446,7 @@ it('preserves historical tax when rules change — rule V1 transactions remain u
     expect($invoiceV1->total_tax_minor)->toBe(13000);
 
     // Charge under V2 (current)
-    $encounter2 = $this->createSignedEncounter($ctx, $patient);
+    $encounter2 = createSignedEncounter($ctx, $patient);
     $chargeV2 = Charge::query()->create([
         'tenant_id' => $ctx['org']->getKey(),
         'facility_id' => $ctx['facility']->getKey(),
@@ -486,7 +486,7 @@ it('preserves historical tax when rules change — rule V1 transactions remain u
 // ══════════════════════════════════════════════════════════════
 
 it('rejects charges against locked fiscal periods', function () {
-    $ctx = $this->ctx();
+    $ctx = ctx();
 
     // Create and lock a period
     FinancialPeriod::create([
@@ -507,7 +507,7 @@ it('rejects charges against locked fiscal periods', function () {
 });
 
 it('allows charges in open fiscal periods', function () {
-    $ctx = $this->ctx();
+    $ctx = ctx();
 
     FinancialPeriod::create([
         'tenant_id' => $ctx['org']->getKey(),
@@ -531,12 +531,12 @@ it('allows charges in open fiscal periods', function () {
 // ══════════════════════════════════════════════════════════════
 
 it('processes a refund through the complete lifecycle: request → approve → complete', function () {
-    $ctx = $this->ctx();
+    $ctx = ctx();
     $patient = Patient::factory()->create(['tenant_id' => $ctx['org']->getKey(), 'facility_id' => $ctx['facility']->getKey()]);
 
     // Post charge and invoice
-    $encounter = $this->createSignedEncounter($ctx, $patient);
-    $charge = $this->postCharge($ctx, $patient, $encounter, 50000, 'opd');
+    $encounter = createSignedEncounter($ctx, $patient);
+    $charge = postCharge($ctx, $patient, $encounter, 50000, 'opd');
 
     $billing = app(BillingService::class);
     $invoice = $billing->issueInvoice(
@@ -602,11 +602,11 @@ it('processes a refund through the complete lifecycle: request → approve → c
 // ══════════════════════════════════════════════════════════════
 
 it('enforces financial invariants: no negative, no duplicate, no over-refund', function () {
-    $ctx = $this->ctx();
+    $ctx = ctx();
     $patient = Patient::factory()->create(['tenant_id' => $ctx['org']->getKey(), 'facility_id' => $ctx['facility']->getKey()]);
 
-    $encounter = $this->createSignedEncounter($ctx, $patient);
-    $charge = $this->postCharge($ctx, $patient, $encounter, 50000, 'opd');
+    $encounter = createSignedEncounter($ctx, $patient);
+    $charge = postCharge($ctx, $patient, $encounter, 50000, 'opd');
 
     $billing = app(BillingService::class);
     $invoice = $billing->issueInvoice(
@@ -652,14 +652,14 @@ it('enforces financial invariants: no negative, no duplicate, no over-refund', f
 // ══════════════════════════════════════════════════════════════
 
 it('enforces claim lifecycle: draft → submitted → pending → accepted/denied', function () {
-    $ctx = $this->ctx();
+    $ctx = ctx();
     $patient = Patient::factory()->create(['tenant_id' => $ctx['org']->getKey(), 'facility_id' => $ctx['facility']->getKey()]);
 
     $payer = Payer::create([
         'tenant_id' => $ctx['org']->getKey(),
         'name' => 'Test Insurance',
         'code' => 'TEST_INS',
-        'payer_type' => 'insurance',
+        'payer_type' => 'private',
         'status' => 'active',
     ]);
 
@@ -671,8 +671,8 @@ it('enforces claim lifecycle: draft → submitted → pending → accepted/denie
         'status' => 'active',
     ]);
 
-    $encounter = $this->createSignedEncounter($ctx, $patient);
-    $charge = $this->postCharge($ctx, $patient, $encounter, 50000, 'opd');
+    $encounter = createSignedEncounter($ctx, $patient);
+    $charge = postCharge($ctx, $patient, $encounter, 50000, 'opd');
 
     $billing = app(BillingService::class);
     $invoice = $billing->issueInvoice(
@@ -706,6 +706,7 @@ it('enforces claim lifecycle: draft → submitted → pending → accepted/denie
         'pending',
         null,
         null,
+        null,
         $ctx['admin']->getKey(),
     );
     expect($accepted->status)->toBe('pending');
@@ -714,6 +715,7 @@ it('enforces claim lifecycle: draft → submitted → pending → accepted/denie
     [$settled, $transition2] = $financeService->recordClaimStatus(
         $accepted,
         'paid',
+        null,
         null,
         40000, // payer pays 40000
         $ctx['admin']->getKey(),
