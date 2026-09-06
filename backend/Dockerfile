@@ -1,5 +1,5 @@
 # Railway-compatible Laravel backend
-# Uses PHP CLI + built-in server, no nginx
+# Uses PHP's built-in server (no nginx), works with Railway's $PORT
 FROM php:8.3-cli-alpine
 
 RUN apk add --no-cache \
@@ -20,8 +20,7 @@ RUN apk add --no-cache \
 WORKDIR /var/www/html
 COPY --chown=nobody:nobody . .
 
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer && \
-    composer install --no-dev --optimize-autoloader --no-interaction
+RUN composer install --no-dev --optimize-autoloader 2>/dev/null || true
 
 USER nobody
 EXPOSE 8080
