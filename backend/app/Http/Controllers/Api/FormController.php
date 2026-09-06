@@ -9,6 +9,7 @@ use App\Models\FormSubmission;
 use App\Models\FormTemplate;
 use App\Models\FormTemplateCategory;
 use App\Services\DocumentNumberService;
+use App\Support\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -26,7 +27,7 @@ final class FormController extends Controller
     public function indexTemplates(Request $request): JsonResponse
     {
         $query = FormTemplate::query()
-            ->where('tenant_id', $request->user()->currentTenantId());
+            ->where('tenant_id', TenantContext::current()->tenantId());
 
         if ($category = $request->query('category')) {
             $query->where('category', $category);
@@ -52,7 +53,7 @@ final class FormController extends Controller
 
     public function showTemplate(Request $request, string $id): JsonResponse
     {
-        $template = FormTemplate::where('tenant_id', $request->user()->currentTenantId())
+        $template = FormTemplate::where('tenant_id', TenantContext::current()->tenantId())
             ->findOrFail($id);
 
         return response()->json($template);
@@ -82,8 +83,8 @@ final class FormController extends Controller
             'document_number_prefix' => 'nullable|string|max:10',
         ]);
 
-        $validated['tenant_id'] = $request->user()->currentTenantId();
-        $validated['facility_id'] = $request->user()->currentFacilityId();
+        $validated['tenant_id'] = TenantContext::current()->tenantId();
+        $validated['facility_id'] = TenantContext::current()->facilityId();
         $validated['slug'] = \Str::slug($validated['name']);
         $validated['is_active'] = true;
         $validated['is_published'] = false;
@@ -96,7 +97,7 @@ final class FormController extends Controller
 
     public function updateTemplate(Request $request, string $id): JsonResponse
     {
-        $template = FormTemplate::where('tenant_id', $request->user()->currentTenantId())
+        $template = FormTemplate::where('tenant_id', TenantContext::current()->tenantId())
             ->findOrFail($id);
 
         $validated = $request->validate([
@@ -118,7 +119,7 @@ final class FormController extends Controller
 
     public function publishTemplate(Request $request, string $id): JsonResponse
     {
-        $template = FormTemplate::where('tenant_id', $request->user()->currentTenantId())
+        $template = FormTemplate::where('tenant_id', TenantContext::current()->tenantId())
             ->findOrFail($id);
 
         $template->update([
@@ -136,7 +137,7 @@ final class FormController extends Controller
     public function indexSubmissions(Request $request): JsonResponse
     {
         $query = FormSubmission::query()
-            ->where('tenant_id', $request->user()->currentTenantId())
+            ->where('tenant_id', TenantContext::current()->tenantId())
             ->with('template:id,name,code,category');
 
         if ($templateId = $request->query('template_id')) {
@@ -159,7 +160,7 @@ final class FormController extends Controller
 
     public function showSubmission(Request $request, string $id): JsonResponse
     {
-        $submission = FormSubmission::where('tenant_id', $request->user()->currentTenantId())
+        $submission = FormSubmission::where('tenant_id', TenantContext::current()->tenantId())
             ->with(['template', 'signatures'])
             ->findOrFail($id);
 
@@ -184,15 +185,15 @@ final class FormController extends Controller
         $documentNumber = null;
         if ($template->generates_document_number) {
             $documentNumber = $this->numberService->next(
-                $request->user()->currentTenantId(),
+                TenantContext::current()->tenantId(),
                 $template->document_number_prefix ?? 'form',
-                $request->user()->currentFacilityId(),
+                TenantContext::current()->facilityId(),
             );
         }
 
         $submission = FormSubmission::create([
-            'tenant_id' => $request->user()->currentTenantId(),
-            'facility_id' => $request->user()->currentFacilityId(),
+            'tenant_id' => TenantContext::current()->tenantId(),
+            'facility_id' => TenantContext::current()->facilityId(),
             'template_id' => $validated['template_id'],
             'template_version' => $template->version,
             'patient_id' => $validated['patient_id'] ?? null,
@@ -211,7 +212,7 @@ final class FormController extends Controller
 
     public function submitForm(Request $request, string $id): JsonResponse
     {
-        $submission = FormSubmission::where('tenant_id', $request->user()->currentTenantId())
+        $submission = FormSubmission::where('tenant_id', TenantContext::current()->tenantId())
             ->findOrFail($id);
 
         if ($submission->status !== FormSubmission::STATUS_DRAFT) {
@@ -227,7 +228,7 @@ final class FormController extends Controller
 
     public function verifySubmission(Request $request, string $id): JsonResponse
     {
-        $submission = FormSubmission::where('tenant_id', $request->user()->currentTenantId())
+        $submission = FormSubmission::where('tenant_id', TenantContext::current()->tenantId())
             ->findOrFail($id);
 
         if ($submission->status !== FormSubmission::STATUS_SUBMITTED) {
@@ -243,7 +244,7 @@ final class FormController extends Controller
 
     public function approveSubmission(Request $request, string $id): JsonResponse
     {
-        $submission = FormSubmission::where('tenant_id', $request->user()->currentTenantId())
+        $submission = FormSubmission::where('tenant_id', TenantContext::current()->tenantId())
             ->findOrFail($id);
 
         if ($submission->status !== FormSubmission::STATUS_VERIFIED) {
@@ -263,7 +264,7 @@ final class FormController extends Controller
             'reason' => 'required|string|max:500',
         ]);
 
-        $submission = FormSubmission::where('tenant_id', $request->user()->currentTenantId())
+        $submission = FormSubmission::where('tenant_id', TenantContext::current()->tenantId())
             ->findOrFail($id);
 
         if (in_array($submission->status, [FormSubmission::STATUS_CANCELLED, FormSubmission::STATUS_APPROVED])) {
@@ -279,7 +280,7 @@ final class FormController extends Controller
 
     public function recordPrint(Request $request, string $id): JsonResponse
     {
-        $submission = FormSubmission::where('tenant_id', $request->user()->currentTenantId())
+        $submission = FormSubmission::where('tenant_id', TenantContext::current()->tenantId())
             ->findOrFail($id);
 
         $submission->recordPrint($request->user()->id);
@@ -301,11 +302,11 @@ final class FormController extends Controller
             'signature_method' => 'string|in:drawn,typed,uploaded,digital',
         ]);
 
-        $submission = FormSubmission::where('tenant_id', $request->user()->currentTenantId())
+        $submission = FormSubmission::where('tenant_id', TenantContext::current()->tenantId())
             ->findOrFail($submissionId);
 
         $signature = FormSignature::create([
-            'tenant_id' => $request->user()->currentTenantId(),
+            'tenant_id' => TenantContext::current()->tenantId(),
             'submission_id' => $submissionId,
             'signature_type' => $validated['signature_type'],
             'signer_id' => $request->user()->id,
@@ -322,7 +323,7 @@ final class FormController extends Controller
 
     public function listSignatures(Request $request, string $submissionId): JsonResponse
     {
-        $signatures = FormSignature::where('tenant_id', $request->user()->currentTenantId())
+        $signatures = FormSignature::where('tenant_id', TenantContext::current()->tenantId())
             ->where('submission_id', $submissionId)
             ->get();
 
@@ -340,9 +341,9 @@ final class FormController extends Controller
         ]);
 
         $number = $this->numberService->next(
-            $request->user()->currentTenantId(),
+            TenantContext::current()->tenantId(),
             $validated['document_type'],
-            $request->user()->currentFacilityId(),
+            TenantContext::current()->facilityId(),
         );
 
         return response()->json(['document_number' => $number]);
@@ -354,7 +355,7 @@ final class FormController extends Controller
 
     public function indexCategories(Request $request): JsonResponse
     {
-        $categories = FormTemplateCategory::where('tenant_id', $request->user()->currentTenantId())
+        $categories = FormTemplateCategory::where('tenant_id', TenantContext::current()->tenantId())
             ->active()
             ->ordered()
             ->get();

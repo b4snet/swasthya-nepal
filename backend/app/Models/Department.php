@@ -105,6 +105,18 @@ class Department extends Model
         'sort_order' => 'integer',
     ];
 
+    protected static function booted(): void
+    {
+        static::creating(function (Department $dept): void {
+            if ($dept->department_type === null) {
+                $dept->department_type = 'medical';
+            }
+            if ($dept->sort_order === null) {
+                $dept->sort_order = 0;
+            }
+        });
+    }
+
     /**
      * @return BelongsTo<Facility, $this>
      */

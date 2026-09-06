@@ -118,7 +118,7 @@ class BenefitRule extends Model
     {
         return match ($this->coverage_type) {
             self::COVERAGE_FULL => $chargeAmountMinor,
-            self::COVERAGE_CO_PAY => max(0, $chargeAmountMinor - ($this->copay_minor ?? 0)),
+            self::COVERAGE_CO_PAY => (int) round($chargeAmountMinor * ($this->coverage_percent_bps ?? 10000) / 10000) - ($this->copay_minor ?? 0),
             self::COVERAGE_CAPPED => min($chargeAmountMinor, $this->limit_minor ?? PHP_INT_MAX),
             self::COVERAGE_DEDUCTIBLE => max(0, $chargeAmountMinor - ($this->deductible_minor ?? 0)),
             self::COVERAGE_EXCLUDED => 0,

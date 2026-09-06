@@ -75,7 +75,7 @@ it('records and retrieves encounter vitals', function () {
             'spo2Percent' => 98.5,
         ])
         ->assertCreated()
-        ->assertJsonStructure(['data' => ['id', 'temperature_celsius']]);
+        ->assertJsonStructure(['data' => ['id', 'value' => ['temperature_celsius']]]);
 
     $this->withToken(Identity::tokenFor($admin))
         ->getJson('/api/v1/encounters/'.$encounter->getKey().'/vitals')

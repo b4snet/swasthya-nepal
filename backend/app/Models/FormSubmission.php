@@ -171,7 +171,9 @@ class FormSubmission extends Model
      */
     public function setField(string $key, mixed $value): void
     {
-        data_set($this->data, $key, $value);
+        $data = $this->data;
+        data_set($data, $key, $value);
+        $this->data = $data;
         $this->save();
     }
 }

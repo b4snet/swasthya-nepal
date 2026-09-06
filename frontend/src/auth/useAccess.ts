@@ -287,7 +287,8 @@ const ROLE_DEFAULT_MODULE: Record<string, string> = {
 
 // ── Access hook ──
 export function useAccess() {
-  const { user, assignments } = useAuth();
+  const { user, assignments: authAssignments } = useAuth();
+  const assignments = Array.isArray(authAssignments) ? authAssignments : [];
   const { hasRole: tenantHasRole } = useTenant();
 
   /**

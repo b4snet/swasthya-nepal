@@ -104,7 +104,7 @@ function waitUrgency(minutes: number): string {
 /* ── Main Component ──────────────────────────────────────────────── */
 
 export function EmergencyPage() {
-  const { organizationId, selectedFacilityId: facilityId } = useTenant();
+  const { organizationId, selectedFacilityId: facilityId, ready } = useTenant();
   const access = useAccess();
   const canDispose = access.can(PERMISSIONS.ER_DISPOSITION);
   const canRegister = access.can(PERMISSIONS.ER_REGISTER);
@@ -119,11 +119,11 @@ export function EmergencyPage() {
   const [activeZone, setActiveZone] = useState<'all' | 'untriaged' | 'waiting' | 'care' | 'dispo'>('all');
   const [selectedEntry, setSelectedEntry] = useState<ErQueueEntry | null>(null);
 
-  const queue = useFetch(() => erApi.queue(), ['er-queue']);
-  const scales = useFetch(() => organizationId ? erApi.triageScales(organizationId) : Promise.resolve([]), ['er-scales', organizationId]);
+  const queue = useFetch(() => ready ? erApi.queue() : Promise.resolve([]), ['er-queue', ready]);
+  const scales = useFetch(() => ready && organizationId ? erApi.triageScales(organizationId) : Promise.resolve([]), ['er-scales', organizationId, ready]);
   // Server-truth operational dashboard (aggregates are computed server-side;
   // client-side totals are never treated as authoritative).
-  const dashboard = useFetch(() => erApi.dashboard(), ['er-dashboard']);
+  const dashboard = useFetch(() => ready ? erApi.dashboard() : Promise.resolve(null), ['er-dashboard', ready]);
 
   const refreshQueue = useCallback(() => { void queue.refresh(); void dashboard.refresh(); }, [queue, dashboard]);
 
@@ -133,7 +133,10 @@ export function EmergencyPage() {
     return () => clearInterval(id);
   }, [refreshQueue]);
 
-  const entries = useMemo(() => (queue.data ?? []) as ErQueueEntry[], [queue.data]);
+  const entries = useMemo(
+    () => (Array.isArray(queue.data) ? queue.data : []) as ErQueueEntry[],
+    [queue.data],
+  );
 
   /* ── Census (server-truth) ────────────────────────────────────── */
   // Open/in-progress totals come from the server dashboard. Untriaged and
@@ -244,12 +247,16 @@ export function EmergencyPage() {
         >
           Waiting
         </button>
-        <button
-          className={`er-zone-tab ${activeZone === 'dispo' ? 'er-zone-tab--active' : ''}`}
-          onClick={() => setActiveZone('dispo')}
-        >
-          Disposition
-        </button>
+        {canDispose && (
+          <button
+            role="tab"
+            aria-selected={activeZone === 'dispo'}
+            className={`er-zone-tab ${activeZone === 'dispo' ? 'er-zone-tab--active' : ''}`}
+            onClick={() => setActiveZone('dispo')}
+          >
+            Disposition
+          </button>
+        )}
       </div>
 
       {/* ── Queue List ─────────────────────────────────────────── */}

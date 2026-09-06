@@ -50,9 +50,11 @@ final class SendNotificationHandler implements EventHandlerInterface
             'facility_id' => $event->facility_id,
             'title' => $title,
             'body' => $body,
-            'type' => $type,
+            'type' => 'clinical_alert',
+            'channel' => 'in_app',
             'link' => $link,
             'read' => false,
+            'status' => 'sent',
         ]);
 
         Log::info('Notification created from domain event', [

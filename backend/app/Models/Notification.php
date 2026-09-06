@@ -63,10 +63,15 @@ class Notification extends Model
         'refund_request_id',
         'type',
         'channel',
+        'title',
+        'body',
+        'link',
+        'read',
         'template_id',
         'payload',
         'status',
         'sensitive',
+        'facility_id',
     ];
 
     /**

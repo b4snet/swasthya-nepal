@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasUuid;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
@@ -16,7 +17,7 @@ use Illuminate\Support\Str;
  */
 class PortalInvitation extends Model
 {
-    use HasFactory;
+    use HasFactory, HasUuid;
 
     public const STATUS_PENDING = 'pending';
 

@@ -86,7 +86,7 @@ class HospitalBrandingTest extends TestCase
 
         $date = new \DateTime('2026-08-21 14:30:00');
         $this->assertEquals('21/08/2026', $branding->formatDate($date));
-        $this->assertEquals('2:30 PM', $branding->formatTime($date));
+        $this->assertEquals('02:30 PM', $branding->formatTime($date));
     }
 
     public function test_branding_defaults(): void

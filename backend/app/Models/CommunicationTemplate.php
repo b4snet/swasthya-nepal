@@ -76,7 +76,7 @@ class CommunicationTemplate extends Model
     /**
      * @return array<string, string>
      */
-    protected function casts(): array
+    public function casts(): array
     {
         return [
             'channel_in_app' => 'boolean',

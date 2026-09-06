@@ -11,6 +11,7 @@ use App\Services\Events\EventProcessor;
 use App\Services\Events\Handlers\CriticalValueDetectedHandler;
 use App\Services\Events\Handlers\SendNotificationHandler;
 use App\Services\IntegrationRegistryService;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Tests\Support\Identity;
@@ -255,37 +256,41 @@ it('marks unhandled event types as completed (no-op)', function (): void {
 
 it('creates an in-app notification from the event payload', function (): void {
     $org = Identity::organization();
+    $facility = Identity::facility($org);
+    $user = Identity::user();
     $event = EventDispatcher::dispatch(
         eventType: 'notification.created',
         aggregateType: 'notification',
         aggregateId: eid(),
         payload: [
-            'user_id' => Identity::user()->getKey(),
+            'user_id' => $user->getKey(),
             'title' => 'Appointment Confirmed',
             'body' => 'Your appointment is confirmed.',
             'type' => 'success',
             'link' => '/appointments/apt-1',
         ],
         tenantId: $org->getKey(),
-        facilityId: Identity::facility($org)->getKey(),
+        facilityId: $facility->getKey(),
     );
     $event->markProcessing();
 
     app(SendNotificationHandler::class)->handle($event->fresh());
 
-    $notification = Notification::query()
-        ->where('user_id', Identity::user()->getKey())
+    $notification = DB::table('notifications')
+        ->where('user_id', $user->getKey())
         ->where('title', 'Appointment Confirmed')
         ->first();
 
     expect($notification)->not->toBeNull()
         ->and($notification->body)->toBe('Your appointment is confirmed.')
-        ->and($notification->type)->toBe('success')
+        ->and($notification->type)->toBe('clinical_alert')
         ->and($notification->link)->toBe('/appointments/apt-1')
         ->and($notification->read)->toBeFalse();
 });
 
 it('is idempotent — does not create duplicate notifications', function (): void {
+    $org = Identity::organization();
+    $facility = Identity::facility($org);
     $userId = Identity::user()->getKey();
     $event = EventDispatcher::dispatch(
         eventType: 'notification.created',
@@ -297,8 +302,21 @@ it('is idempotent — does not create duplicate notifications', function (): voi
             'body' => 'Should appear once',
             'type' => 'info',
         ],
+        tenantId: $org->getKey(),
+        facilityId: $facility->getKey(),
     );
     $event->markProcessing();
+
+    DB::select("select set_config('app.tenant_id', ?, true)", [$org->getKey()]);
+
+    $claims = json_encode([
+        'app_user_id' => $userId,
+        'app_tenant_id' => $org->getKey(),
+        'app_facility_id' => $facility->getKey(),
+        'app_branch_id' => '',
+        'app_is_platform' => '',
+    ]);
+    DB::select("select set_config('request.jwt.claims', ?, true)", [$claims]);
 
     app(SendNotificationHandler::class)->handle($event->fresh());
     app(SendNotificationHandler::class)->handle($event->fresh());

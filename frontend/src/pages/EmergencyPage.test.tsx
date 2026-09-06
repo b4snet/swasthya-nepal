@@ -45,9 +45,9 @@ function dashboardResponse() {
   });
 }
 
-function renderEmergency(roles: string[] = ['hospital_admin']) {
-  // Fetch order on mount: auth refresh → er queue → triage scales → dashboard.
-  stubFetch(sessionResponse(roles), jsonOk([queueEntry()]), jsonOk([]), dashboardResponse());
+function renderEmergency(roles: string[] = ['hospital_admin'], entry = queueEntry()) {
+  // Fetch order after auth resolves: er queue → triage scales → dashboard.
+  stubFetch(sessionResponse(roles), jsonOk([entry]), jsonOk([]), dashboardResponse());
   return render(
     <MemoryRouter initialEntries={['/emergency']}>
       <AuthProvider>
@@ -73,12 +73,12 @@ describe('EmergencyPage contract alignment', () => {
     // Queue entry from the server payload (contract: presentingComplaint).
     expect(await screen.findByText('Chest pain')).toBeInTheDocument();
     // Census totals come from the server dashboard, not client math.
-    expect(await screen.findByText('2')).toBeInTheDocument();
+    expect(await screen.findByText('2', { selector: 'span.er-census-value' })).toBeInTheDocument();
     expect(screen.getByText('Total in ED')).toBeInTheDocument();
   });
 
   it('offers only backend-valid dispositions (admitted/referred/home/deceased)', async () => {
-    renderEmergency();
+    renderEmergency(['hospital_admin'], queueEntry({ triageLevel: 3, triageColor: 'yellow' }));
 
     const dispositionBtn = await screen.findByRole('button', { name: 'Disposition' });
     fireEvent.click(dispositionBtn);
@@ -112,7 +112,7 @@ describe('EmergencyPage contract alignment', () => {
   });
 
   it('shows the admission bed selector for the admitted disposition', async () => {
-    renderEmergency();
+    renderEmergency(['hospital_admin'], queueEntry({ triageLevel: 3, triageColor: 'yellow' }));
 
     const dispositionBtn = await screen.findByRole('button', { name: 'Disposition' });
     fireEvent.click(dispositionBtn);

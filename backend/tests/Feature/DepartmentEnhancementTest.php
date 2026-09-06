@@ -1,9 +1,32 @@
 <?php
 
 use App\Models\Department;
+use App\Models\Facility;
+use App\Models\Organization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
+
+beforeEach(function (): void {
+    $this->org = Organization::create([
+        'name' => 'Test Org',
+        'code' => 'test-org',
+        'status' => 'active',
+    ]);
+
+    $this->facility = Facility::create([
+        'tenant_id' => $this->org->getKey(),
+        'name' => 'Test Facility',
+        'code' => 'test-fac',
+        'status' => 'active',
+        'timezone' => 'UTC',
+        'address' => '{}',
+        'settings' => '{}',
+    ]);
+
+    $this->tenantId = $this->org->getKey();
+    $this->facilityId = $this->facility->getKey();
+});
 
 it('department has correct types defined', function () {
     $types = Department::TYPES;
@@ -52,8 +75,8 @@ it('department has supportive departments catalog', function () {
 
 it('department model accepts new fields', function () {
     $dept = Department::create([
-        'tenant_id' => '00000000-0000-0000-0000-000000000001',
-        'facility_id' => '00000000-0000-0000-0000-000000000010',
+        'tenant_id' => $this->tenantId,
+        'facility_id' => $this->facilityId,
         'name' => 'Enhanced Cardiology',
         'code' => 'enh-card',
         'status' => 'active',
@@ -81,8 +104,8 @@ it('department model accepts new fields', function () {
 
 it('department defaults to medical type', function () {
     $dept = Department::create([
-        'tenant_id' => '00000000-0000-0000-0000-000000000001',
-        'facility_id' => '00000000-0000-0000-0000-000000000010',
+        'tenant_id' => $this->tenantId,
+        'facility_id' => $this->facilityId,
         'name' => 'Default Dept',
         'code' => 'def-dept',
         'status' => 'active',
@@ -94,8 +117,8 @@ it('department defaults to medical type', function () {
 
 it('department cast arrays work correctly', function () {
     $dept = Department::create([
-        'tenant_id' => '00000000-0000-0000-0000-000000000001',
-        'facility_id' => '00000000-0000-0000-0000-000000000010',
+        'tenant_id' => $this->tenantId,
+        'facility_id' => $this->facilityId,
         'name' => 'Array Test',
         'code' => 'arr-test',
         'status' => 'active',

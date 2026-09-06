@@ -71,6 +71,27 @@ class NumberingConfig extends Model
         'metadata' => 'array',
     ];
 
+    protected static function booted(): void
+    {
+        static::creating(function (NumberingConfig $config): void {
+            if ($config->sequence_length === null) {
+                $config->sequence_length = 5;
+            }
+            if ($config->reset_policy === null) {
+                $config->reset_policy = self::RESET_NEVER;
+            }
+            if ($config->separator === null) {
+                $config->separator = '-';
+            }
+            if ($config->is_active === null) {
+                $config->is_active = true;
+            }
+            if ($config->include_facility === null) {
+                $config->include_facility = false;
+            }
+        });
+    }
+
     /**
      * Generate the next number using this configuration.
      */
