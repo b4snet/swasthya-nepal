@@ -1,12 +1,8 @@
-# Swasthya backend image (DEPLOYMENT.md §15, STAGING.md §2).
-# Runtime: PHP 8.3-FPM + nginx in one image (Render builds this Dockerfile).
-# Non-root (www-data), pinned alpine base, postgresql-client included so the
-# predeploy bootstrap (roles.sql / migrate / grants.sql) can run psql.
-#
-# Build context: backend/ (dockerContext in render.yaml).
-# Two stages: vendor (composer, no dev) -> runtime (fpm + nginx).
+# Railway-compatible Laravel image
+# Uses PHP's built-in server (no nginx) — works on Railway's non-root containers
+# Build context: backend/
 
-# ---- Stage 1: Composer dependencies (no dev packages) ----
+# ---- Stage 1: Composer dependencies ----
 FROM composer:2 AS vendor
 WORKDIR /app
 COPY composer.json composer.lock ./
@@ -25,16 +21,12 @@ RUN composer install \
       --no-progress \
       --optimize-autoloader
 
-# ---- Stage 2: Runtime image ----
-FROM php:8.3-fpm-alpine
-LABEL org.opencontainers.image.title="swasthya-api" \
-      org.opencontainers.image.description="Swasthya Laravel API (staging/production image)" \
-      org.opencontainers.image.source="https://github.com/b4snet/swasthya-nepal"
+# ---- Stage 2: Runtime ----
+FROM php:8.3-cli-alpine
 
-# Build deps for PHP extensions, runtime packages, then extensions.
+# Install PHP extensions
 RUN set -eux; \
     apk add --no-cache \
-      nginx \
       postgresql-client \
       icu-dev \
       libpq-dev \
@@ -52,26 +44,21 @@ RUN set -eux; \
     apk del $PHPIZE_DEPS; \
     rm -rf /var/cache/apk/*
 
-# Application files (vendor from stage 1).
+# Application files
 WORKDIR /var/www/html
 COPY --from=vendor /app /var/www/html
 
-# Runtime configuration. Remove the image's default www pool first so this
-# single [www] pool does not collide with it.
-RUN rm -f /usr/local/etc/php-fpm.d/www.conf /usr/local/etc/php-fpm.d/zz-docker.conf
-COPY docker/php-fpm.conf /usr/local/etc/php-fpm.d/zz-swasthya.conf
-COPY docker/nginx.conf /etc/nginx/http.d/default.conf
+# Runtime config
 COPY docker/opcache.ini /usr/local/etc/php/conf.d/opcache.ini
 
-# Storage must be writable at runtime (Laravel cache/logs/sessions).
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
-    && chmod -R ug+rwX /var/www/html/storage /var/www/html/bootstrap/cache
+# Storage writable
+RUN chmod -R ug+rwX /var/www/html/storage /var/www/html/bootstrap/cache
 
-# 80 = nginx (public); 9000 = php-fpm (internal, not exposed).
-EXPOSE 80
+# Railway uses PORT env var (default 8080)
+EXPOSE 8080
 
+# Entrypoint: run bootstrap if flagged, else start PHP server
 COPY docker/entrypoint.sh /usr/local/bin/docker-entrypoint
 RUN chmod +x /usr/local/bin/docker-entrypoint
 
-USER www-data
 ENTRYPOINT ["docker-entrypoint"]
