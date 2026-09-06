@@ -1,64 +1,28 @@
-# Railway-compatible Laravel image
-# Uses PHP's built-in server (no nginx) — works on Railway's non-root containers
-# Build context: backend/
-
-# ---- Stage 1: Composer dependencies ----
-FROM composer:2 AS vendor
-WORKDIR /app
-COPY composer.json composer.lock ./
-RUN composer install \
-      --no-dev \
-      --no-interaction \
-      --prefer-dist \
-      --no-progress \
-      --no-scripts \
-      --no-autoloader
-COPY . .
-RUN composer install \
-      --no-dev \
-      --no-interaction \
-      --prefer-dist \
-      --no-progress \
-      --optimize-autoloader
-
-# ---- Stage 2: Runtime ----
+# Railway-compatible Laravel backend
+# Uses PHP CLI + built-in server, no nginx
 FROM php:8.3-cli-alpine
 
-# Install PHP extensions
-RUN set -eux; \
-    apk add --no-cache \
-      postgresql-client \
-      icu-dev \
-      libpq-dev \
-      oniguruma-dev \
-      zlib-dev \
-      libzip-dev \
-      $PHPIZE_DEPS; \
+RUN apk add --no-cache \
+    postgresql-client \
+    icu-dev \
+    libpq-dev \
+    oniguruma-dev \
+    zlib-dev \
+    libzip-dev && \
     docker-php-ext-install -j"$(nproc)" \
-      pdo_pgsql \
-      pgsql \
-      bcmath \
-      intl \
-      zip \
-      opcache; \
-    apk del $PHPIZE_DEPS; \
-    rm -rf /var/cache/apk/*
+    pdo_pgsql \
+    pgsql \
+    bcmath \
+    intl \
+    zip \
+    opcache
 
-# Application files
 WORKDIR /var/www/html
-COPY --from=vendor /app /var/www/html
+COPY --chown=nobody:nobody . .
 
-# Runtime config
-COPY docker/opcache.ini /usr/local/etc/php/conf.d/opcache.ini
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer && \
+    composer install --no-dev --optimize-autoloader --no-interaction
 
-# Storage writable
-RUN chmod -R ug+rwX /var/www/html/storage /var/www/html/bootstrap/cache
-
-# Railway uses PORT env var (default 8080)
+USER nobody
 EXPOSE 8080
-
-# Entrypoint: run bootstrap if flagged, else start PHP server
-COPY docker/entrypoint.sh /usr/local/bin/docker-entrypoint
-RUN chmod +x /usr/local/bin/docker-entrypoint
-
-ENTRYPOINT ["docker-entrypoint"]
+CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8080"]
