@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\User;
 use App\Support\Envelope;
 use App\Support\ErrorCodes;
 use Illuminate\Support\Facades\Route;
@@ -17,6 +18,7 @@ use Illuminate\Support\Facades\Route;
 | exist (otherwise the redirect itself 500s) and it must return the standard
 | 401 envelope — never a web login page that does not exist.
 |
+| One-time bootstrap endpoint — REMOVE AFTER FIRST USE
 */
 
 Route::get('login', function () {
@@ -27,3 +29,22 @@ Route::get('login', function () {
         request: request(),
     );
 })->name('login');
+
+if (env('ALLOW_BOOTSTRAP')) {
+    Route::get('bootstrap/create-admin', function () {
+        $admin = User::where('email', 'admin@hospital.example')->first();
+        if ($admin) {
+            return ['skip' => true, 'email' => $admin->email];
+        }
+
+        $user = User::create([
+            'email' => 'admin@hospital.example',
+            'password' => bcrypt('ChangeMe123!'),
+            'status' => 'active',
+            'email_verified_at' => now(),
+        ]);
+        $user->assignRole('hospital_admin');
+
+        return ['success' => true, 'email' => $user->email];
+    });
+}
